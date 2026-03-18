@@ -6,7 +6,13 @@ Built primarily for use by **coding agents** (AI assistants that write and refac
 
 ## Why use Code Navigator?
 
-Coding agents can read individual files, but they lack structural understanding of a codebase. Code Navigator fills that gap by providing structured, machine-readable answers to common navigation questions:
+Text search (grep, ripgrep) requires iterative discovery. You search for `cache.get(`, find some results, then realize you missed the Kotlin safe-call `cache?.get(`, then extension functions, then delegation patterns. Each iteration requires you to know what syntactic variant you haven't tried yet — and you can't know what you've missed until you find it by accident.
+
+Bytecode analysis sidesteps this entirely. All syntax variants compile to the same invocation instruction. One `cnavCallers` query returns all call sites — complete, correct, no false positives, no missed calls.
+
+For an agent, each grep iteration is a tool call round-trip. For a human, each is a context switch. Code Navigator eliminates the iterative discovery loop: you get the full call graph from one query.
+
+Beyond call graphs, it provides structured answers to common navigation questions:
 
 - **"What classes exist?"** -- `cnavListClasses` and `cnavFindClass` give a complete index of classes with source file paths.
 - **"Where is this method defined?"** -- `cnavFindSymbol` searches methods and fields by regex.
