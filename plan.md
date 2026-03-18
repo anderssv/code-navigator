@@ -14,9 +14,9 @@ resetPassword
     ← Application.setupKtor
 ```
 
-## 3. "No packages found" message for cnavDeps with invalid filter (Low effort, high polish)
+## ~~3. "No packages found" message for cnavDeps with invalid filter (Low effort, high polish)~~ DONE
 
-cnavDeps -Ppackage=nonexistent silently succeeds with empty output. Should print "No packages found matching 'nonexistent'" like the other commands do.
+Already implemented in `PackageDepsTask.kt:26-29`.
 
 ## 4. Reverse dependency view for cnavDeps (High value)
 
@@ -43,6 +43,6 @@ codeNavigator {
 
 All commands output human-readable tables/trees. Adding -Pformat=json would enable integration with CI pipelines, IDE plugins, and other tooling.
 
-## 8. cnavClass show interfaces implemented (Low effort)
+## ~~8. cnavClass show interfaces implemented (Low effort)~~ DONE
 
-cnavClass shows superclass ("Extends:") but doesn't explicitly list interfaces. Adding an "Implements:" section would complete the class signature view.
+Already implemented. `ClassDetailExtractor` extracts interfaces from bytecode and `ClassDetailFormatter` outputs "Implements: ..." when interfaces are present.
