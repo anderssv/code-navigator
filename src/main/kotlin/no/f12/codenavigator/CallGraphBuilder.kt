@@ -47,6 +47,13 @@ class CallGraph(
     fun sourceFileOf(className: String): String =
         sourceFiles[className] ?: "<unknown>"
 
+    fun projectClasses(): Set<String> = sourceFiles.keys
+
+    fun projectClassFilter(): (MethodRef) -> Boolean {
+        val classes = projectClasses()
+        return { it.className in classes }
+    }
+
     fun forEachEdge(action: (caller: MethodRef, callee: MethodRef) -> Unit) {
         callerToCallees.forEach { (caller, callees) ->
             callees.forEach { callee -> action(caller, callee) }

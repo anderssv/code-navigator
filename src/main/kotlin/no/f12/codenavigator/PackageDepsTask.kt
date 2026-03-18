@@ -12,6 +12,7 @@ abstract class PackageDepsTask : DefaultTask() {
     @TaskAction
     fun showDeps() {
         val pattern = project.findProperty("package")?.toString()
+        val projectOnly = project.findProperty("projectonly")?.toString()?.toBoolean() ?: false
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
@@ -19,7 +20,11 @@ abstract class PackageDepsTask : DefaultTask() {
 
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/call-graph.cache")
         val graph = CallGraphCache.getOrBuild(cacheFile, classDirectories)
-        val deps = PackageDependencyBuilder.build(graph)
+
+        val filter: ((MethodRef) -> Boolean)? =
+            if (projectOnly) graph.projectClassFilter() else null
+
+        val deps = PackageDependencyBuilder.build(graph, filter)
 
         val packages = if (pattern != null) {
             val matches = deps.findPackages(pattern)

@@ -209,4 +209,36 @@ class CallerTreeFormatterTest {
             result,
         )
     }
+
+    @Test
+    fun `filter removes external callers from output`() {
+        val target = MethodRef("com.example.Service", "doWork")
+        val projectCaller = MethodRef("com.example.Controller", "handle")
+        val externalCaller = MethodRef("org.springframework.Framework", "invoke")
+        val graph = CallGraph(
+            mapOf(
+                projectCaller to setOf(target),
+                externalCaller to setOf(target),
+            ),
+            sourceFiles = mapOf(
+                "com.example.Controller" to "Controller.kt",
+            ),
+        )
+        val projectClasses = setOf("com.example.Service", "com.example.Controller")
+
+        val result = CallerTreeFormatter.format(
+            graph,
+            listOf(target),
+            maxDepth = 3,
+            filter = { it.className in projectClasses },
+        )
+
+        assertEquals(
+            """
+            com.example.Service.doWork
+              ← com.example.Controller.handle (Controller.kt)
+            """.trimIndent(),
+            result,
+        )
+    }
 }

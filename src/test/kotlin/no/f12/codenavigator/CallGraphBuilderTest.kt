@@ -201,6 +201,19 @@ class CallGraphBuilderTest {
         assertEquals("create", callers.first().methodName)
     }
 
+    @Test
+    fun `projectClasses returns classes with known source files`() {
+        writeClassWithCalls("com/example/MyService", "MyService.kt", "execute", emptyList())
+        writeClassWithCalls("com/example/OtherService", "OtherService.kt", "run", emptyList())
+
+        val graph = CallGraphBuilder.build(listOf(classesDir))
+
+        val projectClasses = graph.projectClasses()
+        assertTrue("com.example.MyService" in projectClasses)
+        assertTrue("com.example.OtherService" in projectClasses)
+        assertTrue("java.lang.Object" !in projectClasses)
+    }
+
     private data class Call(val owner: String, val name: String, val descriptor: String)
 
     private fun writeClassWithCalls(

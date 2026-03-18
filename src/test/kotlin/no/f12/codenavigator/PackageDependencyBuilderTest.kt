@@ -103,6 +103,44 @@ class PackageDependencyBuilderTest {
 
     // [TEST-DONE] findPackages matches pattern case-insensitively
 
+    @Test
+    fun `filter removes external packages from dependencies`() {
+        val graph = buildCallGraph(
+            MethodRef("com.example.services.UserService", "find") to
+                setOf(
+                    MethodRef("com.example.domain.User", "getName"),
+                    MethodRef("java.lang.Object", "toString"),
+                    MethodRef("kotlin.jvm.internal.Intrinsics", "checkNotNullParameter"),
+                ),
+        )
+        val projectClasses = setOf(
+            "com.example.services.UserService",
+            "com.example.domain.User",
+        )
+
+        val deps = PackageDependencyBuilder.build(graph, filter = { it.className in projectClasses })
+
+        assertEquals(listOf("com.example.domain"), deps.dependenciesOf("com.example.services"))
+        assertEquals(emptyList(), deps.findPackages("java"))
+        assertEquals(emptyList(), deps.findPackages("kotlin"))
+    }
+
+    @Test
+    fun `filter with all callees external yields no dependencies`() {
+        val graph = buildCallGraph(
+            MethodRef("com.example.services.Svc", "run") to
+                setOf(
+                    MethodRef("java.lang.String", "valueOf"),
+                    MethodRef("kotlin.collections.CollectionsKt", "listOf"),
+                ),
+        )
+        val projectClasses = setOf("com.example.services.Svc")
+
+        val deps = PackageDependencyBuilder.build(graph, filter = { it.className in projectClasses })
+
+        assertTrue(deps.dependenciesOf("com.example.services").isEmpty())
+    }
+
     private fun buildCallGraph(
         vararg edges: Pair<MethodRef, Set<MethodRef>>,
     ): CallGraph = CallGraph(edges.toMap())

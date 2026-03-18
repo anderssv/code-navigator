@@ -22,9 +22,9 @@ Already implemented in `PackageDepsTask.kt:26-29`.
 
 Currently shows "package X depends on Y". A reverse view ("who depends on package X?") would be invaluable for impact analysis: "If I change the domain package, what breaks?" Could be -Preverse=true or a separate cnavReverseDeps task.
 
-## 5. Filter out stdlib/JDK noise in cnavCallees and cnavDeps (Medium value)
+## ~~5. Filter out stdlib/JDK noise in cnavCallees and cnavDeps (Medium value)~~ DONE
 
-cnavCallees and cnavDeps output includes kotlin.jvm.internal, java.lang, kotlin.coroutines.intrinsics etc. A --project-only flag to filter to only project packages would make the output much more actionable. The signal-to-noise ratio suffers on larger methods.
+cnavCallees, cnavCallers, and cnavDeps now support `-Pprojectonly=true` to filter output to project classes only, hiding JDK/stdlib/library noise. Uses `CallGraph.projectClasses()` (derived from scanned source files) to determine what's "project" vs "external".
 
 ## 6. Architecture violation detection in cnavDeps (High value, ambitious)
 

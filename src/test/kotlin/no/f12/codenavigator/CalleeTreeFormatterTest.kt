@@ -172,6 +172,97 @@ class CalleeTreeFormatterTest {
     }
 
     @Test
+    fun `filter removes external callees from output`() {
+        val caller = MethodRef("com.example.Service", "run")
+        val projectCallee = MethodRef("com.example.Repo", "save")
+        val jdkCallee = MethodRef("java.lang.Object", "toString")
+        val kotlinCallee = MethodRef("kotlin.jvm.internal.Intrinsics", "checkNotNullParameter")
+        val graph = CallGraph(
+            mapOf(caller to setOf(projectCallee, jdkCallee, kotlinCallee)),
+            sourceFiles = mapOf(
+                "com.example.Service" to "Service.kt",
+                "com.example.Repo" to "Repo.kt",
+            ),
+        )
+        val projectClasses = setOf("com.example.Service", "com.example.Repo")
+
+        val result = CalleeTreeFormatter.format(
+            graph,
+            listOf(caller),
+            maxDepth = 3,
+            filter = { it.className in projectClasses },
+        )
+
+        assertEquals(
+            """
+            com.example.Service.run
+              → com.example.Repo.save (Repo.kt)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `filter with all callees filtered shows no callees message`() {
+        val caller = MethodRef("com.example.Service", "run")
+        val jdkCallee = MethodRef("java.lang.Object", "toString")
+        val graph = CallGraph(
+            mapOf(caller to setOf(jdkCallee)),
+        )
+        val projectClasses = setOf("com.example.Service")
+
+        val result = CalleeTreeFormatter.format(
+            graph,
+            listOf(caller),
+            maxDepth = 3,
+            filter = { it.className in projectClasses },
+        )
+
+        assertEquals(
+            """
+            com.example.Service.run
+              (no callees)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `filter applies to transitive callees`() {
+        val a = MethodRef("com.example.A", "start")
+        val b = MethodRef("com.example.B", "middle")
+        val jdk = MethodRef("java.lang.String", "valueOf")
+        val c = MethodRef("com.example.C", "end")
+        val graph = CallGraph(
+            mapOf(
+                a to setOf(b),
+                b to setOf(jdk, c),
+            ),
+            sourceFiles = mapOf(
+                "com.example.B" to "B.kt",
+                "com.example.C" to "C.kt",
+            ),
+        )
+        val projectClasses = setOf("com.example.A", "com.example.B", "com.example.C")
+
+        val result = CalleeTreeFormatter.format(
+            graph,
+            listOf(a),
+            maxDepth = 3,
+            filter = { it.className in projectClasses },
+        )
+
+        assertEquals(
+            """
+            com.example.A.start
+              → com.example.B.middle (B.kt)
+                → com.example.C.end (C.kt)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
     fun `multiple matched methods each get their own tree`() {
         val a = MethodRef("com.example.ServiceA", "run")
         val b = MethodRef("com.example.ServiceB", "run")

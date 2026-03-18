@@ -18,10 +18,12 @@ class PackageDependencies(
 
 object PackageDependencyBuilder {
 
-    fun build(graph: CallGraph): PackageDependencies {
+    fun build(graph: CallGraph, filter: ((MethodRef) -> Boolean)? = null): PackageDependencies {
         val packageDeps = mutableMapOf<String, MutableSet<String>>()
 
         graph.forEachEdge { caller, callee ->
+            if (filter != null && (!filter(caller) || !filter(callee))) return@forEachEdge
+
             val callerPackage = caller.className.substringBeforeLast('.', "")
             val calleePackage = callee.className.substringBeforeLast('.', "")
 

@@ -15,6 +15,7 @@ abstract class FindCalleesTask : DefaultTask() {
         val methodPattern = project.findProperty("method")?.toString()
             ?: throw GradleException("Missing required property 'method'. Usage: ./gradlew cnavCallees -Pmethod=<regex>")
         val maxDepth = project.findProperty("depth")?.toString()?.toIntOrNull() ?: 3
+        val projectOnly = project.findProperty("projectonly")?.toString()?.toBoolean() ?: false
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
@@ -29,7 +30,10 @@ abstract class FindCalleesTask : DefaultTask() {
             return
         }
 
-        val output = CalleeTreeFormatter.format(graph, methods, maxDepth)
+        val filter: ((MethodRef) -> Boolean)? =
+            if (projectOnly) graph.projectClassFilter() else null
+
+        val output = CalleeTreeFormatter.format(graph, methods, maxDepth, filter)
         logger.lifecycle(output)
     }
 }

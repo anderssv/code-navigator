@@ -15,15 +15,17 @@ object CallTreeFormatter {
         methods: List<MethodRef>,
         maxDepth: Int,
         direction: CallDirection,
+        filter: ((MethodRef) -> Boolean)? = null,
     ): String = buildString {
         methods.forEachIndexed { index, method ->
             if (index > 0) appendLine()
             appendLine(method.qualifiedName)
             val related = direction.resolve(graph, method.className, method.methodName)
+                .let { refs -> if (filter != null) refs.filter(filter).toSet() else refs }
             if (related.isEmpty()) {
                 append("  ${direction.emptyMessage}")
             } else {
-                renderTree(graph, related, maxDepth, direction, depth = 1, visited = mutableSetOf(method))
+                renderTree(graph, related, maxDepth, direction, depth = 1, visited = mutableSetOf(method), filter = filter)
             }
         }
     }.trimEnd()
@@ -35,6 +37,7 @@ object CallTreeFormatter {
         direction: CallDirection,
         depth: Int,
         visited: MutableSet<MethodRef>,
+        filter: ((MethodRef) -> Boolean)?,
     ) {
         val indent = "  ".repeat(depth)
         val sorted = methods.sortedBy { it.qualifiedName }
@@ -44,8 +47,9 @@ object CallTreeFormatter {
             if (depth < maxDepth && method !in visited) {
                 visited.add(method)
                 val next = direction.resolve(graph, method.className, method.methodName)
+                    .let { refs -> if (filter != null) refs.filter(filter).toSet() else refs }
                 if (next.isNotEmpty()) {
-                    renderTree(graph, next, maxDepth, direction, depth + 1, visited)
+                    renderTree(graph, next, maxDepth, direction, depth + 1, visited, filter)
                 }
             }
         }
