@@ -15,6 +15,7 @@ abstract class FindInterfaceImplsTask : DefaultTask() {
         val pattern = project.findProperty("pattern")?.toString()
             ?: throw GradleException("Missing required property 'pattern'. Usage: ./gradlew cnavInterfaces -Ppattern=<regex>")
         val includeTest = project.findProperty("includetest")?.toString()?.toBoolean() ?: false
+        val jsonFormat = project.findProperty("format")?.toString() == "json"
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val classDirectories = mutableListOf<File>()
@@ -38,7 +39,11 @@ abstract class FindInterfaceImplsTask : DefaultTask() {
             return
         }
 
-        val output = InterfaceFormatter.format(registry, matchingInterfaces)
+        val output = if (jsonFormat) {
+            JsonFormatter.formatInterfaces(registry, matchingInterfaces)
+        } else {
+            InterfaceFormatter.format(registry, matchingInterfaces)
+        }
         logger.lifecycle(output)
     }
 }

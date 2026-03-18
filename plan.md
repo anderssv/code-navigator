@@ -33,9 +33,9 @@ codeNavigator {
 }
 ```
 
-## 7. JSON/machine-readable output format (Medium value)
+## ~~7. JSON/machine-readable output format (Medium value)~~ DONE
 
-All commands output human-readable tables/trees. Adding -Pformat=json would enable integration with CI pipelines, IDE plugins, and other tooling.
+All tasks now support `-Pformat=json` for structured JSON output. Hand-rolled JSON formatter (`JsonFormatter.kt`) with no external dependencies — uses `jsonArray`, `jsonObject`, `jsonValue` helpers and a `JsonRaw` value class for pre-rendered content. Covers all 8 data tasks: cnavListClasses, cnavFindClass, cnavFindSymbol, cnavClass, cnavCallers, cnavCallees, cnavInterfaces, cnavDeps. Also added `cnavAgentHelp` task with workflow guidance, task reference, and performance tips for AI coding agents.
 
 ## ~~8. cnavClass show interfaces implemented (Low effort)~~ DONE
 

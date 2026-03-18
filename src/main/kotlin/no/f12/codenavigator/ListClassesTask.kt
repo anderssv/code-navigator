@@ -11,13 +11,15 @@ abstract class ListClassesTask : DefaultTask() {
 
     @TaskAction
     fun listClasses() {
+        val jsonFormat = project.findProperty("format")?.toString() == "json"
+
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/class-index.cache")
 
         val classes = ClassIndexCache.getOrScan(cacheFile, classDirectories)
-        val output = TableFormatter.format(classes)
+        val output = if (jsonFormat) JsonFormatter.formatClasses(classes) else TableFormatter.format(classes)
 
         logger.lifecycle(output)
     }

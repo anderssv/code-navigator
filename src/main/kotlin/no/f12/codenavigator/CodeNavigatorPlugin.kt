@@ -57,5 +57,10 @@ class CodeNavigatorPlugin : Plugin<Project> {
             description = "Shows available code-navigator tasks and their usage"
             group = "code-navigator"
         }
+
+        project.tasks.register("cnavAgentHelp", AgentHelpTask::class.java) {
+            description = "Shows AI agent instructions for using code-navigator effectively"
+            group = "code-navigator"
+        }
     }
 }

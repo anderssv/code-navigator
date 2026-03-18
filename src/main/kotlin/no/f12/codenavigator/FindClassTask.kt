@@ -14,6 +14,7 @@ abstract class FindClassTask : DefaultTask() {
     fun findClass() {
         val pattern = project.findProperty("pattern")?.toString()
             ?: throw GradleException("Missing required property 'pattern'. Usage: ./gradlew cnavFindClass -Ppattern=<regex>")
+        val jsonFormat = project.findProperty("format")?.toString() == "json"
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
@@ -22,7 +23,7 @@ abstract class FindClassTask : DefaultTask() {
 
         val allClasses = ClassIndexCache.getOrScan(cacheFile, classDirectories)
         val matches = ClassFilter.filter(allClasses, pattern)
-        val output = TableFormatter.format(matches)
+        val output = if (jsonFormat) JsonFormatter.formatClasses(matches) else TableFormatter.format(matches)
 
         logger.lifecycle(output)
     }

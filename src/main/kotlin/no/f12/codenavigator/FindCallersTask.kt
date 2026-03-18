@@ -16,6 +16,7 @@ abstract class FindCallersTask : DefaultTask() {
             ?: throw GradleException("Missing required property 'method'. Usage: ./gradlew cnavCallers -Pmethod=<regex>")
         val maxDepth = project.findProperty("depth")?.toString()?.toIntOrNull() ?: 3
         val projectOnly = project.findProperty("projectonly")?.toString()?.toBoolean() ?: false
+        val jsonFormat = project.findProperty("format")?.toString() == "json"
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
@@ -33,7 +34,11 @@ abstract class FindCallersTask : DefaultTask() {
         val filter: ((MethodRef) -> Boolean)? =
             if (projectOnly) graph.projectClassFilter() else null
 
-        val output = CallerTreeFormatter.format(graph, methods, maxDepth, filter)
+        val output = if (jsonFormat) {
+            JsonFormatter.formatCallTree(graph, methods, maxDepth, CallDirection.CALLERS, filter)
+        } else {
+            CallerTreeFormatter.format(graph, methods, maxDepth, filter)
+        }
         logger.lifecycle(output)
     }
 }

@@ -4,6 +4,8 @@ object HelpText {
     fun generate(): String = buildString {
         appendLine("=== code-navigator plugin ===")
         appendLine()
+        appendLine("All tasks support -Pformat=json for machine-readable JSON output.")
+        appendLine()
         appendLine("Available tasks:")
         appendLine()
         appendLine("  cnavHelp")
@@ -94,5 +96,10 @@ object HelpText {
         appendLine("    Usage: ./gradlew cnavDeps -Preverse=true")
         appendLine("    Usage: ./gradlew cnavDeps -Ppackage=domain -Preverse=true")
         appendLine("    Usage: ./gradlew cnavDeps -Pprojectonly=true")
+        appendLine()
+        appendLine("  cnavAgentHelp")
+        appendLine("    Shows detailed instructions for AI coding agents on how to use code-navigator effectively.")
+        appendLine("    Includes recommended workflows, task selection guidance, and tips for optimal results.")
+        appendLine("    Usage: ./gradlew cnavAgentHelp")
     }
 }
