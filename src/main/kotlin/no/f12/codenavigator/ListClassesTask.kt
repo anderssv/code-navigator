@@ -14,21 +14,11 @@ abstract class ListClassesTask : DefaultTask() {
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
-        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "code-navigator/class-index.txt")
+        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/class-index.cache")
 
-        val classes = loadClasses(cacheFile, classDirectories)
+        val classes = ClassIndexCache.getOrScan(cacheFile, classDirectories)
         val output = TableFormatter.format(classes)
 
         logger.lifecycle(output)
     }
-}
-
-internal fun loadClasses(cacheFile: File, classDirectories: List<File>): List<ClassInfo> {
-    if (ClassIndexCache.isFresh(cacheFile, classDirectories)) {
-        return ClassIndexCache.read(cacheFile)
-    }
-
-    val classes = ClassScanner.scan(classDirectories)
-    ClassIndexCache.write(cacheFile, classes)
-    return classes
 }

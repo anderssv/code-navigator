@@ -111,6 +111,20 @@ class ClassIndexCacheTest {
         assertFalse(ClassIndexCache.isFresh(cacheFile, listOf(classesDir, secondDir)))
     }
 
+    @Test
+    fun `getOrScan rebuilds when cache file is corrupt`() {
+        writeClassFile("com/example/Foo", "Foo.kt")
+
+        cacheFile.parentFile?.mkdirs()
+        cacheFile.writeText("only-one-field\n")
+        cacheFile.setLastModified(System.currentTimeMillis() + 10_000)
+
+        val result = ClassIndexCache.getOrScan(cacheFile, listOf(classesDir))
+
+        assertEquals(1, result.size)
+        assertEquals("com.example.Foo", result[0].className)
+    }
+
     private fun writeClassFile(className: String, sourceFile: String, targetDir: File = classesDir) {
         val writer = ClassWriter(0)
         writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)

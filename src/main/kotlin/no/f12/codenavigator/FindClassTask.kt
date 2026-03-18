@@ -18,9 +18,9 @@ abstract class FindClassTask : DefaultTask() {
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
-        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "code-navigator/class-index.txt")
+        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/class-index.cache")
 
-        val allClasses = loadClasses(cacheFile, classDirectories)
+        val allClasses = ClassIndexCache.getOrScan(cacheFile, classDirectories)
         val matches = ClassFilter.filter(allClasses, pattern)
         val output = TableFormatter.format(matches)
 

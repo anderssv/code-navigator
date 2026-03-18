@@ -42,4 +42,18 @@ object ClassIndexCache {
 
     fun isFresh(cacheFile: File, classDirectories: List<File>): Boolean =
         CacheFreshness.isFresh(cacheFile, classDirectories)
+
+    fun getOrScan(cacheFile: File, classDirectories: List<File>): List<ClassInfo> {
+        if (isFresh(cacheFile, classDirectories)) {
+            try {
+                return read(cacheFile)
+            } catch (_: Exception) {
+                cacheFile.delete()
+            }
+        }
+
+        val classes = ClassScanner.scan(classDirectories)
+        write(cacheFile, classes)
+        return classes
+    }
 }
