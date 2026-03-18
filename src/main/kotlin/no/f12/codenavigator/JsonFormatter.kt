@@ -51,10 +51,13 @@ object JsonFormatter {
         maxDepth: Int,
         direction: CallDirection,
         filter: ((MethodRef) -> Boolean)? = null,
-    ): String =
-        jsonArray(methods) { method ->
-            renderCallNode(graph, method, maxDepth, direction, depth = 0, visited = mutableSetOf(), filter = filter)
-        }
+    ): String {
+        val trees = CallTreeBuilder.build(graph, methods, maxDepth, direction, filter)
+        return renderCallTrees(trees)
+    }
+
+    fun renderCallTrees(trees: List<CallTreeNode>): String =
+        jsonArray(trees) { node -> renderCallNode(node) }
 
     fun formatInterfaces(registry: InterfaceRegistry, interfaceNames: List<String>): String =
         jsonArray(interfaceNames.sorted()) { name ->
@@ -81,29 +84,11 @@ object JsonFormatter {
             )
         }
 
-    private fun renderCallNode(
-        graph: CallGraph,
-        method: MethodRef,
-        maxDepth: Int,
-        direction: CallDirection,
-        depth: Int,
-        visited: MutableSet<MethodRef>,
-        filter: ((MethodRef) -> Boolean)?,
-    ): String {
-        val sourceFile = if (depth > 0) graph.sourceFileOf(method.className) else null
-        val children = if (depth < maxDepth && method !in visited) {
-            visited.add(method)
-            val related = direction.resolve(graph, method.className, method.methodName)
-                .let { refs -> if (filter != null) refs.filter(filter).toSet() else refs }
-            jsonArray(related.sortedBy { it.qualifiedName }) { child ->
-                renderCallNode(graph, child, maxDepth, direction, depth + 1, visited, filter)
-            }
-        } else {
-            "[]"
-        }
+    private fun renderCallNode(node: CallTreeNode): String {
+        val children = jsonArray(node.children) { child -> renderCallNode(child) }
         return jsonObject(
-            "method" to method.qualifiedName,
-            "sourceFile" to sourceFile,
+            "method" to node.method.qualifiedName,
+            "sourceFile" to node.sourceFile,
             "children" to JsonRaw(children),
         )
     }
