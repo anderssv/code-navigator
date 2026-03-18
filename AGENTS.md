@@ -1,5 +1,19 @@
 # Code Navigator - Agent Instructions
 
+## Release Process
+
+Version is in `build.gradle.kts`. Development versions use `-SNAPSHOT` suffix.
+
+To release:
+
+1. Remove `-SNAPSHOT` from `version` in `build.gradle.kts` (e.g. `0.1.2-SNAPSHOT` → `0.1.2`)
+2. Commit: `git commit -am "Release X.Y.Z"`
+3. Tag: `git tag vX.Y.Z`
+4. Publish: `./gradlew publishToMavenLocal` (or `publishPlugins` for Gradle Plugin Portal)
+5. Bump to next snapshot: change `version` to next patch with `-SNAPSHOT` (e.g. `0.1.3-SNAPSHOT`)
+6. Commit: `git commit -am "Bump to X.Y.Z-SNAPSHOT"`
+7. Push: `git push && git push --tags`
+
 ## Code Structure Principles
 
 ### Separate parsing, resolution, and formatting
