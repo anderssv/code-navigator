@@ -18,4 +18,16 @@ object CacheFreshness {
             }
             .all { it.lastModified() <= cacheLastModified }
     }
+
+    fun atomicWrite(cacheFile: File, writeContent: (File) -> Unit) {
+        cacheFile.parentFile?.mkdirs()
+        val tempFile = File(cacheFile.parentFile, "${cacheFile.name}.tmp")
+        try {
+            writeContent(tempFile)
+            tempFile.renameTo(cacheFile)
+        } catch (e: Exception) {
+            tempFile.delete()
+            throw e
+        }
+    }
 }

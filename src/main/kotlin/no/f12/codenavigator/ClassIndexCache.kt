@@ -7,18 +7,19 @@ object ClassIndexCache {
     private const val FIELD_SEPARATOR = "\t"
 
     fun write(cacheFile: File, classes: List<ClassInfo>) {
-        cacheFile.parentFile?.mkdirs()
-        cacheFile.bufferedWriter().use { writer ->
-            classes.forEach { info ->
-                writer.write(
-                    listOf(
-                        info.className,
-                        info.sourceFileName,
-                        info.reconstructedSourcePath,
-                        info.isUserDefinedClass.toString(),
-                    ).joinToString(FIELD_SEPARATOR),
-                )
-                writer.newLine()
+        CacheFreshness.atomicWrite(cacheFile) { file ->
+            file.bufferedWriter().use { writer ->
+                classes.forEach { info ->
+                    writer.write(
+                        listOf(
+                            info.className,
+                            info.sourceFileName,
+                            info.reconstructedSourcePath,
+                            info.isUserDefinedClass.toString(),
+                        ).joinToString(FIELD_SEPARATOR),
+                    )
+                    writer.newLine()
+                }
             }
         }
     }

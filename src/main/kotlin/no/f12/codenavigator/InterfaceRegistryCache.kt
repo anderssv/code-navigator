@@ -7,18 +7,19 @@ object InterfaceRegistryCache {
     private const val FIELD_SEPARATOR = "\t"
 
     fun write(cacheFile: File, registry: InterfaceRegistry) {
-        cacheFile.parentFile?.mkdirs()
-        cacheFile.bufferedWriter().use { writer ->
-            registry.forEachEntry { interfaceName, implementors ->
-                implementors.forEach { impl ->
-                    writer.write(
-                        listOf(
-                            interfaceName,
-                            impl.className,
-                            impl.sourceFile,
-                        ).joinToString(FIELD_SEPARATOR),
-                    )
-                    writer.newLine()
+        CacheFreshness.atomicWrite(cacheFile) { file ->
+            file.bufferedWriter().use { writer ->
+                registry.forEachEntry { interfaceName, implementors ->
+                    implementors.forEach { impl ->
+                        writer.write(
+                            listOf(
+                                interfaceName,
+                                impl.className,
+                                impl.sourceFile,
+                            ).joinToString(FIELD_SEPARATOR),
+                        )
+                        writer.newLine()
+                    }
                 }
             }
         }

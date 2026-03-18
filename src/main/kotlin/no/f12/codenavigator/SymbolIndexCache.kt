@@ -7,19 +7,20 @@ object SymbolIndexCache {
     private const val FIELD_SEPARATOR = "\t"
 
     fun write(cacheFile: File, symbols: List<SymbolInfo>) {
-        cacheFile.parentFile?.mkdirs()
-        cacheFile.bufferedWriter().use { writer ->
-            symbols.forEach { symbol ->
-                writer.write(
-                    listOf(
-                        symbol.packageName,
-                        symbol.className,
-                        symbol.symbolName,
-                        symbol.kind.name,
-                        symbol.sourceFile,
-                    ).joinToString(FIELD_SEPARATOR),
-                )
-                writer.newLine()
+        CacheFreshness.atomicWrite(cacheFile) { file ->
+            file.bufferedWriter().use { writer ->
+                symbols.forEach { symbol ->
+                    writer.write(
+                        listOf(
+                            symbol.packageName,
+                            symbol.className,
+                            symbol.symbolName,
+                            symbol.kind.name,
+                            symbol.sourceFile,
+                        ).joinToString(FIELD_SEPARATOR),
+                    )
+                    writer.newLine()
+                }
             }
         }
     }

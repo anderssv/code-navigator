@@ -9,28 +9,29 @@ object CallGraphCache {
     private const val SOURCES_HEADER = "[SOURCES]"
 
     fun write(cacheFile: File, graph: CallGraph) {
-        cacheFile.parentFile?.mkdirs()
-        cacheFile.bufferedWriter().use { writer ->
-            writer.write(EDGES_HEADER)
-            writer.newLine()
-            graph.forEachEdge { caller, callee ->
-                writer.write(
-                    listOf(
-                        caller.className,
-                        caller.methodName,
-                        callee.className,
-                        callee.methodName,
-                    ).joinToString(FIELD_SEPARATOR),
-                )
+        CacheFreshness.atomicWrite(cacheFile) { file ->
+            file.bufferedWriter().use { writer ->
+                writer.write(EDGES_HEADER)
                 writer.newLine()
-            }
-            writer.write(SOURCES_HEADER)
-            writer.newLine()
-            graph.forEachSourceFile { className, sourceFile ->
-                writer.write(
-                    listOf(className, sourceFile).joinToString(FIELD_SEPARATOR),
-                )
+                graph.forEachEdge { caller, callee ->
+                    writer.write(
+                        listOf(
+                            caller.className,
+                            caller.methodName,
+                            callee.className,
+                            callee.methodName,
+                        ).joinToString(FIELD_SEPARATOR),
+                    )
+                    writer.newLine()
+                }
+                writer.write(SOURCES_HEADER)
                 writer.newLine()
+                graph.forEachSourceFile { className, sourceFile ->
+                    writer.write(
+                        listOf(className, sourceFile).joinToString(FIELD_SEPARATOR),
+                    )
+                    writer.newLine()
+                }
             }
         }
     }
