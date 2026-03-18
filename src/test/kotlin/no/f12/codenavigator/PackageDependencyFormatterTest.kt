@@ -52,4 +52,44 @@ class PackageDependencyFormatterTest {
         """.trimMargin()
         assertEquals(expected, output)
     }
+
+    @Test
+    fun `reverse format shows who depends on package`() {
+        val deps = PackageDependencies(
+            mapOf(
+                "com.example.services" to listOf("com.example.domain"),
+                "com.example.ktor" to listOf("com.example.domain"),
+            ),
+        )
+
+        val output = PackageDependencyFormatter.format(
+            deps,
+            listOf("com.example.domain"),
+            reverse = true,
+        )
+
+        val expected = """
+            |com.example.domain
+            |  ← com.example.ktor
+            |  ← com.example.services
+        """.trimMargin()
+        assertEquals(expected, output)
+    }
+
+    @Test
+    fun `reverse format shows no incoming dependencies message`() {
+        val deps = PackageDependencies(
+            mapOf(
+                "com.example.services" to listOf("com.example.domain"),
+            ),
+        )
+
+        val output = PackageDependencyFormatter.format(
+            deps,
+            listOf("com.example.services"),
+            reverse = true,
+        )
+
+        assertEquals("com.example.services\n  (no incoming dependencies)", output)
+    }
 }

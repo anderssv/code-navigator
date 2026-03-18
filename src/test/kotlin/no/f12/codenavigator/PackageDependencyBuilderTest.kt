@@ -141,6 +141,52 @@ class PackageDependencyBuilderTest {
         assertTrue(deps.dependenciesOf("com.example.services").isEmpty())
     }
 
+    @Test
+    fun `dependentsOf returns packages that depend on the given package`() {
+        val graph = buildCallGraph(
+            MethodRef("com.example.services.UserService", "find") to
+                setOf(MethodRef("com.example.domain.User", "getName")),
+            MethodRef("com.example.ktor.routes.UserRoute", "get") to
+                setOf(MethodRef("com.example.domain.User", "toJson")),
+        )
+
+        val deps = PackageDependencyBuilder.build(graph)
+
+        val dependents = deps.dependentsOf("com.example.domain")
+        assertEquals(listOf("com.example.ktor.routes", "com.example.services"), dependents)
+    }
+
+    @Test
+    fun `dependentsOf returns empty list for package with no dependents`() {
+        val graph = buildCallGraph(
+            MethodRef("com.example.services.Svc", "run") to
+                setOf(MethodRef("com.example.domain.X", "a")),
+        )
+
+        val deps = PackageDependencyBuilder.build(graph)
+
+        assertTrue(deps.dependentsOf("com.example.services").isEmpty())
+    }
+
+    @Test
+    fun `dependentsOf results are sorted alphabetically`() {
+        val graph = buildCallGraph(
+            MethodRef("com.example.zebra.Z", "a") to
+                setOf(MethodRef("com.example.target.T", "x")),
+            MethodRef("com.example.alpha.A", "b") to
+                setOf(MethodRef("com.example.target.T", "y")),
+            MethodRef("com.example.middle.M", "c") to
+                setOf(MethodRef("com.example.target.T", "z")),
+        )
+
+        val deps = PackageDependencyBuilder.build(graph)
+
+        assertEquals(
+            listOf("com.example.alpha", "com.example.middle", "com.example.zebra"),
+            deps.dependentsOf("com.example.target"),
+        )
+    }
+
     private fun buildCallGraph(
         vararg edges: Pair<MethodRef, Set<MethodRef>>,
     ): CallGraph = CallGraph(edges.toMap())

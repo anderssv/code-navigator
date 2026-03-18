@@ -14,12 +14,22 @@ abstract class FindInterfaceImplsTask : DefaultTask() {
     fun findImplementors() {
         val pattern = project.findProperty("pattern")?.toString()
             ?: throw GradleException("Missing required property 'pattern'. Usage: ./gradlew cnavInterfaces -Ppattern=<regex>")
+        val includeTest = project.findProperty("includetest")?.toString()?.toBoolean() ?: false
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
-        val mainSourceSet = sourceSets.getByName("main")
-        val classDirectories = mainSourceSet.output.classesDirs.files.toList()
+        val classDirectories = mutableListOf<File>()
+        classDirectories.addAll(sourceSets.getByName("main").output.classesDirs.files)
 
-        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/interface-registry.cache")
+        val cacheFileName = if (includeTest) {
+            sourceSets.findByName("test")?.let { testSourceSet ->
+                classDirectories.addAll(testSourceSet.output.classesDirs.files)
+            }
+            "interface-registry-all.cache"
+        } else {
+            "interface-registry.cache"
+        }
+
+        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/$cacheFileName")
         val registry = InterfaceRegistryCache.getOrBuild(cacheFile, classDirectories)
         val matchingInterfaces = registry.findInterfaces(pattern)
 

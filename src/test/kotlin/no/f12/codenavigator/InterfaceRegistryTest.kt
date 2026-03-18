@@ -142,6 +142,30 @@ class InterfaceRegistryTest {
 
     // [TEST-DONE] Returns implementors sorted by class name
 
+    @Test
+    fun `build merges implementors from multiple class directories`() {
+        val mainDir = tempDir.resolve("main").toFile().also { it.mkdirs() }
+        val testDir = tempDir.resolve("test").toFile().also { it.mkdirs() }
+
+        writeClassFileTo(
+            mainDir,
+            "com/example/RealRepo",
+            "RealRepo.kt",
+            interfaces = arrayOf("com/example/Repository"),
+        )
+        writeClassFileTo(
+            testDir,
+            "com/example/FakeRepo",
+            "FakeRepo.kt",
+            interfaces = arrayOf("com/example/Repository"),
+        )
+
+        val registry = InterfaceRegistry.build(listOf(mainDir, testDir))
+
+        val names = registry.implementorsOf("com.example.Repository").map { it.className }
+        assertEquals(listOf("com.example.FakeRepo", "com.example.RealRepo"), names)
+    }
+
     private fun writeClassFile(
         className: String,
         sourceFile: String?,
@@ -161,6 +185,32 @@ class InterfaceRegistryTest {
             tempDir.resolve(packageDir).toFile().also { it.mkdirs() }
         } else {
             tempDir.toFile()
+        }
+        val file = File(dir, simpleFileName)
+        file.writeBytes(writer.toByteArray())
+        return file
+    }
+
+    private fun writeClassFileTo(
+        baseDir: File,
+        className: String,
+        sourceFile: String?,
+        superName: String = "java/lang/Object",
+        interfaces: Array<String>? = null,
+    ): File {
+        val writer = ClassWriter(0)
+        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, superName, interfaces)
+        if (sourceFile != null) {
+            writer.visitSource(sourceFile, null)
+        }
+        writer.visitEnd()
+
+        val packageDir = className.substringBeforeLast("/", "")
+        val simpleFileName = className.substringAfterLast("/") + ".class"
+        val dir = if (packageDir.isNotEmpty()) {
+            baseDir.resolve(packageDir).also { it.mkdirs() }
+        } else {
+            baseDir
         }
         val file = File(dir, simpleFileName)
         file.writeBytes(writer.toByteArray())

@@ -1,8 +1,8 @@
 # Plan
 
-## 1. Include test source set in cnavInterfaces (High value)
+## ~~1. Include test source set in cnavInterfaces (High value)~~ DONE
 
-Currently only searches main sources. Test fakes (RAClientFake, FakeCache, FakeEventSender) are invisible. For hexagonal architecture projects, seeing which interfaces have both production implementations AND test fakes is extremely valuable. Add a --include-test flag or make it the default.
+`cnavInterfaces` now supports `-Pincludetest=true` to also scan test class directories. This reveals test fakes (e.g., `FakeRepo`, `StubClient`) alongside production implementations. Uses a separate cache file (`interface-registry-all.cache`) when test classes are included to avoid mixing results.
 
 ## 2. True tree indentation for cnavCallers/cnavCallees (High value)
 
@@ -18,9 +18,9 @@ resetPassword
 
 Already implemented in `PackageDepsTask.kt:26-29`.
 
-## 4. Reverse dependency view for cnavDeps (High value)
+## ~~4. Reverse dependency view for cnavDeps (High value)~~ DONE
 
-Currently shows "package X depends on Y". A reverse view ("who depends on package X?") would be invaluable for impact analysis: "If I change the domain package, what breaks?" Could be -Preverse=true or a separate cnavReverseDeps task.
+`cnavDeps` now supports `-Preverse=true` to show reverse dependencies (who depends on each package). Uses a lazy inverted map in `PackageDependencies.dependentsOf()`. `allPackages()` and `findPackages()` include all packages (both sources and targets of dependencies) so packages with only incoming dependencies also appear. Output uses `←` arrows for reverse mode and shows "(no incoming dependencies)" when a package has no dependents.
 
 ## ~~5. Filter out stdlib/JDK noise in cnavCallees and cnavDeps (Medium value)~~ DONE
 

@@ -13,6 +13,7 @@ abstract class PackageDepsTask : DefaultTask() {
     fun showDeps() {
         val pattern = project.findProperty("package")?.toString()
         val projectOnly = project.findProperty("projectonly")?.toString()?.toBoolean() ?: false
+        val reverse = project.findProperty("reverse")?.toString()?.toBoolean() ?: false
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
@@ -37,7 +38,7 @@ abstract class PackageDepsTask : DefaultTask() {
             deps.allPackages()
         }
 
-        val output = PackageDependencyFormatter.format(deps, packages)
+        val output = PackageDependencyFormatter.format(deps, packages, reverse)
         logger.lifecycle(output)
     }
 }

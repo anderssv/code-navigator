@@ -2,16 +2,23 @@ package no.f12.codenavigator
 
 object PackageDependencyFormatter {
 
-    fun format(deps: PackageDependencies, packageNames: List<String>): String = buildString {
+    fun format(
+        deps: PackageDependencies,
+        packageNames: List<String>,
+        reverse: Boolean = false,
+    ): String = buildString {
+        val arrow = if (reverse) "←" else "→"
+        val emptyMessage = if (reverse) "(no incoming dependencies)" else "(no outgoing dependencies)"
+
         packageNames.forEachIndexed { index, pkg ->
             if (index > 0) appendLine()
             appendLine(pkg)
-            val pkgDeps = deps.dependenciesOf(pkg)
-            if (pkgDeps.isEmpty()) {
-                appendLine("  (no outgoing dependencies)")
+            val related = if (reverse) deps.dependentsOf(pkg) else deps.dependenciesOf(pkg)
+            if (related.isEmpty()) {
+                appendLine("  $emptyMessage")
             } else {
-                pkgDeps.forEach { dep ->
-                    appendLine("  → $dep")
+                related.forEach { dep ->
+                    appendLine("  $arrow $dep")
                 }
             }
         }
