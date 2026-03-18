@@ -4,15 +4,9 @@
 
 `cnavInterfaces` now supports `-Pincludetest=true` to also scan test class directories. This reveals test fakes (e.g., `FakeRepo`, `StubClient`) alongside production implementations. Uses a separate cache file (`interface-registry-all.cache`) when test classes are included to avoid mixing results.
 
-## 2. True tree indentation for cnavCallers/cnavCallees (High value)
+## ~~2. True tree indentation for cnavCallers/cnavCallees (High value)~~ DONE
 
-Docs say "indented tree" but the output is flat — each method lists its direct callers/callees at depth 1 only, even with -Pdepth=5. A nested tree showing multi-level call chains would be much more useful for understanding deep call paths:
-
-```
-resetPassword
-  ← ReissueRoute.registerReissueRoute
-    ← Application.setupKtor
-```
+Already implemented. `CallTreeFormatter.renderTree()` recursively walks callers/callees up to `maxDepth`, increasing indentation at each level. Cycle detection via `visited` set prevents infinite recursion. Tests cover transitive nesting, depth limits, and cycles.
 
 ## ~~3. "No packages found" message for cnavDeps with invalid filter (Low effort, high polish)~~ DONE
 
