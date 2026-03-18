@@ -57,4 +57,27 @@ class AgentHelpTextTest {
         assertTrue(text.contains("-Preverse=true"))
         assertTrue(text.contains("-Pincludetest=true"))
     }
+
+    @Test
+    fun `agent help text documents JSON schemas for each task`() {
+        val text = AgentHelpText.generate()
+
+        assertTrue(text.contains("className"), "Should document className field")
+        assertTrue(text.contains("sourceFile"), "Should document sourceFile field")
+        assertTrue(text.contains("sourcePath"), "Should document sourcePath field")
+        assertTrue(text.contains("\"method\""), "Should document method field in call trees")
+        assertTrue(text.contains("\"children\""), "Should document children field in call trees")
+        assertTrue(text.contains("\"interface\""), "Should document interface field")
+        assertTrue(text.contains("\"implementors\""), "Should document implementors field")
+        assertTrue(text.contains("\"dependencies\""), "Should document dependencies field")
+        assertTrue(text.contains("\"dependents\""), "Should document dependents field")
+    }
+
+    @Test
+    fun `agent help text includes jq examples`() {
+        val text = AgentHelpText.generate()
+
+        assertTrue(text.contains("jq"), "Should mention jq")
+        assertTrue(text.contains("| jq"), "Should show pipe to jq")
+    }
 }
