@@ -163,6 +163,50 @@ class CallGraphCacheTest {
         assertTrue(result.calleesOf("any.Class", "anyMethod").isEmpty())
     }
 
+    @Test
+    fun `cache round-trip preserves transitive caller chains for same-class methods`() {
+        val edges = mapOf(
+            MethodRef("com.example.UserService", "sendResetNotification") to
+                setOf(MethodRef("com.example.UserService", "buildNotificationMessage")),
+            MethodRef("com.example.UserService", "sendDeactivationNotification") to
+                setOf(MethodRef("com.example.UserService", "buildNotificationMessage")),
+            MethodRef("com.example.UserService", "resetPassword") to
+                setOf(MethodRef("com.example.UserService", "sendResetNotification")),
+            MethodRef("com.example.UserService", "deactivateUser") to
+                setOf(MethodRef("com.example.UserService", "sendDeactivationNotification")),
+            MethodRef("com.example.UserRoute", "handleReset") to
+                setOf(MethodRef("com.example.UserService", "resetPassword")),
+            MethodRef("com.example.UserRoute", "handleDeactivate") to
+                setOf(MethodRef("com.example.UserService", "deactivateUser")),
+        )
+        val sourceFiles = mapOf(
+            "com.example.UserService" to "UserService.kt",
+            "com.example.UserRoute" to "UserRoute.kt",
+        )
+        val original = CallGraph(edges, sourceFiles)
+
+        CallGraphCache.write(cacheFile, original)
+        val restored = CallGraphCache.read(cacheFile)
+
+        // Verify transitive chain: buildNotificationMessage ← sendResetNotification ← resetPassword ← handleReset
+        val directCallers = restored.callersOf("com.example.UserService", "buildNotificationMessage")
+        assertEquals(2, directCallers.size, "Expected 2 direct callers")
+
+        val resetCallers = restored.callersOf("com.example.UserService", "sendResetNotification")
+        assertEquals(1, resetCallers.size)
+        assertEquals("resetPassword", resetCallers.first().methodName)
+
+        val passwordCallers = restored.callersOf("com.example.UserService", "resetPassword")
+        assertEquals(1, passwordCallers.size)
+        assertEquals("handleReset", passwordCallers.first().methodName)
+
+        // Full tree from restored cache should show all levels
+        val methods = listOf(MethodRef("com.example.UserService", "buildNotificationMessage"))
+        val result = CallerTreeFormatter.format(restored, methods, maxDepth = 5)
+        assertTrue(result.contains("resetPassword"), "Tree should show resetPassword at depth 2, got:\n$result")
+        assertTrue(result.contains("handleReset"), "Tree should show handleReset at depth 3, got:\n$result")
+    }
+
     private fun writeClassFile(className: String, targetDir: File = classesDir) {
         val writer = ClassWriter(0)
         writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)

@@ -211,6 +211,48 @@ class CallerTreeFormatterTest {
     }
 
     @Test
+    fun `branching transitive callers each show their own caller chains`() {
+        // buildNotificationMessage ← sendDeactivationNotification ← deactivateUser ← handleDeactivate
+        // buildNotificationMessage ← sendResetNotification ← resetPassword ← handleReset
+        val buildMsg = MethodRef("com.example.UserService", "buildNotificationMessage")
+        val sendDeactivation = MethodRef("com.example.UserService", "sendDeactivationNotification")
+        val sendReset = MethodRef("com.example.UserService", "sendResetNotification")
+        val deactivateUser = MethodRef("com.example.UserService", "deactivateUser")
+        val resetPassword = MethodRef("com.example.UserService", "resetPassword")
+        val handleDeactivate = MethodRef("com.example.UserRoute", "handleDeactivate")
+        val handleReset = MethodRef("com.example.UserRoute", "handleReset")
+        val graph = CallGraph(
+            mapOf(
+                sendDeactivation to setOf(buildMsg),
+                sendReset to setOf(buildMsg),
+                deactivateUser to setOf(sendDeactivation),
+                resetPassword to setOf(sendReset),
+                handleDeactivate to setOf(deactivateUser),
+                handleReset to setOf(resetPassword),
+            ),
+            sourceFiles = mapOf(
+                "com.example.UserService" to "UserService.kt",
+                "com.example.UserRoute" to "UserRoute.kt",
+            ),
+        )
+
+        val result = CallerTreeFormatter.format(graph, listOf(buildMsg), maxDepth = 5)
+
+        assertEquals(
+            """
+            com.example.UserService.buildNotificationMessage
+              ← com.example.UserService.sendDeactivationNotification (UserService.kt)
+                ← com.example.UserService.deactivateUser (UserService.kt)
+                  ← com.example.UserRoute.handleDeactivate (UserRoute.kt)
+              ← com.example.UserService.sendResetNotification (UserService.kt)
+                ← com.example.UserService.resetPassword (UserService.kt)
+                  ← com.example.UserRoute.handleReset (UserRoute.kt)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
     fun `filter removes external callers from output`() {
         val target = MethodRef("com.example.Service", "doWork")
         val projectCaller = MethodRef("com.example.Controller", "handle")

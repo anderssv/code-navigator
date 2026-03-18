@@ -214,7 +214,96 @@ class CallGraphBuilderTest {
         assertTrue("java.lang.Object" !in projectClasses)
     }
 
+    @Test
+    fun `multiple methods on same class each have independent caller chains`() {
+        // UserService has: buildNotificationMessage, sendResetNotification, sendDeactivationNotification,
+        //                  resetPassword, deactivateUser
+        // Chain: buildNotificationMessage ← sendResetNotification ← resetPassword
+        //        buildNotificationMessage ← sendDeactivationNotification ← deactivateUser
+        writeClassWithMultipleMethods(
+            "com/example/UserService", "UserService.kt",
+            listOf(
+                MethodDef("buildNotificationMessage", emptyList()),
+                MethodDef("sendResetNotification", listOf(Call("com/example/UserService", "buildNotificationMessage", "()V"))),
+                MethodDef("sendDeactivationNotification", listOf(Call("com/example/UserService", "buildNotificationMessage", "()V"))),
+                MethodDef("resetPassword", listOf(Call("com/example/UserService", "sendResetNotification", "()V"))),
+                MethodDef("deactivateUser", listOf(Call("com/example/UserService", "sendDeactivationNotification", "()V"))),
+            ),
+        )
+        writeClassWithCalls(
+            "com/example/UserRoute", "UserRoute.kt",
+            "handleReset", listOf(Call("com/example/UserService", "resetPassword", "()V")),
+        )
+
+        val graph = CallGraphBuilder.build(listOf(classesDir))
+
+        // Direct callers of buildNotificationMessage
+        val directCallers = graph.callersOf("com.example.UserService", "buildNotificationMessage")
+        assertEquals(2, directCallers.size, "Expected 2 direct callers of buildNotificationMessage")
+        val directCallerNames = directCallers.map { it.methodName }.toSet()
+        assertTrue("sendResetNotification" in directCallerNames)
+        assertTrue("sendDeactivationNotification" in directCallerNames)
+
+        // Transitive: callers of sendResetNotification
+        val resetCallers = graph.callersOf("com.example.UserService", "sendResetNotification")
+        assertEquals(1, resetCallers.size)
+        assertEquals("resetPassword", resetCallers.first().methodName)
+
+        // Transitive: callers of resetPassword
+        val passwordCallers = graph.callersOf("com.example.UserService", "resetPassword")
+        assertEquals(1, passwordCallers.size)
+        assertEquals("handleReset", passwordCallers.first().methodName)
+
+        // Full tree via formatter should show 3 levels deep
+        val result = CallerTreeFormatter.format(graph, listOf(MethodRef("com.example.UserService", "buildNotificationMessage")), maxDepth = 5)
+        assertTrue(result.contains("sendResetNotification"), "Should contain sendResetNotification")
+        assertTrue(result.contains("resetPassword"), "Should contain resetPassword at depth 2")
+        assertTrue(result.contains("handleReset"), "Should contain handleReset at depth 3")
+    }
+
+    private data class MethodDef(val name: String, val calls: List<Call>)
+
     private data class Call(val owner: String, val name: String, val descriptor: String)
+
+    private fun writeClassWithMultipleMethods(
+        className: String,
+        sourceFile: String,
+        methods: List<MethodDef>,
+    ) {
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visitSource(sourceFile, null)
+
+        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
+        init.visitCode()
+        init.visitVarInsn(Opcodes.ALOAD, 0)
+        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+        init.visitInsn(Opcodes.RETURN)
+        init.visitMaxs(1, 1)
+        init.visitEnd()
+
+        for (method in methods) {
+            val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, method.name, "()V", null, null)
+            mv.visitCode()
+            for (call in method.calls) {
+                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, call.owner, call.name, call.descriptor, false)
+            }
+            mv.visitInsn(Opcodes.RETURN)
+            mv.visitMaxs(1, 1)
+            mv.visitEnd()
+        }
+
+        writer.visitEnd()
+
+        val packageDir = className.substringBeforeLast("/", "")
+        val simpleFileName = className.substringAfterLast("/") + ".class"
+        val dir = if (packageDir.isNotEmpty()) {
+            classesDir.resolve(packageDir).also { it.mkdirs() }
+        } else {
+            classesDir
+        }
+        File(dir, simpleFileName).writeBytes(writer.toByteArray())
+    }
 
     private fun writeClassWithCalls(
         className: String,
