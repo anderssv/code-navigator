@@ -6,14 +6,15 @@ Version is in `build.gradle.kts`. Development versions use `-SNAPSHOT` suffix.
 
 To release:
 
-1. Remove `-SNAPSHOT` from `version` in `build.gradle.kts` (e.g. `0.1.2-SNAPSHOT` → `0.1.2`)
-2. Commit: `git commit -am "Release X.Y.Z"`
-3. Tag: `git tag vX.Y.Z`
-4. Publish to mavenLocal: `./gradlew publishToMavenLocal`
-5. Publish to Gradle Plugin Portal: `./gradlew publishPlugins`
-6. Bump to next snapshot: change `version` to next patch with `-SNAPSHOT` (e.g. `0.1.3-SNAPSHOT`)
-7. Commit: `git commit -am "Bump to X.Y.Z-SNAPSHOT"`
-8. Push: `git push && git push --tags`
+1. Update `CHANGELOG.md` with the new version and a summary of changes since the last release. Use `git diff` or `git log` since the last release tag to identify what changed.
+2. Remove `-SNAPSHOT` from `version` in `build.gradle.kts` (e.g. `0.1.2-SNAPSHOT` → `0.1.2`)
+3. Commit: `git commit -am "Release X.Y.Z"`
+4. Tag: `git tag vX.Y.Z`
+5. Publish to mavenLocal: `mise exec -- ./gradlew publishToMavenLocal`
+6. Publish to Gradle Plugin Portal: `mise exec -- ./gradlew publishPlugins`
+7. Bump to next snapshot: change `version` to next patch with `-SNAPSHOT` (e.g. `0.1.3-SNAPSHOT`)
+8. Commit: `git commit -am "Bump to X.Y.Z-SNAPSHOT"`
+9. Push: `git push && git push --tags`
 
 ## Code Structure Principles
 
