@@ -28,7 +28,9 @@ All output is compact, structured text that fits easily into an agent's context 
 
 Copy-paste this to your agent:
 
-> Add the no.f12.code-navigator plugin to this project. Run `./gradlew cnavHelp` to see all available navigation tasks and their usage.
+> Add the no.f12.code-navigator plugin to this project. After installing, run `./gradlew cnavAgentHelp` for full usage instructions optimized for AI agents. Run `./gradlew cnavHelp` to see all available navigation tasks and their parameters.
+
+The `cnavAgentHelp` task prints agent-optimized instructions covering workflow, parameters, JSON schemas, and output extraction tips. You can also use its output as the starting point for a custom agent skill if your tool supports it (e.g. a Claude Code skill or Cursor rule).
 
 ## Installation
 
