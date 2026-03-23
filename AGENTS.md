@@ -2,18 +2,22 @@
 
 ## Release Process
 
-Version is in `build.gradle.kts`. Development versions use `-SNAPSHOT` suffix.
+Both plugins share the same version number. Version is in `build.gradle.kts` (Gradle) and `pom.xml` (Maven). Development versions use `-SNAPSHOT` suffix.
 
 To release:
 
 1. Update `CHANGELOG.md` with the new version and a summary of changes since the last release. Use `git diff` or `git log` since the last release tag to identify what changed.
-2. Remove `-SNAPSHOT` from `version` in `build.gradle.kts` (e.g. `0.1.2-SNAPSHOT` → `0.1.2`)
-3. Update the version in the `README.md` installation example to match the release version
+2. Remove `-SNAPSHOT` from `version` in both `build.gradle.kts` and `pom.xml` (e.g. `0.1.2-SNAPSHOT` → `0.1.2`)
+3. Update the version in the `README.md` installation examples to match the release version (both Gradle and Maven)
 4. Commit: `git commit -am "Release X.Y.Z"`
 5. Tag: `git tag vX.Y.Z`
-6. Publish to mavenLocal: `mise exec -- ./gradlew publishToMavenLocal`
-7. Publish to Gradle Plugin Portal: `mise exec -- ./gradlew publishPlugins`
-8. Bump to next snapshot: change `version` to next patch with `-SNAPSHOT` (e.g. `0.1.3-SNAPSHOT`)
+6. Publish Gradle plugin:
+   - `mise exec -- ./gradlew publishPlugins`
+7. Publish Maven plugin to Maven Central:
+   - `mise exec -- ./mvnw clean deploy -Prelease`
+   - This signs artifacts with GPG, attaches source and javadoc jars, and publishes via the Sonatype Central Portal
+   - Requires GPG key and Sonatype credentials configured in `~/.m2/settings.xml` (server id `central`)
+8. Bump to next snapshot: change `version` to next patch with `-SNAPSHOT` in both `build.gradle.kts` and `pom.xml` (e.g. `0.1.3-SNAPSHOT`)
 9. Update `test-project/build.gradle.kts` to use the new snapshot version
 10. Commit: `git commit -am "Bump to X.Y.Z-SNAPSHOT"`
 11. Push: `git push && git push --tags`
