@@ -112,6 +112,38 @@ Inspired by Code Maat's `abs-churn` and `entity-churn` analyses. Pre-release chu
 - Sorted by total churn (added + deleted) descending
 - Text table (File | Added | Deleted | Net | Commits), JSON, LLM formatters
 
+## 17. Refactor Gradle tasks to use Config data classes (Medium value, low effort)
+
+Gradle tasks currently duplicate parameter parsing logic that Config data classes already have. Each task should build a `Map<String, String?>` from `project.findProperty()` calls and delegate to `XxxConfig.parse()`. This removes duplication and ensures Gradle and Maven use identical parsing/validation.
+
+## 18. Extract and test task-specific side effects (Low effort, high polish)
+
+- `FindInterfaceImplsTask` cache-file naming logic (choosing `interface-registry-all.cache` vs `interface-registry.cache` based on `includetest`) should be extracted to a pure function.
+- `DsmTask` HTML file writing should be extracted so the HTML generation is testable without file I/O.
+
+## 19. Gradle TestKit integration test for CodeNavigatorPlugin (Medium value)
+
+Verify all 15 tasks are registered with correct groups and dependencies using Gradle TestKit. Currently there are no tests that verify the plugin wiring itself.
+
+## 20. Create remaining Maven Mojos (High value)
+
+Only `ListClassesMojo` exists. All other task equivalents need Maven Mojos:
+- Navigation: `FindClass`, `FindSymbol`, `ClassDetail`, `FindCallers`, `FindCallees`, `FindInterfaceImpls`, `PackageDeps`, `Dsm`
+- Analysis: `Hotspots`, `Churn`, `CodeAge`, `AuthorAnalysis`, `ChangeCoupling`
+- Help: `Help`, `AgentHelp`, `ConfigHelp`
+
+## 21. Maven release process (Medium value)
+
+Define and document the Maven plugin release process, separate from the Gradle release. The Maven plugin has its own version (`0.1.0-SNAPSHOT`) and will be released independently.
+
+## 22. Gradle/Maven parity testing (High value)
+
+Ensure both plugins support the same commands, parameters, and produce equivalent output. Approaches to consider:
+- **Shared task registry**: A single source-of-truth list of all supported tasks/goals with their parameters, used by both plugins. If a task is missing from either plugin, the build (or a test) fails.
+- **Approval tests**: Run the same operation via both `./gradlew cnavXxx` and `./mvnw cnav:xxx` against the test project and compare outputs. Differences indicate parity gaps.
+- **Config parse coverage**: Since both plugins delegate to the same `XxxConfig.parse()` functions, parity at the config layer is already guaranteed. The risk is in the Mojo/Task wiring — forgetting to wire a parameter or misnaming a goal.
+- **Generated documentation**: Auto-generate the parameter table (like `ConfigHelpText`) from the config data classes so docs can't drift from implementation.
+
 ## Future ideas (not yet planned)
 
 - **Cross-referencing hotspots with bytecode data**: Combine `cnavHotspots` with `cnavCallers`/`cnavDeps` to answer "hotspot files and their structural dependencies". Would require mapping git file paths to bytecode class names via the source file metadata already extracted.
