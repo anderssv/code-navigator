@@ -1,0 +1,63 @@
+package no.f12.codenavigator.maven
+
+import no.f12.codenavigator.JsonFormatter
+import no.f12.codenavigator.LlmFormatter
+import no.f12.codenavigator.OutputFormat
+import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.navigation.DsmDependencyExtractor
+import no.f12.codenavigator.navigation.DsmFormatter
+import no.f12.codenavigator.navigation.DsmHtmlRenderer
+import no.f12.codenavigator.navigation.DsmMatrixBuilder
+import org.apache.maven.plugin.AbstractMojo
+import org.apache.maven.plugins.annotations.Mojo
+import org.apache.maven.plugins.annotations.Parameter
+import org.apache.maven.project.MavenProject
+import java.io.File
+
+@Mojo(name = "dsm")
+class DsmMojo : AbstractMojo() {
+
+    @Parameter(defaultValue = "\${project}", readonly = true, required = true)
+    private lateinit var project: MavenProject
+
+    @Parameter(property = "format")
+    private var format: String? = null
+
+    @Parameter(property = "llm")
+    private var llm: Boolean? = null
+
+    @Parameter(property = "root-package", defaultValue = "")
+    private var rootPackage: String = ""
+
+    @Parameter(property = "dsm-depth", defaultValue = "2")
+    private var dsmDepth: Int = 2
+
+    @Parameter(property = "dsm-html")
+    private var dsmHtml: String? = null
+
+    override fun execute() {
+        val classesDir = File(project.build.outputDirectory)
+        if (!classesDir.exists()) {
+            log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
+            return
+        }
+
+        val outputFormat = OutputFormat.from(format, llm)
+        val dependencies = DsmDependencyExtractor.extract(listOf(classesDir), rootPackage)
+        val matrix = DsmMatrixBuilder.build(dependencies, rootPackage, dsmDepth)
+
+        val output = when (outputFormat) {
+            OutputFormat.TEXT -> DsmFormatter.format(matrix)
+            OutputFormat.JSON -> JsonFormatter.formatDsm(matrix)
+            OutputFormat.LLM -> LlmFormatter.formatDsm(matrix)
+        }
+        println(OutputWrapper.wrap(output, outputFormat))
+
+        if (dsmHtml != null) {
+            val htmlFile = File(dsmHtml!!)
+            htmlFile.parentFile?.mkdirs()
+            htmlFile.writeText(DsmHtmlRenderer.render(matrix))
+            println("DSM HTML written to: ${htmlFile.absolutePath}")
+        }
+    }
+}
