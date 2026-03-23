@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.11
+
+- Add `BuildTool` enum for build-tool-aware help text — Gradle users see `./gradlew cnavXxx -Pparam=value`, Maven users see `mvn cnav:goal -Dparam=value`
+- Make `HelpText`, `AgentHelpText`, and `ConfigHelpText` accept a `BuildTool` parameter
+- Gradle tasks and Maven Mojos now pass the correct build tool for contextual help output
+- Set Maven plugin `goalPrefix` to `cnav` (previously derived as `code-navigator`)
+- Add `test-project-maven/` for end-to-end Maven plugin testing
+- Add Maven examples alongside Gradle in README.md Tasks section
+
 ## 0.1.10
 
 - Add Maven plugin (`code-navigator-maven-plugin`) with full feature parity — all 17 goals available via `mvn cnav:<goal>`
