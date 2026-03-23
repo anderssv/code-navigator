@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm") version "2.1.20"
-    id("no.f12.code-navigator") version "0.1.8-SNAPSHOT"
+    id("no.f12.code-navigator") version "0.1.9-SNAPSHOT"
 }
 
 repositories {
