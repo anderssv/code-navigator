@@ -105,5 +105,11 @@ class CodeNavigatorPlugin : Plugin<Project> {
             description = "Shows lines added/deleted per file (code churn). Usage: [-Pafter=YYYY-MM-DD] [-Ptop=N]"
             group = "code-navigator"
         }
+
+        // --- Startup indicator for all cnav tasks ---
+
+        project.tasks.matching { it.group == "code-navigator" }.configureEach {
+            doFirst { logger.lifecycle("\uD83E\uDDED code-navigator: $name") }
+        }
     }
 }

@@ -13,8 +13,9 @@ To release:
 5. Publish to mavenLocal: `mise exec -- ./gradlew publishToMavenLocal`
 6. Publish to Gradle Plugin Portal: `mise exec -- ./gradlew publishPlugins`
 7. Bump to next snapshot: change `version` to next patch with `-SNAPSHOT` (e.g. `0.1.3-SNAPSHOT`)
-8. Commit: `git commit -am "Bump to X.Y.Z-SNAPSHOT"`
-9. Push: `git push && git push --tags`
+8. Update `test-project/build.gradle.kts` to use the new snapshot version
+9. Commit: `git commit -am "Bump to X.Y.Z-SNAPSHOT"`
+10. Push: `git push && git push --tags`
 
 ## Package Structure
 
