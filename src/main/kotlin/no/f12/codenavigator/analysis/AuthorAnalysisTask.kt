@@ -21,7 +21,7 @@ abstract class AuthorAnalysisTask : DefaultTask() {
         val top = project.findProperty("top")?.toString()?.toIntOrNull() ?: 50
         val format = OutputFormat.from(project)
 
-        val commits = GitLogRunner.run(project.projectDir, after)
+        val commits = GitLogRunner.run(project.projectDir, after, followRenames = !project.hasProperty("no-follow"))
         val modules = AuthorAnalysisBuilder.build(commits, minRevs, top)
 
         if (modules.isEmpty()) {

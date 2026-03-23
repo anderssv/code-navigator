@@ -15,8 +15,10 @@ import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.SymbolKind
+import no.f12.codenavigator.navigation.DsmMatrix
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class JsonFormatterTest {
 
@@ -400,5 +402,54 @@ class JsonFormatterTest {
             """[{"file":"src/Foo.kt","added":100,"deleted":50,"commits":10},{"file":"src/Bar.kt","added":30,"deleted":10,"commits":5}]""",
             result,
         )
+    }
+
+    // === DSM formatting ===
+
+    @Test
+    fun `empty dsm produces JSON with empty packages and cells`() {
+        val matrix = DsmMatrix(emptyList(), emptyMap(), emptyMap())
+
+        val result = JsonFormatter.formatDsm(matrix)
+
+        assertEquals("""{"packages":[],"cells":[],"cycles":[]}""", result)
+    }
+
+    @Test
+    fun `dsm produces JSON with packages, cells, and class dependencies`() {
+        val matrix = DsmMatrix(
+            packages = listOf("api", "model"),
+            cells = mapOf("api" to "model" to 2),
+            classDependencies = mapOf(
+                ("api" to "model") to setOf("Controller" to "User"),
+            ),
+        )
+
+        val result = JsonFormatter.formatDsm(matrix)
+
+        assertTrue(result.contains("\"packages\":[\"api\",\"model\"]"))
+        assertTrue(result.contains("\"from\":\"api\""))
+        assertTrue(result.contains("\"to\":\"model\""))
+        assertTrue(result.contains("\"count\":2"))
+        assertTrue(result.contains("\"Controller\""))
+        assertTrue(result.contains("\"User\""))
+    }
+
+    @Test
+    fun `dsm includes cyclic pairs in output`() {
+        val matrix = DsmMatrix(
+            packages = listOf("api", "service"),
+            cells = mapOf(
+                "api" to "service" to 3,
+                "service" to "api" to 1,
+            ),
+            classDependencies = emptyMap(),
+        )
+
+        val result = JsonFormatter.formatDsm(matrix)
+
+        assertTrue(result.contains("\"cycles\""))
+        assertTrue(result.contains("\"api\""))
+        assertTrue(result.contains("\"service\""))
     }
 }

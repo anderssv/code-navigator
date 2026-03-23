@@ -22,7 +22,7 @@ abstract class ChangeCouplingTask : DefaultTask() {
         val maxChangesetSize = project.findProperty("max-changeset-size")?.toString()?.toIntOrNull() ?: 30
         val format = OutputFormat.from(project)
 
-        val commits = GitLogRunner.run(project.projectDir, after)
+        val commits = GitLogRunner.run(project.projectDir, after, followRenames = !project.hasProperty("no-follow"))
         val pairs = ChangeCouplingBuilder.build(commits, minSharedRevs, minCoupling, maxChangesetSize)
 
         if (pairs.isEmpty()) {

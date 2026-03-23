@@ -20,7 +20,7 @@ abstract class CodeAgeTask : DefaultTask() {
         val top = project.findProperty("top")?.toString()?.toIntOrNull() ?: 50
         val format = OutputFormat.from(project)
 
-        val commits = GitLogRunner.run(project.projectDir, after)
+        val commits = GitLogRunner.run(project.projectDir, after, followRenames = !project.hasProperty("no-follow"))
         val ages = CodeAgeBuilder.build(commits, LocalDate.now(), top)
 
         if (ages.isEmpty()) {

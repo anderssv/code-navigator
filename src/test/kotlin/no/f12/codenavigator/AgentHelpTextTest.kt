@@ -18,6 +18,7 @@ class AgentHelpTextTest {
         assertTrue(text.contains("cnavClass"))
         assertTrue(text.contains("cnavInterfaces"))
         assertTrue(text.contains("cnavDeps"))
+        assertTrue(text.contains("cnavDsm"))
 
         // Analysis tasks
         assertTrue(text.contains("cnavHotspots"))
@@ -69,6 +70,10 @@ class AgentHelpTextTest {
         assertTrue(text.contains("-Ptop="))
         assertTrue(text.contains("-Pmin-revs="))
         assertTrue(text.contains("-Pmin-coupling="))
+        assertTrue(text.contains("-Pno-follow"))
+        assertTrue(text.contains("-Proot-package="))
+        assertTrue(text.contains("-Pdepth="))
+        assertTrue(text.contains("-Pdsm-html="))
     }
 
     @Test

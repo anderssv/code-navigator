@@ -114,4 +114,73 @@ class GitLogParserTest {
         assertEquals(1, result.size)
         assertEquals("John Michael Smith Jr", result[0].author)
     }
+
+    @Test
+    fun `parse handles full-path rename syntax using new path`() {
+        val input = """
+            --abc123--2024-01-15--Anders Sveen
+            5	3	src/old/Foo.kt => src/new/Foo.kt
+        """.trimIndent()
+
+        val result = GitLogParser.parse(input)
+
+        assertEquals(1, result.size)
+        assertEquals(1, result[0].files.size)
+        assertEquals("src/new/Foo.kt", result[0].files[0].path)
+        assertEquals(5, result[0].files[0].added)
+        assertEquals(3, result[0].files[0].deleted)
+    }
+
+    @Test
+    fun `parse handles brace rename syntax using new path`() {
+        val input = """
+            --abc123--2024-01-15--Anders Sveen
+            2	1	src/{old => new}/Foo.kt
+        """.trimIndent()
+
+        val result = GitLogParser.parse(input)
+
+        assertEquals(1, result.size)
+        assertEquals(1, result[0].files.size)
+        assertEquals("src/new/Foo.kt", result[0].files[0].path)
+    }
+
+    @Test
+    fun `parse handles brace rename with empty old path segment`() {
+        val input = """
+            --abc123--2024-01-15--Anders Sveen
+            0	0	{ => src/main/kotlin}/Foo.kt
+        """.trimIndent()
+
+        val result = GitLogParser.parse(input)
+
+        assertEquals(1, result.size)
+        assertEquals("src/main/kotlin/Foo.kt", result[0].files[0].path)
+    }
+
+    @Test
+    fun `parse handles brace rename with empty new path segment`() {
+        val input = """
+            --abc123--2024-01-15--Anders Sveen
+            0	0	src/{old => }/Foo.kt
+        """.trimIndent()
+
+        val result = GitLogParser.parse(input)
+
+        assertEquals(1, result.size)
+        assertEquals("src/Foo.kt", result[0].files[0].path)
+    }
+
+    @Test
+    fun `parse handles filename-only rename`() {
+        val input = """
+            --abc123--2024-01-15--Anders Sveen
+            0	0	src/{OldName.kt => NewName.kt}
+        """.trimIndent()
+
+        val result = GitLogParser.parse(input)
+
+        assertEquals(1, result.size)
+        assertEquals("src/NewName.kt", result[0].files[0].path)
+    }
 }

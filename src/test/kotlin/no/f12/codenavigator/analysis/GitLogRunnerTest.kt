@@ -10,17 +10,26 @@ import kotlin.test.assertTrue
 class GitLogRunnerTest {
 
     @Test
-    fun `buildCommand includes after date`() {
+    fun `buildCommand follows renames by default`() {
         val command = GitLogRunner.buildCommand(LocalDate.of(2024, 1, 1))
 
         assertEquals("git", command[0])
         assertEquals("log", command[1])
-        assert(command.contains("--all"))
-        assert(command.contains("--numstat"))
-        assert(command.contains("--date=short"))
-        assert(command.contains("--pretty=format:--%h--%ad--%aN"))
-        assert(command.contains("--no-renames"))
-        assert(command.contains("--after=2024-01-01"))
+        assertTrue(command.contains("--all"))
+        assertTrue(command.contains("--numstat"))
+        assertTrue(command.contains("--date=short"))
+        assertTrue(command.contains("--pretty=format:--%h--%ad--%aN"))
+        assertTrue(command.contains("-M"))
+        assertTrue(!command.contains("--no-renames"), "Should not contain --no-renames by default")
+        assertTrue(command.contains("--after=2024-01-01"))
+    }
+
+    @Test
+    fun `buildCommand disables renames when followRenames is false`() {
+        val command = GitLogRunner.buildCommand(LocalDate.of(2024, 1, 1), followRenames = false)
+
+        assertTrue(command.contains("--no-renames"))
+        assertTrue(!command.contains("-M"), "Should not contain -M when renames disabled")
     }
 
     @Test
@@ -69,6 +78,42 @@ class GitLogRunnerTest {
         assertEquals(1, commits.size)
         assertEquals(1, commits[0].files.size)
         assertEquals("New.kt", commits[0].files[0].path)
+    }
+
+    @Test
+    fun `run tracks renamed files to new path by default`(@TempDir tempDir: File) {
+        initTestRepo(tempDir)
+
+        File(tempDir, "OldName.kt").writeText("class Foo")
+        commitAll(tempDir, "Add file", "2024-06-01T12:00:00")
+
+        git(tempDir, "mv", "OldName.kt", "NewName.kt")
+        commitAll(tempDir, "Rename file", "2024-06-02T12:00:00")
+
+        val commits = GitLogRunner.run(tempDir, LocalDate.of(2024, 1, 1))
+
+        val renameCommit = commits.first()
+        val filePaths = renameCommit.files.map { it.path }.toSet()
+        assertTrue("NewName.kt" in filePaths, "Should use new filename, got: $filePaths")
+        assertTrue("OldName.kt" !in filePaths, "Should not contain old filename, got: $filePaths")
+    }
+
+    @Test
+    fun `run shows old and new paths separately when followRenames is false`(@TempDir tempDir: File) {
+        initTestRepo(tempDir)
+
+        File(tempDir, "OldName.kt").writeText("class Foo")
+        commitAll(tempDir, "Add file", "2024-06-01T12:00:00")
+
+        git(tempDir, "mv", "OldName.kt", "NewName.kt")
+        commitAll(tempDir, "Rename file", "2024-06-02T12:00:00")
+
+        val commits = GitLogRunner.run(tempDir, LocalDate.of(2024, 1, 1), followRenames = false)
+
+        val renameCommit = commits.first()
+        val filePaths = renameCommit.files.map { it.path }.toSet()
+        assertTrue("OldName.kt" in filePaths || "NewName.kt" in filePaths,
+            "Should have separate entries, got: $filePaths")
     }
 
     companion object {

@@ -43,7 +43,7 @@ object GitLogParser {
                 if (parts.size == 3) {
                     val added = parts[0].toIntOrNull() ?: 0
                     val deleted = parts[1].toIntOrNull() ?: 0
-                    currentFiles.add(FileChange(added, deleted, parts[2]))
+                    currentFiles.add(FileChange(added, deleted, resolveRenamePath(parts[2])))
                 }
             }
         }
@@ -54,4 +54,30 @@ object GitLogParser {
 
         return commits
     }
+
+    private val BRACE_RENAME = Regex("^(.*?)\\{[^}]* => ([^}]*)\\}(.*)$")
+    private val FULL_RENAME = Regex("^.+ => (.+)$")
+
+    private fun resolveRenamePath(raw: String): String {
+        val braceMatch = BRACE_RENAME.matchEntire(raw)
+        if (braceMatch != null) {
+            val prefix = braceMatch.groupValues[1]
+            val newPart = braceMatch.groupValues[2]
+            val suffix = braceMatch.groupValues[3]
+            return buildPath(prefix, newPart, suffix)
+        }
+
+        val fullMatch = FULL_RENAME.matchEntire(raw)
+        if (fullMatch != null) {
+            return fullMatch.groupValues[1]
+        }
+
+        return raw
+    }
+
+    private fun buildPath(vararg segments: String): String =
+        segments
+            .map { it.trim('/') }
+            .filter { it.isNotEmpty() }
+            .joinToString("/")
 }

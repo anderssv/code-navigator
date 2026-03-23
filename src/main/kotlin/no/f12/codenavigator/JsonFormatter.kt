@@ -15,6 +15,7 @@ import no.f12.codenavigator.navigation.InterfaceRegistry
 import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
+import no.f12.codenavigator.navigation.DsmMatrix
 
 @JvmInline
 private value class JsonRaw(val json: String)
@@ -147,6 +148,28 @@ object JsonFormatter {
                 "commits" to c.commits,
             )
         }
+
+    fun formatDsm(matrix: DsmMatrix): String {
+        val packages = jsonStringArray(matrix.packages)
+        val cells = jsonArray(matrix.cells.entries.toList().sortedBy { "${it.key.first}-${it.key.second}" }) { (key, count) ->
+            val classDeps = matrix.classDependencies[key]
+            jsonObject(
+                "from" to key.first,
+                "to" to key.second,
+                "count" to count,
+                "classes" to JsonRaw(
+                    jsonArray(classDeps?.toList()?.sortedBy { "${it.first}-${it.second}" } ?: emptyList()) { (src, tgt) ->
+                        jsonObject("source" to src, "target" to tgt)
+                    },
+                ),
+            )
+        }
+        val cycles = matrix.findCyclicPairs()
+        val cyclesJson = jsonArray(cycles) { (a, b, counts) ->
+            jsonObject("packageA" to a, "packageB" to b, "forwardRefs" to counts.first, "backwardRefs" to counts.second)
+        }
+        return jsonObject("packages" to JsonRaw(packages), "cells" to JsonRaw(cells), "cycles" to JsonRaw(cyclesJson))
+    }
 
     private fun renderCallNode(node: CallTreeNode): String {
         val children = jsonArray(node.children) { child -> renderCallNode(child) }

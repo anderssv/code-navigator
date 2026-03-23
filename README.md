@@ -21,6 +21,7 @@ Beyond call graphs, it provides structured answers to common navigation question
 - **"What does this class look like?"** -- `cnavClass` shows the full signature: fields, methods, superclass, interfaces.
 - **"Who implements this interface?"** -- `cnavInterfaces` finds all implementors.
 - **"How do packages depend on each other?"** -- `cnavDeps` shows package-level dependency edges.
+- **"Is there a cyclic dependency?"** -- `cnavDsm` shows a Dependency Structure Matrix highlighting cyclic package dependencies.
 
 And git history analysis questions (no compilation needed):
 
@@ -36,7 +37,13 @@ All output is compact, structured text that fits easily into an agent's context 
 
 Copy-paste this to your agent:
 
-> Add the no.f12.code-navigator plugin to this project. After installing, run `./gradlew cnavAgentHelp` for full usage instructions optimized for AI agents. Navigation tasks (cnavListClasses, cnavCallers, etc.) analyze compiled bytecode and require `classes` to be built. Analysis tasks (cnavHotspots, cnavCoupling, cnavAge, cnavAuthors, cnavChurn) analyze git history and work without compilation. Run `./gradlew cnavHelp` to see all available tasks and their parameters.
+> Add the no.f12.code-navigator Gradle plugin to this project. After installing, run `./gradlew cnavAgentHelp` to get full usage instructions optimized for AI agents, and `./gradlew cnavHelp` to see all available tasks and their parameters.
+>
+> Then add a "Code Navigator (cnav)" section to AGENTS.md documenting the plugin. It should include:
+> - A short description of what it does (bytecode analysis + git history)
+> - A nudge to prefer cnav over grep/ripgrep for finding callers, implementations, and dependencies
+> - A note to run cnavAgentHelp for full instructions
+> - A compact command list showing all available tasks with one-line comments (navigation tasks and git history tasks), grouped by whether they require compilation
 
 The `cnavAgentHelp` task prints agent-optimized instructions covering workflow, parameters, JSON schemas, and output extraction tips. You can also use its output as the starting point for a custom agent skill if your tool supports it (e.g. a Claude Code skill or Cursor rule).
 
@@ -50,7 +57,7 @@ plugins {
 }
 ```
 
-No configuration is needed. The plugin registers tasks that operate on the `main` source set's compiled output.
+No configuration is needed. The plugin registers tasks that operate on the `main` source set's compiled output. Run `./gradlew cnavHelpConfig` to see all available configuration parameters.
 
 ## Tasks
 
@@ -200,9 +207,21 @@ com.example.service
   -> com.example.repository
 ```
 
+### cnavDsm
+
+Shows a Dependency Structure Matrix (DSM) — a compact grid showing how packages depend on each other. Each cell shows how many references flow from row to column. Highlights cyclic dependencies with class-level detail.
+
+```bash
+./gradlew cnavDsm
+./gradlew cnavDsm -Proot-package=com.example -Pdepth=3
+./gradlew cnavDsm -Pdsm-html=build/dsm.html
+```
+
+Use `-Pdsm-html=<path>` to generate an interactive HTML matrix with color-coded cells (green = forward, red = backward/cyclic) and hover tooltips showing class-level dependencies.
+
 ### Analysis Tasks (Git History)
 
-These tasks analyze git history and do **not** require compilation. All accept `-Pafter=YYYY-MM-DD` to set the analysis window (default: 1 year ago).
+These tasks analyze git history and do **not** require compilation. All accept `-Pafter=YYYY-MM-DD` to set the analysis window (default: 1 year ago). Git rename tracking is enabled by default; use `-Pno-follow` to disable it.
 
 ### cnavHotspots
 

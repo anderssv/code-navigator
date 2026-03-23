@@ -15,6 +15,7 @@ import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.SymbolKind
+import no.f12.codenavigator.navigation.DsmMatrix
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -167,5 +168,47 @@ class LlmFormatterTest {
         val result = LlmFormatter.formatChurn(churn)
 
         assertEquals("src/Foo.kt added=100 deleted=50 commits=10\nsrc/Bar.kt added=30 deleted=10 commits=5", result)
+    }
+
+    // === DSM formatting ===
+
+    @Test
+    fun `formats dsm compactly`() {
+        val matrix = DsmMatrix(
+            packages = listOf("api", "model"),
+            cells = mapOf("api" to "model" to 3),
+            classDependencies = mapOf(
+                ("api" to "model") to setOf("Controller" to "User"),
+            ),
+        )
+
+        val result = LlmFormatter.formatDsm(matrix)
+
+        assertEquals("packages:api,model\napi->model:3 [Controller->User]", result)
+    }
+
+    @Test
+    fun `formats empty dsm`() {
+        val matrix = DsmMatrix(emptyList(), emptyMap(), emptyMap())
+
+        val result = LlmFormatter.formatDsm(matrix)
+
+        assertEquals("packages:\n(no dependencies)", result)
+    }
+
+    @Test
+    fun `formats dsm with cycles`() {
+        val matrix = DsmMatrix(
+            packages = listOf("api", "service"),
+            cells = mapOf(
+                "api" to "service" to 2,
+                "service" to "api" to 1,
+            ),
+            classDependencies = emptyMap(),
+        )
+
+        val result = LlmFormatter.formatDsm(matrix)
+
+        assertEquals("packages:api,service\napi->service:2\nservice->api:1\nCYCLES: api<->service", result)
     }
 }

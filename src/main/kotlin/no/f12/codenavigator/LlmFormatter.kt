@@ -12,6 +12,7 @@ import no.f12.codenavigator.navigation.ClassInfo
 import no.f12.codenavigator.navigation.InterfaceRegistry
 import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
+import no.f12.codenavigator.navigation.DsmMatrix
 
 object LlmFormatter {
 
@@ -71,6 +72,28 @@ object LlmFormatter {
 
     fun formatChurn(churn: List<FileChurn>): String =
         churn.joinToString("\n") { "${it.file} added=${it.added} deleted=${it.deleted} commits=${it.commits}" }
+
+    fun formatDsm(matrix: DsmMatrix): String = buildString {
+        append("packages:${matrix.packages.joinToString(",")}")
+        if (matrix.cells.isEmpty()) {
+            append("\n(no dependencies)")
+        } else {
+            for ((key, count) in matrix.cells.entries.sortedBy { "${it.key.first}-${it.key.second}" }) {
+                append("\n${key.first}->${key.second}:$count")
+                val classDeps = matrix.classDependencies[key]
+                if (!classDeps.isNullOrEmpty()) {
+                    val classStr = classDeps.sortedBy { "${it.first}-${it.second}" }
+                        .joinToString(",") { "${it.first}->${it.second}" }
+                    append(" [$classStr]")
+                }
+            }
+            val cyclicPairs = matrix.findCyclicPairs()
+            if (cyclicPairs.isNotEmpty()) {
+                val cycleStr = cyclicPairs.joinToString(",") { (a, b, _) -> "$a<->$b" }
+                append("\nCYCLES: $cycleStr")
+            }
+        }
+    }
 
     private fun StringBuilder.renderChildren(children: List<CallTreeNode>, direction: CallDirection, depth: Int) {
         val indent = "  ".repeat(depth)

@@ -5,8 +5,8 @@ import java.time.LocalDate
 
 object GitLogRunner {
 
-    fun run(projectDir: File, after: LocalDate): List<GitCommit> {
-        val command = buildCommand(after)
+    fun run(projectDir: File, after: LocalDate, followRenames: Boolean = true): List<GitCommit> {
+        val command = buildCommand(after, followRenames)
         val process = ProcessBuilder(command)
             .directory(projectDir)
             .redirectErrorStream(true)
@@ -22,14 +22,19 @@ object GitLogRunner {
         return GitLogParser.parse(output)
     }
 
-    internal fun buildCommand(after: LocalDate): List<String> =
-        listOf(
-            "git", "log",
-            "--all",
-            "--numstat",
-            "--date=short",
-            "--pretty=format:--%h--%ad--%aN",
-            "--no-renames",
-            "--after=$after",
-        )
+    internal fun buildCommand(after: LocalDate, followRenames: Boolean = true): List<String> =
+        buildList {
+            add("git")
+            add("log")
+            add("--all")
+            add("--numstat")
+            add("--date=short")
+            add("--pretty=format:--%h--%ad--%aN")
+            if (followRenames) {
+                add("-M")
+            } else {
+                add("--no-renames")
+            }
+            add("--after=$after")
+        }
 }

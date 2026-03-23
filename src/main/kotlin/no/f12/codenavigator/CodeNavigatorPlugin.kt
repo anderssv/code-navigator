@@ -12,6 +12,7 @@ import no.f12.codenavigator.navigation.FindClassTask
 import no.f12.codenavigator.navigation.FindInterfaceImplsTask
 import no.f12.codenavigator.navigation.FindSymbolTask
 import no.f12.codenavigator.navigation.ListClassesTask
+import no.f12.codenavigator.navigation.DsmTask
 import no.f12.codenavigator.navigation.PackageDepsTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -69,6 +70,12 @@ class CodeNavigatorPlugin : Plugin<Project> {
             dependsOn("classes")
         }
 
+        project.tasks.register("cnavDsm", DsmTask::class.java) {
+            description = "Shows Dependency Structure Matrix. Usage: [-Proot-package=<pkg>] [-Pdepth=N] [-Pdsm-html=<path>]"
+            group = "code-navigator"
+            dependsOn("classes")
+        }
+
         project.tasks.register("cnavHelp", CodeNavigatorHelpTask::class.java) {
             description = "Shows available code-navigator tasks and their usage"
             group = "code-navigator"
@@ -76,6 +83,11 @@ class CodeNavigatorPlugin : Plugin<Project> {
 
         project.tasks.register("cnavAgentHelp", AgentHelpTask::class.java) {
             description = "Shows AI agent instructions for using code-navigator effectively"
+            group = "code-navigator"
+        }
+
+        project.tasks.register("cnavHelpConfig", ConfigHelpTask::class.java) {
+            description = "Shows all available configuration parameters (-P properties)"
             group = "code-navigator"
         }
 

@@ -8,21 +8,22 @@ To release:
 
 1. Update `CHANGELOG.md` with the new version and a summary of changes since the last release. Use `git diff` or `git log` since the last release tag to identify what changed.
 2. Remove `-SNAPSHOT` from `version` in `build.gradle.kts` (e.g. `0.1.2-SNAPSHOT` → `0.1.2`)
-3. Commit: `git commit -am "Release X.Y.Z"`
-4. Tag: `git tag vX.Y.Z`
-5. Publish to mavenLocal: `mise exec -- ./gradlew publishToMavenLocal`
-6. Publish to Gradle Plugin Portal: `mise exec -- ./gradlew publishPlugins`
-7. Bump to next snapshot: change `version` to next patch with `-SNAPSHOT` (e.g. `0.1.3-SNAPSHOT`)
-8. Update `test-project/build.gradle.kts` to use the new snapshot version
-9. Commit: `git commit -am "Bump to X.Y.Z-SNAPSHOT"`
-10. Push: `git push && git push --tags`
+3. Update the version in the `README.md` installation example to match the release version
+4. Commit: `git commit -am "Release X.Y.Z"`
+5. Tag: `git tag vX.Y.Z`
+6. Publish to mavenLocal: `mise exec -- ./gradlew publishToMavenLocal`
+7. Publish to Gradle Plugin Portal: `mise exec -- ./gradlew publishPlugins`
+8. Bump to next snapshot: change `version` to next patch with `-SNAPSHOT` (e.g. `0.1.3-SNAPSHOT`)
+9. Update `test-project/build.gradle.kts` to use the new snapshot version
+10. Commit: `git commit -am "Bump to X.Y.Z-SNAPSHOT"`
+11. Push: `git push && git push --tags`
 
 ## Package Structure
 
 The codebase is split into three areas:
 
 - **`no.f12.codenavigator`** (root) — Shared infrastructure: `CodeNavigatorPlugin`, formatters (`JsonFormatter`, `LlmFormatter`, `TableFormatter`), `OutputFormat`, `OutputWrapper`, `CacheFreshness`, help text tasks.
-- **`no.f12.codenavigator.navigation`** — Bytecode-based navigation: class scanning, symbol extraction, call graph building, interface registry, package dependencies. All navigation tasks depend on compiled `classes`.
+- **`no.f12.codenavigator.navigation`** — Bytecode-based navigation: class scanning, symbol extraction, call graph building, interface registry, package dependencies, DSM (Dependency Structure Matrix). All navigation tasks depend on compiled `classes`.
 - **`no.f12.codenavigator.analysis`** — Git history analysis: hotspots, coupling, code age, authors, churn. Parses `git log` output. No compilation required.
 
 ## Code Structure Principles
