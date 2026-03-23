@@ -159,6 +159,33 @@ class DsmDependencyExtractorTest {
         assertEquals(1, matching.size, "Should deduplicate to one dependency per class pair")
     }
 
+    @Test
+    fun `extracts dependencies from real compiled Kotlin classes`() {
+        val classesDir = File("test-project/build/classes/kotlin/main")
+        if (!classesDir.exists()) {
+            buildTestProject()
+        }
+
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example")
+
+        assertTrue(deps.isNotEmpty(), "Expected inter-package dependencies from test-project, but got none")
+        val packages = deps.flatMap { listOf(it.sourcePackage, it.targetPackage) }.toSet()
+        assertTrue(packages.contains("com.example.services"), "Expected com.example.services in dependencies")
+        assertTrue(packages.contains("com.example.domain"), "Expected com.example.domain in dependencies")
+    }
+
+    private fun buildTestProject() {
+        val testProjectDir = File("test-project")
+        val gradlew = File(testProjectDir.parentFile, "gradlew").absolutePath
+        val process = ProcessBuilder(gradlew, "classes")
+            .directory(testProjectDir)
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputStream.bufferedReader().readText()
+        val exitCode = process.waitFor()
+        check(exitCode == 0) { "Failed to build test-project (exit $exitCode): $output" }
+    }
+
     // --- helpers ---
 
     private data class Call(val owner: String, val name: String, val descriptor: String)

@@ -124,7 +124,7 @@ Shows who calls a given method as an indented tree. Walks callers transitively u
 
 ```bash
 ./gradlew cnavCallers -Pmethod=resetPassword
-./gradlew cnavCallers -Pmethod=".*Service\.find.*" -Pdepth=5
+./gradlew cnavCallers -Pmethod=".*Service\.find.*" -Pmaxdepth=5
 ```
 
 Output:
@@ -141,7 +141,7 @@ Shows what a method calls as an indented tree. Walks callees transitively up to 
 
 ```bash
 ./gradlew cnavCallees -Pmethod="Controller\.handle.*"
-./gradlew cnavCallees -Pmethod="Service\.create" -Pdepth=5
+./gradlew cnavCallees -Pmethod="Service\.create" -Pmaxdepth=5
 ```
 
 ### cnavClass
@@ -213,7 +213,7 @@ Shows a Dependency Structure Matrix (DSM) — a compact grid showing how package
 
 ```bash
 ./gradlew cnavDsm
-./gradlew cnavDsm -Proot-package=com.example -Pdepth=3
+./gradlew cnavDsm -Proot-package=com.example -Pdsm-depth=3
 ./gradlew cnavDsm -Pdsm-html=build/dsm.html
 ```
 

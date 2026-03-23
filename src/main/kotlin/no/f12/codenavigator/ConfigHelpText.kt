@@ -25,7 +25,7 @@ object ConfigHelpText {
         appendLine("--- DSM (Dependency Structure Matrix) ---")
         appendLine()
         appendLine("  -Proot-package=<pkg>      Only include packages under this prefix (cnavDsm, default: all)")
-        appendLine("  -Pdepth=<N>               Package grouping depth (cnavDsm, default: 2)")
+        appendLine("  -Pdsm-depth=<N>           Package grouping depth (cnavDsm, default: 2)")
         appendLine("  -Pdsm-html=<path>         Write interactive HTML matrix to file (cnavDsm)")
         appendLine()
         appendLine("--- Git History Analysis ---")

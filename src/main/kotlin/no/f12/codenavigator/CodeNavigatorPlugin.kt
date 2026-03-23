@@ -71,7 +71,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
         }
 
         project.tasks.register("cnavDsm", DsmTask::class.java) {
-            description = "Shows Dependency Structure Matrix. Usage: [-Proot-package=<pkg>] [-Pdepth=N] [-Pdsm-html=<path>]"
+            description = "Shows Dependency Structure Matrix. Usage: [-Proot-package=<pkg>] [-Pdsm-depth=N] [-Pdsm-html=<path>]"
             group = "code-navigator"
             dependsOn("classes")
         }

@@ -30,7 +30,7 @@ class ConfigHelpTextTest {
         val text = ConfigHelpText.generate()
 
         assertTrue(text.contains("-Proot-package="))
-        assertTrue(text.contains("-Pdepth="))
+        assertTrue(text.contains("-Pdsm-depth="))
         assertTrue(text.contains("-Pdsm-html="))
     }
 

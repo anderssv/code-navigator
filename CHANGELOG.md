@@ -6,7 +6,7 @@
   - Bytecode scanning with `DsmDependencyExtractor` (ASM-based)
   - `DsmMatrixBuilder` with cyclic dependency detection
   - Text, HTML, JSON, and LLM output formats
-  - `cnavDsm` task with `-Proot-package=`, `-Pdepth=`, `-Pdsm-html=` properties
+  - `cnavDsm` task with `-Proot-package=`, `-Pdsm-depth=`, `-Pdsm-html=` properties
 - Enable git rename tracking by default (`-M` flag), opt out with `-Pno-follow`
   - `GitLogParser` handles both full-path and brace rename syntax
 - Add `cnavHelpConfig` task listing all `-P` configuration parameters with defaults
