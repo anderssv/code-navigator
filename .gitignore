@@ -3,3 +3,5 @@ build/
 target/
 .kotlin/
 sonatype
+*.gpg
+server-config.xml

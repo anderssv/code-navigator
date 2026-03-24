@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.16
+
+- Fix: set JVM toolchain to 21 so the published plugin works on Java 21+ (0.1.14 was accidentally compiled targeting JVM 25)
+- Maven navigation goals now auto-compile before running (`@Execute(phase=COMPILE)`), so `mvn compile` is no longer needed as a separate step
+
 ## 0.1.14
 
 - Gracefully handle unsupported bytecode versions instead of crashing — classes compiled for a newer JVM than the plugin supports are skipped with a summary warning, and details written to `build/cnav/skipped-files.txt`
