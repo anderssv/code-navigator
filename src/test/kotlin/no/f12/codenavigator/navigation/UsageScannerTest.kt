@@ -237,6 +237,94 @@ class UsageScannerTest {
         assertEquals(UsageKind.TYPE_REFERENCE, usages[0].kind)
     }
 
+    // --- Type parameter also matches method call/field owners ---
+
+    // [TEST] -Ptype finds method calls where owner matches the type (INVOKESTATIC on file-facade class)
+    // [TEST] -Ptype finds field access where owner matches the type
+    // [TEST] -Ptype finds both method calls AND type references for same type (comprehensive)
+    // [TEST] -Ptype with method filter narrows method call results by method name
+
+    @Test
+    fun `type parameter with method filter narrows to specific method`() {
+        writeClassWithCalls(
+            "com/example/Caller", "Caller.kt",
+            "doWork", listOf(
+                Call("com/example/Target", "process", "()V"),
+                Call("com/example/Target", "validate", "(Ljava/lang/String;)Z"),
+            ),
+        )
+
+        val usages = UsageScanner.scan(
+            listOf(classesDir),
+            type = "com.example.Target",
+            method = "process",
+        ).data
+
+        val methodCalls = usages.filter { it.kind == UsageKind.METHOD_CALL }
+        assertEquals(1, methodCalls.size)
+        assertEquals("process", methodCalls[0].targetName)
+    }
+
+    @Test
+    fun `type parameter finds method calls and type references for same type`() {
+        writeClassWithStaticCall(
+            "com/example/Caller", "Caller.kt",
+            "doWork", Call("com/example/Target", "process", "()V"),
+        )
+        writeClassWithTypeInsn(
+            "com/example/Creator", "Creator.kt",
+            "create", Opcodes.NEW, "com/example/Target",
+        )
+
+        val usages = UsageScanner.scan(
+            listOf(classesDir),
+            type = "com.example.Target",
+        ).data
+
+        val kinds = usages.map { it.kind }.toSet()
+        assertTrue(UsageKind.METHOD_CALL in kinds, "Expected METHOD_CALL in results")
+        assertTrue(UsageKind.TYPE_REFERENCE in kinds, "Expected TYPE_REFERENCE in results")
+    }
+
+    @Test
+    fun `type parameter finds field access where owner matches the type`() {
+        writeClassWithFieldAccess(
+            "com/example/Caller", "Caller.kt",
+            "doWork",
+            FieldAccess("com/example/Constants", "MAX_SIZE", "I", Opcodes.GETSTATIC),
+        )
+
+        val usages = UsageScanner.scan(
+            listOf(classesDir),
+            type = "com.example.Constants",
+        ).data
+
+        val fieldAccesses = usages.filter { it.kind == UsageKind.FIELD_ACCESS }
+        assertEquals(1, fieldAccesses.size)
+        assertEquals("com.example.Constants", fieldAccesses[0].targetOwner)
+        assertEquals("MAX_SIZE", fieldAccesses[0].targetName)
+    }
+
+    @Test
+    fun `type parameter finds method calls where owner matches the type`() {
+        writeClassWithStaticCall(
+            "com/example/Caller", "Caller.kt",
+            "doWork", Call("com/example/ContextKt", "locateResourceFile", "(Ljava/lang/String;)Ljava/lang/String;"),
+        )
+
+        val usages = UsageScanner.scan(
+            listOf(classesDir),
+            type = "com.example.ContextKt",
+        ).data
+
+        val methodCalls = usages.filter { it.kind == UsageKind.METHOD_CALL }
+        assertEquals(1, methodCalls.size)
+        assertEquals("com.example.Caller", methodCalls[0].callerClass)
+        assertEquals("doWork", methodCalls[0].callerMethod)
+        assertEquals("com.example.ContextKt", methodCalls[0].targetOwner)
+        assertEquals("locateResourceFile", methodCalls[0].targetName)
+    }
+
     // --- Filtering ---
 
     @Test
@@ -483,6 +571,37 @@ class UsageScannerTest {
         if (fieldAccess.opcode == Opcodes.GETFIELD || fieldAccess.opcode == Opcodes.GETSTATIC) {
             mv.visitInsn(Opcodes.POP)
         }
+        mv.visitInsn(Opcodes.RETURN)
+        mv.visitMaxs(2, 2)
+        mv.visitEnd()
+
+        writer.visitEnd()
+        writeClassFile(className, writer)
+    }
+
+    private fun writeClassWithStaticCall(
+        className: String,
+        sourceFile: String,
+        methodName: String,
+        call: Call,
+    ) {
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visitSource(sourceFile, null)
+
+        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
+        init.visitCode()
+        init.visitVarInsn(Opcodes.ALOAD, 0)
+        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+        init.visitInsn(Opcodes.RETURN)
+        init.visitMaxs(1, 1)
+        init.visitEnd()
+
+        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, null)
+        mv.visitCode()
+        mv.visitInsn(Opcodes.ACONST_NULL)
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, call.owner, call.name, call.descriptor, false)
+        mv.visitInsn(Opcodes.POP)
         mv.visitInsn(Opcodes.RETURN)
         mv.visitMaxs(2, 2)
         mv.visitEnd()

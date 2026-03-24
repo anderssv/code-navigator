@@ -127,7 +127,9 @@ object UsageScanner {
                             instrDescriptor: String, isInterface: Boolean,
                         ) {
                             val instrOwnerDot = instrOwner.replace('/', '.')
-                            if (matchesOwner(instrOwnerDot, owner) && matchesMethod(instrName, method)) {
+                            val ownerMatched = matchesOwner(instrOwnerDot, owner) && matchesMethod(instrName, method)
+                            val typeMatched = type != null && matchesType(instrOwnerDot, type) && matchesMethod(instrName, method)
+                            if (ownerMatched || typeMatched) {
                                 usages.add(
                                     UsageSite(
                                         callerClass = callerClass,
@@ -147,7 +149,9 @@ object UsageScanner {
                             instrDescriptor: String,
                         ) {
                             val instrOwnerDot = instrOwner.replace('/', '.')
-                            if (matchesOwner(instrOwnerDot, owner) && matchesMethod(instrName, method)) {
+                            val ownerMatched = matchesOwner(instrOwnerDot, owner) && matchesMethod(instrName, method)
+                            val typeMatched = type != null && matchesType(instrOwnerDot, type) && matchesMethod(instrName, method)
+                            if (ownerMatched || typeMatched) {
                                 usages.add(
                                     UsageSite(
                                         callerClass = callerClass,

@@ -357,6 +357,38 @@ This is partially addressed by item 38 (full classpath scanning) which would let
 - **Approach**: When scanning project bytecode for symbols, also extract types from method descriptors and field types. Allow `-Ppattern` to match against referenced types, not just symbol names.
 - **Overlap**: This overlaps with `cnavUsages -Ptype=<class>` which already finds type references in signatures. Consider whether this should just be better documentation pointing users to `cnavUsages` for this use case, rather than duplicating functionality in `cnavFindSymbol`.
 
+## ~~41. `cnavUsages` — smarter "no results" guidance and `-Ptype` should also find method call owners (Medium value, low effort)~~ DONE
+
+From real-world migration feedback: `cnavUsages -Ptype=ContextKt` returned "No usages found" because `-Ptype` only searched for type references (NEW, CHECKCAST, INSTANCEOF, descriptor types). Now `-Ptype` is comprehensive: it also matches method call and field instruction owners, so `-Ptype=ContextKt` finds calls to `ContextKt.locateResourceFile()`. Additionally, empty results now show guidance suggesting FQN checks and alternative parameters.
+
+## 42. `cnavCycleDetail` — dedicated cycle detail view (Medium value, low effort)
+
+From real-world feedback: the DSM task crams cycle edge details into dense one-liners that are hard to read. A dedicated task that shows each cycle as clear A→B / B→A pairs with file locations would be more ergonomic.
+
+- **Question**: "Show me exactly which classes create each package cycle, with source file locations"
+- **Needs**: Bytecode only (reuses existing DSM cycle detection from `DsmBuilder`)
+- **Output**: Each cycle as a section with the A→B edges listed per class, including source file. Example:
+  ```
+  CYCLE: pkg.a <-> pkg.b
+    pkg.a → pkg.b:
+      com.example.a.Foo (Foo.kt:12) → com.example.b.Bar.doStuff()
+      com.example.a.Baz (Baz.kt:5) → com.example.b.Qux.<init>
+    pkg.b → pkg.a:
+      com.example.b.Bar (Bar.kt:30) → com.example.a.Foo.getName()
+  ```
+- **Overlap with item 24 (`cnavCycles`)**: Item 24 planned cycle detection as a list of involved packages. This item extends that with class-level edge detail. Could be a `-Pdetail=true` flag on `cnavCycles` rather than a separate task.
+- **Why**: The DSM is great for visualization but poor for actionability. When fixing a cycle, you need to know the specific import edges to break. This view gives that directly.
+
+## 43. DSM "what-if" mode for cycle breaking (High value, medium effort)
+
+From real-world feedback: the DSM tells you which cycles exist, but you still have to reason about the fix yourself. A "what-if" mode would let you say "if I move class X to package Y, would the cycle break?" and get an answer without actually making the change.
+
+- **Question**: "Would moving `locateResourceFile` from `root` to `util` break the cycle between `root` and `web.plugins`?"
+- **Parameter**: `-Pwhat-if=<class>:<target-package>` — simulate moving a class to a different package and re-evaluate cycles
+- **Approach**: Take the existing dependency graph, rewrite the package assignment for the specified class, and re-run cycle detection. Report which cycles would be resolved and which would remain.
+- **Builder**: `WhatIfSimulator.simulate(dsmResult, move: Pair<String, String>) -> WhatIfResult(resolvedCycles, remainingCycles, newCycles)`
+- **Why**: Turns the DSM from a diagnostic tool into a planning tool. The user reported "you still have to reason about the fix yourself" — this automates that reasoning.
+
 ## Future ideas (not yet planned)
 
 - **Consider just failing on first file with wrong bytecode**: The current `ScanResult<T>` partial-fail approach adds complexity across scanners, caches, tasks, and mojos. A simpler alternative: fail fast on the first unsupported bytecode file with a clear error message. Less graceful but dramatically less code.

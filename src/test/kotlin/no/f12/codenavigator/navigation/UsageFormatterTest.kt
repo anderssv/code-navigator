@@ -114,4 +114,31 @@ class UsageFormatterTest {
         val zIndex = json.indexOf("com.example.Z")
         assertTrue(aIndex < zIndex, "Expected A before Z in sorted output")
     }
+
+    // [TEST] noResultsGuidance with owner param suggests trying type
+    // [TEST] noResultsGuidance with type param suggests checking FQN
+    // [TEST] noResultsGuidance includes owner.method in the message
+
+    @Test
+    fun `noResultsGuidance includes owner and method in target`() {
+        val guidance = UsageFormatter.noResultsGuidance(owner = "com.example.Target", method = "process", type = null)
+
+        assertTrue(guidance.contains("com.example.Target.process"), "Should include owner.method")
+    }
+
+    @Test
+    fun `noResultsGuidance with type suggests checking FQN`() {
+        val guidance = UsageFormatter.noResultsGuidance(owner = null, method = null, type = "ContextKt")
+
+        assertTrue(guidance.contains("ContextKt"), "Should include the target")
+        assertTrue(guidance.contains("fully-qualified"), "Should suggest checking FQN")
+    }
+
+    @Test
+    fun `noResultsGuidance with owner suggests trying type`() {
+        val guidance = UsageFormatter.noResultsGuidance(owner = "com.example.Target", method = null, type = null)
+
+        assertTrue(guidance.contains("com.example.Target"), "Should include the target")
+        assertTrue(guidance.contains("type"), "Should suggest trying -Ptype")
+    }
 }

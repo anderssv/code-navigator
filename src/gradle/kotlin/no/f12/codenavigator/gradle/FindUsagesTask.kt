@@ -44,15 +44,7 @@ abstract class FindUsagesTask : DefaultTask() {
         val usages = result.data
 
         if (usages.isEmpty()) {
-            val target = buildString {
-                if (owner != null) {
-                    append(owner)
-                    if (method != null) append(".$method")
-                } else {
-                    append(type)
-                }
-            }
-            logger.lifecycle("No usages found for '$target'")
+            logger.lifecycle(UsageFormatter.noResultsGuidance(owner, method, type))
             return
         }
 

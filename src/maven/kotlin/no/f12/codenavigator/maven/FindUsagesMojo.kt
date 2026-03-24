@@ -60,15 +60,7 @@ class FindUsagesMojo : AbstractMojo() {
         val usages = result.data
 
         if (usages.isEmpty()) {
-            val target = buildString {
-                if (owner != null) {
-                    append(owner)
-                    if (method != null) append(".$method")
-                } else {
-                    append(type)
-                }
-            }
-            println("No usages found for '$target'")
+            println(UsageFormatter.noResultsGuidance(owner, method, type))
             return
         }
 
