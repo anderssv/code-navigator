@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.13
+
+- Add `codeNavigator {}` Gradle config block for persistent project defaults (no more repeating `-P` flags)
+- Add `rootPackage` config property — scopes DSM analysis to a package prefix (default: `""`, all packages)
+- `-P` flags still override config block values
+- Document Maven `<configuration>` block for equivalent persistent defaults
+- Reorganize README Getting Started section to top
+
 ## 0.1.12
 
 - Fix: Maven help text showed incorrect goal name `cnav:help-config` instead of `cnav:config-help`
