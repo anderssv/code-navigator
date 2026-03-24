@@ -9,12 +9,15 @@ import no.f12.codenavigator.navigation.ClassDetailScanner
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
+import org.apache.maven.plugins.annotations.Execute
+import org.apache.maven.plugins.annotations.LifecyclePhase
 import org.apache.maven.plugins.annotations.Mojo
 import org.apache.maven.plugins.annotations.Parameter
 import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "class-detail")
+@Execute(phase = LifecyclePhase.COMPILE)
 class ClassDetailMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
