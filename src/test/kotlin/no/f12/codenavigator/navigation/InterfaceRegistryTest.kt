@@ -23,7 +23,7 @@ class InterfaceRegistryTest {
             interfaces = arrayOf("com/example/Repository"),
         )
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile()))
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
 
         val implementors = registry.implementorsOf("com.example.Repository")
         assertEquals(1, implementors.size)
@@ -36,7 +36,7 @@ class InterfaceRegistryTest {
     fun `returns empty list for interface with no implementors`() {
         writeClassFile("com/example/Repository", "Repository.kt")
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile()))
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
 
         assertTrue(registry.implementorsOf("com.example.Repository").isEmpty())
     }
@@ -56,7 +56,7 @@ class InterfaceRegistryTest {
             interfaces = arrayOf("com/example/Repository"),
         )
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile()))
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
 
         val names = registry.implementorsOf("com.example.Repository").map { it.className }
         assertEquals(listOf("com.example.OrderRepo", "com.example.UserRepo"), names)
@@ -72,7 +72,7 @@ class InterfaceRegistryTest {
             interfaces = arrayOf("com/example/Readable", "com/example/Writable"),
         )
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile()))
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
 
         assertEquals(1, registry.implementorsOf("com.example.Readable").size)
         assertEquals(1, registry.implementorsOf("com.example.Writable").size)
@@ -94,7 +94,7 @@ class InterfaceRegistryTest {
             interfaces = arrayOf("com/example/Handler"),
         )
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile()))
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
 
         val matches = registry.findInterfaces("repo")
         assertEquals(listOf("com.example.Repository"), matches)
@@ -120,7 +120,7 @@ class InterfaceRegistryTest {
             interfaces = arrayOf("com/example/Callback"),
         )
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile()))
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
 
         val names = registry.implementorsOf("com.example.Callback").map { it.className }
         assertEquals(listOf("com.example.RealImpl"), names)
@@ -134,7 +134,7 @@ class InterfaceRegistryTest {
         writeClassFile("com/example/Apple", "Apple.kt", interfaces = arrayOf("com/example/Animal"))
         writeClassFile("com/example/Mango", "Mango.kt", interfaces = arrayOf("com/example/Animal"))
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile()))
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
 
         val names = registry.implementorsOf("com.example.Animal").map { it.className }
         assertEquals(listOf("com.example.Apple", "com.example.Mango", "com.example.Zebra"), names)
@@ -160,7 +160,7 @@ class InterfaceRegistryTest {
             interfaces = arrayOf("com/example/Repository"),
         )
 
-        val registry = InterfaceRegistry.build(listOf(mainDir, testDir))
+        val registry = InterfaceRegistry.build(listOf(mainDir, testDir)).data
 
         val names = registry.implementorsOf("com.example.Repository").map { it.className }
         assertEquals(listOf("com.example.FakeRepo", "com.example.RealRepo"), names)

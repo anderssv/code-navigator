@@ -31,7 +31,7 @@ class CallGraphBuilderTest {
         )
         writeClassWithCalls("com/example/Target", "Target.kt", "process", emptyList())
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val callers = graph.callersOf("com.example.Target", "process")
         assertEquals(1, callers.size)
@@ -43,7 +43,7 @@ class CallGraphBuilderTest {
     fun `returns empty set for method with no callers`() {
         writeClassWithCalls("com/example/Lonely", "Lonely.kt", "alone", emptyList())
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val callers = graph.callersOf("com.example.Lonely", "alone")
         assertTrue(callers.isEmpty())
@@ -61,7 +61,7 @@ class CallGraphBuilderTest {
         )
         writeClassWithCalls("com/example/Target", "Target.kt", "shared", emptyList())
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val callers = graph.callersOf("com.example.Target", "shared")
         assertEquals(2, callers.size)
@@ -82,7 +82,7 @@ class CallGraphBuilderTest {
         )
         writeClassWithCalls("com/example/C", "C.kt", "end", emptyList())
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val directCallers = graph.callersOf("com.example.C", "end")
         assertEquals(1, directCallers.size)
@@ -105,7 +105,7 @@ class CallGraphBuilderTest {
         writeClassWithCalls("com/example/StepA", "StepA.kt", "execute", emptyList())
         writeClassWithCalls("com/example/StepB", "StepB.kt", "execute", emptyList())
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val callersOfA = graph.callersOf("com.example.StepA", "execute")
         val callersOfB = graph.callersOf("com.example.StepB", "execute")
@@ -127,7 +127,7 @@ class CallGraphBuilderTest {
         )
         writeClassWithCalls("com/example/Repo", "Repo.kt", "save", emptyList())
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val matches = graph.findMethods("Repo\\.save")
         assertEquals(1, matches.size)
@@ -137,7 +137,7 @@ class CallGraphBuilderTest {
 
     @Test
     fun `handles empty class directories`() {
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val callers = graph.callersOf("com.example.Any", "method")
         assertTrue(callers.isEmpty())
@@ -148,7 +148,7 @@ class CallGraphBuilderTest {
         writeClassWithCalls("com/example/MyService", "MyService.kt", "execute", emptyList())
         writeClassWithCalls("com/example/OtherService", "OtherService.kt", "run", emptyList())
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         assertEquals("MyService.kt", graph.sourceFileOf("com.example.MyService"))
         assertEquals("OtherService.kt", graph.sourceFileOf("com.example.OtherService"))
@@ -167,7 +167,7 @@ class CallGraphBuilderTest {
         writeClassWithCalls("com/example/StepA", "StepA.kt", "execute", emptyList())
         writeClassWithCalls("com/example/StepB", "StepB.kt", "run", emptyList())
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val callees = graph.calleesOf("com.example.Orchestrator", "orchestrate")
         assertEquals(2, callees.size)
@@ -180,7 +180,7 @@ class CallGraphBuilderTest {
     fun `calleesOf returns empty set for method with no calls`() {
         writeClassWithCalls("com/example/Leaf", "Leaf.kt", "doNothing", emptyList())
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val callees = graph.calleesOf("com.example.Leaf", "doNothing")
         assertTrue(callees.isEmpty())
@@ -194,7 +194,7 @@ class CallGraphBuilderTest {
         )
         writeEmptyClass("com/example/Product", "Product.kt")
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val callers = graph.callersOf("com.example.Product", "<init>")
         assertEquals(1, callers.size)
@@ -206,7 +206,7 @@ class CallGraphBuilderTest {
         writeClassWithCalls("com/example/MyService", "MyService.kt", "execute", emptyList())
         writeClassWithCalls("com/example/OtherService", "OtherService.kt", "run", emptyList())
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val projectClasses = graph.projectClasses()
         assertTrue("com.example.MyService" in projectClasses)
@@ -235,7 +235,7 @@ class CallGraphBuilderTest {
             "handleReset", listOf(Call("com/example/UserService", "resetPassword", "()V")),
         )
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         // Direct callers of buildNotificationMessage
         val directCallers = graph.callersOf("com.example.UserService", "buildNotificationMessage")

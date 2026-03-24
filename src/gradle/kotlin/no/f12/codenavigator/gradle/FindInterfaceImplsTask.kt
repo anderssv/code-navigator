@@ -6,6 +6,7 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.InterfaceFormatter
 import no.f12.codenavigator.navigation.InterfaceRegistryCache
+import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -38,7 +39,10 @@ abstract class FindInterfaceImplsTask : DefaultTask() {
         }
 
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/$cacheFileName")
-        val registry = InterfaceRegistryCache.getOrBuild(cacheFile, classDirectories)
+        val result = InterfaceRegistryCache.getOrBuild(cacheFile, classDirectories)
+        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
+        val registry = result.data
         val matchingInterfaces = registry.findInterfaces(pattern)
 
         if (matchingInterfaces.isEmpty()) {

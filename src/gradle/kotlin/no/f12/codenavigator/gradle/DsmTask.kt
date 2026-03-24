@@ -8,6 +8,7 @@ import no.f12.codenavigator.navigation.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.DsmFormatter
 import no.f12.codenavigator.navigation.DsmHtmlRenderer
 import no.f12.codenavigator.navigation.DsmMatrixBuilder
+import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskAction
@@ -29,7 +30,10 @@ abstract class DsmTask : DefaultTask() {
         val mainSourceSet = sourceSets.getByName("main")
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
 
-        val dependencies = DsmDependencyExtractor.extract(classDirectories, rootPackage)
+        val result = DsmDependencyExtractor.extract(classDirectories, rootPackage)
+        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
+        val dependencies = result.data
         val matrix = DsmMatrixBuilder.build(dependencies, rootPackage, depth)
 
         val output = when (format) {

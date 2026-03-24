@@ -10,6 +10,7 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TableFormatter
 import no.f12.codenavigator.navigation.ClassScanner
+import no.f12.codenavigator.navigation.SkippedFileReporter
 import java.io.File
 
 @Mojo(name = "list-classes")
@@ -32,7 +33,10 @@ class ListClassesMojo : AbstractMojo() {
         }
 
         val outputFormat = OutputFormat.from(format, llm)
-        val classes = ClassScanner.scan(listOf(classesDir))
+        val result = ClassScanner.scan(listOf(classesDir))
+        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
+        val classes = result.data
 
         val output = when (outputFormat) {
             OutputFormat.JSON -> JsonFormatter.formatClasses(classes)

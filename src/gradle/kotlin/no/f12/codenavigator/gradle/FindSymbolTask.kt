@@ -7,6 +7,7 @@ import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.SymbolFilter
 import no.f12.codenavigator.navigation.SymbolIndexCache
 import no.f12.codenavigator.navigation.SymbolTableFormatter
+import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -29,7 +30,10 @@ abstract class FindSymbolTask : DefaultTask() {
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
 
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/symbol-index.cache")
-        val allSymbols = SymbolIndexCache.getOrScan(cacheFile, classDirectories)
+        val result = SymbolIndexCache.getOrScan(cacheFile, classDirectories)
+        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
+        val allSymbols = result.data
         val matches = SymbolFilter.filter(allSymbols, pattern)
         val output = when (format) {
             OutputFormat.JSON -> JsonFormatter.formatSymbols(matches)

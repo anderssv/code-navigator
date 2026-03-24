@@ -32,7 +32,7 @@ class SymbolScannerTest {
             visitField(Opcodes.ACC_PUBLIC, "count", "I", null, null)
         }
 
-        val results = SymbolScanner.scan(listOf(classesDir))
+        val results = SymbolScanner.scan(listOf(classesDir)).data
 
         assertEquals(2, results.size)
         assertEquals("doWork", results.first { it.kind == SymbolKind.METHOD }.symbolName)
@@ -41,7 +41,7 @@ class SymbolScannerTest {
 
     @Test
     fun `returns empty list for empty directory`() {
-        val results = SymbolScanner.scan(listOf(classesDir))
+        val results = SymbolScanner.scan(listOf(classesDir)).data
 
         assertTrue(results.isEmpty())
     }
@@ -55,7 +55,7 @@ class SymbolScannerTest {
             visitMethod(Opcodes.ACC_PUBLIC, "aaa", "()V", null, null)
         }
 
-        val results = SymbolScanner.scan(listOf(classesDir))
+        val results = SymbolScanner.scan(listOf(classesDir)).data
 
         assertEquals(
             listOf("aaa", "zzz"),
@@ -67,7 +67,7 @@ class SymbolScannerTest {
     fun `handles non-existent directory gracefully`() {
         val nonExistent = tempDir.resolve("does-not-exist").toFile()
 
-        val results = SymbolScanner.scan(listOf(nonExistent))
+        val results = SymbolScanner.scan(listOf(nonExistent)).data
 
         assertTrue(results.isEmpty())
     }
@@ -81,7 +81,7 @@ class SymbolScannerTest {
             visitMethod(Opcodes.ACC_PUBLIC, "invoke", "()V", null, null)
         }
 
-        val results = SymbolScanner.scan(listOf(classesDir))
+        val results = SymbolScanner.scan(listOf(classesDir)).data
 
         assertEquals(1, results.size)
         assertEquals("realMethod", results.first().symbolName)

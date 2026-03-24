@@ -8,6 +8,7 @@ import no.f12.codenavigator.navigation.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.DsmFormatter
 import no.f12.codenavigator.navigation.DsmHtmlRenderer
 import no.f12.codenavigator.navigation.DsmMatrixBuilder
+import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo
 import org.apache.maven.plugins.annotations.Parameter
@@ -43,7 +44,10 @@ class DsmMojo : AbstractMojo() {
         }
 
         val outputFormat = OutputFormat.from(format, llm)
-        val dependencies = DsmDependencyExtractor.extract(listOf(classesDir), rootPackage)
+        val result = DsmDependencyExtractor.extract(listOf(classesDir), rootPackage)
+        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
+        val dependencies = result.data
         val matrix = DsmMatrixBuilder.build(dependencies, rootPackage, dsmDepth)
 
         val output = when (outputFormat) {

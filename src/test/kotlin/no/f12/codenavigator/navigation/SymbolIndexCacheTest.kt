@@ -104,7 +104,9 @@ class SymbolIndexCacheTest {
 
         val result = SymbolIndexCache.getOrScan(cacheFile, listOf(classesDir))
 
-        assertTrue(result is List<SymbolInfo>)
+        // Corrupt cache was deleted and rebuilt — empty class has no symbols
+        assertTrue(result.data.isEmpty())
+        assertFalse(cacheFile.readText().contains("only-one-field"), "Corrupt cache should have been replaced")
     }
 
     private fun writeClassFile(className: String, targetDir: File = classesDir) {

@@ -7,6 +7,7 @@ import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TableFormatter
 import no.f12.codenavigator.navigation.ClassFilter
 import no.f12.codenavigator.navigation.ClassScanner
+import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Mojo
@@ -40,7 +41,10 @@ class FindClassMojo : AbstractMojo() {
         }
 
         val outputFormat = OutputFormat.from(format, llm)
-        val allClasses = ClassScanner.scan(listOf(classesDir))
+        val result = ClassScanner.scan(listOf(classesDir))
+        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
+        val allClasses = result.data
         val matches = ClassFilter.filter(allClasses, pat)
 
         val output = when (outputFormat) {

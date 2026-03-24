@@ -121,8 +121,8 @@ class ClassIndexCacheTest {
 
         val result = ClassIndexCache.getOrScan(cacheFile, listOf(classesDir))
 
-        assertEquals(1, result.size)
-        assertEquals("com.example.Foo", result[0].className)
+        assertEquals(1, result.data.size)
+        assertEquals("com.example.Foo", result.data[0].className)
     }
 
     private fun writeClassFile(className: String, sourceFile: String, targetDir: File = classesDir) {

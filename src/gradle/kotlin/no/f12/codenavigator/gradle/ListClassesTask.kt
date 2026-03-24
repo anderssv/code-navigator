@@ -6,6 +6,7 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TableFormatter
 import no.f12.codenavigator.navigation.ClassIndexCache
+import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.SourceSetContainer
@@ -25,7 +26,10 @@ abstract class ListClassesTask : DefaultTask() {
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/class-index.cache")
 
-        val classes = ClassIndexCache.getOrScan(cacheFile, classDirectories)
+        val result = ClassIndexCache.getOrScan(cacheFile, classDirectories)
+        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
+        val classes = result.data
         val output = when (format) {
             OutputFormat.JSON -> JsonFormatter.formatClasses(classes)
             OutputFormat.LLM -> LlmFormatter.formatClasses(classes)

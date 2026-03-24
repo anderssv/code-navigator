@@ -126,7 +126,7 @@ class InterfaceRegistryCacheTest {
 
         val result = InterfaceRegistryCache.getOrBuild(cacheFile, listOf(classesDir))
 
-        assertTrue(result.findInterfaces(".*").isEmpty())
+        assertTrue(result.data.findInterfaces(".*").isEmpty())
     }
 
     private fun writeClassFile(className: String, targetDir: File = classesDir) {

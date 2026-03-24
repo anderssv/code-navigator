@@ -25,7 +25,7 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `empty directory produces no dependencies`() {
-        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "")
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "").data
 
         assertTrue(deps.isEmpty())
     }
@@ -38,7 +38,7 @@ class DsmDependencyExtractorTest {
         )
         writeEmptyClass("com/example/service/Service", "Service.kt")
 
-        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example")
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example").data
 
         val dep = deps.find { it.sourceClass == "com.example.api.Controller" && it.targetClass == "com.example.service.Service" }
         assertTrue(dep != null, "Expected dependency from Controller to Service")
@@ -54,7 +54,7 @@ class DsmDependencyExtractorTest {
         )
         writeEmptyClass("com/example/api/ControllerB", "ControllerB.kt")
 
-        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example")
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example").data
 
         assertTrue(deps.isEmpty(), "Same-package deps should be excluded")
     }
@@ -67,7 +67,7 @@ class DsmDependencyExtractorTest {
         )
         writeEmptyClass("com/example/service/Service", "Service.kt")
 
-        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example")
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example").data
 
         val dep = deps.find { it.sourceClass == "com.example.api.Controller" && it.targetClass == "com.example.service.Service" }
         assertTrue(dep != null, "Expected dependency from field type")
@@ -81,7 +81,7 @@ class DsmDependencyExtractorTest {
         )
         writeEmptyClass("com/example/base/AbstractService", "AbstractService.kt")
 
-        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example")
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example").data
 
         val dep = deps.find { it.sourceClass == "com.example.impl.ConcreteService" && it.targetClass == "com.example.base.AbstractService" }
         assertTrue(dep != null, "Expected dependency from superclass")
@@ -95,7 +95,7 @@ class DsmDependencyExtractorTest {
         )
         writeEmptyClass("com/example/domain/Repository", "Repository.kt")
 
-        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example")
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example").data
 
         val dep = deps.find { it.sourceClass == "com.example.impl.UserRepo" && it.targetClass == "com.example.domain.Repository" }
         assertTrue(dep != null, "Expected dependency from interface implementation")
@@ -109,7 +109,7 @@ class DsmDependencyExtractorTest {
         )
         writeEmptyClass("com/other/lib/Helper", "Helper.kt")
 
-        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example")
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example").data
 
         assertTrue(deps.isEmpty(), "Dependencies outside root prefix should be excluded")
     }
@@ -122,7 +122,7 @@ class DsmDependencyExtractorTest {
         )
         writeEmptyClass("com/other/lib/Helper", "Helper.kt")
 
-        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "")
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "").data
 
         val dep = deps.find { it.sourceClass == "com.example.api.Controller" && it.targetClass == "com.other.lib.Helper" }
         assertTrue(dep != null, "Empty root prefix should include all packages")
@@ -136,7 +136,7 @@ class DsmDependencyExtractorTest {
         )
         writeEmptyClass("com/example/service/Service", "Service.kt")
 
-        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example")
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example").data
 
         val dep = deps.find { it.sourceClass == "com.example.api.Controller" && it.targetClass == "com.example.service.Service" }
         assertTrue(dep != null, "Inner class reference should resolve to base class")
@@ -153,7 +153,7 @@ class DsmDependencyExtractorTest {
         )
         writeEmptyClass("com/example/service/Service", "Service.kt")
 
-        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example")
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example").data
 
         val matching = deps.filter { it.sourceClass == "com.example.api.Controller" && it.targetClass == "com.example.service.Service" }
         assertEquals(1, matching.size, "Should deduplicate to one dependency per class pair")
@@ -166,7 +166,7 @@ class DsmDependencyExtractorTest {
             buildTestProject()
         }
 
-        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example")
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), "com.example").data
 
         assertTrue(deps.isNotEmpty(), "Expected inter-package dependencies from test-project, but got none")
         val packages = deps.flatMap { listOf(it.sourcePackage, it.targetPackage) }.toSet()

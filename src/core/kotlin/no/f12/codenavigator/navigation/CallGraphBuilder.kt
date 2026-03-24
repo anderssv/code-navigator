@@ -66,9 +66,10 @@ class CallGraph(
 }
 
 object CallGraphBuilder {
-    fun build(classDirectories: List<File>): CallGraph {
+    fun build(classDirectories: List<File>): ScanResult<CallGraph> {
         val callerToCallees = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
         val sourceFiles = mutableMapOf<String, String>()
+        val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
 
         classDirectories
             .filter { it.exists() }
@@ -76,11 +77,18 @@ object CallGraphBuilder {
                 dir.walkTopDown()
                     .filter { it.isFile && it.extension == "class" }
                     .forEach { classFile ->
-                        extractCalls(classFile, callerToCallees, sourceFiles)
+                        try {
+                            extractCalls(classFile, callerToCallees, sourceFiles)
+                        } catch (e: UnsupportedBytecodeVersionException) {
+                            skipped.add(e)
+                        }
                     }
             }
 
-        return CallGraph(callerToCallees, sourceFiles)
+        return ScanResult(
+            data = CallGraph(callerToCallees, sourceFiles),
+            skippedFiles = skipped,
+        )
     }
 
     private fun extractCalls(
@@ -88,7 +96,7 @@ object CallGraphBuilder {
         graph: MutableMap<MethodRef, MutableSet<MethodRef>>,
         sourceFiles: MutableMap<String, String>,
     ) {
-        val reader = ClassReader(classFile.readBytes())
+        val reader = createClassReader(classFile)
         var ownerClassName = ""
 
         reader.accept(

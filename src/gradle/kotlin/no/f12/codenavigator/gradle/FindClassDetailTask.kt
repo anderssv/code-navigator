@@ -6,6 +6,7 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.ClassDetailFormatter
 import no.f12.codenavigator.navigation.ClassDetailScanner
+import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -27,7 +28,10 @@ abstract class FindClassDetailTask : DefaultTask() {
         val mainSourceSet = sourceSets.getByName("main")
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
 
-        val matchingDetails = ClassDetailScanner.scan(classDirectories, pattern)
+        val result = ClassDetailScanner.scan(classDirectories, pattern)
+        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
+        val matchingDetails = result.data
 
         if (matchingDetails.isEmpty()) {
             logger.lifecycle("No classes found matching '$pattern'")

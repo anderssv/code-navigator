@@ -9,6 +9,7 @@ import no.f12.codenavigator.navigation.CallGraphCache
 import no.f12.codenavigator.navigation.CallTreeBuilder
 import no.f12.codenavigator.navigation.CallTreeFormatter
 import no.f12.codenavigator.navigation.MethodRef
+import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -34,7 +35,10 @@ abstract class FindCallersTask : DefaultTask() {
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
 
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/call-graph.cache")
-        val graph = CallGraphCache.getOrBuild(cacheFile, classDirectories)
+        val result = CallGraphCache.getOrBuild(cacheFile, classDirectories)
+        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
+        val graph = result.data
         val methods = graph.findMethods(methodPattern)
 
         if (methods.isEmpty()) {

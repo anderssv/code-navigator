@@ -10,8 +10,9 @@ import java.io.File
 
 object DsmDependencyExtractor {
 
-    fun extract(classDirectories: List<File>, rootPrefix: String): List<PackageDependency> {
+    fun extract(classDirectories: List<File>, rootPrefix: String): ScanResult<List<PackageDependency>> {
         val dependencies = mutableSetOf<PackageDependency>()
+        val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
 
         classDirectories
             .filter { it.exists() }
@@ -19,11 +20,18 @@ object DsmDependencyExtractor {
                 dir.walkTopDown()
                     .filter { it.isFile && it.extension == "class" }
                     .forEach { classFile ->
-                        extractFromClass(classFile, rootPrefix, dependencies)
+                        try {
+                            extractFromClass(classFile, rootPrefix, dependencies)
+                        } catch (e: UnsupportedBytecodeVersionException) {
+                            skipped.add(e)
+                        }
                     }
             }
 
-        return dependencies.toList()
+        return ScanResult(
+            data = dependencies.toList(),
+            skippedFiles = skipped,
+        )
     }
 
     private fun extractFromClass(
@@ -31,7 +39,7 @@ object DsmDependencyExtractor {
         rootPrefix: String,
         dependencies: MutableSet<PackageDependency>,
     ) {
-        val reader = ClassReader(classFile.readBytes())
+        val reader = createClassReader(classFile)
         val collector = DependencyCollector(rootPrefix)
         reader.accept(collector, ClassReader.SKIP_DEBUG or ClassReader.SKIP_FRAMES)
 

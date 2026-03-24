@@ -160,7 +160,7 @@ class CallGraphCacheTest {
 
         val result = CallGraphCache.getOrBuild(cacheFile, listOf(classesDir))
 
-        assertTrue(result.calleesOf("any.Class", "anyMethod").isEmpty())
+        assertTrue(result.data.calleesOf("any.Class", "anyMethod").isEmpty())
     }
 
     @Test

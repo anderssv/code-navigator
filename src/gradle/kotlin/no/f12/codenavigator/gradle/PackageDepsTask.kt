@@ -8,6 +8,7 @@ import no.f12.codenavigator.navigation.CallGraphCache
 import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencyBuilder
 import no.f12.codenavigator.navigation.PackageDependencyFormatter
+import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.SourceSetContainer
@@ -30,7 +31,10 @@ abstract class PackageDepsTask : DefaultTask() {
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
 
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/call-graph.cache")
-        val graph = CallGraphCache.getOrBuild(cacheFile, classDirectories)
+        val result = CallGraphCache.getOrBuild(cacheFile, classDirectories)
+        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
+        val graph = result.data
 
         val filter: ((MethodRef) -> Boolean)? =
             if (projectOnly) graph.projectClassFilter() else null

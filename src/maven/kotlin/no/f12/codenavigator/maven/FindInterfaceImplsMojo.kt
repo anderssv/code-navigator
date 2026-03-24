@@ -6,6 +6,7 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.InterfaceFormatter
 import no.f12.codenavigator.navigation.InterfaceRegistry
+import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Mojo
@@ -51,7 +52,10 @@ class FindInterfaceImplsMojo : AbstractMojo() {
         }
 
         val outputFormat = OutputFormat.from(format, llm)
-        val registry = InterfaceRegistry.build(classDirectories)
+        val result = InterfaceRegistry.build(classDirectories)
+        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
+        val registry = result.data
         val matchingInterfaces = registry.findInterfaces(pat)
 
         if (matchingInterfaces.isEmpty()) {

@@ -31,26 +31,36 @@ class InterfaceRegistry(
         private val SYNTHETIC_SUFFIX = Regex("""\$\d+$""")
         private val LAMBDA_PATTERN = Regex("""\${'$'}lambda\${'$'}""")
 
-        fun build(classDirectories: List<File>): InterfaceRegistry {
+        fun build(classDirectories: List<File>): ScanResult<InterfaceRegistry> {
             val map = mutableMapOf<String, MutableList<ImplementorInfo>>()
+            val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
 
             classDirectories
                 .filter { it.exists() }
                 .forEach { dir ->
                     dir.walkTopDown()
                         .filter { it.isFile && it.extension == "class" }
-                        .forEach { classFile -> extractInterfaces(classFile, map) }
+                        .forEach { classFile ->
+                            try {
+                                extractInterfaces(classFile, map)
+                            } catch (e: UnsupportedBytecodeVersionException) {
+                                skipped.add(e)
+                            }
+                        }
                 }
 
             val sorted = map.mapValues { (_, impls) -> impls.sortedBy { it.className } }
-            return InterfaceRegistry(sorted)
+            return ScanResult(
+                data = InterfaceRegistry(sorted),
+                skippedFiles = skipped,
+            )
         }
 
         private fun extractInterfaces(
             classFile: File,
             map: MutableMap<String, MutableList<ImplementorInfo>>,
         ) {
-            val reader = ClassReader(classFile.readBytes())
+            val reader = createClassReader(classFile)
             var className = ""
             var sourceFile = "<unknown>"
             var implementedInterfaces = emptyList<String>()

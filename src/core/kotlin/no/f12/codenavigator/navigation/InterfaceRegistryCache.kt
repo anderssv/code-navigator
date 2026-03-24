@@ -45,17 +45,17 @@ object InterfaceRegistryCache {
     fun isFresh(cacheFile: File, classDirectories: List<File>): Boolean =
         CacheFreshness.isFresh(cacheFile, classDirectories)
 
-    fun getOrBuild(cacheFile: File, classDirectories: List<File>): InterfaceRegistry {
+    fun getOrBuild(cacheFile: File, classDirectories: List<File>): ScanResult<InterfaceRegistry> {
         if (isFresh(cacheFile, classDirectories)) {
             try {
-                return read(cacheFile)
+                return ScanResult(read(cacheFile), emptyList())
             } catch (_: Exception) {
                 cacheFile.delete()
             }
         }
 
-        val registry = InterfaceRegistry.build(classDirectories)
-        write(cacheFile, registry)
-        return registry
+        val result = InterfaceRegistry.build(classDirectories)
+        write(cacheFile, result.data)
+        return result
     }
 }

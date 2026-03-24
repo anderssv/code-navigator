@@ -8,6 +8,7 @@ import no.f12.codenavigator.navigation.CallGraphBuilder
 import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencyBuilder
 import no.f12.codenavigator.navigation.PackageDependencyFormatter
+import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo
 import org.apache.maven.plugins.annotations.Parameter
@@ -43,7 +44,10 @@ class PackageDepsMojo : AbstractMojo() {
         }
 
         val outputFormat = OutputFormat.from(format, llm)
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val result = CallGraphBuilder.build(listOf(classesDir))
+        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
+        val graph = result.data
 
         val filter: ((MethodRef) -> Boolean)? =
             if (projectonly) graph.projectClassFilter() else null

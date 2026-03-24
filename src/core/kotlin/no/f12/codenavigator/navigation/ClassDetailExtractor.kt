@@ -43,7 +43,7 @@ object ClassDetailExtractor {
     private val EXCLUDED_FIELDS = setOf("INSTANCE")
 
     fun extract(classFile: File): ClassDetail {
-        val reader = ClassReader(classFile.readBytes())
+        val reader = createClassReader(classFile)
         var className = ""
         var sourceFile = "<unknown>"
         var superClass: String? = null

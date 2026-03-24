@@ -17,7 +17,7 @@ class IntegrationTest {
             buildTestProject()
         }
 
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         // Direct callers of buildNotificationMessage
         val directCallers = graph.callersOf("com.example.services.UserService", "buildNotificationMessage")

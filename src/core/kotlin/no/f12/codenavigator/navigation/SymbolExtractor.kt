@@ -35,7 +35,7 @@ object SymbolExtractor {
     private val EXCLUDED_FIELDS = setOf("INSTANCE")
 
     fun extract(classFile: File): List<SymbolInfo> {
-        val reader = ClassReader(classFile.readBytes())
+        val reader = createClassReader(classFile)
         val symbols = mutableListOf<SymbolInfo>()
         var internalName = ""
         var sourceFile: String? = null

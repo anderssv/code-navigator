@@ -6,6 +6,7 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.ClassDetailFormatter
 import no.f12.codenavigator.navigation.ClassDetailScanner
+import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Mojo
@@ -39,7 +40,10 @@ class ClassDetailMojo : AbstractMojo() {
         }
 
         val outputFormat = OutputFormat.from(format, llm)
-        val matchingDetails = ClassDetailScanner.scan(listOf(classesDir), pat)
+        val result = ClassDetailScanner.scan(listOf(classesDir), pat)
+        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
+        val matchingDetails = result.data
 
         if (matchingDetails.isEmpty()) {
             println("No classes found matching '$pat'")

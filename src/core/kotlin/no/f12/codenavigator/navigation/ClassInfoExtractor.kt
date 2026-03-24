@@ -18,7 +18,7 @@ object ClassInfoExtractor {
     private val LAMBDA_PATTERN = Regex("""\${'$'}lambda\${'$'}""")
 
     fun extract(classFile: File): ClassInfo {
-        val reader = ClassReader(classFile.readBytes())
+        val reader = createClassReader(classFile)
         var internalName = ""
         var sourceFile: String? = null
 

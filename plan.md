@@ -295,6 +295,7 @@ Measures how scattered contributions are across a file. High fragmentation (many
 
 ## Future ideas (not yet planned)
 
+- **Expand support for older JDKs**: The plugin currently requires JDK 21+ (Gradle 9.x minimum). Explore lowering the bytecode target or supporting Gradle 8.x to reach projects still on JDK 17 or JDK 11.
 - **Cross-referencing hotspots with bytecode data**: Combine `cnavHotspots` with `cnavCallers`/`cnavDeps` to answer "hotspot files and their structural dependencies". Would require mapping git file paths to bytecode class names via the source file metadata already extracted.
 - **Entity ownership / main developer**: Who "owns" each file by contribution weight (`-a entity-ownership` and `-a main-dev` in Code Maat). Useful for "who should I ask about this code?" Could be added as a mode on `cnavAuthors`.
 - **Architectural-level grouping**: Code Maat's `-g` flag to aggregate file-level results by logical component/layer. Would allow running hotspots, coupling, etc. at the sub-system level instead of individual files.

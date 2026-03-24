@@ -28,14 +28,14 @@ class ClassScannerTest {
         writeClassFile("com/example/ServiceA", "ServiceA.kt")
         writeClassFile("com/example/ServiceB", "ServiceB.kt")
 
-        val results = ClassScanner.scan(listOf(classesDir))
+        val results = ClassScanner.scan(listOf(classesDir)).data
 
         assertEquals(2, results.size)
     }
 
     @Test
     fun `returns empty list for empty directory`() {
-        val results = ClassScanner.scan(listOf(classesDir))
+        val results = ClassScanner.scan(listOf(classesDir)).data
 
         assertTrue(results.isEmpty())
     }
@@ -46,7 +46,7 @@ class ClassScannerTest {
         writeClassFile("com/example/Foo\$1", "Foo.kt")
         writeClassFile("com/example/Foo\$lambda\$1", "Foo.kt")
 
-        val results = ClassScanner.scan(listOf(classesDir))
+        val results = ClassScanner.scan(listOf(classesDir)).data
 
         assertEquals(1, results.size)
         assertEquals("com.example.Foo", results.single().className)
@@ -57,7 +57,7 @@ class ClassScannerTest {
         writeClassFile("com/example/Outer", "Outer.kt")
         writeClassFile("com/example/Outer\$Inner", "Outer.kt")
 
-        val results = ClassScanner.scan(listOf(classesDir))
+        val results = ClassScanner.scan(listOf(classesDir)).data
 
         assertEquals(2, results.size)
         val classNames = results.map { it.className }.toSet()
@@ -73,7 +73,7 @@ class ClassScannerTest {
         writeClassFile("com/example/KotlinService", "KotlinService.kt")
         writeClassFile("com/example/JavaService", "JavaService.java", targetDir = javaClassesDir)
 
-        val results = ClassScanner.scan(listOf(classesDir, javaClassesDir))
+        val results = ClassScanner.scan(listOf(classesDir, javaClassesDir)).data
 
         assertEquals(2, results.size)
     }
@@ -84,7 +84,7 @@ class ClassScannerTest {
         writeClassFile("com/example/Alpha", "Alpha.kt")
         writeClassFile("com/example/Middle", "Middle.kt")
 
-        val results = ClassScanner.scan(listOf(classesDir))
+        val results = ClassScanner.scan(listOf(classesDir)).data
 
         assertEquals(
             listOf("com.example.Alpha", "com.example.Middle", "com.example.Zebra"),
@@ -96,7 +96,7 @@ class ClassScannerTest {
     fun `handles non-existent directory gracefully`() {
         val nonExistent = tempDir.resolve("does-not-exist").toFile()
 
-        val results = ClassScanner.scan(listOf(nonExistent))
+        val results = ClassScanner.scan(listOf(nonExistent)).data
 
         assertTrue(results.isEmpty())
     }

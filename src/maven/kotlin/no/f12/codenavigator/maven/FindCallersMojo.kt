@@ -9,6 +9,7 @@ import no.f12.codenavigator.navigation.CallGraphBuilder
 import no.f12.codenavigator.navigation.CallTreeBuilder
 import no.f12.codenavigator.navigation.CallTreeFormatter
 import no.f12.codenavigator.navigation.MethodRef
+import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Mojo
@@ -50,7 +51,10 @@ class FindCallersMojo : AbstractMojo() {
         }
 
         val outputFormat = OutputFormat.from(format, llm)
-        val graph = CallGraphBuilder.build(listOf(classesDir))
+        val result = CallGraphBuilder.build(listOf(classesDir))
+        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
+        val graph = result.data
         val methods = graph.findMethods(methodPattern)
 
         if (methods.isEmpty()) {

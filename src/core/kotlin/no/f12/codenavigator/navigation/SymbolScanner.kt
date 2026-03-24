@@ -3,17 +3,30 @@ package no.f12.codenavigator.navigation
 import java.io.File
 
 object SymbolScanner {
-    fun scan(classDirectories: List<File>): List<SymbolInfo> =
+    fun scan(classDirectories: List<File>): ScanResult<List<SymbolInfo>> {
+        val symbols = mutableListOf<SymbolInfo>()
+        val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
+
         classDirectories
             .filter { it.exists() }
-            .flatMap { dir ->
+            .forEach { dir ->
                 dir.walkTopDown()
                     .filter { it.isFile && it.extension == "class" }
                     .filter { !isSyntheticClassFile(it) }
-                    .flatMap { SymbolExtractor.extract(it) }
-                    .toList()
+                    .forEach { classFile ->
+                        try {
+                            symbols.addAll(SymbolExtractor.extract(classFile))
+                        } catch (e: UnsupportedBytecodeVersionException) {
+                            skipped.add(e)
+                        }
+                    }
             }
-            .sortedWith(compareBy({ it.packageName }, { it.className }, { it.symbolName }))
+
+        return ScanResult(
+            data = symbols.sortedWith(compareBy({ it.packageName }, { it.className }, { it.symbolName })),
+            skippedFiles = skipped,
+        )
+    }
 
     private val SYNTHETIC_SUFFIX = Regex("""\$\d+""")
     private val LAMBDA_PATTERN = Regex("""\${'$'}lambda\${'$'}""")
