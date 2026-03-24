@@ -13,6 +13,7 @@ import no.f12.codenavigator.navigation.InterfaceRegistry
 import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
+import no.f12.codenavigator.navigation.UsageSite
 
 object LlmFormatter {
 
@@ -72,6 +73,10 @@ object LlmFormatter {
 
     fun formatChurn(churn: List<FileChurn>): String =
         churn.joinToString("\n") { "${it.file} added=${it.added} deleted=${it.deleted} commits=${it.commits}" }
+
+    fun formatUsages(usages: List<UsageSite>): String =
+        usages.sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))
+            .joinToString("\n") { "${it.callerClass}.${it.callerMethod} -> ${it.targetOwner}.${it.targetName}${it.targetDescriptor} ${it.kind.name.lowercase()} ${it.sourceFile}" }
 
     fun formatDsm(matrix: DsmMatrix): String = buildString {
         append("packages:${matrix.packages.joinToString(",")}")

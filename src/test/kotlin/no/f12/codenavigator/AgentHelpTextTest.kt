@@ -21,6 +21,9 @@ class AgentHelpTextTest {
         assertTrue(text.contains("cnavDeps"))
         assertTrue(text.contains("cnavDsm"))
 
+        // Usages task
+        assertTrue(text.contains("cnavUsages"))
+
         // Analysis tasks
         assertTrue(text.contains("cnavHotspots"))
         assertTrue(text.contains("cnavCoupling"))
@@ -42,6 +45,7 @@ class AgentHelpTextTest {
         assertTrue(text.contains("cnav:find-interfaces"))
         assertTrue(text.contains("cnav:package-deps"))
         assertTrue(text.contains("cnav:dsm"))
+        assertTrue(text.contains("cnav:find-usages"))
         assertTrue(text.contains("cnav:hotspots"))
         assertTrue(text.contains("cnav:coupling"))
         assertTrue(text.contains("cnav:code-age"))
@@ -163,6 +167,37 @@ class AgentHelpTextTest {
         val text = AgentHelpText.generate(BuildTool.MAVEN)
 
         assertTrue(text.contains("mvn cnav:list-classes"))
+    }
+
+    @Test
+    fun `Gradle agent help text includes owner and type parameters`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(text.contains("-Powner="), "Should list owner parameter")
+        assertTrue(text.contains("-Ptype="), "Should list type parameter")
+    }
+
+    @Test
+    fun `Maven agent help text includes owner and type parameters`() {
+        val text = AgentHelpText.generate(BuildTool.MAVEN)
+
+        assertTrue(text.contains("-Downer="), "Should list owner parameter for Maven")
+        assertTrue(text.contains("-Dtype="), "Should list type parameter for Maven")
+    }
+
+    @Test
+    fun `agent help text documents JSON schema for find-usages`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(text.contains("\"targetOwner\""), "Should document targetOwner field")
+        assertTrue(text.contains("\"targetMethod\""), "Should document targetMethod field")
+    }
+
+    @Test
+    fun `agent help text mentions migration workflows`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(text.contains("migrat"), "Should mention migration use case")
     }
 
     @Test

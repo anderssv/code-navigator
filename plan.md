@@ -293,6 +293,70 @@ Measures how scattered contributions are across a file. High fragmentation (many
 - **Parameters**: `-Pafter`, `-Ptop=N`
 - **Why useful**: More relevant for large teams. Can be combined with other metrics (hotspots, authors) for richer analysis.
 
+## ~~37. `cnavUsages` — find project references to external types/methods (High value, medium effort)~~ DONE
+
+A classpath-wide search for usages of specific types and methods. Helps checking what is on the classpath as well as checking the signatures of classes and methods. The most common AI-assisted refactoring task is "migrate from deprecated API X to new API Y" — this requires finding every place in project code that references an external library type, method, or property. Currently cnav only indexes project-defined symbols (`cnavFindSymbol`) and traces calls between project methods (`cnavCallers`). External API usages fall through the cracks, forcing fallback to text-based grep — which misses FQN vs import distinctions, can't distinguish same-named methods on different types, and doesn't understand bytecode-level method names like `getMonthNumber` for Kotlin property `.monthNumber`.
+
+ASM's `MethodVisitor` already sees every `INVOKE*` and field access instruction with full owner class + method name + descriptor. The data is there during cnav's class scanning pass.
+
+- **Question**: "Where in my project code do I use this external type or method?"
+- **Needs**: Bytecode only (extends existing ASM scanning)
+- **Parameters**:
+  - `-Powner=<class>` — FQN of the type to search for (e.g., `kotlinx.datetime.LocalDate`)
+  - `-Pmethod=<name>` — (optional) specific method name on the owner (e.g., `getMonthNumber`)
+  - `-Ptype=<class>` — (alternative to owner) find all references to a type in signatures, fields, locals, casts
+  - `-Pprojectonly=true` — filter to project classes only
+- **Builder**: `UsageScanner.scan(classDirectories, owner, method, type) -> List<UsageSite(callerClass, callerMethod, sourceFile, targetOwner, targetName, targetDescriptor, kind)>`
+- **Bytecode instructions scanned**:
+  - `visitMethodInsn` — method calls (owner + method + descriptor)
+  - `visitFieldInsn` — field reads/writes (GETFIELD, PUTFIELD, GETSTATIC, PUTSTATIC)
+  - `visitTypeInsn` — NEW, CHECKCAST, INSTANCEOF
+  - Method/field descriptors — type references in parameters, return types, field types
+- **Why this beats grep**:
+  - Distinguishes `someLocalDate.monthNumber` from `someOtherType.monthNumber` (owner-aware)
+  - Finds Kotlin property accessors by their bytecode name (`getMonthNumber`) even when source says `.monthNumber`
+  - Catches FQN references and imported references identically
+  - Type reference search catches field declarations, method parameters, return types, and casts — not just call sites
+
+## 38. Full classpath scanning option for searches and identification (High value, medium effort)
+
+Most searches and identifications should have an option to include the full classpath, not just the project code. Currently `cnavListClasses`, `cnavFindClass`, `cnavFindSymbol`, `cnavClass`, `cnavCallers`, `cnavCallees`, `cnavInterfaces`, and `cnavUsages` only scan the project's compiled output directories. But when checking what is available on the classpath — e.g., verifying a library class's method signatures, finding all implementations of a framework interface, or understanding what types are available — scanning only project code is insufficient.
+
+- **Question**: "What does this library class look like? What methods does it have? Who on my full classpath implements this interface?"
+- **Parameter**: `-Pclasspath=true` — scan the full runtime classpath (project classes + all dependency JARs) instead of only project output directories
+- **Needs**: Gradle's `configurations.runtimeClasspath.resolve()` / Maven's `project.runtimeClasspathElements` to enumerate all JAR files and class directories
+- **Applies to**: `cnavListClasses`, `cnavFindClass`, `cnavFindSymbol`, `cnavClass`, `cnavInterfaces`, `cnavUsages`, potentially `cnavCallers`/`cnavCallees`
+- **Considerations**:
+  - Classpath scanning is significantly slower (thousands of classes in typical dependency trees). Consider caching scanned JARs by checksum.
+  - Output can be very large. May want to combine with existing `-Ppattern` / `-Powner` filters to narrow scope.
+  - `cnavFindSymbol -Pclasspath=true -Ppattern="LocalDate"` would show all `LocalDate` symbols across every JAR — useful for finding the right FQN.
+  - `cnavClass -Pclasspath=true -Ppattern="kotlinx.datetime.LocalDate"` would show the full signature of a library class without needing to look up docs.
+- **Why high value**: AI agents frequently need to check library API signatures to write correct code. Currently they must rely on training data or web lookups. Classpath scanning gives ground-truth answers from the actual dependency versions in the project.
+
+## 39. `cnavTypeChanges` — detect API signature changes between compilations (High value, medium effort)
+
+From migration feedback: after changing a dependency version (e.g., `kotlinx-datetime` → `kotlin.time`), cascading type changes ripple through the codebase. A `xTimestamp()` column returning `Column<kotlinx.datetime.Instant>` silently becomes `Column<kotlin.time.Instant>`, breaking every domain model, repository, and service that consumed it. A tool that diffs "before" and "after" API surfaces would map the blast radius instantly.
+
+- **Question**: "After recompiling with an updated dependency, which method/field signatures changed and what project code is affected?"
+- **Needs**: Bytecode from two compilation passes (before and after the dependency change)
+- **Approach**: Scan class directories twice — once from a cached/saved baseline, once from the current build — and diff the extracted signatures. For each changed signature, use `cnavCallers`/`cnavUsages` to find all affected call sites.
+- **Builder**: `TypeChangeDetector.diff(baselineClassDir, currentClassDir) -> List<SignatureChange(className, memberName, oldSignature, newSignature, kind: METHOD|FIELD|SUPERTYPE)>`
+- **Parameters**:
+  - `-Pbaseline=<path>` — path to baseline class directory (or auto-save on first run)
+  - `-Paffected=true` — also list all project call sites affected by each change (combines with `cnavUsages`/`cnavCallers`)
+- **Real-world example**: `LocalDate.month` changed return type from `Int` to `kotlinx.datetime.Month` — this caused 48 test failures. Bytecode analysis would have flagged the signature change and listed every caller expecting `Int`.
+- **Why high value**: Dependency upgrades are one of the most common sources of subtle breakage. The blast radius is currently discovered only at test time (or worse, runtime). Bytecode diffing gives you the full migration checklist before you even run tests.
+
+## 40. `cnavFindSymbol` should support external type references (Medium value, low effort)
+
+From migration feedback: running `cnavFindSymbol -Ppattern=Instant` only finds project-defined symbols (methods/fields named "Instant"), not import sites or references to external types like `kotlinx.datetime.Instant`. For migrations, you need to search for *references to* external types, not just *definitions of* symbols.
+
+This is partially addressed by item 38 (full classpath scanning) which would let `cnavFindSymbol -Pclasspath=true` find symbols defined in external JARs. But the migration use case is different — you want to find *project code that references* an external type, not the external type's own definition. `cnavUsages` (item 37) addresses this for method calls and field accesses, but `cnavFindSymbol` could also be enhanced to show project methods/fields whose *signatures* reference a given external type (parameters, return types, field types).
+
+- **Question**: "Which project methods have `Instant` in their signature?"
+- **Approach**: When scanning project bytecode for symbols, also extract types from method descriptors and field types. Allow `-Ppattern` to match against referenced types, not just symbol names.
+- **Overlap**: This overlaps with `cnavUsages -Ptype=<class>` which already finds type references in signatures. Consider whether this should just be better documentation pointing users to `cnavUsages` for this use case, rather than duplicating functionality in `cnavFindSymbol`.
+
 ## Future ideas (not yet planned)
 
 - **Consider just failing on first file with wrong bytecode**: The current `ScanResult<T>` partial-fail approach adds complexity across scanners, caches, tasks, and mojos. A simpler alternative: fail fast on the first unsupported bytecode file with a clear error message. Less graceful but dramatically less code.

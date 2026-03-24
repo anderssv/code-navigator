@@ -113,6 +113,33 @@ class ConfigHelpTextTest {
     }
 
     @Test
+    fun `lists find-usages parameters for Gradle`() {
+        val text = ConfigHelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(text.contains("-Powner="), "Should list owner parameter")
+        assertTrue(text.contains("-Ptype="), "Should list type parameter")
+        assertTrue(text.contains("cnavUsages"), "owner/type should reference cnavUsages task")
+    }
+
+    @Test
+    fun `lists find-usages parameters for Maven`() {
+        val text = ConfigHelpText.generate(BuildTool.MAVEN)
+
+        assertTrue(text.contains("-Downer="), "Should list owner parameter for Maven")
+        assertTrue(text.contains("-Dtype="), "Should list type parameter for Maven")
+        assertTrue(text.contains("cnav:find-usages"), "owner/type should reference find-usages goal")
+    }
+
+    @Test
+    fun `method parameter mentions find-usages task`() {
+        val text = ConfigHelpText.generate(BuildTool.GRADLE)
+
+        // method is used by find-callers, find-callees, AND find-usages
+        val methodLine = text.lines().first { it.contains("-Pmethod=") }
+        assertTrue(methodLine.contains("cnavUsages"), "method parameter should mention cnavUsages")
+    }
+
+    @Test
     fun `default parameter is GRADLE for backward compatibility`() {
         val defaultText = ConfigHelpText.generate()
         val gradleText = ConfigHelpText.generate(BuildTool.GRADLE)

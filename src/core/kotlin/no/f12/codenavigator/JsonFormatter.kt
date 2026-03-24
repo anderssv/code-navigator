@@ -16,6 +16,7 @@ import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
+import no.f12.codenavigator.navigation.UsageSite
 
 @JvmInline
 private value class JsonRaw(val json: String)
@@ -170,6 +171,19 @@ object JsonFormatter {
         }
         return jsonObject("packages" to JsonRaw(packages), "cells" to JsonRaw(cells), "cycles" to JsonRaw(cyclesJson))
     }
+
+    fun formatUsages(usages: List<UsageSite>): String =
+        jsonArray(usages.sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))) { u ->
+            jsonObject(
+                "callerClass" to u.callerClass,
+                "callerMethod" to u.callerMethod,
+                "sourceFile" to u.sourceFile,
+                "targetOwner" to u.targetOwner,
+                "targetMethod" to u.targetName,
+                "targetDescriptor" to u.targetDescriptor,
+                "kind" to u.kind.name.lowercase(),
+            )
+        }
 
     private fun renderCallNode(node: CallTreeNode): String {
         val children = jsonArray(node.children) { child -> renderCallNode(child) }
