@@ -4,6 +4,32 @@ A Gradle and Maven plugin that provides bytecode-level code navigation and git h
 
 Built primarily for use by **coding agents** (AI assistants that write and refactor code), though it is equally useful for human developers. Works with any JVM language (Kotlin, Java, Scala, etc.) since it operates on compiled `.class` files using [ASM](https://asm.ow2.io/). The git history analysis is inspired by [Code Maat](https://github.com/adamtornhill/code-maat) and the ideas in Adam Tornhill's *Your Code as a Crime Scene*.
 
+## Getting started
+
+Copy-paste this to your agent:
+
+**Gradle:**
+
+> Add the no.f12.code-navigator Gradle plugin to this project. After installing, run `./gradlew cnavAgentHelp` to get full usage instructions optimized for AI agents, and `./gradlew cnavHelp` to see all available tasks and their parameters.
+>
+> Then add a "Code Navigator (cnav)" section to AGENTS.md documenting the plugin. It should include:
+> - A short description of what it does (bytecode analysis + git history)
+> - A nudge to prefer cnav over grep/ripgrep for finding callers, implementations, and dependencies
+> - A note to run cnavAgentHelp for full instructions
+> - A compact command list showing all available tasks with one-line comments (navigation tasks and git history tasks), grouped by whether they require compilation
+
+**Maven:**
+
+> Add the no.f12 code-navigator-maven-plugin to this project. After installing, run `mvn cnav:agent-help` to get full usage instructions optimized for AI agents, and `mvn cnav:help` to see all available goals and their parameters.
+>
+> Then add a "Code Navigator (cnav)" section to AGENTS.md documenting the plugin. It should include:
+> - A short description of what it does (bytecode analysis + git history)
+> - A nudge to prefer cnav over grep/ripgrep for finding callers, implementations, and dependencies
+> - A note to run `mvn cnav:agent-help` for full instructions
+> - A compact command list showing all available goals with one-line comments (navigation goals and git history goals), grouped by whether they require compilation
+
+The `cnavAgentHelp` task prints agent-optimized instructions covering workflow, parameters, JSON schemas, and output extraction tips. You can also use its output as the starting point for a custom agent skill if your tool supports it (e.g. a Claude Code skill or Cursor rule).
+
 ## Why use Code Navigator?
 
 Text search (grep, ripgrep) requires iterative discovery. You search for `cache.get(`, find some results, then realize you missed the Kotlin safe-call `cache?.get(`, then extension functions, then delegation patterns. Each iteration requires you to know what syntactic variant you haven't tried yet — and you can't know what you've missed until you find it by accident.
@@ -32,32 +58,6 @@ And git history analysis questions (no compilation needed):
 - **"Where is the most churn?"** -- `cnavChurn` shows lines added/deleted per file.
 
 All output is compact, structured text that fits easily into an agent's context window.
-
-## Getting started
-
-Copy-paste this to your agent:
-
-**Gradle:**
-
-> Add the no.f12.code-navigator Gradle plugin to this project. After installing, run `./gradlew cnavAgentHelp` to get full usage instructions optimized for AI agents, and `./gradlew cnavHelp` to see all available tasks and their parameters.
->
-> Then add a "Code Navigator (cnav)" section to AGENTS.md documenting the plugin. It should include:
-> - A short description of what it does (bytecode analysis + git history)
-> - A nudge to prefer cnav over grep/ripgrep for finding callers, implementations, and dependencies
-> - A note to run cnavAgentHelp for full instructions
-> - A compact command list showing all available tasks with one-line comments (navigation tasks and git history tasks), grouped by whether they require compilation
-
-**Maven:**
-
-> Add the no.f12 code-navigator-maven-plugin to this project. After installing, run `mvn cnav:agent-help` to get full usage instructions optimized for AI agents, and `mvn cnav:help` to see all available goals and their parameters.
->
-> Then add a "Code Navigator (cnav)" section to AGENTS.md documenting the plugin. It should include:
-> - A short description of what it does (bytecode analysis + git history)
-> - A nudge to prefer cnav over grep/ripgrep for finding callers, implementations, and dependencies
-> - A note to run `mvn cnav:agent-help` for full instructions
-> - A compact command list showing all available goals with one-line comments (navigation goals and git history goals), grouped by whether they require compilation
-
-The `cnavAgentHelp` task prints agent-optimized instructions covering workflow, parameters, JSON schemas, and output extraction tips. You can also use its output as the starting point for a custom agent skill if your tool supports it (e.g. a Claude Code skill or Cursor rule).
 
 ## Installation
 
