@@ -18,9 +18,8 @@ To release:
    - This signs artifacts with GPG, attaches source and javadoc jars, and publishes via the Sonatype Central Portal
    - Requires GPG key and Sonatype credentials configured in `~/.m2/settings.xml` (server id `central`)
 8. Bump to next snapshot: change `version` to next patch with `-SNAPSHOT` in both `build.gradle.kts` and `pom.xml` (e.g. `0.1.3-SNAPSHOT`)
-9. Update `test-project/build.gradle.kts` to use the new snapshot version
-10. Commit: `git commit -am "Bump to X.Y.Z-SNAPSHOT"`
-11. Push: `git push && git push --tags`
+9. Commit: `git commit -am "Bump to X.Y.Z-SNAPSHOT"`
+10. Push: `git push && git push --tags`
 
 ## Package Structure
 
