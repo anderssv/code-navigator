@@ -72,7 +72,7 @@ Apply the plugin in your `build.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("no.f12.code-navigator") version "0.1.13"
+    id("no.f12.code-navigator") version "0.1.14"
 }
 ```
 
@@ -102,7 +102,7 @@ Add the plugin to your `pom.xml`:
         <plugin>
             <groupId>no.f12</groupId>
             <artifactId>code-navigator-maven-plugin</artifactId>
-            <version>0.1.13</version>
+            <version>0.1.14</version>
         </plugin>
     </plugins>
 </build>
@@ -116,7 +116,7 @@ You can optionally configure persistent defaults via the `<configuration>` block
 <plugin>
     <groupId>no.f12</groupId>
     <artifactId>code-navigator-maven-plugin</artifactId>
-    <version>0.1.13</version>
+    <version>0.1.14</version>
     <configuration>
         <rootPackage>com.example</rootPackage>  <!-- default: "" (all packages) -->
     </configuration>

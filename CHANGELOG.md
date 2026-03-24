@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.14
+
+- Gracefully handle unsupported bytecode versions instead of crashing — classes compiled for a newer JVM than the plugin supports are skipped with a summary warning, and details written to `build/cnav/skipped-files.txt`
+- Upgrade ASM from 9.7.1 to 9.9.1 for Java 25 class file support
+- Upgrade build JDK to 25 (bytecode target remains 21, so the plugin still works on JDK 21+)
+- Update dependencies: Gradle plugin-publish 2.1.1, Kotlin 2.2.0 (Maven), maven-surefire 3.5.5, maven-gpg 3.2.8
+
 ## 0.1.13
 
 - Add `codeNavigator {}` Gradle config block for persistent project defaults (no more repeating `-P` flags)
