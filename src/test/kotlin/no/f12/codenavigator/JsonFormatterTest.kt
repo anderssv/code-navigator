@@ -16,6 +16,7 @@ import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.SymbolKind
 import no.f12.codenavigator.navigation.DsmMatrix
+import no.f12.codenavigator.navigation.RankedType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -488,5 +489,31 @@ class JsonFormatterTest {
         assertTrue(result.contains("\"backwardEdges\""))
         assertTrue(result.contains("\"Controller\""))
         assertTrue(result.contains("\"Service\""))
+    }
+
+    // === Rank formatting ===
+
+    @Test
+    fun `empty rank list produces empty JSON array`() {
+        val result = JsonFormatter.formatRank(emptyList())
+
+        assertEquals("[]", result)
+    }
+
+    @Test
+    fun `formats ranked types as JSON array`() {
+        val ranked = listOf(
+            RankedType("com.example.Core", 0.42, inDegree = 5, outDegree = 2),
+            RankedType("com.example.Service", 0.15, inDegree = 2, outDegree = 3),
+        )
+
+        val result = JsonFormatter.formatRank(ranked)
+
+        assertTrue(result.contains("\"className\":\"com.example.Core\""))
+        assertTrue(result.contains("\"rank\":0.42"))
+        assertTrue(result.contains("\"inDegree\":5"))
+        assertTrue(result.contains("\"outDegree\":2"))
+        assertTrue(result.contains("\"className\":\"com.example.Service\""))
+        assertTrue(result.contains("\"rank\":0.15"))
     }
 }

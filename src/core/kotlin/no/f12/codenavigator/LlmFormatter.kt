@@ -13,6 +13,7 @@ import no.f12.codenavigator.navigation.InterfaceRegistry
 import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
+import no.f12.codenavigator.navigation.RankedType
 import no.f12.codenavigator.navigation.UsageSite
 
 object LlmFormatter {
@@ -77,6 +78,9 @@ object LlmFormatter {
     fun formatUsages(usages: List<UsageSite>): String =
         usages.sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))
             .joinToString("\n") { "${it.callerClass}.${it.callerMethod} -> ${it.targetOwner}.${it.targetName}${it.targetDescriptor} ${it.kind.name.lowercase()} ${it.sourceFile}" }
+
+    fun formatRank(ranked: List<RankedType>): String =
+        ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }
 
     fun formatDsm(matrix: DsmMatrix): String = buildString {
         append("packages:${matrix.packages.joinToString(",")}")

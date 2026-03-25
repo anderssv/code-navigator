@@ -32,6 +32,7 @@ enum class BuildTool(
             "package-deps" to "cnavDeps",
             "dsm" to "cnavDsm",
             "find-usages" to "cnavUsages",
+            "rank" to "cnavRank",
             "hotspots" to "cnavHotspots",
             "churn" to "cnavChurn",
             "code-age" to "cnavAge",

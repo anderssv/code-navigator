@@ -16,6 +16,7 @@ import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
+import no.f12.codenavigator.navigation.RankedType
 import no.f12.codenavigator.navigation.UsageSite
 
 @JvmInline
@@ -206,6 +207,16 @@ object JsonFormatter {
                 "targetMethod" to u.targetName,
                 "targetDescriptor" to u.targetDescriptor,
                 "kind" to u.kind.name.lowercase(),
+            )
+        }
+
+    fun formatRank(ranked: List<RankedType>): String =
+        jsonArray(ranked) { r ->
+            jsonObject(
+                "className" to r.className,
+                "rank" to r.rank,
+                "inDegree" to r.inDegree,
+                "outDegree" to r.outDegree,
             )
         }
 

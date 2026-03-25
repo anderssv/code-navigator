@@ -70,6 +70,12 @@ class CodeNavigatorPlugin : Plugin<Project> {
             dependsOn("classes")
         }
 
+        project.tasks.register("cnavRank", RankTask::class.java) {
+            description = "Ranks types by structural importance using PageRank on the call graph. Usage: [-Ptop=N] [-Pprojectonly=true|false]"
+            group = "code-navigator"
+            dependsOn("classes")
+        }
+
         project.tasks.register("cnavHelp", CodeNavigatorHelpTask::class.java) {
             description = "Shows available code-navigator tasks and their usage"
             group = "code-navigator"

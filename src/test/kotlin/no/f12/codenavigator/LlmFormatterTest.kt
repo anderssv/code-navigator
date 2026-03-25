@@ -16,6 +16,7 @@ import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.SymbolKind
 import no.f12.codenavigator.navigation.DsmMatrix
+import no.f12.codenavigator.navigation.RankedType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -241,6 +242,28 @@ class LlmFormatterTest {
 
         assertEquals(
             "CYCLE api<->service 2/1\n  api->service: Controller->Service\n  service->api: Service->Controller",
+            result,
+        )
+    }
+
+    // === Rank formatting ===
+
+    @Test
+    fun `empty rank list returns empty string`() {
+        assertEquals("", LlmFormatter.formatRank(emptyList()))
+    }
+
+    @Test
+    fun `formats ranked types compactly`() {
+        val ranked = listOf(
+            RankedType("com.example.Core", 0.42, inDegree = 5, outDegree = 2),
+            RankedType("com.example.Service", 0.15, inDegree = 2, outDegree = 3),
+        )
+
+        val result = LlmFormatter.formatRank(ranked)
+
+        assertEquals(
+            "com.example.Core rank=0.4200 in=5 out=2\ncom.example.Service rank=0.1500 in=2 out=3",
             result,
         )
     }
