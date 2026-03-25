@@ -475,6 +475,45 @@ From user feedback: the DSM shows package-level dependencies, but a "method-leve
 - **Overlap with item #26 (`cnavRank`)**: `cnavRank` computes PageRank + inDegree/outDegree across the whole graph. This task is focused on a single class deep-dive — complementary, not redundant. `cnavRank` answers "what's most important globally" while `cnavComplexity` answers "how tangled is this specific class."
 - **Why useful**: When planning an extraction refactoring, knowing the fan-out count and which classes are called tells you exactly what interfaces you'll need. This is the structural counterpart to the behavioral data from `cnavHotspots`.
 
+## 48. Targeted cycle filter for DSM (Medium value, low effort)
+
+From user feedback during a DSM-driven cycle-breaking session: when the DSM shows multiple cycles, you typically work on one at a time. Currently the DSM highlights all cycles, making it hard to focus. A `-Pcycle=pkgA,pkgB` parameter would filter the DSM output to show only edges participating in the cycle between two specific packages.
+
+- **Question**: "What are the specific dependency edges between these two packages that form a cycle?"
+- **Needs**: Bytecode only (reuses existing DSM + cycle detection)
+- **Parameters**: `-Pcycle=<pkg1>,<pkg2>` — show only the edges between the two named packages that participate in a cycle
+- **Output**: Same DSM format, but with non-relevant cycle highlights suppressed. Only the selected cycle's edges are marked.
+- **Why useful**: During iterative cycle-breaking, you fix one cycle at a time. Seeing all cycles at once creates noise. This lets you confirm "did I break this specific cycle?" without recompiling and re-running the full DSM.
+
+## 49. `cnavWhyDepends` — dependency edge explanation (High value, medium effort)
+
+From user feedback: the DSM tells you package A depends on package B, but not *why*. To break a cycle you need to know the specific fields, method parameters, return types, and local variable types that create the dependency. Currently this requires manual grepping.
+
+- **Question**: "Why does class/package A depend on class/package B? What are the specific code-level references?"
+- **Needs**: Bytecode only (reuses existing `CallGraph` + `ClassDetailExtractor`)
+- **Builder**: `DependencyExplainer.explain(callGraph, from, to) -> List<DependencyEdge(sourceClass, targetClass, kind: FIELD|PARAMETER|RETURN_TYPE|LOCAL_VAR|METHOD_CALL, detail: String)>`
+- **Parameters**: `-Pfrom=<class-or-package>` (required), `-Pto=<class-or-package>` (required), `-Pprojectonly=true`
+- **Output example**:
+  ```
+  Why services.interfaces.RAClient depends on ra.SignatureContext:
+
+    FIELD        RAClient.signatureCtx: SignatureContext
+    PARAMETER    RAClient.sign(context: SignatureContext): SignedRequest
+    RETURN_TYPE  RAClient.getContext(): SignatureContext
+    METHOD_CALL  RAClient.init() -> SignatureContext.<init>()
+  ```
+- **Why useful**: This is the missing link between "the DSM says there's a dependency" and "here's what to move/extract to break it." Eliminates manual code searches during cycle-breaking.
+
+## 50. Cross-package usage filtering for `cnavUsages` (Medium value, low effort)
+
+From user feedback: when breaking cycles, you need to find usages of a type or field *from outside a specific package*. Usages within the same package are expected and irrelevant. Example: "who outside `ra/` accesses `RAClientResult.signedRequest`?"
+
+- **Question**: "Who uses this symbol from outside its home package?"
+- **Needs**: Bytecode only (reuses existing `UsageScanner`)
+- **Parameters**: `-Poutside-package=<pkg>` — exclude usages where the caller is inside the given package
+- **Output**: Same as `cnavUsages`, but filtered to only show callers outside the specified package boundary.
+- **Why useful**: When extracting a type to break a cycle, you need to know who the external consumers are. Internal usages within the same package will naturally follow the extraction. This filter removes the noise and shows only the cross-boundary references that matter for the refactoring.
+
 ## Future ideas (not yet planned)
 
 - **Consider just failing on first file with wrong bytecode**: The current `ScanResult<T>` partial-fail approach adds complexity across scanners, caches, tasks, and mojos. A simpler alternative: fail fast on the first unsupported bytecode file with a clear error message. Less graceful but dramatically less code.
@@ -482,3 +521,4 @@ From user feedback: the DSM shows package-level dependencies, but a "method-leve
 - **Cross-referencing hotspots with bytecode data**: Combine `cnavHotspots` with `cnavCallers`/`cnavDeps` to answer "hotspot files and their structural dependencies". Would require mapping git file paths to bytecode class names via the source file metadata already extracted.
 - **Entity ownership / main developer**: Who "owns" each file by contribution weight (`-a entity-ownership` and `-a main-dev` in Code Maat). Useful for "who should I ask about this code?" Could be added as a mode on `cnavAuthors`.
 - **Architectural-level grouping**: Code Maat's `-g` flag to aggregate file-level results by logical component/layer. Would allow running hotspots, coupling, etc. at the sub-system level instead of individual files.
+- **Source-level structural analysis**: For faster iteration during cycle-breaking, analyze imports and type references directly from source files without requiring compilation. This would allow running dependency analysis before a successful build — useful when mid-refactoring with compile errors. Fundamentally different approach from bytecode analysis, so this is a future exploration rather than an incremental feature.
