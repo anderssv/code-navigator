@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.21
+
+- Add `cnavRank` task / `cnav:rank` goal — ranks types by structural importance using PageRank on the call graph. Types called by many important types score higher. Includes inDegree and outDegree counts. Parameters: `-Ptop=N` (default 50), `-Pprojectonly=true|false` (default true). TEXT, JSON, and LLM output formats.
+- **Fix:** `cnavUsages` now deduplicates results — the same usage site is no longer reported multiple times
+- **Fix:** DSM HTML output path (`-Pdsm-html` / `-Ddsm-html`) now resolves relative to the project directory instead of the working directory
+
 ## 0.1.20
 
 - **Fix:** Rename `-Powner` to `-PownerClass` (Gradle) / `-DownerClass` (Maven) in `cnavUsages` / `cnav:find-usages`. The old `-Powner` parameter collided with Gradle's built-in `owner` property, causing the value to be silently ignored.

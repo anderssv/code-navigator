@@ -46,7 +46,7 @@
             <plugin>
                 <groupId>no.f12</groupId>
                 <artifactId>code-navigator-maven-plugin</artifactId>
-                <version>0.1.21-SNAPSHOT</version>
+                <version>0.1.21</version>
             </plugin>
         </plugins>
     </build>
