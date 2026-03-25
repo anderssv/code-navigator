@@ -4,7 +4,7 @@ object PackageDependencyFormatter {
 
     fun format(
         deps: PackageDependencies,
-        packageNames: List<String>,
+        packageNames: List<PackageName>,
         reverse: Boolean = false,
     ): String = buildString {
         val arrow = if (reverse) "←" else "→"
@@ -12,13 +12,13 @@ object PackageDependencyFormatter {
 
         packageNames.forEachIndexed { index, pkg ->
             if (index > 0) appendLine()
-            appendLine(pkg)
+            appendLine(pkg.value)
             val related = if (reverse) deps.dependentsOf(pkg) else deps.dependenciesOf(pkg)
             if (related.isEmpty()) {
                 appendLine("  $emptyMessage")
             } else {
                 related.forEach { dep ->
-                    appendLine("  $arrow $dep")
+                    appendLine("  $arrow ${dep.value}")
                 }
             }
         }

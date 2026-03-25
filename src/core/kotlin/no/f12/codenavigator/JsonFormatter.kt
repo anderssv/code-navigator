@@ -15,6 +15,7 @@ import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.InterfaceRegistry
 import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencies
+import no.f12.codenavigator.navigation.PackageName
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.RankedType
@@ -96,15 +97,15 @@ object JsonFormatter {
 
     fun formatPackageDeps(
         deps: PackageDependencies,
-        packageNames: List<String>,
+        packageNames: List<PackageName>,
         reverse: Boolean = false,
     ): String =
         jsonArray(packageNames) { pkg ->
             val related = if (reverse) deps.dependentsOf(pkg) else deps.dependenciesOf(pkg)
             val key = if (reverse) "dependents" else "dependencies"
             jsonObject(
-                "package" to pkg,
-                key to JsonRaw(jsonStringArray(related)),
+                "package" to pkg.value,
+                key to JsonRaw(jsonStringArray(related.map { it.value })),
             )
         }
 

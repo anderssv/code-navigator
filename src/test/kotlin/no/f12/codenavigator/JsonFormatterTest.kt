@@ -14,6 +14,7 @@ import no.f12.codenavigator.navigation.InterfaceRegistry
 import no.f12.codenavigator.navigation.MethodDetail
 import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencies
+import no.f12.codenavigator.navigation.PackageName
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.SymbolKind
 import no.f12.codenavigator.navigation.DsmMatrix
@@ -309,10 +310,10 @@ class JsonFormatterTest {
     @Test
     fun `package with dependencies produces nested structure`() {
         val deps = PackageDependencies(
-            mapOf("com.example.services" to listOf("com.example.domain", "com.example.repo")),
+            mapOf(PackageName("com.example.services") to listOf(PackageName("com.example.domain"), PackageName("com.example.repo"))),
         )
 
-        val result = JsonFormatter.formatPackageDeps(deps, listOf("com.example.services"))
+        val result = JsonFormatter.formatPackageDeps(deps, listOf(PackageName("com.example.services")))
 
         assertEquals(
             """[{"package":"com.example.services","dependencies":["com.example.domain","com.example.repo"]}]""",
@@ -324,14 +325,14 @@ class JsonFormatterTest {
     fun `reverse mode shows dependents instead of dependencies`() {
         val deps = PackageDependencies(
             mapOf(
-                "com.example.services" to listOf("com.example.domain"),
-                "com.example.ktor" to listOf("com.example.domain"),
+                PackageName("com.example.services") to listOf(PackageName("com.example.domain")),
+                PackageName("com.example.ktor") to listOf(PackageName("com.example.domain")),
             ),
         )
 
         val result = JsonFormatter.formatPackageDeps(
             deps,
-            listOf("com.example.domain"),
+            listOf(PackageName("com.example.domain")),
             reverse = true,
         )
 

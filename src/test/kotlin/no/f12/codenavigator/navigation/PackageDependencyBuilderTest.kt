@@ -15,8 +15,8 @@ class PackageDependencyBuilderTest {
 
         val deps = PackageDependencyBuilder.build(graph)
 
-        val serviceDeps = deps.dependenciesOf("com.example.services")
-        assertEquals(listOf("com.example.domain"), serviceDeps)
+        val serviceDeps = deps.dependenciesOf(PackageName("com.example.services"))
+        assertEquals(listOf("com.example.domain"), serviceDeps.map { it.value })
     }
 
     // [TEST-DONE] Extracts package dependencies from call graph
@@ -30,7 +30,7 @@ class PackageDependencyBuilderTest {
 
         val deps = PackageDependencyBuilder.build(graph)
 
-        assertTrue(deps.dependenciesOf("com.example.services").isEmpty())
+        assertTrue(deps.dependenciesOf(PackageName("com.example.services")).isEmpty())
     }
 
     // [TEST-DONE] Self-dependencies within the same package are excluded
@@ -46,7 +46,7 @@ class PackageDependencyBuilderTest {
 
         val deps = PackageDependencyBuilder.build(graph)
 
-        assertEquals(listOf("com.example.domain"), deps.dependenciesOf("com.example.services"))
+        assertEquals(listOf("com.example.domain"), deps.dependenciesOf(PackageName("com.example.services")).map { it.value })
     }
 
     // [TEST-DONE] Dependencies are deduplicated (multiple calls between same packages count once)
@@ -66,7 +66,7 @@ class PackageDependencyBuilderTest {
 
         assertEquals(
             listOf("com.example.alpha", "com.example.middle", "com.example.zebra"),
-            deps.dependenciesOf("com.example.services"),
+            deps.dependenciesOf(PackageName("com.example.services")).map { it.value },
         )
     }
 
@@ -81,7 +81,7 @@ class PackageDependencyBuilderTest {
 
         val deps = PackageDependencyBuilder.build(graph)
 
-        assertTrue(deps.dependenciesOf("com.example.domain").isEmpty())
+        assertTrue(deps.dependenciesOf(PackageName("com.example.domain")).isEmpty())
     }
 
     // [TEST-DONE] Packages with no outgoing dependencies have empty dependency list
@@ -98,7 +98,7 @@ class PackageDependencyBuilderTest {
         val deps = PackageDependencyBuilder.build(graph)
 
         val matches = deps.findPackages("services")
-        assertEquals(listOf("com.example.services"), matches)
+        assertEquals(listOf("com.example.services"), matches.map { it.value })
     }
 
     // [TEST-DONE] findPackages matches pattern case-insensitively
@@ -120,9 +120,9 @@ class PackageDependencyBuilderTest {
 
         val deps = PackageDependencyBuilder.build(graph, filter = { it.className.value in projectClasses })
 
-        assertEquals(listOf("com.example.domain"), deps.dependenciesOf("com.example.services"))
-        assertEquals(emptyList(), deps.findPackages("java"))
-        assertEquals(emptyList(), deps.findPackages("kotlin"))
+        assertEquals(listOf("com.example.domain"), deps.dependenciesOf(PackageName("com.example.services")).map { it.value })
+        assertEquals(emptyList(), deps.findPackages("java").map { it.value })
+        assertEquals(emptyList(), deps.findPackages("kotlin").map { it.value })
     }
 
     @Test
@@ -138,7 +138,7 @@ class PackageDependencyBuilderTest {
 
         val deps = PackageDependencyBuilder.build(graph, filter = { it.className.value in projectClasses })
 
-        assertTrue(deps.dependenciesOf("com.example.services").isEmpty())
+        assertTrue(deps.dependenciesOf(PackageName("com.example.services")).isEmpty())
     }
 
     @Test
@@ -152,8 +152,8 @@ class PackageDependencyBuilderTest {
 
         val deps = PackageDependencyBuilder.build(graph)
 
-        val dependents = deps.dependentsOf("com.example.domain")
-        assertEquals(listOf("com.example.ktor.routes", "com.example.services"), dependents)
+        val dependents = deps.dependentsOf(PackageName("com.example.domain"))
+        assertEquals(listOf("com.example.ktor.routes", "com.example.services"), dependents.map { it.value })
     }
 
     @Test
@@ -165,7 +165,7 @@ class PackageDependencyBuilderTest {
 
         val deps = PackageDependencyBuilder.build(graph)
 
-        assertTrue(deps.dependentsOf("com.example.services").isEmpty())
+        assertTrue(deps.dependentsOf(PackageName("com.example.services")).isEmpty())
     }
 
     @Test
@@ -183,7 +183,7 @@ class PackageDependencyBuilderTest {
 
         assertEquals(
             listOf("com.example.alpha", "com.example.middle", "com.example.zebra"),
-            deps.dependentsOf("com.example.target"),
+            deps.dependentsOf(PackageName("com.example.target")).map { it.value },
         )
     }
 

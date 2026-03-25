@@ -17,7 +17,7 @@ object MetricsBuilder {
 
     fun build(
         classes: List<ClassInfo>,
-        packages: List<String>,
+        packages: List<PackageName>,
         rankedTypes: List<RankedType>,
         cyclicPairCount: Int,
         deadCode: List<DeadCode>,

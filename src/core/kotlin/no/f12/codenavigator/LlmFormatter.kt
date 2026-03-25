@@ -14,6 +14,7 @@ import no.f12.codenavigator.navigation.ClassInfo
 import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.InterfaceRegistry
 import no.f12.codenavigator.navigation.PackageDependencies
+import no.f12.codenavigator.navigation.PackageName
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.RankedType
@@ -57,11 +58,11 @@ object LlmFormatter {
         }
     }.trimEnd()
 
-    fun formatPackageDeps(deps: PackageDependencies, packageNames: List<String>, reverse: Boolean): String {
+    fun formatPackageDeps(deps: PackageDependencies, packageNames: List<PackageName>, reverse: Boolean): String {
         val arrow = if (reverse) "<-" else "->"
         return packageNames.sorted().joinToString("\n") { pkg ->
             val related = if (reverse) deps.dependentsOf(pkg) else deps.dependenciesOf(pkg)
-            "$pkg $arrow ${related.joinToString(",")}"
+            "${pkg.value} $arrow ${related.joinToString(",") { it.value }}"
         }
     }
 

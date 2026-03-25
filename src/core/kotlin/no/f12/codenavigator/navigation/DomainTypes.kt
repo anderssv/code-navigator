@@ -11,6 +11,8 @@ value class ClassName(val value: String) : Comparable<ClassName> {
 }
 
 @JvmInline
-value class PackageName(val value: String) {
+value class PackageName(val value: String) : Comparable<PackageName> {
+    override fun compareTo(other: PackageName): Int = value.compareTo(other.value)
+
     override fun toString(): String = value
 }

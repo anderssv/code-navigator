@@ -9,11 +9,11 @@ class PackageDependencyFormatterTest {
     fun `formats package with dependencies`() {
         val deps = PackageDependencies(
             mapOf(
-                "com.example.services" to listOf("com.example.domain", "com.example.ra"),
+                PackageName("com.example.services") to listOf(PackageName("com.example.domain"), PackageName("com.example.ra")),
             ),
         )
 
-        val output = PackageDependencyFormatter.format(deps, listOf("com.example.services"))
+        val output = PackageDependencyFormatter.format(deps, listOf(PackageName("com.example.services")))
 
         val expected = """
             |com.example.services
@@ -27,7 +27,7 @@ class PackageDependencyFormatterTest {
     fun `formats package with no dependencies`() {
         val deps = PackageDependencies(emptyMap())
 
-        val output = PackageDependencyFormatter.format(deps, listOf("com.example.domain"))
+        val output = PackageDependencyFormatter.format(deps, listOf(PackageName("com.example.domain")))
 
         assertEquals("com.example.domain\n  (no outgoing dependencies)", output)
     }
@@ -36,12 +36,12 @@ class PackageDependencyFormatterTest {
     fun `formats multiple packages separated by blank line`() {
         val deps = PackageDependencies(
             mapOf(
-                "com.example.a" to listOf("com.example.b"),
-                "com.example.b" to listOf("com.example.c"),
+                PackageName("com.example.a") to listOf(PackageName("com.example.b")),
+                PackageName("com.example.b") to listOf(PackageName("com.example.c")),
             ),
         )
 
-        val output = PackageDependencyFormatter.format(deps, listOf("com.example.a", "com.example.b"))
+        val output = PackageDependencyFormatter.format(deps, listOf(PackageName("com.example.a"), PackageName("com.example.b")))
 
         val expected = """
             |com.example.a
@@ -57,14 +57,14 @@ class PackageDependencyFormatterTest {
     fun `reverse format shows who depends on package`() {
         val deps = PackageDependencies(
             mapOf(
-                "com.example.services" to listOf("com.example.domain"),
-                "com.example.ktor" to listOf("com.example.domain"),
+                PackageName("com.example.services") to listOf(PackageName("com.example.domain")),
+                PackageName("com.example.ktor") to listOf(PackageName("com.example.domain")),
             ),
         )
 
         val output = PackageDependencyFormatter.format(
             deps,
-            listOf("com.example.domain"),
+            listOf(PackageName("com.example.domain")),
             reverse = true,
         )
 
@@ -80,13 +80,13 @@ class PackageDependencyFormatterTest {
     fun `reverse format shows no incoming dependencies message`() {
         val deps = PackageDependencies(
             mapOf(
-                "com.example.services" to listOf("com.example.domain"),
+                PackageName("com.example.services") to listOf(PackageName("com.example.domain")),
             ),
         )
 
         val output = PackageDependencyFormatter.format(
             deps,
-            listOf("com.example.services"),
+            listOf(PackageName("com.example.services")),
             reverse = true,
         )
 

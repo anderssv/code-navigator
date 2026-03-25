@@ -1,10 +1,10 @@
 package no.f12.codenavigator.navigation
 
 class PackageDependencies(
-    private val packageToDeps: Map<String, List<String>>,
+    private val packageToDeps: Map<PackageName, List<PackageName>>,
 ) {
-    private val packageToDependents: Map<String, List<String>> by lazy {
-        val inverted = mutableMapOf<String, MutableSet<String>>()
+    private val packageToDependents: Map<PackageName, List<PackageName>> by lazy {
+        val inverted = mutableMapOf<PackageName, MutableSet<PackageName>>()
         packageToDeps.forEach { (pkg, deps) ->
             deps.forEach { dep ->
                 inverted.getOrPut(dep) { mutableSetOf() }.add(pkg)
@@ -13,20 +13,20 @@ class PackageDependencies(
         inverted.mapValues { (_, dependents) -> dependents.sorted() }
     }
 
-    fun dependenciesOf(packageName: String): List<String> =
+    fun dependenciesOf(packageName: PackageName): List<PackageName> =
         packageToDeps[packageName] ?: emptyList()
 
-    fun dependentsOf(packageName: String): List<String> =
+    fun dependentsOf(packageName: PackageName): List<PackageName> =
         packageToDependents[packageName] ?: emptyList()
 
-    fun findPackages(pattern: String): List<String> {
+    fun findPackages(pattern: String): List<PackageName> {
         val regex = Regex(pattern, RegexOption.IGNORE_CASE)
         return allPackages()
-            .filter { regex.containsMatchIn(it) }
+            .filter { regex.containsMatchIn(it.value) }
     }
 
-    fun allPackages(): List<String> {
-        val all = mutableSetOf<String>()
+    fun allPackages(): List<PackageName> {
+        val all = mutableSetOf<PackageName>()
         all.addAll(packageToDeps.keys)
         packageToDeps.values.forEach { all.addAll(it) }
         return all.sorted()
@@ -36,15 +36,15 @@ class PackageDependencies(
 object PackageDependencyBuilder {
 
     fun build(graph: CallGraph, filter: ((MethodRef) -> Boolean)? = null): PackageDependencies {
-        val packageDeps = mutableMapOf<String, MutableSet<String>>()
+        val packageDeps = mutableMapOf<PackageName, MutableSet<PackageName>>()
 
         graph.forEachEdge { caller, callee ->
             if (filter != null && (!filter(caller) || !filter(callee))) return@forEachEdge
 
-            val callerPackage = caller.className.value.substringBeforeLast('.', "")
-            val calleePackage = callee.className.value.substringBeforeLast('.', "")
+            val callerPackage = caller.className.packageName()
+            val calleePackage = callee.className.packageName()
 
-            if (callerPackage.isNotEmpty() && calleePackage.isNotEmpty() && callerPackage != calleePackage) {
+            if (callerPackage.value.isNotEmpty() && calleePackage.value.isNotEmpty() && callerPackage != calleePackage) {
                 packageDeps.getOrPut(callerPackage) { mutableSetOf() }.add(calleePackage)
             }
         }

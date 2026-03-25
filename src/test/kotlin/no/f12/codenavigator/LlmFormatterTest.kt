@@ -14,6 +14,7 @@ import no.f12.codenavigator.navigation.InterfaceRegistry
 import no.f12.codenavigator.navigation.MethodDetail
 import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencies
+import no.f12.codenavigator.navigation.PackageName
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.SymbolKind
 import no.f12.codenavigator.navigation.DsmMatrix
@@ -118,10 +119,10 @@ class LlmFormatterTest {
     @Test
     fun `formats package deps compactly`() {
         val deps = PackageDependencies(mapOf(
-            "com.example.api" to listOf("com.example.service", "com.example.model"),
+            PackageName("com.example.api") to listOf(PackageName("com.example.service"), PackageName("com.example.model")),
         ))
 
-        val result = LlmFormatter.formatPackageDeps(deps, listOf("com.example.api"), false)
+        val result = LlmFormatter.formatPackageDeps(deps, listOf(PackageName("com.example.api")), false)
 
         assertEquals("com.example.api -> com.example.service,com.example.model", result)
     }
@@ -129,11 +130,11 @@ class LlmFormatterTest {
     @Test
     fun `formats reverse package deps`() {
         val deps = PackageDependencies(mapOf(
-            "com.example.api" to listOf("com.example.model"),
-            "com.example.service" to listOf("com.example.model"),
+            PackageName("com.example.api") to listOf(PackageName("com.example.model")),
+            PackageName("com.example.service") to listOf(PackageName("com.example.model")),
         ))
 
-        val result = LlmFormatter.formatPackageDeps(deps, listOf("com.example.model"), true)
+        val result = LlmFormatter.formatPackageDeps(deps, listOf(PackageName("com.example.model")), true)
 
         assertEquals("com.example.model <- com.example.api,com.example.service", result)
     }

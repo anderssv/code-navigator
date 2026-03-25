@@ -28,7 +28,7 @@ class MetricsBuilderTest {
 
     @Test
     fun `counts packages from package list`() {
-        val packages = listOf("com.example.api", "com.example.domain", "com.example.infra")
+        val packages = listOf(PackageName("com.example.api"), PackageName("com.example.domain"), PackageName("com.example.infra"))
 
         val result = MetricsBuilder.build(
             classes = emptyList(),
