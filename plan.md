@@ -1,8 +1,20 @@
 # Plan
 
-## 6. Architecture violation detection in cnavDeps (High value, ambitious)
+## 6. `cnavLayerCheck` — architecture conformance (High value, ambitious)
 
-Allow defining allowed/forbidden dependency rules (e.g., "services must not depend on ra") and flag violations. This would turn cnavDeps into an architecture fitness function. Could be configured via a simple DSL:
+Allow declaring layer rules and validate them against the actual call graph. Like ArchUnit but without writing test code. Catches architecture violations early and is complementary to the DSM.
+
+```kotlin
+codeNavigator {
+    layers {
+        "domain" dependsOn nothing
+        "services" dependsOn "domain"
+        "ktor.routes" dependsOn "services", "domain"
+    }
+}
+```
+
+Also support simpler forbidden-dependency rules for projects that don't want full layer declarations:
 
 ```kotlin
 codeNavigator {
@@ -12,6 +24,8 @@ codeNavigator {
     }
 }
 ```
+
+Output: list of violations with the specific class-level edges that break the rule, so the user knows exactly what to fix.
 
 ## 9. Write JSON output to file instead of stdout (Medium value)
 
@@ -197,9 +211,17 @@ This is partially addressed by item 38 (full classpath scanning) which would let
 - **Approach**: When scanning project bytecode for symbols, also extract types from method descriptors and field types. Allow `-Ppattern` to match against referenced types, not just symbol names.
 - **Overlap**: This overlaps with `cnavUsages -Ptype=<class>` which already finds type references in signatures. Consider whether this should just be better documentation pointing users to `cnavUsages` for this use case, rather than duplicating functionality in `cnavFindSymbol`.
 
-## 43. DSM "what-if" mode for cycle breaking (High value, medium effort)
+## 43. DSM "what-if" mode and cycle fix suggestions (High value, medium effort)
 
-From real-world feedback: the DSM tells you which cycles exist, but you still have to reason about the fix yourself. A "what-if" mode would let you say "if I move class X to package Y, would the cycle break?" and get an answer without actually making the change.
+From real-world feedback: the DSM tells you which cycles exist, but you still have to reason about the fix yourself.
+
+### Cycle fix suggestions (lower effort, do first)
+
+When `-Pcycles=true`, also show which specific class-level edges would need to move to break the cycle, and suggest which direction the dependency should flow. This turns cycle detection from "here's a problem" into "here's what to do about it."
+
+### What-if simulation (higher effort)
+
+A "what-if" mode would let you say "if I move class X to package Y, would the cycle break?" and get an answer without actually making the change.
 
 - **Question**: "Would moving `locateResourceFile` from `root` to `util` break the cycle between `root` and `web.plugins`?"
 - **Parameter**: `-Pwhat-if=<class>:<target-package>` — simulate moving a class to a different package and re-evaluate cycles
@@ -291,15 +313,132 @@ From user feedback: the DSM tells you package A depends on package B, but not *w
   ```
 - **Why useful**: This is the missing link between "the DSM says there's a dependency" and "here's what to move/extract to break it." Eliminates manual code searches during cycle-breaking.
 
-## 51. `cnavReport` — run all analysis tasks in one go (Medium value, low effort)
+## 51. `cnavMetrics` / `cnavReport` — summary dashboard and full analysis (Medium value, low effort)
 
-A single command that runs all analysis tasks (both bytecode and git history) and produces a combined report. Instead of running `cnavHotspots`, `cnavCoupling`, `cnavAge`, `cnavAuthors`, `cnavChurn`, `cnavRank`, `cnavDead`, and `cnavDsm` individually, `cnavReport` runs them all and outputs a consolidated summary.
+Two related needs from user feedback:
+
+### cnavMetrics — quick health snapshot (lower effort, do first)
+
+A single task that combines key metrics: total classes, package count, average fan-in/fan-out, cycle count, dead code count, hotspot top-5. Quick project health snapshot in one command. `./gradlew cnavMetrics -Pllm=true`
+
+### cnavReport — full combined report (higher effort)
+
+Run all analysis tasks (both bytecode and git history) and produce a consolidated report. Instead of running `cnavHotspots`, `cnavCoupling`, `cnavAge`, `cnavAuthors`, `cnavChurn`, `cnavRank`, `cnavDead`, and `cnavDsm` individually, `cnavReport` runs them all and outputs a consolidated summary.
 
 - **Question**: "Give me a full health overview of this codebase."
 - **Needs**: Both bytecode and git history
 - **Parameters**: Inherits parameters from constituent tasks (e.g., `-Pafter`, `-Ptop`, `-Proot-package`). `-Pformat=json` produces a single JSON object with sections per analysis.
 - **Output**: Sections for each analysis, clearly delimited. TEXT format uses headers; JSON uses a top-level object with keys like `hotspots`, `coupling`, `rank`, `dead`, `dsm`.
 - **Why useful**: Agents and humans often want the full picture. Running 8 separate tasks is tedious and each invocation has Gradle/Maven startup overhead. A single task is faster (shared caching, one compilation) and produces a coherent snapshot.
+
+## 52. Fix `cnavComplexity` LLM output readability (Low effort, high polish)
+
+From user feedback: the `-Pllm=true` output crams the entire outgoing/incoming type list into a single line. For a class like `RAClientImpl` with 71 distinct outgoing types, this produces one massive unreadable line. The LLM formatter should use one-per-line format for outgoing/incoming lists, or at minimum break them into separate lines. Other formatters (TEXT, JSON) are fine.
+
+- **Key file**: `ComplexityFormatter.kt` (LLM format branch)
+
+## 53. `cnavDead` — entry point awareness (Medium value, medium effort)
+
+From user feedback: dead code detection has no built-in concept of "entry points" beyond the `-Pexclude` regex. Common patterns like Ktor route handlers, `@Scheduled` methods, or serialization-invoked constructors show up as false positives.
+
+- **Suggestion**: Support annotation-based exclusion (`-Pexclude-annotated=Serializable,Route`) so users don't need to hand-craft regexes
+- **Alternative**: Support named presets (`-Pentry-points=ktor`) for common frameworks
+- **Needs**: `visitAnnotation()` in the bytecode scanner to detect annotations on classes/methods. The `ClassDetailExtractor` already visits methods but doesn't extract annotations.
+- **Implementation note**: Annotation-based exclusion is more general and framework-agnostic than named presets. Start with annotation exclusion.
+
+## 54. `cnavDead` — severity/confidence scoring (Medium value, medium effort)
+
+From user feedback: all dead code results are presented equally. A method called nowhere is more likely dead than one only called by reflection.
+
+- **Suggestion**: Add a confidence indicator:
+  - **high** — truly unreferenced (no callers in the entire call graph)
+  - **medium** — only referenced in test code (not called from production code)
+  - **low** — potentially reflection-invoked (class has framework annotations, or method name matches common reflection patterns)
+- **Needs**: Test source set scanning (already supported via `includetest`), annotation detection (same as #53)
+- **Implementation**: The `DeadCodeFinder` already has the call graph — checking whether callers are in test vs. production packages is straightforward once test class directories are available.
+
+## 55. `cnavChangedSince` — impact analysis for a branch/commit (Very high value, medium effort)
+
+From user feedback: the most common agent question is "what could this PR break?" Given a git ref (branch, commit, or `HEAD~5`), show which classes changed and then automatically run `cnavCallers` on all changed methods to show the blast radius.
+
+```bash
+./gradlew cnavChangedSince -Pref=main
+```
+
+- **Question**: "What does this PR affect? What could break?"
+- **Needs**: Git history (to find changed files) + bytecode (to map files to classes and run caller analysis)
+- **Approach**:
+  1. `git diff --name-only <ref>..HEAD` to find changed source files
+  2. Map source files to class names via existing `ClassScanner` source file metadata
+  3. For each changed class, find changed methods (diff class signatures against baseline or use git hunk line numbers + bytecode line number tables)
+  4. Run `cnavCallers` on each changed method to find the blast radius
+- **Output**: Changed classes with their affected callers, grouped by change type (added/modified/removed)
+- **Why high value**: Directly answers the most common code review question. Combines git + bytecode analysis in a way that neither can do alone.
+
+## 56. `cnavContext` — smart context gathering for AI agents (High value, medium effort)
+
+From user feedback: AI agents typically need 4-5 sequential tool calls to understand a class — class signature, callers, callees, interface implementations, source path. Each `./gradlew` invocation has ~0.5s startup overhead.
+
+Given a class or method, automatically gather "everything an agent needs": the class signature, its callers (depth 2), its callees (depth 2), interface implementations, and the source file path. One command instead of 4-5 sequential calls.
+
+```bash
+./gradlew cnavContext -Ppattern=ResetPasswordService -Pformat=json
+```
+
+- **Builder**: Orchestrates existing `ClassDetailScanner`, `CallTreeBuilder` (callers + callees), and `InterfaceRegistry` into a single result
+- **Parameters**: `-Ppattern=<class>` (required), `-Pmaxdepth=N` (default 2), `-Pformat=json|text|llm`
+- **Output**: Combined JSON/text with sections for signature, callers, callees, implementations
+- **Why high value**: Reduces agent round-trips from 4-5 to 1, saving significant wall-clock time
+
+## 57. `cnavTypeHierarchy` — inheritance tree traversal (Medium value, low effort)
+
+From user feedback: `cnavInterfaces` finds implementors (downward), but there's no upward traversal. `cnavClass` shows direct supertypes but doesn't recurse.
+
+```bash
+./gradlew cnavTypeHierarchy -Ppattern=RAClientImpl
+```
+
+- **Question**: "What is the full type hierarchy for this class?"
+- **Needs**: Bytecode only (superclass and interface info already extracted by `ClassInfoExtractor`)
+- **Builder**: Walk supertypes recursively using existing class metadata. For each supertype, show its own supertypes and interfaces.
+- **Output**: Tree showing supertypes upward and implementors downward (combines with `InterfaceRegistry`)
+- **Why useful**: Complex inheritance chains (common in frameworks) are hard to understand from `cnavClass` alone
+
+## 58. `cnavUnused` — unused build dependencies (Medium value, medium effort)
+
+From user feedback: analyze which declared Gradle/Maven dependencies have zero references in bytecode. Different from dead code — this finds entire libraries that could be removed from `build.gradle.kts` or `pom.xml`.
+
+- **Question**: "Which declared dependencies are not actually used?"
+- **Needs**: Full classpath resolution (to enumerate declared dependencies) + bytecode (to check which external types are referenced)
+- **Approach**: For each declared dependency JAR, extract the package list. Then scan project bytecode for references to those packages. Dependencies with zero references are candidates for removal.
+- **Caveats**: Runtime-only dependencies (JDBC drivers, logging backends, annotation processors) will show as "unused" even though they're needed. Need an exclusion mechanism.
+- **Overlap**: Related to #38 (full classpath scanning) — reuses the classpath enumeration infrastructure
+
+## 59. `cnavDiff` — structural diff between two builds (Medium value, medium effort)
+
+From user feedback: compare two compiled states (e.g., before/after a refactoring) and show added/removed/changed classes, methods, and dependency edges. Useful for verifying that a refactoring was purely structural.
+
+- **Overlap**: Related to #39 (`cnavTypeChanges`) which focuses on signature changes from dependency upgrades. `cnavDiff` is broader — it covers all structural changes including class additions/removals, method additions/removals, and dependency edge changes.
+- **Approach**: Save a baseline class scan (class index + call graph) and diff against current. Report changes categorized by type.
+
+## 60. Composite queries — reduce agent round-trip overhead (Medium value, medium effort)
+
+From user feedback: each `./gradlew` invocation has ~0.5s startup overhead that adds up in agent workflows. Allow chaining tasks in a single Gradle invocation.
+
+- **Approach options**:
+  - A `cnavBatch` task that accepts multiple sub-task specs as a JSON parameter
+  - Support multiple `-Ptask=` parameters in a single invocation
+  - Use Gradle's built-in multi-task execution (already works: `./gradlew cnavClass cnavCallers -Ppattern=Foo -Pmethod=bar`) but improve output separation
+- **Key challenge**: Different tasks need different parameters. Need a way to specify per-task parameters.
+- **Alternative**: The `cnavContext` task (#56) handles the most common composite case. General-purpose batching may be over-engineering.
+
+## 61. Stable JSON schemas — machine-fetchable schema documentation (Low value, low effort)
+
+From user feedback: the JSON output works well but schemas aren't versioned or documented in a machine-fetchable way.
+
+- **Suggestion**: Add a `cnavSchema -Ptask=cnavDead` command that outputs the JSON schema for a given task's output
+- **Alternative**: Include schemas in `cnavHelpConfig` or `cnavAgentHelp` output
+- **Why lower priority**: The JSON output is already self-describing, and agents can infer the schema from one example. Formal schemas mainly help tool integrations that want to pre-validate.
 
 ## Future ideas (not yet planned)
 
