@@ -53,4 +53,26 @@ class KotlinMethodFilterTest {
         assertFalse(KotlinMethodFilter.isGenerated("findUser"))
         assertFalse(KotlinMethodFilter.isGenerated("handleRequest"))
     }
+
+    @Test
+    fun `excludes enum generated methods`() {
+        assertTrue(KotlinMethodFilter.isGenerated("\$values"))
+        assertTrue(KotlinMethodFilter.isGenerated("valueOf"))
+        assertTrue(KotlinMethodFilter.isGenerated("values"))
+    }
+
+    @Test
+    fun `excludes inline value class generated methods`() {
+        assertTrue(KotlinMethodFilter.isGenerated("box-impl"))
+        assertTrue(KotlinMethodFilter.isGenerated("unbox-impl"))
+        assertTrue(KotlinMethodFilter.isGenerated("equals-impl"))
+        assertTrue(KotlinMethodFilter.isGenerated("hashCode-impl"))
+        assertTrue(KotlinMethodFilter.isGenerated("toString-impl"))
+        assertTrue(KotlinMethodFilter.isGenerated("equals-impl0"))
+    }
+
+    @Test
+    fun `excludes main entry point`() {
+        assertTrue(KotlinMethodFilter.isGenerated("main"))
+    }
 }
