@@ -72,7 +72,7 @@ class DsmMojo : AbstractMojo() {
         println(OutputWrapper.wrap(output, outputFormat))
 
         if (dsmHtml != null) {
-            val htmlFile = File(dsmHtml!!)
+            val htmlFile = File(project.basedir, dsmHtml!!)
             htmlFile.parentFile?.mkdirs()
             htmlFile.writeText(DsmHtmlRenderer.render(matrix))
             println("DSM HTML written to: ${htmlFile.absolutePath}")

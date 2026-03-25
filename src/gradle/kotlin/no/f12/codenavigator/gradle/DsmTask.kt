@@ -53,7 +53,7 @@ abstract class DsmTask : DefaultTask() {
         logger.lifecycle(OutputWrapper.wrap(output, format))
 
         if (htmlPath != null) {
-            val htmlFile = File(htmlPath)
+            val htmlFile = project.file(htmlPath)
             htmlFile.parentFile?.mkdirs()
             htmlFile.writeText(DsmHtmlRenderer.render(matrix))
             logger.lifecycle("DSM HTML written to: ${htmlFile.absolutePath}")

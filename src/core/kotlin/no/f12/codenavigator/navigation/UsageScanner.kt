@@ -31,7 +31,7 @@ object UsageScanner {
         method: String? = null,
         type: String? = null,
     ): ScanResult<List<UsageSite>> {
-        val usages = mutableListOf<UsageSite>()
+        val usages = mutableSetOf<UsageSite>()
         val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
 
         classDirectories
@@ -48,7 +48,7 @@ object UsageScanner {
                     }
             }
 
-        return ScanResult(usages, skipped)
+        return ScanResult(usages.toList(), skipped)
     }
 
     private fun extractUsages(
@@ -56,7 +56,7 @@ object UsageScanner {
         ownerClass: String?,
         method: String?,
         type: String?,
-        usages: MutableList<UsageSite>,
+        usages: MutableCollection<UsageSite>,
     ) {
         val reader = createClassReader(classFile)
         var callerClass = ""

@@ -435,6 +435,28 @@ class UsageScannerTest {
         assertEquals("MyService.kt", usages[0].sourceFile)
     }
 
+    // --- Deduplication ---
+
+    @Test
+    fun `deduplicates when same method is called multiple times from same caller`() {
+        writeClassWithCalls(
+            "com/example/Caller", "Caller.kt",
+            "doWork", listOf(
+                Call("com/example/Target", "process", "()V"),
+                Call("com/example/Target", "process", "()V"),
+                Call("com/example/Target", "process", "()V"),
+            ),
+        )
+
+        val usages = UsageScanner.scan(
+            listOf(classesDir),
+            ownerClass = "com.example.Target",
+            method = "process",
+        ).data
+
+        assertEquals(1, usages.size, "Duplicate calls from same caller should be deduplicated")
+    }
+
     // --- helpers ---
 
     private data class Call(val owner: String, val name: String, val descriptor: String)
