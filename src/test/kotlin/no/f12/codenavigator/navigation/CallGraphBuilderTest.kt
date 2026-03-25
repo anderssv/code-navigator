@@ -33,9 +33,9 @@ class CallGraphBuilderTest {
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
-        val callers = graph.callersOf("com.example.Target", "process")
+        val callers = graph.callersOf(ClassName("com.example.Target"), "process")
         assertEquals(1, callers.size)
-        assertEquals("com.example.Caller", callers.first().className)
+        assertEquals("com.example.Caller", callers.first().className.value)
         assertEquals("doWork", callers.first().methodName)
     }
 
@@ -45,7 +45,7 @@ class CallGraphBuilderTest {
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
-        val callers = graph.callersOf("com.example.Lonely", "alone")
+        val callers = graph.callersOf(ClassName("com.example.Lonely"), "alone")
         assertTrue(callers.isEmpty())
     }
 
@@ -63,7 +63,7 @@ class CallGraphBuilderTest {
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
-        val callers = graph.callersOf("com.example.Target", "shared")
+        val callers = graph.callersOf(ClassName("com.example.Target"), "shared")
         assertEquals(2, callers.size)
         val callerNames = callers.map { it.methodName }.toSet()
         assertTrue("fromA" in callerNames)
@@ -84,11 +84,11 @@ class CallGraphBuilderTest {
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
-        val directCallers = graph.callersOf("com.example.C", "end")
+        val directCallers = graph.callersOf(ClassName("com.example.C"), "end")
         assertEquals(1, directCallers.size)
         assertEquals("middle", directCallers.first().methodName)
 
-        val transitiveCallers = graph.callersOf("com.example.B", "middle")
+        val transitiveCallers = graph.callersOf(ClassName("com.example.B"), "middle")
         assertEquals(1, transitiveCallers.size)
         assertEquals("start", transitiveCallers.first().methodName)
     }
@@ -107,8 +107,8 @@ class CallGraphBuilderTest {
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
-        val callersOfA = graph.callersOf("com.example.StepA", "execute")
-        val callersOfB = graph.callersOf("com.example.StepB", "execute")
+        val callersOfA = graph.callersOf(ClassName("com.example.StepA"), "execute")
+        val callersOfB = graph.callersOf(ClassName("com.example.StepB"), "execute")
         assertEquals(1, callersOfA.size)
         assertEquals(1, callersOfB.size)
         assertEquals("orchestrate", callersOfA.first().methodName)
@@ -131,7 +131,7 @@ class CallGraphBuilderTest {
 
         val matches = graph.findMethods("Repo\\.save")
         assertEquals(1, matches.size)
-        assertEquals("com.example.Repo", matches.first().className)
+        assertEquals("com.example.Repo", matches.first().className.value)
         assertEquals("save", matches.first().methodName)
     }
 
@@ -139,7 +139,7 @@ class CallGraphBuilderTest {
     fun `handles empty class directories`() {
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
-        val callers = graph.callersOf("com.example.Any", "method")
+        val callers = graph.callersOf(ClassName("com.example.Any"), "method")
         assertTrue(callers.isEmpty())
     }
 
@@ -150,9 +150,9 @@ class CallGraphBuilderTest {
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
-        assertEquals("MyService.kt", graph.sourceFileOf("com.example.MyService"))
-        assertEquals("OtherService.kt", graph.sourceFileOf("com.example.OtherService"))
-        assertEquals("<unknown>", graph.sourceFileOf("com.example.Missing"))
+        assertEquals("MyService.kt", graph.sourceFileOf(ClassName("com.example.MyService")))
+        assertEquals("OtherService.kt", graph.sourceFileOf(ClassName("com.example.OtherService")))
+        assertEquals("<unknown>", graph.sourceFileOf(ClassName("com.example.Missing")))
     }
 
     @Test
@@ -169,9 +169,9 @@ class CallGraphBuilderTest {
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
-        val callees = graph.calleesOf("com.example.Orchestrator", "orchestrate")
+        val callees = graph.calleesOf(ClassName("com.example.Orchestrator"), "orchestrate")
         assertEquals(2, callees.size)
-        val calleeNames = callees.map { "${it.className}.${it.methodName}" }.toSet()
+        val calleeNames = callees.map { "${it.className.value}.${it.methodName}" }.toSet()
         assertTrue("com.example.StepA.execute" in calleeNames)
         assertTrue("com.example.StepB.run" in calleeNames)
     }
@@ -182,7 +182,7 @@ class CallGraphBuilderTest {
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
-        val callees = graph.calleesOf("com.example.Leaf", "doNothing")
+        val callees = graph.calleesOf(ClassName("com.example.Leaf"), "doNothing")
         assertTrue(callees.isEmpty())
     }
 
@@ -196,7 +196,7 @@ class CallGraphBuilderTest {
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
-        val callers = graph.callersOf("com.example.Product", "<init>")
+        val callers = graph.callersOf(ClassName("com.example.Product"), "<init>")
         assertEquals(1, callers.size)
         assertEquals("create", callers.first().methodName)
     }
@@ -209,9 +209,9 @@ class CallGraphBuilderTest {
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         val projectClasses = graph.projectClasses()
-        assertTrue("com.example.MyService" in projectClasses)
-        assertTrue("com.example.OtherService" in projectClasses)
-        assertTrue("java.lang.Object" !in projectClasses)
+        assertTrue(ClassName("com.example.MyService") in projectClasses)
+        assertTrue(ClassName("com.example.OtherService") in projectClasses)
+        assertTrue(ClassName("java.lang.Object") !in projectClasses)
     }
 
     @Test
@@ -238,24 +238,24 @@ class CallGraphBuilderTest {
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         // Direct callers of buildNotificationMessage
-        val directCallers = graph.callersOf("com.example.UserService", "buildNotificationMessage")
+        val directCallers = graph.callersOf(ClassName("com.example.UserService"), "buildNotificationMessage")
         assertEquals(2, directCallers.size, "Expected 2 direct callers of buildNotificationMessage")
         val directCallerNames = directCallers.map { it.methodName }.toSet()
         assertTrue("sendResetNotification" in directCallerNames)
         assertTrue("sendDeactivationNotification" in directCallerNames)
 
         // Transitive: callers of sendResetNotification
-        val resetCallers = graph.callersOf("com.example.UserService", "sendResetNotification")
+        val resetCallers = graph.callersOf(ClassName("com.example.UserService"), "sendResetNotification")
         assertEquals(1, resetCallers.size)
         assertEquals("resetPassword", resetCallers.first().methodName)
 
         // Transitive: callers of resetPassword
-        val passwordCallers = graph.callersOf("com.example.UserService", "resetPassword")
+        val passwordCallers = graph.callersOf(ClassName("com.example.UserService"), "resetPassword")
         assertEquals(1, passwordCallers.size)
         assertEquals("handleReset", passwordCallers.first().methodName)
 
         // Full tree via formatter should show 3 levels deep
-        val result = CallerTreeFormatter.format(graph, listOf(MethodRef("com.example.UserService", "buildNotificationMessage")), maxDepth = 5)
+        val result = CallerTreeFormatter.format(graph, listOf(MethodRef(ClassName("com.example.UserService"), "buildNotificationMessage")), maxDepth = 5)
         assertTrue(result.contains("sendResetNotification"), "Should contain sendResetNotification")
         assertTrue(result.contains("resetPassword"), "Should contain resetPassword at depth 2")
         assertTrue(result.contains("handleReset"), "Should contain handleReset at depth 3")

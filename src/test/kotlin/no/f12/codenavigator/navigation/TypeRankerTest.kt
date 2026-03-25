@@ -147,20 +147,20 @@ class TypeRankerTest {
         projectClasses: Set<String> = emptySet(),
     ): CallGraph {
         val callerToCallees = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
-        val sourceFiles = mutableMapOf<String, String>()
+        val sourceFiles = mutableMapOf<ClassName, String>()
 
         for ((caller, callee) in edges) {
             callerToCallees.getOrPut(caller) { mutableSetOf() }.add(callee)
         }
 
-        val allClasses = edges.flatMap { listOf(it.first.className, it.second.className) }.toSet()
+        val allClasses = edges.flatMap { listOf(it.first.className.value, it.second.className.value) }.toSet()
         val classesWithSource = if (projectClasses.isNotEmpty()) projectClasses else allClasses
         for (cls in classesWithSource) {
-            sourceFiles[cls] = "${cls.substringAfterLast('.')}.kt"
+            sourceFiles[ClassName(cls)] = "${cls.substringAfterLast('.')}.kt"
         }
 
         return CallGraph(callerToCallees, sourceFiles)
     }
 
-    private fun method(className: String, methodName: String) = MethodRef(className, methodName)
+    private fun method(className: String, methodName: String) = MethodRef(ClassName(className), methodName)
 }

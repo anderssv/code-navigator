@@ -23,7 +23,7 @@ object DeadCodeFinder {
         val projectClasses = graph.projectClasses()
         if (projectClasses.isEmpty()) return emptyList()
 
-        val calledTypes = mutableSetOf<String>()
+        val calledTypes = mutableSetOf<ClassName>()
         val calledMethods = mutableSetOf<MethodRef>()
         val projectMethods = mutableSetOf<MethodRef>()
 
@@ -43,10 +43,10 @@ object DeadCodeFinder {
         val results = mutableListOf<DeadCode>()
 
         for (cls in projectClasses) {
-            if (cls !in calledTypes && !isGeneratedClass(cls)) {
+            if (cls !in calledTypes && !isGeneratedClass(cls.value)) {
                 results.add(
                     DeadCode(
-                        className = cls,
+                        className = cls.value,
                         memberName = null,
                         kind = DeadCodeKind.CLASS,
                         sourceFile = graph.sourceFileOf(cls),
@@ -59,12 +59,12 @@ object DeadCodeFinder {
             for (method in projectMethods) {
                 if (method.className in calledTypes &&
                     method !in calledMethods &&
-                    !isGeneratedClass(method.className) &&
+                    !isGeneratedClass(method.className.value) &&
                     !KotlinMethodFilter.isGenerated(method.methodName)
                 ) {
                     results.add(
                         DeadCode(
-                            className = method.className,
+                            className = method.className.value,
                             memberName = method.methodName,
                             kind = DeadCodeKind.METHOD,
                             sourceFile = graph.sourceFileOf(method.className),

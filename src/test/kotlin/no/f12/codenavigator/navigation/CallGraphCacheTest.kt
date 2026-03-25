@@ -33,15 +33,15 @@ class CallGraphCacheTest {
         CallGraphCache.write(cacheFile, graph)
         val result = CallGraphCache.read(cacheFile)
 
-        assertTrue(result.calleesOf("any.Class", "anyMethod").isEmpty())
-        assertTrue(result.callersOf("any.Class", "anyMethod").isEmpty())
+        assertTrue(result.calleesOf(ClassName("any.Class"), "anyMethod").isEmpty())
+        assertTrue(result.callersOf(ClassName("any.Class"), "anyMethod").isEmpty())
     }
 
     @Test
     fun `writes and reads back call graph with edges`() {
         val edges = mapOf(
-            MethodRef("com.example.Caller", "doWork") to setOf(
-                MethodRef("com.example.Target", "process"),
+            MethodRef(ClassName("com.example.Caller"), "doWork") to setOf(
+                MethodRef(ClassName("com.example.Target"), "process"),
             ),
         )
         val graph = CallGraph(edges, emptyMap())
@@ -49,34 +49,34 @@ class CallGraphCacheTest {
         CallGraphCache.write(cacheFile, graph)
         val result = CallGraphCache.read(cacheFile)
 
-        val callees = result.calleesOf("com.example.Caller", "doWork")
+        val callees = result.calleesOf(ClassName("com.example.Caller"), "doWork")
         assertEquals(1, callees.size)
-        assertEquals(MethodRef("com.example.Target", "process"), callees.first())
+        assertEquals(MethodRef(ClassName("com.example.Target"), "process"), callees.first())
 
-        val callers = result.callersOf("com.example.Target", "process")
+        val callers = result.callersOf(ClassName("com.example.Target"), "process")
         assertEquals(1, callers.size)
-        assertEquals(MethodRef("com.example.Caller", "doWork"), callers.first())
+        assertEquals(MethodRef(ClassName("com.example.Caller"), "doWork"), callers.first())
     }
 
     @Test
     fun `writes and reads back source file mappings`() {
         val edges = mapOf(
-            MethodRef("com.example.Service", "handle") to setOf(
-                MethodRef("com.example.Repo", "save"),
+            MethodRef(ClassName("com.example.Service"), "handle") to setOf(
+                MethodRef(ClassName("com.example.Repo"), "save"),
             ),
         )
         val sourceFiles = mapOf(
-            "com.example.Service" to "Service.kt",
-            "com.example.Repo" to "Repo.kt",
+            ClassName("com.example.Service") to "Service.kt",
+            ClassName("com.example.Repo") to "Repo.kt",
         )
         val graph = CallGraph(edges, sourceFiles)
 
         CallGraphCache.write(cacheFile, graph)
         val result = CallGraphCache.read(cacheFile)
 
-        assertEquals("Service.kt", result.sourceFileOf("com.example.Service"))
-        assertEquals("Repo.kt", result.sourceFileOf("com.example.Repo"))
-        assertEquals("<unknown>", result.sourceFileOf("com.example.Missing"))
+        assertEquals("Service.kt", result.sourceFileOf(ClassName("com.example.Service")))
+        assertEquals("Repo.kt", result.sourceFileOf(ClassName("com.example.Repo")))
+        assertEquals("<unknown>", result.sourceFileOf(ClassName("com.example.Missing")))
     }
 
     @Test
@@ -119,9 +119,9 @@ class CallGraphCacheTest {
     @Test
     fun `handles multiple edges from same caller`() {
         val edges = mapOf(
-            MethodRef("com.example.Orchestrator", "run") to setOf(
-                MethodRef("com.example.StepA", "execute"),
-                MethodRef("com.example.StepB", "execute"),
+            MethodRef(ClassName("com.example.Orchestrator"), "run") to setOf(
+                MethodRef(ClassName("com.example.StepA"), "execute"),
+                MethodRef(ClassName("com.example.StepB"), "execute"),
             ),
         )
         val graph = CallGraph(edges, emptyMap())
@@ -129,9 +129,9 @@ class CallGraphCacheTest {
         CallGraphCache.write(cacheFile, graph)
         val result = CallGraphCache.read(cacheFile)
 
-        val callees = result.calleesOf("com.example.Orchestrator", "run")
+        val callees = result.calleesOf(ClassName("com.example.Orchestrator"), "run")
         assertEquals(2, callees.size)
-        val calleeNames = callees.map { it.className }.toSet()
+        val calleeNames = callees.map { it.className.value }.toSet()
         assertTrue("com.example.StepA" in calleeNames)
         assertTrue("com.example.StepB" in calleeNames)
     }
@@ -160,28 +160,28 @@ class CallGraphCacheTest {
 
         val result = CallGraphCache.getOrBuild(cacheFile, listOf(classesDir))
 
-        assertTrue(result.data.calleesOf("any.Class", "anyMethod").isEmpty())
+        assertTrue(result.data.calleesOf(ClassName("any.Class"), "anyMethod").isEmpty())
     }
 
     @Test
     fun `cache round-trip preserves transitive caller chains for same-class methods`() {
         val edges = mapOf(
-            MethodRef("com.example.UserService", "sendResetNotification") to
-                setOf(MethodRef("com.example.UserService", "buildNotificationMessage")),
-            MethodRef("com.example.UserService", "sendDeactivationNotification") to
-                setOf(MethodRef("com.example.UserService", "buildNotificationMessage")),
-            MethodRef("com.example.UserService", "resetPassword") to
-                setOf(MethodRef("com.example.UserService", "sendResetNotification")),
-            MethodRef("com.example.UserService", "deactivateUser") to
-                setOf(MethodRef("com.example.UserService", "sendDeactivationNotification")),
-            MethodRef("com.example.UserRoute", "handleReset") to
-                setOf(MethodRef("com.example.UserService", "resetPassword")),
-            MethodRef("com.example.UserRoute", "handleDeactivate") to
-                setOf(MethodRef("com.example.UserService", "deactivateUser")),
+            MethodRef(ClassName("com.example.UserService"), "sendResetNotification") to
+                setOf(MethodRef(ClassName("com.example.UserService"), "buildNotificationMessage")),
+            MethodRef(ClassName("com.example.UserService"), "sendDeactivationNotification") to
+                setOf(MethodRef(ClassName("com.example.UserService"), "buildNotificationMessage")),
+            MethodRef(ClassName("com.example.UserService"), "resetPassword") to
+                setOf(MethodRef(ClassName("com.example.UserService"), "sendResetNotification")),
+            MethodRef(ClassName("com.example.UserService"), "deactivateUser") to
+                setOf(MethodRef(ClassName("com.example.UserService"), "sendDeactivationNotification")),
+            MethodRef(ClassName("com.example.UserRoute"), "handleReset") to
+                setOf(MethodRef(ClassName("com.example.UserService"), "resetPassword")),
+            MethodRef(ClassName("com.example.UserRoute"), "handleDeactivate") to
+                setOf(MethodRef(ClassName("com.example.UserService"), "deactivateUser")),
         )
         val sourceFiles = mapOf(
-            "com.example.UserService" to "UserService.kt",
-            "com.example.UserRoute" to "UserRoute.kt",
+            ClassName("com.example.UserService") to "UserService.kt",
+            ClassName("com.example.UserRoute") to "UserRoute.kt",
         )
         val original = CallGraph(edges, sourceFiles)
 
@@ -189,19 +189,19 @@ class CallGraphCacheTest {
         val restored = CallGraphCache.read(cacheFile)
 
         // Verify transitive chain: buildNotificationMessage ← sendResetNotification ← resetPassword ← handleReset
-        val directCallers = restored.callersOf("com.example.UserService", "buildNotificationMessage")
+        val directCallers = restored.callersOf(ClassName("com.example.UserService"), "buildNotificationMessage")
         assertEquals(2, directCallers.size, "Expected 2 direct callers")
 
-        val resetCallers = restored.callersOf("com.example.UserService", "sendResetNotification")
+        val resetCallers = restored.callersOf(ClassName("com.example.UserService"), "sendResetNotification")
         assertEquals(1, resetCallers.size)
         assertEquals("resetPassword", resetCallers.first().methodName)
 
-        val passwordCallers = restored.callersOf("com.example.UserService", "resetPassword")
+        val passwordCallers = restored.callersOf(ClassName("com.example.UserService"), "resetPassword")
         assertEquals(1, passwordCallers.size)
         assertEquals("handleReset", passwordCallers.first().methodName)
 
         // Full tree from restored cache should show all levels
-        val methods = listOf(MethodRef("com.example.UserService", "buildNotificationMessage"))
+        val methods = listOf(MethodRef(ClassName("com.example.UserService"), "buildNotificationMessage"))
         val result = CallerTreeFormatter.format(restored, methods, maxDepth = 5)
         assertTrue(result.contains("resetPassword"), "Tree should show resetPassword at depth 2, got:\n$result")
         assertTrue(result.contains("handleReset"), "Tree should show handleReset at depth 3, got:\n$result")

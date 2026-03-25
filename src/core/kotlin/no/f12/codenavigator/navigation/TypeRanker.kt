@@ -18,8 +18,8 @@ object TypeRanker {
         val allTypes = mutableSetOf<String>()
 
         graph.forEachEdge { caller, callee ->
-            val from = collapse(caller.className)
-            val to = collapse(callee.className)
+            val from = collapse(caller.className.value)
+            val to = collapse(callee.className.value)
             if (from != to) {
                 typeEdges.getOrPut(from) { mutableSetOf() }.add(to)
             }
@@ -30,7 +30,7 @@ object TypeRanker {
         if (allTypes.isEmpty()) return emptyList()
 
         val types = if (projectOnly) {
-            val projectClasses = graph.projectClasses().map(collapse).toSet()
+            val projectClasses = graph.projectClasses().map { collapse(it.value) }.toSet()
             allTypes.filter { it in projectClasses }
         } else {
             allTypes.toList()

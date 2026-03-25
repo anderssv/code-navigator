@@ -2,6 +2,7 @@ package no.f12.codenavigator
 
 import no.f12.codenavigator.navigation.CallGraphBuilder
 import no.f12.codenavigator.navigation.CallerTreeFormatter
+import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.MethodRef
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -20,31 +21,31 @@ class IntegrationTest {
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
         // Direct callers of buildNotificationMessage
-        val directCallers = graph.callersOf("com.example.services.UserService", "buildNotificationMessage")
+        val directCallers = graph.callersOf(ClassName("com.example.services.UserService"), "buildNotificationMessage")
         val directNames = directCallers.map { it.methodName }.toSet()
         assertTrue("sendResetNotification" in directNames, "sendResetNotification should call buildNotificationMessage")
         assertTrue("sendDeactivationNotification" in directNames, "sendDeactivationNotification should call buildNotificationMessage")
 
         // Callers of sendResetNotification
-        val resetNotifCallers = graph.callersOf("com.example.services.UserService", "sendResetNotification")
+        val resetNotifCallers = graph.callersOf(ClassName("com.example.services.UserService"), "sendResetNotification")
         val resetNotifNames = resetNotifCallers.map { it.methodName }.toSet()
         assertTrue("resetPassword" in resetNotifNames, "resetPassword should call sendResetNotification, got: $resetNotifNames")
 
         // Callers of sendDeactivationNotification
-        val deactivNotifCallers = graph.callersOf("com.example.services.UserService", "sendDeactivationNotification")
+        val deactivNotifCallers = graph.callersOf(ClassName("com.example.services.UserService"), "sendDeactivationNotification")
         val deactivNotifNames = deactivNotifCallers.map { it.methodName }.toSet()
         assertTrue("deactivateUser" in deactivNotifNames, "deactivateUser should call sendDeactivationNotification, got: $deactivNotifNames")
 
         // Callers of resetPassword
-        val resetCallers = graph.callersOf("com.example.services.UserService", "resetPassword")
-        val resetCallerNames = resetCallers.map { "${it.className}.${it.methodName}" }.toSet()
+        val resetCallers = graph.callersOf(ClassName("com.example.services.UserService"), "resetPassword")
+        val resetCallerNames = resetCallers.map { "${it.className.value}.${it.methodName}" }.toSet()
         assertTrue(
             resetCallerNames.any { it.contains("handleReset") },
             "handleReset should call resetPassword, got: $resetCallerNames",
         )
 
         // Full tree should show all levels
-        val methods = listOf(MethodRef("com.example.services.UserService", "buildNotificationMessage"))
+        val methods = listOf(MethodRef(ClassName("com.example.services.UserService"), "buildNotificationMessage"))
         val result = CallerTreeFormatter.format(graph, methods, maxDepth = 5)
         println("RESULT:\n$result")
         assertTrue(result.contains("sendResetNotification"), "Tree should show sendResetNotification")

@@ -9,7 +9,7 @@ class CallerTreeFormatterTest {
     @Test
     fun `method with no callers shows no callers message`() {
         val graph = CallGraph(emptyMap())
-        val target = MethodRef("com.example.Service", "doWork")
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
 
         val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 3)
 
@@ -25,11 +25,11 @@ class CallerTreeFormatterTest {
     // [TEST] Single method with one direct caller shows two-level tree
     @Test
     fun `method with one direct caller shows caller indented`() {
-        val caller = MethodRef("com.example.Controller", "handleRequest")
-        val target = MethodRef("com.example.Service", "doWork")
+        val caller = MethodRef(ClassName("com.example.Controller"), "handleRequest")
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
         val graph = CallGraph(
             mapOf(caller to setOf(target)),
-            sourceFiles = mapOf("com.example.Controller" to "Controller.kt"),
+            sourceFiles = mapOf(ClassName("com.example.Controller") to "Controller.kt"),
         )
 
         val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 3)
@@ -46,17 +46,17 @@ class CallerTreeFormatterTest {
     // [TEST] Single method with multiple direct callers sorts them alphabetically
     @Test
     fun `multiple direct callers are sorted alphabetically`() {
-        val target = MethodRef("com.example.Repo", "save")
-        val callerZ = MethodRef("com.example.ZService", "store")
-        val callerA = MethodRef("com.example.AService", "persist")
+        val target = MethodRef(ClassName("com.example.Repo"), "save")
+        val callerZ = MethodRef(ClassName("com.example.ZService"), "store")
+        val callerA = MethodRef(ClassName("com.example.AService"), "persist")
         val graph = CallGraph(
             mapOf(
                 callerZ to setOf(target),
                 callerA to setOf(target),
             ),
             sourceFiles = mapOf(
-                "com.example.ZService" to "ZService.kt",
-                "com.example.AService" to "AService.kt",
+                ClassName("com.example.ZService") to "ZService.kt",
+                ClassName("com.example.AService") to "AService.kt",
             ),
         )
 
@@ -75,17 +75,17 @@ class CallerTreeFormatterTest {
     // [TEST] Transitive callers render as indented tree up to depth
     @Test
     fun `transitive callers render as nested indented tree`() {
-        val target = MethodRef("com.example.C", "end")
-        val middle = MethodRef("com.example.B", "middle")
-        val top = MethodRef("com.example.A", "start")
+        val target = MethodRef(ClassName("com.example.C"), "end")
+        val middle = MethodRef(ClassName("com.example.B"), "middle")
+        val top = MethodRef(ClassName("com.example.A"), "start")
         val graph = CallGraph(
             mapOf(
                 top to setOf(middle),
                 middle to setOf(target),
             ),
             sourceFiles = mapOf(
-                "com.example.A" to "A.kt",
-                "com.example.B" to "B.kt",
+                ClassName("com.example.A") to "A.kt",
+                ClassName("com.example.B") to "B.kt",
             ),
         )
 
@@ -104,17 +104,17 @@ class CallerTreeFormatterTest {
     // [TEST] Depth limit stops recursion
     @Test
     fun `depth limit stops recursion at specified depth`() {
-        val target = MethodRef("com.example.C", "end")
-        val middle = MethodRef("com.example.B", "middle")
-        val top = MethodRef("com.example.A", "start")
+        val target = MethodRef(ClassName("com.example.C"), "end")
+        val middle = MethodRef(ClassName("com.example.B"), "middle")
+        val top = MethodRef(ClassName("com.example.A"), "start")
         val graph = CallGraph(
             mapOf(
                 top to setOf(middle),
                 middle to setOf(target),
             ),
             sourceFiles = mapOf(
-                "com.example.A" to "A.kt",
-                "com.example.B" to "B.kt",
+                ClassName("com.example.A") to "A.kt",
+                ClassName("com.example.B") to "B.kt",
             ),
         )
 
@@ -132,16 +132,16 @@ class CallerTreeFormatterTest {
     // [TEST] Cycle detection prevents infinite recursion
     @Test
     fun `cycle detection prevents infinite recursion`() {
-        val a = MethodRef("com.example.A", "callB")
-        val b = MethodRef("com.example.B", "callA")
+        val a = MethodRef(ClassName("com.example.A"), "callB")
+        val b = MethodRef(ClassName("com.example.B"), "callA")
         val graph = CallGraph(
             mapOf(
                 a to setOf(b),
                 b to setOf(a),
             ),
             sourceFiles = mapOf(
-                "com.example.A" to "A.kt",
-                "com.example.B" to "B.kt",
+                ClassName("com.example.A") to "A.kt",
+                ClassName("com.example.B") to "B.kt",
             ),
         )
 
@@ -160,8 +160,8 @@ class CallerTreeFormatterTest {
     // [TEST] Source file is shown as <unknown> when not available
     @Test
     fun `source file shown as unknown when not tracked`() {
-        val target = MethodRef("com.example.Service", "run")
-        val caller = MethodRef("com.example.External", "invoke")
+        val target = MethodRef(ClassName("com.example.Service"), "run")
+        val caller = MethodRef(ClassName("com.example.External"), "invoke")
         val graph = CallGraph(
             mapOf(caller to setOf(target)),
             sourceFiles = emptyMap(),
@@ -181,18 +181,18 @@ class CallerTreeFormatterTest {
     // [TEST] Multiple matched methods each get their own tree
     @Test
     fun `multiple matched methods each get their own tree`() {
-        val targetA = MethodRef("com.example.RepoA", "save")
-        val targetB = MethodRef("com.example.RepoB", "save")
-        val callerA = MethodRef("com.example.ServiceA", "persist")
-        val callerB = MethodRef("com.example.ServiceB", "store")
+        val targetA = MethodRef(ClassName("com.example.RepoA"), "save")
+        val targetB = MethodRef(ClassName("com.example.RepoB"), "save")
+        val callerA = MethodRef(ClassName("com.example.ServiceA"), "persist")
+        val callerB = MethodRef(ClassName("com.example.ServiceB"), "store")
         val graph = CallGraph(
             mapOf(
                 callerA to setOf(targetA),
                 callerB to setOf(targetB),
             ),
             sourceFiles = mapOf(
-                "com.example.ServiceA" to "ServiceA.kt",
-                "com.example.ServiceB" to "ServiceB.kt",
+                ClassName("com.example.ServiceA") to "ServiceA.kt",
+                ClassName("com.example.ServiceB") to "ServiceB.kt",
             ),
         )
 
@@ -214,13 +214,13 @@ class CallerTreeFormatterTest {
     fun `branching transitive callers each show their own caller chains`() {
         // buildNotificationMessage ← sendDeactivationNotification ← deactivateUser ← handleDeactivate
         // buildNotificationMessage ← sendResetNotification ← resetPassword ← handleReset
-        val buildMsg = MethodRef("com.example.UserService", "buildNotificationMessage")
-        val sendDeactivation = MethodRef("com.example.UserService", "sendDeactivationNotification")
-        val sendReset = MethodRef("com.example.UserService", "sendResetNotification")
-        val deactivateUser = MethodRef("com.example.UserService", "deactivateUser")
-        val resetPassword = MethodRef("com.example.UserService", "resetPassword")
-        val handleDeactivate = MethodRef("com.example.UserRoute", "handleDeactivate")
-        val handleReset = MethodRef("com.example.UserRoute", "handleReset")
+        val buildMsg = MethodRef(ClassName("com.example.UserService"), "buildNotificationMessage")
+        val sendDeactivation = MethodRef(ClassName("com.example.UserService"), "sendDeactivationNotification")
+        val sendReset = MethodRef(ClassName("com.example.UserService"), "sendResetNotification")
+        val deactivateUser = MethodRef(ClassName("com.example.UserService"), "deactivateUser")
+        val resetPassword = MethodRef(ClassName("com.example.UserService"), "resetPassword")
+        val handleDeactivate = MethodRef(ClassName("com.example.UserRoute"), "handleDeactivate")
+        val handleReset = MethodRef(ClassName("com.example.UserRoute"), "handleReset")
         val graph = CallGraph(
             mapOf(
                 sendDeactivation to setOf(buildMsg),
@@ -231,8 +231,8 @@ class CallerTreeFormatterTest {
                 handleReset to setOf(resetPassword),
             ),
             sourceFiles = mapOf(
-                "com.example.UserService" to "UserService.kt",
-                "com.example.UserRoute" to "UserRoute.kt",
+                ClassName("com.example.UserService") to "UserService.kt",
+                ClassName("com.example.UserRoute") to "UserRoute.kt",
             ),
         )
 
@@ -254,16 +254,16 @@ class CallerTreeFormatterTest {
 
     @Test
     fun `filter removes external callers from output`() {
-        val target = MethodRef("com.example.Service", "doWork")
-        val projectCaller = MethodRef("com.example.Controller", "handle")
-        val externalCaller = MethodRef("org.springframework.Framework", "invoke")
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
+        val projectCaller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val externalCaller = MethodRef(ClassName("org.springframework.Framework"), "invoke")
         val graph = CallGraph(
             mapOf(
                 projectCaller to setOf(target),
                 externalCaller to setOf(target),
             ),
             sourceFiles = mapOf(
-                "com.example.Controller" to "Controller.kt",
+                ClassName("com.example.Controller") to "Controller.kt",
             ),
         )
         val projectClasses = setOf("com.example.Service", "com.example.Controller")
@@ -272,7 +272,7 @@ class CallerTreeFormatterTest {
             graph,
             listOf(target),
             maxDepth = 3,
-            filter = { it.className in projectClasses },
+            filter = { it.className.value in projectClasses },
         )
 
         assertEquals(

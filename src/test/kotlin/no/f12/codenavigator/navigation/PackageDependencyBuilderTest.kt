@@ -9,8 +9,8 @@ class PackageDependencyBuilderTest {
     @Test
     fun `extracts package dependencies from call graph`() {
         val graph = buildCallGraph(
-            MethodRef("com.example.services.UserService", "find") to
-                setOf(MethodRef("com.example.domain.User", "getName")),
+            MethodRef(ClassName("com.example.services.UserService"), "find") to
+                setOf(MethodRef(ClassName("com.example.domain.User"), "getName")),
         )
 
         val deps = PackageDependencyBuilder.build(graph)
@@ -24,8 +24,8 @@ class PackageDependencyBuilderTest {
     @Test
     fun `self-dependencies within same package are excluded`() {
         val graph = buildCallGraph(
-            MethodRef("com.example.services.A", "foo") to
-                setOf(MethodRef("com.example.services.B", "bar")),
+            MethodRef(ClassName("com.example.services.A"), "foo") to
+                setOf(MethodRef(ClassName("com.example.services.B"), "bar")),
         )
 
         val deps = PackageDependencyBuilder.build(graph)
@@ -38,10 +38,10 @@ class PackageDependencyBuilderTest {
     @Test
     fun `dependencies are deduplicated`() {
         val graph = buildCallGraph(
-            MethodRef("com.example.services.A", "foo") to
-                setOf(MethodRef("com.example.domain.X", "a")),
-            MethodRef("com.example.services.B", "bar") to
-                setOf(MethodRef("com.example.domain.Y", "b")),
+            MethodRef(ClassName("com.example.services.A"), "foo") to
+                setOf(MethodRef(ClassName("com.example.domain.X"), "a")),
+            MethodRef(ClassName("com.example.services.B"), "bar") to
+                setOf(MethodRef(ClassName("com.example.domain.Y"), "b")),
         )
 
         val deps = PackageDependencyBuilder.build(graph)
@@ -54,11 +54,11 @@ class PackageDependencyBuilderTest {
     @Test
     fun `dependencies are sorted alphabetically`() {
         val graph = buildCallGraph(
-            MethodRef("com.example.services.Svc", "foo") to
+            MethodRef(ClassName("com.example.services.Svc"), "foo") to
                 setOf(
-                    MethodRef("com.example.zebra.Z", "a"),
-                    MethodRef("com.example.alpha.A", "b"),
-                    MethodRef("com.example.middle.M", "c"),
+                    MethodRef(ClassName("com.example.zebra.Z"), "a"),
+                    MethodRef(ClassName("com.example.alpha.A"), "b"),
+                    MethodRef(ClassName("com.example.middle.M"), "c"),
                 ),
         )
 
@@ -75,8 +75,8 @@ class PackageDependencyBuilderTest {
     @Test
     fun `packages with no outgoing dependencies have empty list`() {
         val graph = buildCallGraph(
-            MethodRef("com.example.services.A", "foo") to
-                setOf(MethodRef("com.example.domain.X", "a")),
+            MethodRef(ClassName("com.example.services.A"), "foo") to
+                setOf(MethodRef(ClassName("com.example.domain.X"), "a")),
         )
 
         val deps = PackageDependencyBuilder.build(graph)
@@ -89,10 +89,10 @@ class PackageDependencyBuilderTest {
     @Test
     fun `findPackages matches pattern case-insensitively`() {
         val graph = buildCallGraph(
-            MethodRef("com.example.services.A", "foo") to
-                setOf(MethodRef("com.example.domain.X", "a")),
-            MethodRef("com.example.ktor.routes.B", "bar") to
-                setOf(MethodRef("com.example.services.C", "c")),
+            MethodRef(ClassName("com.example.services.A"), "foo") to
+                setOf(MethodRef(ClassName("com.example.domain.X"), "a")),
+            MethodRef(ClassName("com.example.ktor.routes.B"), "bar") to
+                setOf(MethodRef(ClassName("com.example.services.C"), "c")),
         )
 
         val deps = PackageDependencyBuilder.build(graph)
@@ -106,11 +106,11 @@ class PackageDependencyBuilderTest {
     @Test
     fun `filter removes external packages from dependencies`() {
         val graph = buildCallGraph(
-            MethodRef("com.example.services.UserService", "find") to
+            MethodRef(ClassName("com.example.services.UserService"), "find") to
                 setOf(
-                    MethodRef("com.example.domain.User", "getName"),
-                    MethodRef("java.lang.Object", "toString"),
-                    MethodRef("kotlin.jvm.internal.Intrinsics", "checkNotNullParameter"),
+                    MethodRef(ClassName("com.example.domain.User"), "getName"),
+                    MethodRef(ClassName("java.lang.Object"), "toString"),
+                    MethodRef(ClassName("kotlin.jvm.internal.Intrinsics"), "checkNotNullParameter"),
                 ),
         )
         val projectClasses = setOf(
@@ -118,7 +118,7 @@ class PackageDependencyBuilderTest {
             "com.example.domain.User",
         )
 
-        val deps = PackageDependencyBuilder.build(graph, filter = { it.className in projectClasses })
+        val deps = PackageDependencyBuilder.build(graph, filter = { it.className.value in projectClasses })
 
         assertEquals(listOf("com.example.domain"), deps.dependenciesOf("com.example.services"))
         assertEquals(emptyList(), deps.findPackages("java"))
@@ -128,15 +128,15 @@ class PackageDependencyBuilderTest {
     @Test
     fun `filter with all callees external yields no dependencies`() {
         val graph = buildCallGraph(
-            MethodRef("com.example.services.Svc", "run") to
+            MethodRef(ClassName("com.example.services.Svc"), "run") to
                 setOf(
-                    MethodRef("java.lang.String", "valueOf"),
-                    MethodRef("kotlin.collections.CollectionsKt", "listOf"),
+                    MethodRef(ClassName("java.lang.String"), "valueOf"),
+                    MethodRef(ClassName("kotlin.collections.CollectionsKt"), "listOf"),
                 ),
         )
         val projectClasses = setOf("com.example.services.Svc")
 
-        val deps = PackageDependencyBuilder.build(graph, filter = { it.className in projectClasses })
+        val deps = PackageDependencyBuilder.build(graph, filter = { it.className.value in projectClasses })
 
         assertTrue(deps.dependenciesOf("com.example.services").isEmpty())
     }
@@ -144,10 +144,10 @@ class PackageDependencyBuilderTest {
     @Test
     fun `dependentsOf returns packages that depend on the given package`() {
         val graph = buildCallGraph(
-            MethodRef("com.example.services.UserService", "find") to
-                setOf(MethodRef("com.example.domain.User", "getName")),
-            MethodRef("com.example.ktor.routes.UserRoute", "get") to
-                setOf(MethodRef("com.example.domain.User", "toJson")),
+            MethodRef(ClassName("com.example.services.UserService"), "find") to
+                setOf(MethodRef(ClassName("com.example.domain.User"), "getName")),
+            MethodRef(ClassName("com.example.ktor.routes.UserRoute"), "get") to
+                setOf(MethodRef(ClassName("com.example.domain.User"), "toJson")),
         )
 
         val deps = PackageDependencyBuilder.build(graph)
@@ -159,8 +159,8 @@ class PackageDependencyBuilderTest {
     @Test
     fun `dependentsOf returns empty list for package with no dependents`() {
         val graph = buildCallGraph(
-            MethodRef("com.example.services.Svc", "run") to
-                setOf(MethodRef("com.example.domain.X", "a")),
+            MethodRef(ClassName("com.example.services.Svc"), "run") to
+                setOf(MethodRef(ClassName("com.example.domain.X"), "a")),
         )
 
         val deps = PackageDependencyBuilder.build(graph)
@@ -171,12 +171,12 @@ class PackageDependencyBuilderTest {
     @Test
     fun `dependentsOf results are sorted alphabetically`() {
         val graph = buildCallGraph(
-            MethodRef("com.example.zebra.Z", "a") to
-                setOf(MethodRef("com.example.target.T", "x")),
-            MethodRef("com.example.alpha.A", "b") to
-                setOf(MethodRef("com.example.target.T", "y")),
-            MethodRef("com.example.middle.M", "c") to
-                setOf(MethodRef("com.example.target.T", "z")),
+            MethodRef(ClassName("com.example.zebra.Z"), "a") to
+                setOf(MethodRef(ClassName("com.example.target.T"), "x")),
+            MethodRef(ClassName("com.example.alpha.A"), "b") to
+                setOf(MethodRef(ClassName("com.example.target.T"), "y")),
+            MethodRef(ClassName("com.example.middle.M"), "c") to
+                setOf(MethodRef(ClassName("com.example.target.T"), "z")),
         )
 
         val deps = PackageDependencyBuilder.build(graph)

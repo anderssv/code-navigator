@@ -7,6 +7,7 @@ import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallGraph
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
+import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.FieldDetail
 import no.f12.codenavigator.navigation.ImplementorInfo
 import no.f12.codenavigator.navigation.InterfaceRegistry
@@ -176,7 +177,7 @@ class JsonFormatterTest {
     @Test
     fun `method with no callees produces empty children array`() {
         val graph = CallGraph(emptyMap())
-        val method = MethodRef("com.example.Service", "doWork")
+        val method = MethodRef(ClassName("com.example.Service"), "doWork")
 
         val result = JsonFormatter.formatCallTree(graph, listOf(method), maxDepth = 3, CallDirection.CALLEES)
 
@@ -188,11 +189,11 @@ class JsonFormatterTest {
 
     @Test
     fun `method with callees produces nested tree structure`() {
-        val caller = MethodRef("com.example.Controller", "handle")
-        val callee = MethodRef("com.example.Service", "doWork")
+        val caller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val callee = MethodRef(ClassName("com.example.Service"), "doWork")
         val graph = CallGraph(
             mapOf(caller to setOf(callee)),
-            sourceFiles = mapOf("com.example.Service" to "Service.kt"),
+            sourceFiles = mapOf(ClassName("com.example.Service") to "Service.kt"),
         )
 
         val result = JsonFormatter.formatCallTree(graph, listOf(caller), maxDepth = 3, CallDirection.CALLEES)
@@ -206,12 +207,12 @@ class JsonFormatterTest {
 
     @Test
     fun `transitive call tree produces nested children`() {
-        val a = MethodRef("com.example.A", "start")
-        val b = MethodRef("com.example.B", "middle")
-        val c = MethodRef("com.example.C", "end")
+        val a = MethodRef(ClassName("com.example.A"), "start")
+        val b = MethodRef(ClassName("com.example.B"), "middle")
+        val c = MethodRef(ClassName("com.example.C"), "end")
         val graph = CallGraph(
             mapOf(a to setOf(b), b to setOf(c)),
-            sourceFiles = mapOf("com.example.B" to "B.kt", "com.example.C" to "C.kt"),
+            sourceFiles = mapOf(ClassName("com.example.B") to "B.kt", ClassName("com.example.C") to "C.kt"),
         )
 
         val result = JsonFormatter.formatCallTree(graph, listOf(a), maxDepth = 3, CallDirection.CALLEES)
@@ -226,12 +227,12 @@ class JsonFormatterTest {
 
     @Test
     fun `depth limit stops recursion in JSON output`() {
-        val a = MethodRef("com.example.A", "start")
-        val b = MethodRef("com.example.B", "middle")
-        val c = MethodRef("com.example.C", "end")
+        val a = MethodRef(ClassName("com.example.A"), "start")
+        val b = MethodRef(ClassName("com.example.B"), "middle")
+        val c = MethodRef(ClassName("com.example.C"), "end")
         val graph = CallGraph(
             mapOf(a to setOf(b), b to setOf(c)),
-            sourceFiles = mapOf("com.example.B" to "B.kt", "com.example.C" to "C.kt"),
+            sourceFiles = mapOf(ClassName("com.example.B") to "B.kt", ClassName("com.example.C") to "C.kt"),
         )
 
         val result = JsonFormatter.formatCallTree(graph, listOf(a), maxDepth = 1, CallDirection.CALLEES)
@@ -245,11 +246,11 @@ class JsonFormatterTest {
 
     @Test
     fun `cycle detection prevents infinite recursion in JSON`() {
-        val a = MethodRef("com.example.A", "callB")
-        val b = MethodRef("com.example.B", "callA")
+        val a = MethodRef(ClassName("com.example.A"), "callB")
+        val b = MethodRef(ClassName("com.example.B"), "callA")
         val graph = CallGraph(
             mapOf(a to setOf(b), b to setOf(a)),
-            sourceFiles = mapOf("com.example.A" to "A.kt", "com.example.B" to "B.kt"),
+            sourceFiles = mapOf(ClassName("com.example.A") to "A.kt", ClassName("com.example.B") to "B.kt"),
         )
 
         val result = JsonFormatter.formatCallTree(graph, listOf(a), maxDepth = 10, CallDirection.CALLEES)

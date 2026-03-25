@@ -9,7 +9,7 @@ class CallTreeBuilderTest {
     @Test
     fun `single method with no callers produces tree with empty children`() {
         val graph = CallGraph(emptyMap())
-        val target = MethodRef("com.example.Service", "doWork")
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
 
         val result = CallTreeBuilder.build(graph, listOf(target), maxDepth = 3, CallDirection.CALLERS)
 
@@ -20,11 +20,11 @@ class CallTreeBuilderTest {
 
     @Test
     fun `single method with one direct caller produces one child`() {
-        val caller = MethodRef("com.example.Controller", "handleRequest")
-        val target = MethodRef("com.example.Service", "doWork")
+        val caller = MethodRef(ClassName("com.example.Controller"), "handleRequest")
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
         val graph = CallGraph(
             mapOf(caller to setOf(target)),
-            sourceFiles = mapOf("com.example.Controller" to "Controller.kt"),
+            sourceFiles = mapOf(ClassName("com.example.Controller") to "Controller.kt"),
         )
 
         val result = CallTreeBuilder.build(graph, listOf(target), maxDepth = 3, CallDirection.CALLERS)
@@ -38,17 +38,17 @@ class CallTreeBuilderTest {
 
     @Test
     fun `transitive callers produce nested children up to depth`() {
-        val target = MethodRef("com.example.C", "end")
-        val middle = MethodRef("com.example.B", "middle")
-        val top = MethodRef("com.example.A", "start")
+        val target = MethodRef(ClassName("com.example.C"), "end")
+        val middle = MethodRef(ClassName("com.example.B"), "middle")
+        val top = MethodRef(ClassName("com.example.A"), "start")
         val graph = CallGraph(
             mapOf(
                 top to setOf(middle),
                 middle to setOf(target),
             ),
             sourceFiles = mapOf(
-                "com.example.A" to "A.kt",
-                "com.example.B" to "B.kt",
+                ClassName("com.example.A") to "A.kt",
+                ClassName("com.example.B") to "B.kt",
             ),
         )
 
@@ -64,9 +64,9 @@ class CallTreeBuilderTest {
 
     @Test
     fun `depth limit stops recursion`() {
-        val target = MethodRef("com.example.C", "end")
-        val middle = MethodRef("com.example.B", "middle")
-        val top = MethodRef("com.example.A", "start")
+        val target = MethodRef(ClassName("com.example.C"), "end")
+        val middle = MethodRef(ClassName("com.example.B"), "middle")
+        val top = MethodRef(ClassName("com.example.A"), "start")
         val graph = CallGraph(
             mapOf(
                 top to setOf(middle),
@@ -84,8 +84,8 @@ class CallTreeBuilderTest {
 
     @Test
     fun `cycle detection prevents infinite recursion`() {
-        val a = MethodRef("com.example.A", "callB")
-        val b = MethodRef("com.example.B", "callA")
+        val a = MethodRef(ClassName("com.example.A"), "callB")
+        val b = MethodRef(ClassName("com.example.B"), "callA")
         val graph = CallGraph(
             mapOf(
                 a to setOf(b),
@@ -105,9 +105,9 @@ class CallTreeBuilderTest {
 
     @Test
     fun `filter removes non-matching methods from children`() {
-        val target = MethodRef("com.example.Service", "doWork")
-        val projectCaller = MethodRef("com.example.Controller", "handle")
-        val externalCaller = MethodRef("org.springframework.Framework", "invoke")
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
+        val projectCaller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val externalCaller = MethodRef(ClassName("org.springframework.Framework"), "invoke")
         val graph = CallGraph(
             mapOf(
                 projectCaller to setOf(target),
@@ -121,7 +121,7 @@ class CallTreeBuilderTest {
             listOf(target),
             maxDepth = 3,
             CallDirection.CALLERS,
-            filter = { it.className in projectClasses },
+            filter = { it.className.value in projectClasses },
         )
 
         assertEquals(1, result[0].children.size)
@@ -130,10 +130,10 @@ class CallTreeBuilderTest {
 
     @Test
     fun `multiple root methods each produce their own tree`() {
-        val targetA = MethodRef("com.example.RepoA", "save")
-        val targetB = MethodRef("com.example.RepoB", "save")
-        val callerA = MethodRef("com.example.ServiceA", "persist")
-        val callerB = MethodRef("com.example.ServiceB", "store")
+        val targetA = MethodRef(ClassName("com.example.RepoA"), "save")
+        val targetB = MethodRef(ClassName("com.example.RepoB"), "save")
+        val callerA = MethodRef(ClassName("com.example.ServiceA"), "persist")
+        val callerB = MethodRef(ClassName("com.example.ServiceB"), "store")
         val graph = CallGraph(
             mapOf(
                 callerA to setOf(targetA),
@@ -144,21 +144,21 @@ class CallTreeBuilderTest {
         val result = CallTreeBuilder.build(graph, listOf(targetA, targetB), maxDepth = 3, CallDirection.CALLERS)
 
         assertEquals(2, result.size)
-        assertEquals("com.example.RepoA", result[0].method.className)
-        assertEquals("com.example.RepoB", result[1].method.className)
+        assertEquals("com.example.RepoA", result[0].method.className.value)
+        assertEquals("com.example.RepoB", result[1].method.className.value)
         assertEquals(1, result[0].children.size)
         assertEquals(1, result[1].children.size)
     }
 
     @Test
     fun `branching transitive callers produce correct tree`() {
-        val buildMsg = MethodRef("com.example.UserService", "buildNotificationMessage")
-        val sendDeactivation = MethodRef("com.example.UserService", "sendDeactivationNotification")
-        val sendReset = MethodRef("com.example.UserService", "sendResetNotification")
-        val deactivateUser = MethodRef("com.example.UserService", "deactivateUser")
-        val resetPassword = MethodRef("com.example.UserService", "resetPassword")
-        val handleDeactivate = MethodRef("com.example.UserRoute", "handleDeactivate")
-        val handleReset = MethodRef("com.example.UserRoute", "handleReset")
+        val buildMsg = MethodRef(ClassName("com.example.UserService"), "buildNotificationMessage")
+        val sendDeactivation = MethodRef(ClassName("com.example.UserService"), "sendDeactivationNotification")
+        val sendReset = MethodRef(ClassName("com.example.UserService"), "sendResetNotification")
+        val deactivateUser = MethodRef(ClassName("com.example.UserService"), "deactivateUser")
+        val resetPassword = MethodRef(ClassName("com.example.UserService"), "resetPassword")
+        val handleDeactivate = MethodRef(ClassName("com.example.UserRoute"), "handleDeactivate")
+        val handleReset = MethodRef(ClassName("com.example.UserRoute"), "handleReset")
         val graph = CallGraph(
             mapOf(
                 sendDeactivation to setOf(buildMsg),
@@ -190,17 +190,17 @@ class CallTreeBuilderTest {
 
     @Test
     fun `callees direction resolves children as callees`() {
-        val a = MethodRef("com.example.A", "start")
-        val b = MethodRef("com.example.B", "middle")
-        val c = MethodRef("com.example.C", "end")
+        val a = MethodRef(ClassName("com.example.A"), "start")
+        val b = MethodRef(ClassName("com.example.B"), "middle")
+        val c = MethodRef(ClassName("com.example.C"), "end")
         val graph = CallGraph(
             mapOf(
                 a to setOf(b),
                 b to setOf(c),
             ),
             sourceFiles = mapOf(
-                "com.example.B" to "B.kt",
-                "com.example.C" to "C.kt",
+                ClassName("com.example.B") to "B.kt",
+                ClassName("com.example.C") to "C.kt",
             ),
         )
 
@@ -218,10 +218,10 @@ class CallTreeBuilderTest {
 
     @Test
     fun `root node has no source file`() {
-        val target = MethodRef("com.example.Service", "doWork")
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
         val graph = CallGraph(
             emptyMap(),
-            sourceFiles = mapOf("com.example.Service" to "Service.kt"),
+            sourceFiles = mapOf(ClassName("com.example.Service") to "Service.kt"),
         )
 
         val result = CallTreeBuilder.build(graph, listOf(target), maxDepth = 3, CallDirection.CALLERS)

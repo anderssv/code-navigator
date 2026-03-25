@@ -18,9 +18,9 @@ object CallGraphCache {
                 graph.forEachEdge { caller, callee ->
                     writer.write(
                         listOf(
-                            caller.className,
+                            caller.className.value,
                             caller.methodName,
-                            callee.className,
+                            callee.className.value,
                             callee.methodName,
                         ).joinToString(FIELD_SEPARATOR),
                     )
@@ -30,7 +30,7 @@ object CallGraphCache {
                 writer.newLine()
                 graph.forEachSourceFile { className, sourceFile ->
                     writer.write(
-                        listOf(className, sourceFile).joinToString(FIELD_SEPARATOR),
+                        listOf(className.value, sourceFile).joinToString(FIELD_SEPARATOR),
                     )
                     writer.newLine()
                 }
@@ -40,7 +40,7 @@ object CallGraphCache {
 
     fun read(cacheFile: File): CallGraph {
         val callerToCallees = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
-        val sourceFiles = mutableMapOf<String, String>()
+        val sourceFiles = mutableMapOf<ClassName, String>()
 
         var section = ""
         cacheFile.useLines { lines ->
@@ -50,13 +50,13 @@ object CallGraphCache {
                     line == SOURCES_HEADER -> section = SOURCES_HEADER
                     section == EDGES_HEADER -> {
                         val parts = line.split(FIELD_SEPARATOR)
-                        val caller = MethodRef(parts[0], parts[1])
-                        val callee = MethodRef(parts[2], parts[3])
+                        val caller = MethodRef(ClassName(parts[0]), parts[1])
+                        val callee = MethodRef(ClassName(parts[2]), parts[3])
                         callerToCallees.getOrPut(caller) { mutableSetOf() }.add(callee)
                     }
                     section == SOURCES_HEADER -> {
                         val parts = line.split(FIELD_SEPARATOR)
-                        sourceFiles[parts[0]] = parts[1]
+                        sourceFiles[ClassName(parts[0])] = parts[1]
                     }
                 }
             }

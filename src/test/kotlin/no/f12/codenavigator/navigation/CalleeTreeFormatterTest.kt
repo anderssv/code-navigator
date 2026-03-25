@@ -8,7 +8,7 @@ class CalleeTreeFormatterTest {
     @Test
     fun `method with no callees shows no callees message`() {
         val graph = CallGraph(emptyMap())
-        val target = MethodRef("com.example.Service", "doWork")
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
 
         val result = CalleeTreeFormatter.format(graph, listOf(target), maxDepth = 3)
 
@@ -23,11 +23,11 @@ class CalleeTreeFormatterTest {
 
     @Test
     fun `method with one callee shows it indented`() {
-        val caller = MethodRef("com.example.Controller", "handleRequest")
-        val callee = MethodRef("com.example.Service", "doWork")
+        val caller = MethodRef(ClassName("com.example.Controller"), "handleRequest")
+        val callee = MethodRef(ClassName("com.example.Service"), "doWork")
         val graph = CallGraph(
             mapOf(caller to setOf(callee)),
-            sourceFiles = mapOf("com.example.Service" to "Service.kt"),
+            sourceFiles = mapOf(ClassName("com.example.Service") to "Service.kt"),
         )
 
         val result = CalleeTreeFormatter.format(graph, listOf(caller), maxDepth = 3)
@@ -43,17 +43,17 @@ class CalleeTreeFormatterTest {
 
     @Test
     fun `multiple callees sorted alphabetically`() {
-        val caller = MethodRef("com.example.Orchestrator", "run")
+        val caller = MethodRef(ClassName("com.example.Orchestrator"), "run")
         val graph = CallGraph(
             mapOf(
                 caller to setOf(
-                    MethodRef("com.example.ZService", "execute"),
-                    MethodRef("com.example.AService", "execute"),
+                    MethodRef(ClassName("com.example.ZService"), "execute"),
+                    MethodRef(ClassName("com.example.AService"), "execute"),
                 ),
             ),
             sourceFiles = mapOf(
-                "com.example.AService" to "AService.kt",
-                "com.example.ZService" to "ZService.kt",
+                ClassName("com.example.AService") to "AService.kt",
+                ClassName("com.example.ZService") to "ZService.kt",
             ),
         )
 
@@ -71,17 +71,17 @@ class CalleeTreeFormatterTest {
 
     @Test
     fun `transitive callees render nested`() {
-        val a = MethodRef("com.example.A", "start")
-        val b = MethodRef("com.example.B", "middle")
-        val c = MethodRef("com.example.C", "end")
+        val a = MethodRef(ClassName("com.example.A"), "start")
+        val b = MethodRef(ClassName("com.example.B"), "middle")
+        val c = MethodRef(ClassName("com.example.C"), "end")
         val graph = CallGraph(
             mapOf(
                 a to setOf(b),
                 b to setOf(c),
             ),
             sourceFiles = mapOf(
-                "com.example.B" to "B.kt",
-                "com.example.C" to "C.kt",
+                ClassName("com.example.B") to "B.kt",
+                ClassName("com.example.C") to "C.kt",
             ),
         )
 
@@ -99,17 +99,17 @@ class CalleeTreeFormatterTest {
 
     @Test
     fun `depth limit stops recursion`() {
-        val a = MethodRef("com.example.A", "start")
-        val b = MethodRef("com.example.B", "middle")
-        val c = MethodRef("com.example.C", "end")
+        val a = MethodRef(ClassName("com.example.A"), "start")
+        val b = MethodRef(ClassName("com.example.B"), "middle")
+        val c = MethodRef(ClassName("com.example.C"), "end")
         val graph = CallGraph(
             mapOf(
                 a to setOf(b),
                 b to setOf(c),
             ),
             sourceFiles = mapOf(
-                "com.example.B" to "B.kt",
-                "com.example.C" to "C.kt",
+                ClassName("com.example.B") to "B.kt",
+                ClassName("com.example.C") to "C.kt",
             ),
         )
 
@@ -126,16 +126,16 @@ class CalleeTreeFormatterTest {
 
     @Test
     fun `cycle detection prevents infinite recursion`() {
-        val a = MethodRef("com.example.A", "callB")
-        val b = MethodRef("com.example.B", "callA")
+        val a = MethodRef(ClassName("com.example.A"), "callB")
+        val b = MethodRef(ClassName("com.example.B"), "callA")
         val graph = CallGraph(
             mapOf(
                 a to setOf(b),
                 b to setOf(a),
             ),
             sourceFiles = mapOf(
-                "com.example.A" to "A.kt",
-                "com.example.B" to "B.kt",
+                ClassName("com.example.A") to "A.kt",
+                ClassName("com.example.B") to "B.kt",
             ),
         )
 
@@ -153,8 +153,8 @@ class CalleeTreeFormatterTest {
 
     @Test
     fun `source file shown as unknown when not tracked`() {
-        val caller = MethodRef("com.example.Service", "run")
-        val callee = MethodRef("com.example.External", "invoke")
+        val caller = MethodRef(ClassName("com.example.Service"), "run")
+        val callee = MethodRef(ClassName("com.example.External"), "invoke")
         val graph = CallGraph(
             mapOf(caller to setOf(callee)),
             sourceFiles = emptyMap(),
@@ -173,15 +173,15 @@ class CalleeTreeFormatterTest {
 
     @Test
     fun `filter removes external callees from output`() {
-        val caller = MethodRef("com.example.Service", "run")
-        val projectCallee = MethodRef("com.example.Repo", "save")
-        val jdkCallee = MethodRef("java.lang.Object", "toString")
-        val kotlinCallee = MethodRef("kotlin.jvm.internal.Intrinsics", "checkNotNullParameter")
+        val caller = MethodRef(ClassName("com.example.Service"), "run")
+        val projectCallee = MethodRef(ClassName("com.example.Repo"), "save")
+        val jdkCallee = MethodRef(ClassName("java.lang.Object"), "toString")
+        val kotlinCallee = MethodRef(ClassName("kotlin.jvm.internal.Intrinsics"), "checkNotNullParameter")
         val graph = CallGraph(
             mapOf(caller to setOf(projectCallee, jdkCallee, kotlinCallee)),
             sourceFiles = mapOf(
-                "com.example.Service" to "Service.kt",
-                "com.example.Repo" to "Repo.kt",
+                ClassName("com.example.Service") to "Service.kt",
+                ClassName("com.example.Repo") to "Repo.kt",
             ),
         )
         val projectClasses = setOf("com.example.Service", "com.example.Repo")
@@ -190,7 +190,7 @@ class CalleeTreeFormatterTest {
             graph,
             listOf(caller),
             maxDepth = 3,
-            filter = { it.className in projectClasses },
+            filter = { it.className.value in projectClasses },
         )
 
         assertEquals(
@@ -204,8 +204,8 @@ class CalleeTreeFormatterTest {
 
     @Test
     fun `filter with all callees filtered shows no callees message`() {
-        val caller = MethodRef("com.example.Service", "run")
-        val jdkCallee = MethodRef("java.lang.Object", "toString")
+        val caller = MethodRef(ClassName("com.example.Service"), "run")
+        val jdkCallee = MethodRef(ClassName("java.lang.Object"), "toString")
         val graph = CallGraph(
             mapOf(caller to setOf(jdkCallee)),
         )
@@ -215,7 +215,7 @@ class CalleeTreeFormatterTest {
             graph,
             listOf(caller),
             maxDepth = 3,
-            filter = { it.className in projectClasses },
+            filter = { it.className.value in projectClasses },
         )
 
         assertEquals(
@@ -229,18 +229,18 @@ class CalleeTreeFormatterTest {
 
     @Test
     fun `filter applies to transitive callees`() {
-        val a = MethodRef("com.example.A", "start")
-        val b = MethodRef("com.example.B", "middle")
-        val jdk = MethodRef("java.lang.String", "valueOf")
-        val c = MethodRef("com.example.C", "end")
+        val a = MethodRef(ClassName("com.example.A"), "start")
+        val b = MethodRef(ClassName("com.example.B"), "middle")
+        val jdk = MethodRef(ClassName("java.lang.String"), "valueOf")
+        val c = MethodRef(ClassName("com.example.C"), "end")
         val graph = CallGraph(
             mapOf(
                 a to setOf(b),
                 b to setOf(jdk, c),
             ),
             sourceFiles = mapOf(
-                "com.example.B" to "B.kt",
-                "com.example.C" to "C.kt",
+                ClassName("com.example.B") to "B.kt",
+                ClassName("com.example.C") to "C.kt",
             ),
         )
         val projectClasses = setOf("com.example.A", "com.example.B", "com.example.C")
@@ -249,7 +249,7 @@ class CalleeTreeFormatterTest {
             graph,
             listOf(a),
             maxDepth = 3,
-            filter = { it.className in projectClasses },
+            filter = { it.className.value in projectClasses },
         )
 
         assertEquals(
@@ -264,18 +264,18 @@ class CalleeTreeFormatterTest {
 
     @Test
     fun `multiple matched methods each get their own tree`() {
-        val a = MethodRef("com.example.ServiceA", "run")
-        val b = MethodRef("com.example.ServiceB", "run")
-        val calleeA = MethodRef("com.example.RepoA", "save")
-        val calleeB = MethodRef("com.example.RepoB", "save")
+        val a = MethodRef(ClassName("com.example.ServiceA"), "run")
+        val b = MethodRef(ClassName("com.example.ServiceB"), "run")
+        val calleeA = MethodRef(ClassName("com.example.RepoA"), "save")
+        val calleeB = MethodRef(ClassName("com.example.RepoB"), "save")
         val graph = CallGraph(
             mapOf(
                 a to setOf(calleeA),
                 b to setOf(calleeB),
             ),
             sourceFiles = mapOf(
-                "com.example.RepoA" to "RepoA.kt",
-                "com.example.RepoB" to "RepoB.kt",
+                ClassName("com.example.RepoA") to "RepoA.kt",
+                ClassName("com.example.RepoB") to "RepoB.kt",
             ),
         )
 

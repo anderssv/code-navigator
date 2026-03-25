@@ -7,6 +7,7 @@ import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallTreeNode
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
+import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.FieldDetail
 import no.f12.codenavigator.navigation.ImplementorInfo
 import no.f12.codenavigator.navigation.InterfaceRegistry
@@ -83,11 +84,11 @@ class LlmFormatterTest {
     fun `formats call trees compactly`() {
         val trees = listOf(
             CallTreeNode(
-                method = MethodRef("com.example.Service", "doWork"),
+                method = MethodRef(ClassName("com.example.Service"), "doWork"),
                 sourceFile = "Service.kt",
                 children = listOf(
                     CallTreeNode(
-                        method = MethodRef("com.example.Controller", "handle"),
+                        method = MethodRef(ClassName("com.example.Controller"), "handle"),
                         sourceFile = "Controller.kt",
                         children = emptyList(),
                     )

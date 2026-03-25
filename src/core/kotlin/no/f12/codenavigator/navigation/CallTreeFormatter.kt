@@ -3,7 +3,7 @@ package no.f12.codenavigator.navigation
 enum class CallDirection(
     val arrow: String,
     val emptyMessage: String,
-    val resolve: (CallGraph, String, String) -> Set<MethodRef>,
+    val resolve: (CallGraph, ClassName, String) -> Set<MethodRef>,
 ) {
     CALLERS("←", "(no callers)", { graph, cls, method -> graph.callersOf(cls, method) }),
     CALLEES("→", "(no callees)", { graph, cls, method -> graph.calleesOf(cls, method) }),

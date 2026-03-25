@@ -41,8 +41,8 @@ object PackageDependencyBuilder {
         graph.forEachEdge { caller, callee ->
             if (filter != null && (!filter(caller) || !filter(callee))) return@forEachEdge
 
-            val callerPackage = caller.className.substringBeforeLast('.', "")
-            val calleePackage = callee.className.substringBeforeLast('.', "")
+            val callerPackage = caller.className.value.substringBeforeLast('.', "")
+            val calleePackage = callee.className.value.substringBeforeLast('.', "")
 
             if (callerPackage.isNotEmpty() && calleePackage.isNotEmpty() && callerPackage != calleePackage) {
                 packageDeps.getOrPut(callerPackage) { mutableSetOf() }.add(calleePackage)

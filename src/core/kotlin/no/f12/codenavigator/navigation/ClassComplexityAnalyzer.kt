@@ -19,7 +19,7 @@ object ClassComplexityAnalyzer {
     ): List<ClassComplexity> {
         val regex = Regex(classPattern)
         val projectClasses = graph.projectClasses()
-        val matchingClasses = projectClasses.filter { regex.containsMatchIn(it) && '$' !in it }
+        val matchingClasses = projectClasses.filter { regex.containsMatchIn(it.value) && '$' !in it.value }
 
         return matchingClasses.map { className ->
             analyzeClass(graph, className, projectOnly, projectClasses)
@@ -28,9 +28,9 @@ object ClassComplexityAnalyzer {
 
     private fun analyzeClass(
         graph: CallGraph,
-        className: String,
+        className: ClassName,
         projectOnly: Boolean,
-        projectClasses: Set<String>,
+        projectClasses: Set<ClassName>,
     ): ClassComplexity {
         val outgoing = mutableListOf<Pair<String, String>>()
         val incoming = mutableListOf<Pair<String, String>>()
@@ -41,12 +41,12 @@ object ClassComplexityAnalyzer {
 
             if (callerClass == className && calleeClass != className) {
                 if (!projectOnly || callee.className in projectClasses) {
-                    outgoing.add(calleeClass to callee.methodName)
+                    outgoing.add(calleeClass.value to callee.methodName)
                 }
             }
             if (calleeClass == className && callerClass != className) {
                 if (!projectOnly || caller.className in projectClasses) {
-                    incoming.add(callerClass to caller.methodName)
+                    incoming.add(callerClass.value to caller.methodName)
                 }
             }
         }
@@ -62,7 +62,7 @@ object ClassComplexityAnalyzer {
             .sortedByDescending { it.second }
 
         return ClassComplexity(
-            className = className,
+            className = className.value,
             sourceFile = graph.sourceFileOf(className),
             fanOut = outgoing.size,
             fanIn = incoming.size,
