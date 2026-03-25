@@ -76,6 +76,12 @@ class CodeNavigatorPlugin : Plugin<Project> {
             dependsOn("classes")
         }
 
+        project.tasks.register("cnavDead", DeadCodeTask::class.java) {
+            description = "Finds potential dead code — classes and methods never referenced by other project code. Usage: [-Pfilter=<regex>] [-Pexclude=<regex>]"
+            group = "code-navigator"
+            dependsOn("classes")
+        }
+
         project.tasks.register("cnavHelp", CodeNavigatorHelpTask::class.java) {
             description = "Shows available code-navigator tasks and their usage"
             group = "code-navigator"

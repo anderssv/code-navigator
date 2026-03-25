@@ -59,8 +59,8 @@ object DsmFormatter {
         }.trimEnd()
     }
 
-    fun formatCycles(matrix: DsmMatrix): String {
-        val cyclicPairs = matrix.findCyclicPairs()
+    fun formatCycles(matrix: DsmMatrix, cycleFilter: Pair<String, String>? = null): String {
+        val cyclicPairs = matrix.findCyclicPairs(cycleFilter)
         if (cyclicPairs.isEmpty()) return "No cyclic dependencies found."
 
         return buildString {

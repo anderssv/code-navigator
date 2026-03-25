@@ -1,0 +1,74 @@
+# Plan — Completed
+
+## ~~1. Include test source set in cnavInterfaces (High value)~~ DONE
+
+`cnavInterfaces` now supports `-Pincludetest=true` to also scan test class directories. This reveals test fakes (e.g., `FakeRepo`, `StubClient`) alongside production implementations. Uses a separate cache file (`interface-registry-all.cache`) when test classes are included to avoid mixing results.
+
+## ~~2. True tree indentation for cnavCallers/cnavCallees (High value)~~ DONE
+
+Already implemented. `CallTreeFormatter.renderTree()` recursively walks callers/callees up to `maxDepth`, increasing indentation at each level. Cycle detection via `visited` set prevents infinite recursion. Tests cover transitive nesting, depth limits, and cycles.
+
+## ~~3. "No packages found" message for cnavDeps with invalid filter (Low effort, high polish)~~ DONE
+
+Already implemented in `PackageDepsTask.kt:26-29`.
+
+## ~~4. Reverse dependency view for cnavDeps (High value)~~ DONE
+
+`cnavDeps` now supports `-Preverse=true` to show reverse dependencies (who depends on each package). Uses a lazy inverted map in `PackageDependencies.dependentsOf()`. `allPackages()` and `findPackages()` include all packages (both sources and targets of dependencies) so packages with only incoming dependencies also appear. Output uses `←` arrows for reverse mode and shows "(no incoming dependencies)" when a package has no dependents.
+
+## ~~5. Filter out stdlib/JDK noise in cnavCallees and cnavDeps (Medium value)~~ DONE
+
+cnavCallees, cnavCallers, and cnavDeps now support `-Pprojectonly=true` to filter output to project classes only, hiding JDK/stdlib/library noise. Uses `CallGraph.projectClasses()` (derived from scanned source files) to determine what's "project" vs "external".
+
+## ~~7. JSON/machine-readable output format (Medium value)~~ DONE
+
+All tasks now support `-Pformat=json` for structured JSON output. Hand-rolled JSON formatter (`JsonFormatter.kt`) with no external dependencies — uses `jsonArray`, `jsonObject`, `jsonValue` helpers and a `JsonRaw` value class for pre-rendered content. Covers all 8 data tasks: cnavListClasses, cnavFindClass, cnavFindSymbol, cnavClass, cnavCallers, cnavCallees, cnavInterfaces, cnavDeps. Also added `cnavAgentHelp` task with workflow guidance, task reference, and performance tips for AI coding agents.
+
+## ~~8. cnavClass show interfaces implemented (Low effort)~~ DONE
+
+Already implemented. `ClassDetailExtractor` extracts interfaces from bytecode and `ClassDetailFormatter` outputs "Implements: ..." when interfaces are present.
+
+## ~~27. `cnavDead` — dead code detection (High value, low effort)~~ DONE
+
+Implemented as `cnavDead` task / `cnav:dead` goal. Finds dead classes (no incoming type-level edges from other project classes) and dead methods (class is alive but method has no cross-class callers). Supports `filter` and `exclude` regex parameters. TEXT output uses columnar table (Class | Member | Kind | Source), plus JSON and LLM formats. Wired in both Gradle (`DeadCodeTask.kt`) and Maven (`DeadCodeMojo.kt`).
+
+## ~~37. `cnavUsages` — find project references to external types/methods (High value, medium effort)~~ DONE
+
+A classpath-wide search for usages of specific types and methods. Helps checking what is on the classpath as well as checking the signatures of classes and methods. The most common AI-assisted refactoring task is "migrate from deprecated API X to new API Y" — this requires finding every place in project code that references an external library type, method, or property. Currently cnav only indexes project-defined symbols (`cnavFindSymbol`) and traces calls between project methods (`cnavCallers`). External API usages fall through the cracks, forcing fallback to text-based grep — which misses FQN vs import distinctions, can't distinguish same-named methods on different types, and doesn't understand bytecode-level method names like `getMonthNumber` for Kotlin property `.monthNumber`.
+
+ASM's `MethodVisitor` already sees every `INVOKE*` and field access instruction with full owner class + method name + descriptor. The data is there during cnav's class scanning pass.
+
+- **Question**: "Where in my project code do I use this external type or method?"
+- **Needs**: Bytecode only (extends existing ASM scanning)
+- **Parameters**:
+  - `-Powner=<class>` — FQN of the type to search for (e.g., `kotlinx.datetime.LocalDate`)
+  - `-Pmethod=<name>` — (optional) specific method name on the owner (e.g., `getMonthNumber`)
+  - `-Ptype=<class>` — (alternative to owner) find all references to a type in signatures, fields, locals, casts
+  - `-Pprojectonly=true` — filter to project classes only
+- **Builder**: `UsageScanner.scan(classDirectories, owner, method, type) -> List<UsageSite(callerClass, callerMethod, sourceFile, targetOwner, targetName, targetDescriptor, kind)>`
+- **Bytecode instructions scanned**:
+  - `visitMethodInsn` — method calls (owner + method + descriptor)
+  - `visitFieldInsn` — field reads/writes (GETFIELD, PUTFIELD, GETSTATIC, PUTSTATIC)
+  - `visitTypeInsn` — NEW, CHECKCAST, INSTANCEOF
+  - Method/field descriptors — type references in parameters, return types, field types
+- **Why this beats grep**:
+  - Distinguishes `someLocalDate.monthNumber` from `someOtherType.monthNumber` (owner-aware)
+  - Finds Kotlin property accessors by their bytecode name (`getMonthNumber`) even when source says `.monthNumber`
+  - Catches FQN references and imported references identically
+  - Type reference search catches field declarations, method parameters, return types, and casts — not just call sites
+
+## ~~41. `cnavUsages` — smarter "no results" guidance and `-Ptype` should also find method call owners (Medium value, low effort)~~ DONE
+
+From real-world migration feedback: `cnavUsages -Ptype=ContextKt` returned "No usages found" because `-Ptype` only searched for type references (NEW, CHECKCAST, INSTANCEOF, descriptor types). Now `-Ptype` is comprehensive: it also matches method call and field instruction owners, so `-Ptype=ContextKt` finds calls to `ContextKt.locateResourceFile()`. Additionally, empty results now show guidance suggesting FQN checks and alternative parameters.
+
+## ~~42. `-Pcycles=true` on `cnavDsm` — dedicated cycle detail view~~ DONE
+
+Implemented as a `-Pcycles=true` parameter on the existing `cnavDsm` task (rather than a separate task). When `cycles=true`, skips the full DSM matrix and outputs only cycle details with class-level edges in both directions. Supports all three output formats (TEXT, JSON, LLM). Note: source file locations are not tracked in the DSM data model, so edges show class names only (not file:line).
+
+## ~~48. Targeted cycle filter for DSM (Medium value, low effort)~~ DONE
+
+Implemented as `-Pcycle=pkgA,pkgB` parameter on `cnavDsm`. When set, implies cycles-only mode and filters to show only the cycle between the two named packages. Parsed via `DsmConfig.parseCycleFilter()` which splits on comma. Supports all three output formats (TEXT, JSON, LLM). Wired in both Gradle (`DsmTask.kt`) and Maven (`DsmMojo.kt`).
+
+## ~~50. Cross-package usage filtering for `cnavUsages` (Medium value, low effort)~~ DONE
+
+Implemented as `-Poutside-package=<pkg>` parameter on `cnavUsages` / `cnav:find-usages`. Filters results to only show callers outside the specified package boundary, using dot-boundary matching to avoid partial prefix matches. Wired in both Gradle (`FindUsagesTask.kt`) and Maven (`FindUsagesMojo.kt`).

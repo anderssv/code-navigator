@@ -6,6 +6,7 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallGraphBuilder
+import no.f12.codenavigator.navigation.CallGraphConfig
 import no.f12.codenavigator.navigation.CallTreeBuilder
 import no.f12.codenavigator.navigation.CallTreeFormatter
 import no.f12.codenavigator.navigation.MethodRef
@@ -30,22 +31,25 @@ class FindCalleesMojo : AbstractMojo() {
     private var format: String? = null
 
     @Parameter(property = "llm")
-    private var llm: Boolean? = null
+    private var llm: String? = null
 
-    @Parameter(property = "method", required = true)
+    @Parameter(property = "method")
     private var method: String? = null
 
-    @Parameter(property = "maxdepth", required = true)
-    private var maxdepth: Int? = null
+    @Parameter(property = "maxdepth")
+    private var maxdepth: String? = null
 
-    @Parameter(property = "projectonly", defaultValue = "false")
-    private var projectonly: Boolean = false
+    @Parameter(property = "projectonly")
+    private var projectonly: String? = null
 
     override fun execute() {
-        val methodPattern = method
-            ?: throw MojoFailureException("Missing required property 'method'. Usage: mvn cnav:find-callees -Dmethod=<regex> -Dmaxdepth=3")
-        val depth = maxdepth
-            ?: throw MojoFailureException("Missing required property 'maxdepth'. Usage: mvn cnav:find-callees -Dmethod=<regex> -Dmaxdepth=3")
+        val config = try {
+            CallGraphConfig.parse(buildPropertyMap())
+        } catch (e: IllegalArgumentException) {
+            throw MojoFailureException(
+                "Missing required property. Usage: mvn cnav:find-callees -Dmethod=<regex> -Dmaxdepth=3",
+            )
+        }
 
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
@@ -53,27 +57,34 @@ class FindCalleesMojo : AbstractMojo() {
             return
         }
 
-        val outputFormat = OutputFormat.from(format, llm)
         val result = CallGraphBuilder.build(listOf(classesDir))
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val graph = result.data
-        val methods = graph.findMethods(methodPattern)
+        val methods = graph.findMethods(config.method)
 
         if (methods.isEmpty()) {
-            println("No methods found matching '$methodPattern'")
+            println("No methods found matching '${config.method}'")
             return
         }
 
         val filter: ((MethodRef) -> Boolean)? =
-            if (projectonly) graph.projectClassFilter() else null
+            if (config.projectOnly) graph.projectClassFilter() else null
 
-        val trees = CallTreeBuilder.build(graph, methods, depth, CallDirection.CALLEES, filter)
-        val output = when (outputFormat) {
+        val trees = CallTreeBuilder.build(graph, methods, config.maxDepth, CallDirection.CALLEES, filter)
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.renderCallTrees(trees)
             OutputFormat.LLM -> LlmFormatter.renderCallTrees(trees, CallDirection.CALLEES)
             OutputFormat.TEXT -> CallTreeFormatter.renderTrees(trees, CallDirection.CALLEES)
         }
-        println(OutputWrapper.wrap(output, outputFormat))
+        println(OutputWrapper.wrap(output, config.format))
+    }
+
+    private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        format?.let { put("format", it) }
+        llm?.let { put("llm", it) }
+        method?.let { put("method", it) }
+        maxdepth?.let { put("maxdepth", it) }
+        projectonly?.let { put("projectonly", it) }
     }
 }

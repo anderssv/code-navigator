@@ -6,6 +6,7 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.ClassDetailFormatter
 import no.f12.codenavigator.navigation.ClassDetailScanner
+import no.f12.codenavigator.navigation.FindClassDetailConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
@@ -20,29 +21,38 @@ abstract class FindClassDetailTask : DefaultTask() {
 
     @TaskAction
     fun findClassDetail() {
-        val pattern = project.findProperty("pattern")?.toString()
-            ?: throw GradleException("Missing required property 'pattern'. Usage: ./gradlew cnavClass -Ppattern=<regex>")
-        val format = project.outputFormat()
+        val config = try {
+            FindClassDetailConfig.parse(
+                project.buildPropertyMap(
+                    propertyNames = listOf("pattern", "format", "llm"),
+                    flagNames = emptyList(),
+                ),
+            )
+        } catch (e: IllegalArgumentException) {
+            throw GradleException(
+                "Missing required property 'pattern'. Usage: ./gradlew cnavClass -Ppattern=<regex>",
+            )
+        }
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
 
-        val result = ClassDetailScanner.scan(classDirectories, pattern)
+        val result = ClassDetailScanner.scan(classDirectories, config.pattern)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val matchingDetails = result.data
 
         if (matchingDetails.isEmpty()) {
-            logger.lifecycle("No classes found matching '$pattern'")
+            logger.lifecycle("No classes found matching '${config.pattern}'")
             return
         }
 
-        val output = when (format) {
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.formatClassDetails(matchingDetails)
             OutputFormat.LLM -> LlmFormatter.formatClassDetails(matchingDetails)
             OutputFormat.TEXT -> ClassDetailFormatter.format(matchingDetails)
         }
-        logger.lifecycle(OutputWrapper.wrap(output, format))
+        logger.lifecycle(OutputWrapper.wrap(output, config.format))
     }
 }

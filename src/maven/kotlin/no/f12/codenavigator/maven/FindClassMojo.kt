@@ -7,6 +7,7 @@ import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TableFormatter
 import no.f12.codenavigator.navigation.ClassFilter
 import no.f12.codenavigator.navigation.ClassScanner
+import no.f12.codenavigator.navigation.FindClassConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
@@ -28,14 +29,19 @@ class FindClassMojo : AbstractMojo() {
     private var format: String? = null
 
     @Parameter(property = "llm")
-    private var llm: Boolean? = null
+    private var llm: String? = null
 
-    @Parameter(property = "pattern", required = true)
+    @Parameter(property = "pattern")
     private var pattern: String? = null
 
     override fun execute() {
-        val pat = pattern
-            ?: throw MojoFailureException("Missing required property 'pattern'. Usage: mvn cnav:find-class -Dpattern=<regex>")
+        val config = try {
+            FindClassConfig.parse(buildPropertyMap())
+        } catch (e: IllegalArgumentException) {
+            throw MojoFailureException(
+                "Missing required property 'pattern'. Usage: mvn cnav:find-class -Dpattern=<regex>",
+            )
+        }
 
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
@@ -43,18 +49,23 @@ class FindClassMojo : AbstractMojo() {
             return
         }
 
-        val outputFormat = OutputFormat.from(format, llm)
         val result = ClassScanner.scan(listOf(classesDir))
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val allClasses = result.data
-        val matches = ClassFilter.filter(allClasses, pat)
+        val matches = ClassFilter.filter(allClasses, config.pattern)
 
-        val output = when (outputFormat) {
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.formatClasses(matches)
             OutputFormat.LLM -> LlmFormatter.formatClasses(matches)
             OutputFormat.TEXT -> TableFormatter.format(matches)
         }
-        println(OutputWrapper.wrap(output, outputFormat))
+        println(OutputWrapper.wrap(output, config.format))
+    }
+
+    private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        format?.let { put("format", it) }
+        llm?.let { put("llm", it) }
+        pattern?.let { put("pattern", it) }
     }
 }

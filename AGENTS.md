@@ -21,6 +21,10 @@ To release:
 9. Commit: `git commit -am "Bump to X.Y.Z-SNAPSHOT"`
 10. Push: `git push && git push --tags`
 
+## Plan Management
+
+`plan.md` contains the feature roadmap. When a feature is completed, move its section from `plan.md` to `plan-completed.md` (append at the end). This keeps the active plan focused on remaining work while preserving the history of what was done and how.
+
 ## Package Structure
 
 The codebase is split into three areas:

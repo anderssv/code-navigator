@@ -8,6 +8,7 @@ import no.f12.codenavigator.navigation.CallGraphCache
 import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencyBuilder
 import no.f12.codenavigator.navigation.PackageDependencyFormatter
+import no.f12.codenavigator.navigation.PackageDepsConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
@@ -21,10 +22,12 @@ abstract class PackageDepsTask : DefaultTask() {
 
     @TaskAction
     fun showDeps() {
-        val pattern = project.findProperty("package")?.toString()
-        val projectOnly = project.findProperty("projectonly")?.toString()?.toBoolean() ?: false
-        val reverse = project.findProperty("reverse")?.toString()?.toBoolean() ?: false
-        val format = project.outputFormat()
+        val config = PackageDepsConfig.parse(
+            project.buildPropertyMap(
+                propertyNames = listOf("package", "projectonly", "reverse", "format", "llm"),
+                flagNames = emptyList(),
+            ),
+        )
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
@@ -37,14 +40,14 @@ abstract class PackageDepsTask : DefaultTask() {
         val graph = result.data
 
         val filter: ((MethodRef) -> Boolean)? =
-            if (projectOnly) graph.projectClassFilter() else null
+            if (config.projectOnly) graph.projectClassFilter() else null
 
         val deps = PackageDependencyBuilder.build(graph, filter)
 
-        val packages = if (pattern != null) {
-            val matches = deps.findPackages(pattern)
+        val packages = if (config.packagePattern != null) {
+            val matches = deps.findPackages(config.packagePattern)
             if (matches.isEmpty()) {
-                logger.lifecycle("No packages found matching '$pattern'")
+                logger.lifecycle("No packages found matching '${config.packagePattern}'")
                 return
             }
             matches
@@ -52,11 +55,11 @@ abstract class PackageDepsTask : DefaultTask() {
             deps.allPackages()
         }
 
-        val output = when (format) {
-            OutputFormat.JSON -> JsonFormatter.formatPackageDeps(deps, packages, reverse)
-            OutputFormat.LLM -> LlmFormatter.formatPackageDeps(deps, packages, reverse)
-            OutputFormat.TEXT -> PackageDependencyFormatter.format(deps, packages, reverse)
+        val output = when (config.format) {
+            OutputFormat.JSON -> JsonFormatter.formatPackageDeps(deps, packages, config.reverse)
+            OutputFormat.LLM -> LlmFormatter.formatPackageDeps(deps, packages, config.reverse)
+            OutputFormat.TEXT -> PackageDependencyFormatter.format(deps, packages, config.reverse)
         }
-        logger.lifecycle(OutputWrapper.wrap(output, format))
+        logger.lifecycle(OutputWrapper.wrap(output, config.format))
     }
 }

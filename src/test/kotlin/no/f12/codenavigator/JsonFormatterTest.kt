@@ -17,6 +17,8 @@ import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.SymbolKind
 import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.RankedType
+import no.f12.codenavigator.navigation.DeadCode
+import no.f12.codenavigator.navigation.DeadCodeKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -515,5 +517,31 @@ class JsonFormatterTest {
         assertTrue(result.contains("\"outDegree\":2"))
         assertTrue(result.contains("\"className\":\"com.example.Service\""))
         assertTrue(result.contains("\"rank\":0.15"))
+    }
+
+    // === Dead code formatting ===
+
+    @Test
+    fun `empty dead code list produces empty JSON array`() {
+        val result = JsonFormatter.formatDead(emptyList())
+
+        assertEquals("[]", result)
+    }
+
+    @Test
+    fun `formats dead code as JSON array with all fields`() {
+        val dead = listOf(
+            DeadCode("com.example.Orphan", null, DeadCodeKind.CLASS, "Orphan.kt"),
+            DeadCode("com.example.Service", "unused", DeadCodeKind.METHOD, "Service.kt"),
+        )
+
+        val result = JsonFormatter.formatDead(dead)
+
+        assertTrue(result.contains("\"className\":\"com.example.Orphan\""))
+        assertTrue(result.contains("\"kind\":\"class\""))
+        assertTrue(result.contains("\"sourceFile\":\"Orphan.kt\""))
+        assertTrue(result.contains("\"className\":\"com.example.Service\""))
+        assertTrue(result.contains("\"memberName\":\"unused\""))
+        assertTrue(result.contains("\"kind\":\"method\""))
     }
 }

@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.navigation.DsmConfig
 import no.f12.codenavigator.navigation.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.DsmFormatter
 import no.f12.codenavigator.navigation.DsmHtmlRenderer
@@ -21,39 +22,42 @@ abstract class DsmTask : DefaultTask() {
     @TaskAction
     fun showDsm() {
         val extension = project.codeNavigatorExtension()
-        val rootPackage = extension.resolveRootPackage(project.findProperty("root-package"))
-        val depth = project.findProperty("dsm-depth")?.toString()?.toIntOrNull() ?: 2
-        val htmlPath = project.findProperty("dsm-html")?.toString()
-        val format = project.outputFormat()
-        val cyclesOnly = project.findProperty("cycles")?.toString()?.toBoolean() ?: false
+        val resolvedRootPackage = extension.resolveRootPackage(project.findProperty("root-package"))
+
+        val props = project.buildPropertyMap(
+            propertyNames = listOf("dsm-depth", "dsm-html", "cycles", "cycle", "format", "llm"),
+            flagNames = emptyList(),
+        ) + ("root-package" to resolvedRootPackage)
+
+        val config = DsmConfig.parse(props)
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
 
-        val result = DsmDependencyExtractor.extract(classDirectories, rootPackage)
+        val result = DsmDependencyExtractor.extract(classDirectories, config.rootPackage)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val dependencies = result.data
-        val matrix = DsmMatrixBuilder.build(dependencies, rootPackage, depth)
+        val matrix = DsmMatrixBuilder.build(dependencies, config.rootPackage, config.depth)
 
-        val output = if (cyclesOnly) {
-            when (format) {
-                OutputFormat.TEXT -> DsmFormatter.formatCycles(matrix)
-                OutputFormat.JSON -> JsonFormatter.formatDsmCycles(matrix)
-                OutputFormat.LLM -> LlmFormatter.formatDsmCycles(matrix)
+        val output = if (config.cyclesOnly || config.cycleFilter != null) {
+            when (config.format) {
+                OutputFormat.TEXT -> DsmFormatter.formatCycles(matrix, config.cycleFilter)
+                OutputFormat.JSON -> JsonFormatter.formatDsmCycles(matrix, config.cycleFilter)
+                OutputFormat.LLM -> LlmFormatter.formatDsmCycles(matrix, config.cycleFilter)
             }
         } else {
-            when (format) {
+            when (config.format) {
                 OutputFormat.TEXT -> DsmFormatter.format(matrix)
                 OutputFormat.JSON -> JsonFormatter.formatDsm(matrix)
                 OutputFormat.LLM -> LlmFormatter.formatDsm(matrix)
             }
         }
-        logger.lifecycle(OutputWrapper.wrap(output, format))
+        logger.lifecycle(OutputWrapper.wrap(output, config.format))
 
-        if (htmlPath != null) {
-            val htmlFile = project.file(htmlPath)
+        if (config.htmlPath != null) {
+            val htmlFile = project.file(config.htmlPath)
             htmlFile.parentFile?.mkdirs()
             htmlFile.writeText(DsmHtmlRenderer.render(matrix))
             logger.lifecycle("DSM HTML written to: ${htmlFile.absolutePath}")

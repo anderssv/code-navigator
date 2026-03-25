@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.navigation.DsmConfig
 import no.f12.codenavigator.navigation.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.DsmFormatter
 import no.f12.codenavigator.navigation.DsmHtmlRenderer
@@ -28,54 +29,68 @@ class DsmMojo : AbstractMojo() {
     private var format: String? = null
 
     @Parameter(property = "llm")
-    private var llm: Boolean? = null
+    private var llm: String? = null
 
-    @Parameter(property = "root-package", defaultValue = "")
-    private var rootPackage: String = ""
+    @Parameter(property = "root-package")
+    private var rootPackage: String? = null
 
-    @Parameter(property = "dsm-depth", defaultValue = "2")
-    private var dsmDepth: Int = 2
+    @Parameter(property = "dsm-depth")
+    private var dsmDepth: String? = null
 
     @Parameter(property = "dsm-html")
     private var dsmHtml: String? = null
 
-    @Parameter(property = "cycles", defaultValue = "false")
-    private var cycles: Boolean = false
+    @Parameter(property = "cycles")
+    private var cycles: String? = null
+
+    @Parameter(property = "cycle")
+    private var cycle: String? = null
 
     override fun execute() {
+        val config = DsmConfig.parse(buildPropertyMap())
+
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
             log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
             return
         }
 
-        val outputFormat = OutputFormat.from(format, llm)
-        val result = DsmDependencyExtractor.extract(listOf(classesDir), rootPackage)
+        val result = DsmDependencyExtractor.extract(listOf(classesDir), config.rootPackage)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val dependencies = result.data
-        val matrix = DsmMatrixBuilder.build(dependencies, rootPackage, dsmDepth)
+        val matrix = DsmMatrixBuilder.build(dependencies, config.rootPackage, config.depth)
 
-        val output = if (cycles) {
-            when (outputFormat) {
-                OutputFormat.TEXT -> DsmFormatter.formatCycles(matrix)
-                OutputFormat.JSON -> JsonFormatter.formatDsmCycles(matrix)
-                OutputFormat.LLM -> LlmFormatter.formatDsmCycles(matrix)
+        val output = if (config.cyclesOnly || config.cycleFilter != null) {
+            when (config.format) {
+                OutputFormat.TEXT -> DsmFormatter.formatCycles(matrix, config.cycleFilter)
+                OutputFormat.JSON -> JsonFormatter.formatDsmCycles(matrix, config.cycleFilter)
+                OutputFormat.LLM -> LlmFormatter.formatDsmCycles(matrix, config.cycleFilter)
             }
         } else {
-            when (outputFormat) {
+            when (config.format) {
                 OutputFormat.TEXT -> DsmFormatter.format(matrix)
                 OutputFormat.JSON -> JsonFormatter.formatDsm(matrix)
                 OutputFormat.LLM -> LlmFormatter.formatDsm(matrix)
             }
         }
-        println(OutputWrapper.wrap(output, outputFormat))
+        println(OutputWrapper.wrap(output, config.format))
 
-        if (dsmHtml != null) {
-            val htmlFile = File(project.basedir, dsmHtml!!)
+        if (config.htmlPath != null) {
+            val htmlFile = File(project.basedir, config.htmlPath)
             htmlFile.parentFile?.mkdirs()
             htmlFile.writeText(DsmHtmlRenderer.render(matrix))
             println("DSM HTML written to: ${htmlFile.absolutePath}")
         }
+    }
+
+    private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        format?.let { put("format", it) }
+        llm?.let { put("llm", it) }
+        rootPackage?.let { put("root-package", it) }
+        dsmDepth?.let { put("dsm-depth", it) }
+        dsmHtml?.let { put("dsm-html", it) }
+        cycles?.let { put("cycles", it) }
+        cycle?.let { put("cycle", it) }
     }
 }

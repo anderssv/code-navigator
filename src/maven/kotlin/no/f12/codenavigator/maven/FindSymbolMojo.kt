@@ -4,10 +4,11 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
-import no.f12.codenavigator.navigation.SymbolScanner
-import no.f12.codenavigator.navigation.SymbolFilter
-import no.f12.codenavigator.navigation.SymbolTableFormatter
+import no.f12.codenavigator.navigation.FindSymbolConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
+import no.f12.codenavigator.navigation.SymbolFilter
+import no.f12.codenavigator.navigation.SymbolScanner
+import no.f12.codenavigator.navigation.SymbolTableFormatter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Execute
@@ -28,14 +29,17 @@ class FindSymbolMojo : AbstractMojo() {
     private var format: String? = null
 
     @Parameter(property = "llm")
-    private var llm: Boolean? = null
+    private var llm: String? = null
 
     @Parameter(property = "pattern", required = true)
     private var pattern: String? = null
 
     override fun execute() {
-        val pat = pattern
-            ?: throw MojoFailureException("Missing required property 'pattern'. Usage: mvn cnav:find-symbol -Dpattern=<regex>")
+        val config = try {
+            FindSymbolConfig.parse(buildPropertyMap())
+        } catch (e: IllegalArgumentException) {
+            throw MojoFailureException(e.message)
+        }
 
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
@@ -43,18 +47,23 @@ class FindSymbolMojo : AbstractMojo() {
             return
         }
 
-        val outputFormat = OutputFormat.from(format, llm)
         val result = SymbolScanner.scan(listOf(classesDir))
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val allSymbols = result.data
-        val matches = SymbolFilter.filter(allSymbols, pat)
+        val matches = SymbolFilter.filter(allSymbols, config.pattern)
 
-        val output = when (outputFormat) {
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.formatSymbols(matches)
             OutputFormat.LLM -> LlmFormatter.formatSymbols(matches)
             OutputFormat.TEXT -> SymbolTableFormatter.format(matches)
         }
-        println(OutputWrapper.wrap(output, outputFormat))
+        println(OutputWrapper.wrap(output, config.format))
+    }
+
+    private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        format?.let { put("format", it) }
+        llm?.let { put("llm", it) }
+        pattern?.let { put("pattern", it) }
     }
 }

@@ -1,25 +1,5 @@
 # Plan
 
-## ~~1. Include test source set in cnavInterfaces (High value)~~ DONE
-
-`cnavInterfaces` now supports `-Pincludetest=true` to also scan test class directories. This reveals test fakes (e.g., `FakeRepo`, `StubClient`) alongside production implementations. Uses a separate cache file (`interface-registry-all.cache`) when test classes are included to avoid mixing results.
-
-## ~~2. True tree indentation for cnavCallers/cnavCallees (High value)~~ DONE
-
-Already implemented. `CallTreeFormatter.renderTree()` recursively walks callers/callees up to `maxDepth`, increasing indentation at each level. Cycle detection via `visited` set prevents infinite recursion. Tests cover transitive nesting, depth limits, and cycles.
-
-## ~~3. "No packages found" message for cnavDeps with invalid filter (Low effort, high polish)~~ DONE
-
-Already implemented in `PackageDepsTask.kt:26-29`.
-
-## ~~4. Reverse dependency view for cnavDeps (High value)~~ DONE
-
-`cnavDeps` now supports `-Preverse=true` to show reverse dependencies (who depends on each package). Uses a lazy inverted map in `PackageDependencies.dependentsOf()`. `allPackages()` and `findPackages()` include all packages (both sources and targets of dependencies) so packages with only incoming dependencies also appear. Output uses `←` arrows for reverse mode and shows "(no incoming dependencies)" when a package has no dependents.
-
-## ~~5. Filter out stdlib/JDK noise in cnavCallees and cnavDeps (Medium value)~~ DONE
-
-cnavCallees, cnavCallers, and cnavDeps now support `-Pprojectonly=true` to filter output to project classes only, hiding JDK/stdlib/library noise. Uses `CallGraph.projectClasses()` (derived from scanned source files) to determine what's "project" vs "external".
-
 ## 6. Architecture violation detection in cnavDeps (High value, ambitious)
 
 Allow defining allowed/forbidden dependency rules (e.g., "services must not depend on ra") and flag violations. This would turn cnavDeps into an architecture fitness function. Could be configured via a simple DSL:
@@ -32,14 +12,6 @@ codeNavigator {
     }
 }
 ```
-
-## ~~7. JSON/machine-readable output format (Medium value)~~ DONE
-
-All tasks now support `-Pformat=json` for structured JSON output. Hand-rolled JSON formatter (`JsonFormatter.kt`) with no external dependencies — uses `jsonArray`, `jsonObject`, `jsonValue` helpers and a `JsonRaw` value class for pre-rendered content. Covers all 8 data tasks: cnavListClasses, cnavFindClass, cnavFindSymbol, cnavClass, cnavCallers, cnavCallees, cnavInterfaces, cnavDeps. Also added `cnavAgentHelp` task with workflow guidance, task reference, and performance tips for AI coding agents.
-
-## ~~8. cnavClass show interfaces implemented (Low effort)~~ DONE
-
-Already implemented. `ClassDetailExtractor` extracts interfaces from bytecode and `ClassDetailFormatter` outputs "Implements: ..." when interfaces are present.
 
 ## 9. Write JSON output to file instead of stdout (Medium value)
 
@@ -186,138 +158,6 @@ Apply PageRank to the existing call graph to identify the most "load-bearing" ty
 - **Parameters**: `-Ptop=N` (default 30), `-Pprojectonly=true`, `-Pmethods=true` (rank methods instead of types)
 - **Why high value**: Useful for AI agents to understand which classes are central vs peripheral. Also useful for prioritizing test coverage. Easy to implement since we already build the call graph.
 
-## 27. `cnavDead` — dead code detection (High value, low effort)
-
-Identify classes, methods, or fields that are never referenced by any other code in the project. Reports "potential dead code" since reflection-based usage can't be detected from bytecode alone.
-
-- **Question**: "What code can safely be removed?"
-- **Needs**: Bytecode only (reuses existing call graph and symbol index)
-- **Builder**: `DeadCodeFinder.find(callGraph, symbolIndex, classIndex) -> List<DeadCode(className, memberName?, kind: CLASS|METHOD|FIELD)>`
-- **Parameters**: `-Pfilter=<regex>`, `-Pinclude-fields=true`, `-Pexclude=<regex>` (exclude known entry points like `main`, `@Test`, Mojo/Task classes)
-- **Caveats**: Must document that reflection, serialization, and framework magic (Spring beans, etc.) may cause false positives.
-- **Why high value**: Very actionable for cleanup. AI agents can suggest removal with confidence when bytecode analysis shows zero references.
-
-## 28. Complexity trends over time (High value, medium effort)
-
-Track the complexity of hotspot files across git history. Instead of a snapshot, show whether a file is *deteriorating*, *stable*, or *improving*. Uses indentation-based complexity (proxy for cyclomatic complexity, works without full parsing) measured at each historical version.
-
-- **Question**: "Is this hotspot getting harder to maintain over time, or are we keeping it under control?"
-- **Needs**: Git history (fetches file content at historical versions via `git show`)
-- **Builder**: `ComplexityTrendBuilder.build(file, commits) -> List<ComplexityPoint(date, complexity, revisionHash)>`
-- **Parameters**: `-Pfile=<path>` (required), `-Pafter=YYYY-MM-DD`, `-Psamples=N` (number of historical points)
-- **Could extend**: `cnavHotspots` with a `-Ptrend=true` flag, or be a standalone `cnavTrend` task
-- **Why high value**: The direction of complexity change is more informative than an absolute value. A rising-complexity hotspot is the #1 refactoring target.
-
-## 29. Coupling comparison — temporal vs structural (High value, medium effort)
-
-Compare temporal coupling (files that change together, from git) with structural coupling (files that depend on each other, from bytecode). The mismatches are where the most interesting architectural insights hide:
-
-- **Temporal coupling WITHOUT structural coupling** → hidden dependencies (shared config, copy-paste, implicit contracts)
-- **Structural coupling WITHOUT temporal coupling** → potentially unused/dead dependencies
-
-- **Question**: "Are there hidden dependencies not visible in the code structure?"
-- **Needs**: Both git history and bytecode
-- **Builder**: `CouplingComparisonBuilder.build(temporalCoupling, structuralDeps) -> List<CouplingMismatch(fileA, fileB, temporalDegree, structurallyLinked: Boolean, kind: HIDDEN_DEP|UNUSED_DEP)>`
-- **Parameters**: Same as `cnavCoupling` + bytecode class dirs
-- **Why high value**: Genuinely novel analysis from Tornhill's "Software Design X-Rays" that no other build plugin offers. Extremely useful for AI agents reasoning about refactoring.
-
-## 30. Knowledge distribution / bus factor (Medium-high value, low effort)
-
-Extends `cnavAuthors` with proportional ownership. Instead of just counting distinct contributors, compute each developer's share of contributions per file. Identifies "knowledge islands" where a single developer wrote >80% of the code.
-
-- **Question**: "If developer X leaves, what parts of the codebase are at risk?"
-- **Needs**: Git history only
-- **Builder**: `KnowledgeDistributionBuilder.build(commits) -> List<FileOwnership(file, mainAuthor, mainAuthorShare: Double, totalAuthors: Int, busFactor: Int)>`
-- **Parameters**: `-Pafter`, `-Ptop=N`, `-Prisk-threshold=N` (percentage, default 80)
-- **Could extend**: `cnavAuthors` with a `-Pownership=true` flag
-- **Why useful**: For AI agents, knowing who the expert is for a given file is immediately actionable. For teams, bus factor risks are critical planning info.
-
-## 31. Stability/instability metrics — Robert C. Martin (Medium-high value, low effort)
-
-For each package, compute Afferent Coupling (Ca = who depends on me), Efferent Coupling (Ce = who I depend on), Instability I = Ce/(Ca+Ce), and Abstractness A = abstract types / total types. The "distance from main sequence" D = |A + I - 1| measures how well a package balances stability and abstractness.
-
-- **Question**: "Are our package dependencies well-structured?"
-- **Needs**: Bytecode only (extends `package-deps` data)
-- **Builder**: `StabilityAnalyzer.analyze(packageDeps, classIndex) -> List<PackageMetrics(pkg, ca, ce, instability, abstractness, distance)>`
-- **Parameters**: `-Proot-package=<prefix>`
-- **Why useful**: Well-established Clean Architecture metrics. Packages in the "zone of pain" (stable + concrete) or "zone of uselessness" (unstable + abstract) are worth flagging.
-
-## 32. Shotgun surgery detection (Medium-high value, medium effort)
-
-Identify commits where a single logical change touches many files across many packages — a code smell indicating poor encapsulation. Aggregates git history to find recurring patterns of widespread changes.
-
-- **Question**: "Which kinds of changes cause the most widespread ripple effects?"
-- **Needs**: Git history (optionally enriched with bytecode package structure)
-- **Builder**: `ShotgunSurgeryDetector.detect(commits, minFiles, minPackages) -> List<ShotgunCommit(hash, date, author, filesChanged, packagesChanged, files: List<String>)>`
-- **Parameters**: `-Pafter`, `-Pmin-files=N` (default 8), `-Pmin-packages=N` (default 3), `-Ptop=N`
-- **Why useful**: Identifies poor encapsulation patterns. An AI agent could flag "this change pattern suggests concept X is spread across too many packages."
-
-## 33. Refactoring targets — composite risk score (Medium value, medium effort)
-
-Combine hotspot data (change frequency), code complexity (from bytecode or indentation), coupling degree, and author count into a single prioritized "refactoring score" per file. Answers the question every team lead asks: "where should we invest refactoring effort for maximum payoff?"
-
-- **Question**: "What are the top refactoring targets in the codebase?"
-- **Needs**: Both git history and bytecode
-- **Builder**: `RefactoringTargetBuilder.build(hotspots, complexity, coupling, authors) -> List<RefactoringTarget(file, score, components: Map<String, Double>)>`
-- **Parameters**: `-Pafter`, `-Ptop=N`, weights for each factor
-- **Depends on**: Multiple other analyses (hotspots, cohesion, coupling, authors)
-- **Why useful**: The "killer feature" of CodeScene — combining signals into an actionable priority list.
-
-## 34. Layer violation detection (Medium value, medium effort)
-
-Given user-defined architectural layers (e.g., controller → service → persistence), detect violations where a lower layer depends on a higher one. Provides a declarative way to check layer rules without writing ArchUnit test code.
-
-- **Question**: "Does the code respect our intended architectural boundaries?"
-- **Needs**: Bytecode only
-- **Configuration**: Layer definitions in build config (e.g., `cnav.layers = ["controller", "service", "domain", "persistence"]`) or a properties file
-- **Builder**: `LayerViolationDetector.detect(packageDeps, layerConfig) -> List<Violation(from, to, fromLayer, toLayer)>`
-- **Why useful**: Architecture enforcement without requiring ArchUnit dependency or test code. More of a reporting/checking concern than analysis.
-
-## 35. Knowledge loss / former contributor risk (Medium value, low effort)
-
-Identify code primarily written by developers who are no longer active (haven't committed in N months). Flags modules where the dominant contributor has gone silent.
-
-- **Question**: "Which parts of the codebase are maintained by people who may have left?"
-- **Needs**: Git history only
-- **Builder**: `KnowledgeLossDetector.detect(commits, inactiveMonths) -> List<AtRiskFile(file, mainAuthor, lastAuthorCommit, authorShare, isActive: Boolean)>`
-- **Parameters**: `-Pinactive-months=N` (default 6), `-Ptop=N`
-- **Why useful**: Risk assessment for team planning. Less actionable for AI agents day-to-day.
-
-## 36. Developer coordination / fragmentation (Low-medium value, low effort)
-
-Measures how scattered contributions are across a file. High fragmentation (many authors each contributing small pieces) correlates with higher defect risk compared to concentrated ownership. Extends Code Maat's `fragmentation` metric.
-
-- **Question**: "Where are coordination bottlenecks in the codebase?"
-- **Needs**: Git history only
-- **Builder**: `FragmentationAnalyzer.analyze(commits) -> List<FileFragmentation(file, fragmentation: Double, authors: Int, revisions: Int)>`
-- **Parameters**: `-Pafter`, `-Ptop=N`
-- **Why useful**: More relevant for large teams. Can be combined with other metrics (hotspots, authors) for richer analysis.
-
-## ~~37. `cnavUsages` — find project references to external types/methods (High value, medium effort)~~ DONE
-
-A classpath-wide search for usages of specific types and methods. Helps checking what is on the classpath as well as checking the signatures of classes and methods. The most common AI-assisted refactoring task is "migrate from deprecated API X to new API Y" — this requires finding every place in project code that references an external library type, method, or property. Currently cnav only indexes project-defined symbols (`cnavFindSymbol`) and traces calls between project methods (`cnavCallers`). External API usages fall through the cracks, forcing fallback to text-based grep — which misses FQN vs import distinctions, can't distinguish same-named methods on different types, and doesn't understand bytecode-level method names like `getMonthNumber` for Kotlin property `.monthNumber`.
-
-ASM's `MethodVisitor` already sees every `INVOKE*` and field access instruction with full owner class + method name + descriptor. The data is there during cnav's class scanning pass.
-
-- **Question**: "Where in my project code do I use this external type or method?"
-- **Needs**: Bytecode only (extends existing ASM scanning)
-- **Parameters**:
-  - `-Powner=<class>` — FQN of the type to search for (e.g., `kotlinx.datetime.LocalDate`)
-  - `-Pmethod=<name>` — (optional) specific method name on the owner (e.g., `getMonthNumber`)
-  - `-Ptype=<class>` — (alternative to owner) find all references to a type in signatures, fields, locals, casts
-  - `-Pprojectonly=true` — filter to project classes only
-- **Builder**: `UsageScanner.scan(classDirectories, owner, method, type) -> List<UsageSite(callerClass, callerMethod, sourceFile, targetOwner, targetName, targetDescriptor, kind)>`
-- **Bytecode instructions scanned**:
-  - `visitMethodInsn` — method calls (owner + method + descriptor)
-  - `visitFieldInsn` — field reads/writes (GETFIELD, PUTFIELD, GETSTATIC, PUTSTATIC)
-  - `visitTypeInsn` — NEW, CHECKCAST, INSTANCEOF
-  - Method/field descriptors — type references in parameters, return types, field types
-- **Why this beats grep**:
-  - Distinguishes `someLocalDate.monthNumber` from `someOtherType.monthNumber` (owner-aware)
-  - Finds Kotlin property accessors by their bytecode name (`getMonthNumber`) even when source says `.monthNumber`
-  - Catches FQN references and imported references identically
-  - Type reference search catches field declarations, method parameters, return types, and casts — not just call sites
-
 ## 38. Full classpath scanning option for searches and identification (High value, medium effort)
 
 Most searches and identifications should have an option to include the full classpath, not just the project code. Currently `cnavListClasses`, `cnavFindClass`, `cnavFindSymbol`, `cnavClass`, `cnavCallers`, `cnavCallees`, `cnavInterfaces`, and `cnavUsages` only scan the project's compiled output directories. But when checking what is available on the classpath — e.g., verifying a library class's method signatures, finding all implementations of a framework interface, or understanding what types are available — scanning only project code is insufficient.
@@ -356,30 +196,6 @@ This is partially addressed by item 38 (full classpath scanning) which would let
 - **Question**: "Which project methods have `Instant` in their signature?"
 - **Approach**: When scanning project bytecode for symbols, also extract types from method descriptors and field types. Allow `-Ppattern` to match against referenced types, not just symbol names.
 - **Overlap**: This overlaps with `cnavUsages -Ptype=<class>` which already finds type references in signatures. Consider whether this should just be better documentation pointing users to `cnavUsages` for this use case, rather than duplicating functionality in `cnavFindSymbol`.
-
-## ~~41. `cnavUsages` — smarter "no results" guidance and `-Ptype` should also find method call owners (Medium value, low effort)~~ DONE
-
-From real-world migration feedback: `cnavUsages -Ptype=ContextKt` returned "No usages found" because `-Ptype` only searched for type references (NEW, CHECKCAST, INSTANCEOF, descriptor types). Now `-Ptype` is comprehensive: it also matches method call and field instruction owners, so `-Ptype=ContextKt` finds calls to `ContextKt.locateResourceFile()`. Additionally, empty results now show guidance suggesting FQN checks and alternative parameters.
-
-## 42. ~~`cnavCycleDetail`~~ `-Pcycles=true` on `cnavDsm` — dedicated cycle detail view ✅ DONE
-
-Implemented as a `-Pcycles=true` parameter on the existing `cnavDsm` task (rather than a separate task). When `cycles=true`, skips the full DSM matrix and outputs only cycle details with class-level edges in both directions. Supports all three output formats (TEXT, JSON, LLM). Note: source file locations are not tracked in the DSM data model, so edges show class names only (not file:line).
-
-From real-world feedback: the DSM task crams cycle edge details into dense one-liners that are hard to read. A dedicated task that shows each cycle as clear A→B / B→A pairs with file locations would be more ergonomic.
-
-- **Question**: "Show me exactly which classes create each package cycle, with source file locations"
-- **Needs**: Bytecode only (reuses existing DSM cycle detection from `DsmBuilder`)
-- **Output**: Each cycle as a section with the A→B edges listed per class, including source file. Example:
-  ```
-  CYCLE: pkg.a <-> pkg.b
-    pkg.a → pkg.b:
-      com.example.a.Foo (Foo.kt:12) → com.example.b.Bar.doStuff()
-      com.example.a.Baz (Baz.kt:5) → com.example.b.Qux.<init>
-    pkg.b → pkg.a:
-      com.example.b.Bar (Bar.kt:30) → com.example.a.Foo.getName()
-  ```
-- **Overlap with item 24 (`cnavCycles`)**: Item 24 planned cycle detection as a list of involved packages. This item extends that with class-level edge detail. Could be a `-Pdetail=true` flag on `cnavCycles` rather than a separate task.
-- **Why**: The DSM is great for visualization but poor for actionability. When fixing a cycle, you need to know the specific import edges to break. This view gives that directly.
 
 ## 43. DSM "what-if" mode for cycle breaking (High value, medium effort)
 
@@ -475,16 +291,6 @@ From user feedback: the DSM shows package-level dependencies, but a "method-leve
 - **Overlap with item #26 (`cnavRank`)**: `cnavRank` computes PageRank + inDegree/outDegree across the whole graph. This task is focused on a single class deep-dive — complementary, not redundant. `cnavRank` answers "what's most important globally" while `cnavComplexity` answers "how tangled is this specific class."
 - **Why useful**: When planning an extraction refactoring, knowing the fan-out count and which classes are called tells you exactly what interfaces you'll need. This is the structural counterpart to the behavioral data from `cnavHotspots`.
 
-## 48. Targeted cycle filter for DSM (Medium value, low effort)
-
-From user feedback during a DSM-driven cycle-breaking session: when the DSM shows multiple cycles, you typically work on one at a time. Currently the DSM highlights all cycles, making it hard to focus. A `-Pcycle=pkgA,pkgB` parameter would filter the DSM output to show only edges participating in the cycle between two specific packages.
-
-- **Question**: "What are the specific dependency edges between these two packages that form a cycle?"
-- **Needs**: Bytecode only (reuses existing DSM + cycle detection)
-- **Parameters**: `-Pcycle=<pkg1>,<pkg2>` — show only the edges between the two named packages that participate in a cycle
-- **Output**: Same DSM format, but with non-relevant cycle highlights suppressed. Only the selected cycle's edges are marked.
-- **Why useful**: During iterative cycle-breaking, you fix one cycle at a time. Seeing all cycles at once creates noise. This lets you confirm "did I break this specific cycle?" without recompiling and re-running the full DSM.
-
 ## 49. `cnavWhyDepends` — dependency edge explanation (High value, medium effort)
 
 From user feedback: the DSM tells you package A depends on package B, but not *why*. To break a cycle you need to know the specific fields, method parameters, return types, and local variable types that create the dependency. Currently this requires manual grepping.
@@ -504,15 +310,15 @@ From user feedback: the DSM tells you package A depends on package B, but not *w
   ```
 - **Why useful**: This is the missing link between "the DSM says there's a dependency" and "here's what to move/extract to break it." Eliminates manual code searches during cycle-breaking.
 
-## 50. Cross-package usage filtering for `cnavUsages` (Medium value, low effort)
+## 51. `cnavReport` — run all analysis tasks in one go (Medium value, low effort)
 
-From user feedback: when breaking cycles, you need to find usages of a type or field *from outside a specific package*. Usages within the same package are expected and irrelevant. Example: "who outside `ra/` accesses `RAClientResult.signedRequest`?"
+A single command that runs all analysis tasks (both bytecode and git history) and produces a combined report. Instead of running `cnavHotspots`, `cnavCoupling`, `cnavAge`, `cnavAuthors`, `cnavChurn`, `cnavRank`, `cnavDead`, and `cnavDsm` individually, `cnavReport` runs them all and outputs a consolidated summary.
 
-- **Question**: "Who uses this symbol from outside its home package?"
-- **Needs**: Bytecode only (reuses existing `UsageScanner`)
-- **Parameters**: `-Poutside-package=<pkg>` — exclude usages where the caller is inside the given package
-- **Output**: Same as `cnavUsages`, but filtered to only show callers outside the specified package boundary.
-- **Why useful**: When extracting a type to break a cycle, you need to know who the external consumers are. Internal usages within the same package will naturally follow the extraction. This filter removes the noise and shows only the cross-boundary references that matter for the refactoring.
+- **Question**: "Give me a full health overview of this codebase."
+- **Needs**: Both bytecode and git history
+- **Parameters**: Inherits parameters from constituent tasks (e.g., `-Pafter`, `-Ptop`, `-Proot-package`). `-Pformat=json` produces a single JSON object with sections per analysis.
+- **Output**: Sections for each analysis, clearly delimited. TEXT format uses headers; JSON uses a top-level object with keys like `hotspots`, `coupling`, `rank`, `dead`, `dsm`.
+- **Why useful**: Agents and humans often want the full picture. Running 8 separate tasks is tedious and each invocation has Gradle/Maven startup overhead. A single task is faster (shared caching, one compilation) and produces a coherent snapshot.
 
 ## Future ideas (not yet planned)
 

@@ -12,8 +12,8 @@ data class DsmMatrix(
     val cells: Map<Pair<String, String>, Int>,
     val classDependencies: Map<Pair<String, String>, Set<Pair<String, String>>>,
 ) {
-    fun findCyclicPairs(): List<Triple<String, String, Pair<Int, Int>>> =
-        packages.flatMapIndexed { rowIdx, rowPkg ->
+    fun findCyclicPairs(cycleFilter: Pair<String, String>? = null): List<Triple<String, String, Pair<Int, Int>>> {
+        val allPairs = packages.flatMapIndexed { rowIdx, rowPkg ->
             packages.mapIndexedNotNull { colIdx, colPkg ->
                 if (colIdx > rowIdx &&
                     cells.containsKey(rowPkg to colPkg) &&
@@ -25,6 +25,12 @@ data class DsmMatrix(
                 }
             }
         }
+        if (cycleFilter == null) return allPairs
+        return allPairs.filter { (a, b, _) ->
+            (a == cycleFilter.first && b == cycleFilter.second) ||
+                (a == cycleFilter.second && b == cycleFilter.first)
+        }
+    }
 }
 
 object DsmMatrixBuilder {

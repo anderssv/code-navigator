@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.navigation.FindInterfaceImplsConfig
 import no.f12.codenavigator.navigation.InterfaceFormatter
 import no.f12.codenavigator.navigation.InterfaceRegistry
 import no.f12.codenavigator.navigation.SkippedFileReporter
@@ -27,17 +28,20 @@ class FindInterfaceImplsMojo : AbstractMojo() {
     private var format: String? = null
 
     @Parameter(property = "llm")
-    private var llm: Boolean? = null
+    private var llm: String? = null
 
     @Parameter(property = "pattern", required = true)
     private var pattern: String? = null
 
-    @Parameter(property = "includetest", defaultValue = "false")
-    private var includetest: Boolean = false
+    @Parameter(property = "includetest")
+    private var includetest: String? = null
 
     override fun execute() {
-        val pat = pattern
-            ?: throw MojoFailureException("Missing required property 'pattern'. Usage: mvn cnav:find-interfaces -Dpattern=<regex>")
+        val config = try {
+            FindInterfaceImplsConfig.parse(buildPropertyMap())
+        } catch (e: IllegalArgumentException) {
+            throw MojoFailureException(e.message)
+        }
 
         val classDirectories = mutableListOf<File>()
         val classesDir = File(project.build.outputDirectory)
@@ -47,30 +51,36 @@ class FindInterfaceImplsMojo : AbstractMojo() {
         }
         classDirectories.add(classesDir)
 
-        if (includetest) {
+        if (config.includeTest) {
             val testClassesDir = File(project.build.testOutputDirectory)
             if (testClassesDir.exists()) {
                 classDirectories.add(testClassesDir)
             }
         }
 
-        val outputFormat = OutputFormat.from(format, llm)
         val result = InterfaceRegistry.build(classDirectories)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val registry = result.data
-        val matchingInterfaces = registry.findInterfaces(pat)
+        val matchingInterfaces = registry.findInterfaces(config.pattern)
 
         if (matchingInterfaces.isEmpty()) {
-            println("No interfaces found matching '$pat'")
+            println("No interfaces found matching '${config.pattern}'")
             return
         }
 
-        val output = when (outputFormat) {
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.formatInterfaces(registry, matchingInterfaces)
             OutputFormat.LLM -> LlmFormatter.formatInterfaces(registry, matchingInterfaces)
             OutputFormat.TEXT -> InterfaceFormatter.format(registry, matchingInterfaces)
         }
-        println(OutputWrapper.wrap(output, outputFormat))
+        println(OutputWrapper.wrap(output, config.format))
+    }
+
+    private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        format?.let { put("format", it) }
+        llm?.let { put("llm", it) }
+        pattern?.let { put("pattern", it) }
+        includetest?.let { put("includetest", it) }
     }
 }

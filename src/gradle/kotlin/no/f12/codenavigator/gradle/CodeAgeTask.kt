@@ -5,6 +5,7 @@ import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.analysis.CodeAgeBuilder
+import no.f12.codenavigator.analysis.CodeAgeConfig
 import no.f12.codenavigator.analysis.CodeAgeFormatter
 import no.f12.codenavigator.analysis.GitLogRunner
 
@@ -18,24 +19,26 @@ abstract class CodeAgeTask : DefaultTask() {
 
     @TaskAction
     fun showAge() {
-        val after = project.findProperty("after")?.toString()?.let { LocalDate.parse(it) }
-            ?: LocalDate.now().minusYears(1)
-        val top = project.findProperty("top")?.toString()?.toIntOrNull() ?: 50
-        val format = project.outputFormat()
+        val config = CodeAgeConfig.parse(
+            project.buildPropertyMap(
+                propertyNames = listOf("after", "top", "format", "llm"),
+                flagNames = listOf("no-follow"),
+            ),
+        )
 
-        val commits = GitLogRunner.run(project.projectDir, after, followRenames = !project.hasProperty("no-follow"))
-        val ages = CodeAgeBuilder.build(commits, LocalDate.now(), top)
+        val commits = GitLogRunner.run(project.projectDir, config.after, followRenames = config.followRenames)
+        val ages = CodeAgeBuilder.build(commits, LocalDate.now(), config.top)
 
         if (ages.isEmpty()) {
             logger.lifecycle("No files found.")
             return
         }
 
-        val output = when (format) {
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.formatAge(ages)
             OutputFormat.LLM -> LlmFormatter.formatAge(ages)
             OutputFormat.TEXT -> CodeAgeFormatter.format(ages)
         }
-        logger.lifecycle(OutputWrapper.wrap(output, format))
+        logger.lifecycle(OutputWrapper.wrap(output, config.format))
     }
 }

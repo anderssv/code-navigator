@@ -457,6 +457,98 @@ class UsageScannerTest {
         assertEquals(1, usages.size, "Duplicate calls from same caller should be deduplicated")
     }
 
+    // --- Outside-package filter ---
+
+    @Test
+    fun `outside-package filter excludes usages where caller is inside the specified package`() {
+        writeClassWithCalls(
+            "com/example/ra/InternalCaller", "InternalCaller.kt",
+            "doWork", listOf(Call("com/example/Target", "process", "()V")),
+        )
+        writeClassWithCalls(
+            "com/example/services/ExternalCaller", "ExternalCaller.kt",
+            "callTarget", listOf(Call("com/example/Target", "process", "()V")),
+        )
+
+        val allUsages = UsageScanner.scan(
+            listOf(classesDir),
+            ownerClass = "com.example.Target",
+            method = "process",
+        ).data
+
+        assertEquals(2, allUsages.size)
+
+        val filtered = UsageScanner.filterOutsidePackage(allUsages, "com.example.ra")
+
+        assertEquals(1, filtered.size)
+        assertEquals("com.example.services.ExternalCaller", filtered[0].callerClass)
+    }
+
+    @Test
+    fun `outside-package filter keeps usages where caller is outside the specified package`() {
+        writeClassWithCalls(
+            "com/example/services/CallerA", "CallerA.kt",
+            "fromA", listOf(Call("com/example/Target", "process", "()V")),
+        )
+        writeClassWithCalls(
+            "com/example/web/CallerB", "CallerB.kt",
+            "fromB", listOf(Call("com/example/Target", "process", "()V")),
+        )
+
+        val allUsages = UsageScanner.scan(
+            listOf(classesDir),
+            ownerClass = "com.example.Target",
+            method = "process",
+        ).data
+
+        val filtered = UsageScanner.filterOutsidePackage(allUsages, "com.example.ra")
+
+        assertEquals(2, filtered.size)
+    }
+
+    @Test
+    fun `outside-package filter with null value returns all usages`() {
+        writeClassWithCalls(
+            "com/example/ra/InternalCaller", "InternalCaller.kt",
+            "doWork", listOf(Call("com/example/Target", "process", "()V")),
+        )
+
+        val allUsages = UsageScanner.scan(
+            listOf(classesDir),
+            ownerClass = "com.example.Target",
+            method = "process",
+        ).data
+
+        val filtered = UsageScanner.filterOutsidePackage(allUsages, null)
+
+        assertEquals(allUsages.size, filtered.size)
+    }
+
+    @Test
+    fun `outside-package filter does not exclude package with same prefix`() {
+        writeClassWithCalls(
+            "com/example/ra/InternalCaller", "InternalCaller.kt",
+            "doWork", listOf(Call("com/example/Target", "process", "()V")),
+        )
+        writeClassWithCalls(
+            "com/example/rabbit/SimilarCaller", "SimilarCaller.kt",
+            "callTarget", listOf(Call("com/example/Target", "process", "()V")),
+        )
+
+        val allUsages = UsageScanner.scan(
+            listOf(classesDir),
+            ownerClass = "com.example.Target",
+            method = "process",
+        ).data
+
+        assertEquals(2, allUsages.size)
+
+        val filtered = UsageScanner.filterOutsidePackage(allUsages, "com.example.ra")
+
+        assertEquals(1, filtered.size)
+        assertEquals("com.example.rabbit.SimilarCaller", filtered[0].callerClass)
+    }
+
     // --- helpers ---
 
     private data class Call(val owner: String, val name: String, val descriptor: String)

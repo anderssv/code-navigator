@@ -5,10 +5,10 @@ import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.CallGraphCache
-import no.f12.codenavigator.navigation.RankConfig
-import no.f12.codenavigator.navigation.RankFormatter
+import no.f12.codenavigator.navigation.DeadCodeConfig
+import no.f12.codenavigator.navigation.DeadCodeFinder
+import no.f12.codenavigator.navigation.DeadCodeFormatter
 import no.f12.codenavigator.navigation.SkippedFileReporter
-import no.f12.codenavigator.navigation.TypeRanker
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.SourceSetContainer
@@ -17,13 +17,13 @@ import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class RankTask : DefaultTask() {
+abstract class DeadCodeTask : DefaultTask() {
 
     @TaskAction
-    fun showRank() {
-        val config = RankConfig.parse(
+    fun showDeadCode() {
+        val config = DeadCodeConfig.parse(
             project.buildPropertyMap(
-                propertyNames = listOf("top", "projectonly", "format", "llm"),
+                propertyNames = listOf("filter", "exclude", "format", "llm"),
                 flagNames = emptyList(),
             ),
         )
@@ -38,17 +38,17 @@ abstract class RankTask : DefaultTask() {
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val graph = result.data
 
-        val ranked = TypeRanker.rank(graph, top = config.top, projectOnly = config.projectOnly)
+        val dead = DeadCodeFinder.find(graph, filter = config.filter, exclude = config.exclude)
 
-        if (ranked.isEmpty()) {
-            logger.lifecycle("No ranked types found.")
+        if (dead.isEmpty()) {
+            logger.lifecycle("No potential dead code found.")
             return
         }
 
         val output = when (config.format) {
-            OutputFormat.JSON -> JsonFormatter.formatRank(ranked)
-            OutputFormat.LLM -> LlmFormatter.formatRank(ranked)
-            OutputFormat.TEXT -> RankFormatter.format(ranked)
+            OutputFormat.JSON -> JsonFormatter.formatDead(dead)
+            OutputFormat.LLM -> LlmFormatter.formatDead(dead)
+            OutputFormat.TEXT -> DeadCodeFormatter.format(dead)
         }
         logger.lifecycle(OutputWrapper.wrap(output, config.format))
     }

@@ -17,6 +17,7 @@ import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.RankedType
+import no.f12.codenavigator.navigation.DeadCode
 import no.f12.codenavigator.navigation.UsageSite
 
 @JvmInline
@@ -173,8 +174,8 @@ object JsonFormatter {
         return jsonObject("packages" to JsonRaw(packages), "cells" to JsonRaw(cells), "cycles" to JsonRaw(cyclesJson))
     }
 
-    fun formatDsmCycles(matrix: DsmMatrix): String {
-        val cycles = matrix.findCyclicPairs()
+    fun formatDsmCycles(matrix: DsmMatrix, cycleFilter: Pair<String, String>? = null): String {
+        val cycles = matrix.findCyclicPairs(cycleFilter)
         return jsonArray(cycles) { (a, b, counts) ->
             val fwdEdges = matrix.classDependencies[a to b]
             val bwdEdges = matrix.classDependencies[b to a]
@@ -217,6 +218,16 @@ object JsonFormatter {
                 "rank" to r.rank,
                 "inDegree" to r.inDegree,
                 "outDegree" to r.outDegree,
+            )
+        }
+
+    fun formatDead(dead: List<DeadCode>): String =
+        jsonArray(dead) { d ->
+            jsonObject(
+                "className" to d.className,
+                "memberName" to d.memberName,
+                "kind" to d.kind.name.lowercase(),
+                "sourceFile" to d.sourceFile,
             )
         }
 

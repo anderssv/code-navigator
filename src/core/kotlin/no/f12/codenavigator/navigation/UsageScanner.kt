@@ -25,6 +25,12 @@ enum class UsageKind {
 }
 
 object UsageScanner {
+    fun filterOutsidePackage(usages: List<UsageSite>, outsidePackage: String?): List<UsageSite> {
+        if (outsidePackage == null) return usages
+        val prefix = if (outsidePackage.endsWith(".")) outsidePackage else "$outsidePackage."
+        return usages.filter { !it.callerClass.startsWith(prefix) }
+    }
+
     fun scan(
         classDirectories: List<File>,
         ownerClass: String? = null,

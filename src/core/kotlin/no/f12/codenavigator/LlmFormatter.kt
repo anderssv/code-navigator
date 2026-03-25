@@ -14,6 +14,7 @@ import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.RankedType
+import no.f12.codenavigator.navigation.DeadCode
 import no.f12.codenavigator.navigation.UsageSite
 
 object LlmFormatter {
@@ -82,6 +83,12 @@ object LlmFormatter {
     fun formatRank(ranked: List<RankedType>): String =
         ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }
 
+    fun formatDead(dead: List<DeadCode>): String =
+        dead.joinToString("\n") { d ->
+            val name = if (d.memberName != null) "${d.className}.${d.memberName}" else d.className
+            "$name ${d.kind.name} ${d.sourceFile}"
+        }
+
     fun formatDsm(matrix: DsmMatrix): String = buildString {
         append("packages:${matrix.packages.joinToString(",")}")
         if (matrix.cells.isEmpty()) {
@@ -104,8 +111,8 @@ object LlmFormatter {
         }
     }
 
-    fun formatDsmCycles(matrix: DsmMatrix): String {
-        val cyclicPairs = matrix.findCyclicPairs()
+    fun formatDsmCycles(matrix: DsmMatrix, cycleFilter: Pair<String, String>? = null): String {
+        val cyclicPairs = matrix.findCyclicPairs(cycleFilter)
         if (cyclicPairs.isEmpty()) return "(no cycles)"
 
         return cyclicPairs.joinToString("\n") { (a, b, counts) ->

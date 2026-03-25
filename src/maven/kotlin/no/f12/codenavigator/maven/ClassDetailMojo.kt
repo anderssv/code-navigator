@@ -6,6 +6,7 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.ClassDetailFormatter
 import no.f12.codenavigator.navigation.ClassDetailScanner
+import no.f12.codenavigator.navigation.FindClassDetailConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
@@ -27,14 +28,19 @@ class ClassDetailMojo : AbstractMojo() {
     private var format: String? = null
 
     @Parameter(property = "llm")
-    private var llm: Boolean? = null
+    private var llm: String? = null
 
-    @Parameter(property = "pattern", required = true)
+    @Parameter(property = "pattern")
     private var pattern: String? = null
 
     override fun execute() {
-        val pat = pattern
-            ?: throw MojoFailureException("Missing required property 'pattern'. Usage: mvn cnav:class-detail -Dpattern=<regex>")
+        val config = try {
+            FindClassDetailConfig.parse(buildPropertyMap())
+        } catch (e: IllegalArgumentException) {
+            throw MojoFailureException(
+                "Missing required property 'pattern'. Usage: mvn cnav:class-detail -Dpattern=<regex>",
+            )
+        }
 
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
@@ -42,22 +48,27 @@ class ClassDetailMojo : AbstractMojo() {
             return
         }
 
-        val outputFormat = OutputFormat.from(format, llm)
-        val result = ClassDetailScanner.scan(listOf(classesDir), pat)
+        val result = ClassDetailScanner.scan(listOf(classesDir), config.pattern)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val matchingDetails = result.data
 
         if (matchingDetails.isEmpty()) {
-            println("No classes found matching '$pat'")
+            println("No classes found matching '${config.pattern}'")
             return
         }
 
-        val output = when (outputFormat) {
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.formatClassDetails(matchingDetails)
             OutputFormat.LLM -> LlmFormatter.formatClassDetails(matchingDetails)
             OutputFormat.TEXT -> ClassDetailFormatter.format(matchingDetails)
         }
-        println(OutputWrapper.wrap(output, outputFormat))
+        println(OutputWrapper.wrap(output, config.format))
+    }
+
+    private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        format?.let { put("format", it) }
+        llm?.let { put("llm", it) }
+        pattern?.let { put("pattern", it) }
     }
 }

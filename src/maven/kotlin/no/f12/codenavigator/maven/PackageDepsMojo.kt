@@ -8,6 +8,7 @@ import no.f12.codenavigator.navigation.CallGraphBuilder
 import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencyBuilder
 import no.f12.codenavigator.navigation.PackageDependencyFormatter
+import no.f12.codenavigator.navigation.PackageDepsConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute
@@ -28,39 +29,40 @@ class PackageDepsMojo : AbstractMojo() {
     private var format: String? = null
 
     @Parameter(property = "llm")
-    private var llm: Boolean? = null
+    private var llm: String? = null
 
     @Parameter(property = "package")
     private var packagePattern: String? = null
 
-    @Parameter(property = "projectonly", defaultValue = "false")
-    private var projectonly: Boolean = false
+    @Parameter(property = "projectonly")
+    private var projectonly: String? = null
 
-    @Parameter(property = "reverse", defaultValue = "false")
-    private var reverse: Boolean = false
+    @Parameter(property = "reverse")
+    private var reverse: String? = null
 
     override fun execute() {
+        val config = PackageDepsConfig.parse(buildPropertyMap())
+
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
             log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
             return
         }
 
-        val outputFormat = OutputFormat.from(format, llm)
         val result = CallGraphBuilder.build(listOf(classesDir))
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val graph = result.data
 
         val filter: ((MethodRef) -> Boolean)? =
-            if (projectonly) graph.projectClassFilter() else null
+            if (config.projectOnly) graph.projectClassFilter() else null
 
         val deps = PackageDependencyBuilder.build(graph, filter)
 
-        val packages = if (packagePattern != null) {
-            val matches = deps.findPackages(packagePattern!!)
+        val packages = if (config.packagePattern != null) {
+            val matches = deps.findPackages(config.packagePattern)
             if (matches.isEmpty()) {
-                println("No packages found matching '$packagePattern'")
+                println("No packages found matching '${config.packagePattern}'")
                 return
             }
             matches
@@ -68,11 +70,19 @@ class PackageDepsMojo : AbstractMojo() {
             deps.allPackages()
         }
 
-        val output = when (outputFormat) {
-            OutputFormat.JSON -> JsonFormatter.formatPackageDeps(deps, packages, reverse)
-            OutputFormat.LLM -> LlmFormatter.formatPackageDeps(deps, packages, reverse)
-            OutputFormat.TEXT -> PackageDependencyFormatter.format(deps, packages, reverse)
+        val output = when (config.format) {
+            OutputFormat.JSON -> JsonFormatter.formatPackageDeps(deps, packages, config.reverse)
+            OutputFormat.LLM -> LlmFormatter.formatPackageDeps(deps, packages, config.reverse)
+            OutputFormat.TEXT -> PackageDependencyFormatter.format(deps, packages, config.reverse)
         }
-        println(OutputWrapper.wrap(output, outputFormat))
+        println(OutputWrapper.wrap(output, config.format))
+    }
+
+    private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        format?.let { put("format", it) }
+        llm?.let { put("llm", it) }
+        packagePattern?.let { put("package", it) }
+        projectonly?.let { put("projectonly", it) }
+        reverse?.let { put("reverse", it) }
     }
 }

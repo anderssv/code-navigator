@@ -6,6 +6,7 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TableFormatter
 import no.f12.codenavigator.navigation.ClassIndexCache
+import no.f12.codenavigator.navigation.ListClassesConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
@@ -19,7 +20,12 @@ abstract class ListClassesTask : DefaultTask() {
 
     @TaskAction
     fun listClasses() {
-        val format = project.outputFormat()
+        val config = ListClassesConfig.parse(
+            project.buildPropertyMap(
+                propertyNames = listOf("format", "llm"),
+                flagNames = emptyList(),
+            ),
+        )
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
@@ -30,12 +36,12 @@ abstract class ListClassesTask : DefaultTask() {
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val classes = result.data
-        val output = when (format) {
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.formatClasses(classes)
             OutputFormat.LLM -> LlmFormatter.formatClasses(classes)
             OutputFormat.TEXT -> TableFormatter.format(classes)
         }
 
-        logger.lifecycle(OutputWrapper.wrap(output, format))
+        logger.lifecycle(OutputWrapper.wrap(output, config.format))
     }
 }

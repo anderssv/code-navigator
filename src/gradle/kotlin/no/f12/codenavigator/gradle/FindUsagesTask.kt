@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.navigation.FindUsagesConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import no.f12.codenavigator.navigation.UsageFormatter
 import no.f12.codenavigator.navigation.UsageScanner
@@ -20,39 +21,40 @@ abstract class FindUsagesTask : DefaultTask() {
 
     @TaskAction
     fun findUsages() {
-        val ownerClass = project.findProperty("ownerClass")?.toString()
-        val method = project.findProperty("method")?.toString()
-        val type = project.findProperty("type")?.toString()
-
-        if (ownerClass == null && type == null) {
+        val config = try {
+            FindUsagesConfig.parse(
+                project.buildPropertyMap(
+                    propertyNames = listOf("ownerClass", "method", "type", "outside-package", "format", "llm"),
+                    flagNames = emptyList(),
+                ),
+            )
+        } catch (e: IllegalArgumentException) {
             throw GradleException(
                 "Missing required property. Provide either 'ownerClass' or 'type'.\n" +
                     "Usage: ./gradlew cnavUsages -PownerClass=<class> [-Pmethod=<name>]\n" +
-                    "       ./gradlew cnavUsages -Ptype=<class>"
+                    "       ./gradlew cnavUsages -Ptype=<class>",
             )
         }
-
-        val format = project.outputFormat()
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
 
-        val result = UsageScanner.scan(classDirectories, ownerClass = ownerClass, method = method, type = type)
+        val result = UsageScanner.scan(classDirectories, ownerClass = config.ownerClass, method = config.method, type = config.type)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val usages = result.data
+        val usages = UsageScanner.filterOutsidePackage(result.data, config.outsidePackage)
 
         if (usages.isEmpty()) {
-            logger.lifecycle(UsageFormatter.noResultsGuidance(ownerClass, method, type))
+            logger.lifecycle(UsageFormatter.noResultsGuidance(config.ownerClass, config.method, config.type))
             return
         }
 
-        val output = when (format) {
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.formatUsages(usages)
             OutputFormat.LLM -> LlmFormatter.formatUsages(usages)
             OutputFormat.TEXT -> UsageFormatter.format(usages)
         }
-        logger.lifecycle(OutputWrapper.wrap(output, format))
+        logger.lifecycle(OutputWrapper.wrap(output, config.format))
     }
 }

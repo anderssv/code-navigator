@@ -80,4 +80,55 @@ class DsmConfigTest {
 
         assertEquals(false, config.cyclesOnly)
     }
+
+    // === parseCycleFilter ===
+
+    @Test
+    fun `parseCycleFilter parses comma-separated packages`() {
+        val result = DsmConfig.parseCycleFilter("api,service")
+
+        assertEquals("api" to "service", result)
+    }
+
+    @Test
+    fun `parseCycleFilter trims whitespace around package names`() {
+        val result = DsmConfig.parseCycleFilter(" api , service ")
+
+        assertEquals("api" to "service", result)
+    }
+
+    @Test
+    fun `parseCycleFilter returns null for null input`() {
+        val result = DsmConfig.parseCycleFilter(null)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `parseCycleFilter returns null for single package`() {
+        val result = DsmConfig.parseCycleFilter("api")
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `parseCycleFilter returns null for empty string`() {
+        val result = DsmConfig.parseCycleFilter("")
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `parse includes cycleFilter from cycle property`() {
+        val config = DsmConfig.parse(mapOf("cycle" to "api,service"))
+
+        assertEquals("api" to "service", config.cycleFilter)
+    }
+
+    @Test
+    fun `parse defaults cycleFilter to null`() {
+        val config = DsmConfig.parse(emptyMap())
+
+        assertNull(config.cycleFilter)
+    }
 }

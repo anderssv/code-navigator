@@ -6,6 +6,7 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallGraphCache
+import no.f12.codenavigator.navigation.CallGraphConfig
 import no.f12.codenavigator.navigation.CallTreeBuilder
 import no.f12.codenavigator.navigation.CallTreeFormatter
 import no.f12.codenavigator.navigation.MethodRef
@@ -23,12 +24,18 @@ abstract class FindCalleesTask : DefaultTask() {
 
     @TaskAction
     fun findCallees() {
-        val methodPattern = project.findProperty("method")?.toString()
-            ?: throw GradleException("Missing required property 'method'. Usage: ./gradlew cnavCallees -Pmethod=<regex>")
-        val maxDepth = project.findProperty("maxdepth")?.toString()?.toIntOrNull()
-            ?: throw GradleException("Missing required property 'maxdepth'. Usage: ./gradlew cnavCallees -Pmethod=<regex> -Pmaxdepth=3")
-        val projectOnly = project.findProperty("projectonly")?.toString()?.toBoolean() ?: false
-        val format = project.outputFormat()
+        val config = try {
+            CallGraphConfig.parse(
+                project.buildPropertyMap(
+                    propertyNames = listOf("method", "maxdepth", "projectonly", "format", "llm"),
+                    flagNames = emptyList(),
+                ),
+            )
+        } catch (e: IllegalArgumentException) {
+            throw GradleException(
+                "Missing required property. Usage: ./gradlew cnavCallees -Pmethod=<regex> -Pmaxdepth=3",
+            )
+        }
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
@@ -39,22 +46,22 @@ abstract class FindCalleesTask : DefaultTask() {
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val graph = result.data
-        val methods = graph.findMethods(methodPattern)
+        val methods = graph.findMethods(config.method)
 
         if (methods.isEmpty()) {
-            logger.lifecycle("No methods found matching '$methodPattern'")
+            logger.lifecycle("No methods found matching '${config.method}'")
             return
         }
 
         val filter: ((MethodRef) -> Boolean)? =
-            if (projectOnly) graph.projectClassFilter() else null
+            if (config.projectOnly) graph.projectClassFilter() else null
 
-        val trees = CallTreeBuilder.build(graph, methods, maxDepth, CallDirection.CALLEES, filter)
-        val output = when (format) {
+        val trees = CallTreeBuilder.build(graph, methods, config.maxDepth, CallDirection.CALLEES, filter)
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.renderCallTrees(trees)
             OutputFormat.LLM -> LlmFormatter.renderCallTrees(trees, CallDirection.CALLEES)
             OutputFormat.TEXT -> CallTreeFormatter.renderTrees(trees, CallDirection.CALLEES)
         }
-        logger.lifecycle(OutputWrapper.wrap(output, format))
+        logger.lifecycle(OutputWrapper.wrap(output, config.format))
     }
 }

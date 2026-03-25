@@ -6,37 +6,38 @@ import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
+import no.f12.codenavigator.analysis.HotspotConfig
 import no.f12.codenavigator.analysis.HotspotFormatter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
-import java.time.LocalDate
 
 @DisableCachingByDefault(because = "Produces console output only")
 abstract class HotspotTask : DefaultTask() {
 
     @TaskAction
     fun showHotspots() {
-        val after = project.findProperty("after")?.toString()?.let { LocalDate.parse(it) }
-            ?: LocalDate.now().minusYears(1)
-        val minRevs = project.findProperty("min-revs")?.toString()?.toIntOrNull() ?: 1
-        val top = project.findProperty("top")?.toString()?.toIntOrNull() ?: 50
-        val format = project.outputFormat()
+        val config = HotspotConfig.parse(
+            project.buildPropertyMap(
+                propertyNames = listOf("after", "min-revs", "top", "format", "llm"),
+                flagNames = listOf("no-follow"),
+            ),
+        )
 
-        val commits = GitLogRunner.run(project.projectDir, after, followRenames = !project.hasProperty("no-follow"))
-        val hotspots = HotspotBuilder.build(commits, minRevs, top)
+        val commits = GitLogRunner.run(project.projectDir, config.after, followRenames = config.followRenames)
+        val hotspots = HotspotBuilder.build(commits, config.minRevs, config.top)
 
         if (hotspots.isEmpty()) {
             logger.lifecycle("No hotspots found.")
             return
         }
 
-        val output = when (format) {
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.formatHotspots(hotspots)
             OutputFormat.LLM -> LlmFormatter.formatHotspots(hotspots)
             OutputFormat.TEXT -> HotspotFormatter.format(hotspots)
         }
-        logger.lifecycle(OutputWrapper.wrap(output, format))
+        logger.lifecycle(OutputWrapper.wrap(output, config.format))
     }
 }

@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.navigation.FindUsagesConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import no.f12.codenavigator.navigation.UsageFormatter
 import no.f12.codenavigator.navigation.UsageScanner
@@ -27,7 +28,7 @@ class FindUsagesMojo : AbstractMojo() {
     private var format: String? = null
 
     @Parameter(property = "llm")
-    private var llm: Boolean? = null
+    private var llm: String? = null
 
     @Parameter(property = "ownerClass")
     private var ownerClass: String? = null
@@ -38,12 +39,17 @@ class FindUsagesMojo : AbstractMojo() {
     @Parameter(property = "type")
     private var type: String? = null
 
+    @Parameter(property = "outside-package")
+    private var outsidePackage: String? = null
+
     override fun execute() {
-        if (ownerClass == null && type == null) {
+        val config = try {
+            FindUsagesConfig.parse(buildPropertyMap())
+        } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "Missing required property. Provide either 'ownerClass' or 'type'.\n" +
                     "Usage: mvn cnav:find-usages -DownerClass=<class> [-Dmethod=<name>]\n" +
-                    "       mvn cnav:find-usages -Dtype=<class>"
+                    "       mvn cnav:find-usages -Dtype=<class>",
             )
         }
 
@@ -53,22 +59,30 @@ class FindUsagesMojo : AbstractMojo() {
             return
         }
 
-        val outputFormat = OutputFormat.from(format, llm)
-        val result = UsageScanner.scan(listOf(classesDir), ownerClass = ownerClass, method = method, type = type)
+        val result = UsageScanner.scan(listOf(classesDir), ownerClass = config.ownerClass, method = config.method, type = config.type)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
-        val usages = result.data
+        val usages = UsageScanner.filterOutsidePackage(result.data, config.outsidePackage)
 
         if (usages.isEmpty()) {
-            println(UsageFormatter.noResultsGuidance(ownerClass, method, type))
+            println(UsageFormatter.noResultsGuidance(config.ownerClass, config.method, config.type))
             return
         }
 
-        val output = when (outputFormat) {
+        val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.formatUsages(usages)
             OutputFormat.LLM -> LlmFormatter.formatUsages(usages)
             OutputFormat.TEXT -> UsageFormatter.format(usages)
         }
-        println(OutputWrapper.wrap(output, outputFormat))
+        println(OutputWrapper.wrap(output, config.format))
+    }
+
+    private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        format?.let { put("format", it) }
+        llm?.let { put("llm", it) }
+        ownerClass?.let { put("ownerClass", it) }
+        method?.let { put("method", it) }
+        type?.let { put("type", it) }
+        outsidePackage?.let { put("outside-package", it) }
     }
 }

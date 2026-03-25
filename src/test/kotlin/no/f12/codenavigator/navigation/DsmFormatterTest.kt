@@ -183,4 +183,68 @@ class DsmFormatterTest {
         assertTrue(result.contains("CYCLE: api <-> service"))
         assertTrue(result.contains("CYCLE: model <-> service"))
     }
+
+    // === cycleFilter tests ===
+
+    @Test
+    fun `formatCycles with cycleFilter shows only the matching cycle`() {
+        val matrix = DsmMatrix(
+            packages = listOf("api", "model", "service"),
+            cells = mapOf(
+                "api" to "service" to 1,
+                "service" to "api" to 1,
+                "model" to "service" to 1,
+                "service" to "model" to 1,
+            ),
+            classDependencies = mapOf(
+                ("api" to "service") to setOf("Controller" to "Service"),
+                ("service" to "api") to setOf("Service" to "Controller"),
+                ("model" to "service") to setOf("User" to "Service"),
+                ("service" to "model") to setOf("Service" to "User"),
+            ),
+        )
+
+        val result = DsmFormatter.formatCycles(matrix, cycleFilter = "api" to "service")
+
+        assertTrue(result.contains("CYCLE: api <-> service"))
+        assertTrue(!result.contains("CYCLE: model <-> service"))
+    }
+
+    @Test
+    fun `formatCycles with cycleFilter in reverse order still matches`() {
+        val matrix = DsmMatrix(
+            packages = listOf("api", "service"),
+            cells = mapOf(
+                "api" to "service" to 2,
+                "service" to "api" to 1,
+            ),
+            classDependencies = mapOf(
+                ("api" to "service") to setOf("Controller" to "Service"),
+                ("service" to "api") to setOf("Service" to "Controller"),
+            ),
+        )
+
+        val result = DsmFormatter.formatCycles(matrix, cycleFilter = "service" to "api")
+
+        assertTrue(result.contains("CYCLE: api <-> service"))
+    }
+
+    @Test
+    fun `formatCycles with cycleFilter that matches no cycle shows no-cycles message`() {
+        val matrix = DsmMatrix(
+            packages = listOf("api", "service"),
+            cells = mapOf(
+                "api" to "service" to 1,
+                "service" to "api" to 1,
+            ),
+            classDependencies = mapOf(
+                ("api" to "service") to setOf("Controller" to "Service"),
+                ("service" to "api") to setOf("Service" to "Controller"),
+            ),
+        )
+
+        val result = DsmFormatter.formatCycles(matrix, cycleFilter = "model" to "service")
+
+        assertEquals("No cyclic dependencies found.", result)
+    }
 }

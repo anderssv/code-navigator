@@ -17,6 +17,8 @@ import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.SymbolKind
 import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.RankedType
+import no.f12.codenavigator.navigation.DeadCode
+import no.f12.codenavigator.navigation.DeadCodeKind
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -264,6 +266,28 @@ class LlmFormatterTest {
 
         assertEquals(
             "com.example.Core rank=0.4200 in=5 out=2\ncom.example.Service rank=0.1500 in=2 out=3",
+            result,
+        )
+    }
+
+    // === Dead code formatting ===
+
+    @Test
+    fun `empty dead code list returns empty string`() {
+        assertEquals("", LlmFormatter.formatDead(emptyList()))
+    }
+
+    @Test
+    fun `formats dead code compactly`() {
+        val dead = listOf(
+            DeadCode("com.example.Orphan", null, DeadCodeKind.CLASS, "Orphan.kt"),
+            DeadCode("com.example.Service", "unused", DeadCodeKind.METHOD, "Service.kt"),
+        )
+
+        val result = LlmFormatter.formatDead(dead)
+
+        assertEquals(
+            "com.example.Orphan CLASS Orphan.kt\ncom.example.Service.unused METHOD Service.kt",
             result,
         )
     }
