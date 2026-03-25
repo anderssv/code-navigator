@@ -18,6 +18,8 @@ import no.f12.codenavigator.navigation.SymbolKind
 import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.RankedType
 import no.f12.codenavigator.navigation.ClassComplexity
+import no.f12.codenavigator.navigation.CycleDetail
+import no.f12.codenavigator.navigation.CycleEdge
 import no.f12.codenavigator.navigation.DeadCode
 import no.f12.codenavigator.navigation.DeadCodeKind
 import no.f12.codenavigator.navigation.MetricsResult
@@ -435,5 +437,57 @@ class LlmFormatterTest {
             "classes=10 packages=2 avg-fan-in=0.0 avg-fan-out=0.0 cycles=0 dead-classes=0 dead-methods=0",
             result,
         )
+    }
+
+    // === Cycles formatting ===
+
+    @Test
+    fun `formatCycles returns no cycles message for empty list`() {
+        val result = LlmFormatter.formatCycles(emptyList())
+
+        assertEquals("(no cycles)", result)
+    }
+
+    @Test
+    fun `formatCycles formats cycle with class edges`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf("api", "service"),
+                edges = listOf(
+                    CycleEdge("api", "service", setOf("api.Controller" to "service.Service")),
+                    CycleEdge("service", "api", setOf("service.Service" to "api.Controller")),
+                ),
+            ),
+        )
+
+        val result = LlmFormatter.formatCycles(details)
+
+        assertTrue(result.contains("CYCLE api,service"))
+        assertTrue(result.contains("api->service: api.Controller->service.Service"))
+        assertTrue(result.contains("service->api: service.Service->api.Controller"))
+    }
+
+    @Test
+    fun `formatCycles separates multiple cycles with newlines`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf("a", "b"),
+                edges = listOf(
+                    CycleEdge("a", "b", setOf("a.X" to "b.Y")),
+                    CycleEdge("b", "a", setOf("b.Y" to "a.X")),
+                ),
+            ),
+            CycleDetail(
+                packages = listOf("x", "y", "z"),
+                edges = listOf(
+                    CycleEdge("x", "y", setOf("x.A" to "y.B")),
+                ),
+            ),
+        )
+
+        val result = LlmFormatter.formatCycles(details)
+
+        assertTrue(result.contains("CYCLE a,b"))
+        assertTrue(result.contains("CYCLE x,y,z"))
     }
 }

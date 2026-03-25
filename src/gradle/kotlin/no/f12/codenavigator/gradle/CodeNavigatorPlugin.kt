@@ -64,6 +64,12 @@ class CodeNavigatorPlugin : Plugin<Project> {
             dependsOn("classes")
         }
 
+        project.tasks.register("cnavCycles", CyclesTask::class.java) {
+            description = "Detects dependency cycles using Tarjan's SCC algorithm. Usage: [-Proot-package=<pkg>] [-Pdepth=N]"
+            group = "code-navigator"
+            dependsOn("classes")
+        }
+
         project.tasks.register("cnavUsages", FindUsagesTask::class.java) {
             description = "Finds project references to external types/methods. Usage: -PownerClass=<class> [-Pmethod=<name>] or -Ptype=<class>"
             group = "code-navigator"

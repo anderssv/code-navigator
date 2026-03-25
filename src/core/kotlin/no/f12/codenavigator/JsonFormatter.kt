@@ -18,6 +18,7 @@ import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.RankedType
 import no.f12.codenavigator.navigation.ClassComplexity
+import no.f12.codenavigator.navigation.CycleDetail
 import no.f12.codenavigator.navigation.DeadCode
 import no.f12.codenavigator.navigation.MetricsResult
 import no.f12.codenavigator.navigation.UsageSite
@@ -247,6 +248,24 @@ object JsonFormatter {
                 }),
                 "incomingByClass" to JsonRaw(jsonArray(c.incomingByClass) { (cls, count) ->
                     jsonObject("className" to cls, "count" to count)
+                }),
+            )
+        }
+
+    fun formatCycles(details: List<CycleDetail>): String =
+        jsonArray(details) { detail ->
+            jsonObject(
+                "packages" to JsonRaw(jsonStringArray(detail.packages)),
+                "edges" to JsonRaw(jsonArray(detail.edges) { edge ->
+                    jsonObject(
+                        "from" to edge.from,
+                        "to" to edge.to,
+                        "classEdges" to JsonRaw(
+                            jsonArray(edge.classEdges.toList().sortedBy { "${it.first}-${it.second}" }) { (src, tgt) ->
+                                jsonObject("source" to src, "target" to tgt)
+                            },
+                        ),
+                    )
                 }),
             )
         }

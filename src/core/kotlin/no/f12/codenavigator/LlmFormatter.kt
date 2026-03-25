@@ -8,6 +8,7 @@ import no.f12.codenavigator.analysis.ModuleAuthors
 import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallTreeNode
 import no.f12.codenavigator.navigation.ClassComplexity
+import no.f12.codenavigator.navigation.CycleDetail
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
 import no.f12.codenavigator.navigation.InterfaceRegistry
@@ -109,6 +110,21 @@ object LlmFormatter {
                 }
             }
         }
+
+    fun formatCycles(details: List<CycleDetail>): String {
+        if (details.isEmpty()) return "(no cycles)"
+
+        return details.joinToString("\n") { detail ->
+            buildString {
+                append("CYCLE ${detail.packages.joinToString(",")}")
+                for (edge in detail.edges) {
+                    val classStr = edge.classEdges.sortedBy { "${it.first}-${it.second}" }
+                        .joinToString(",") { "${it.first}->${it.second}" }
+                    append("\n  ${edge.from}->${edge.to}: $classStr")
+                }
+            }
+        }
+    }
 
     fun formatMetrics(metrics: MetricsResult): String = buildString {
         append("classes=${metrics.totalClasses}")

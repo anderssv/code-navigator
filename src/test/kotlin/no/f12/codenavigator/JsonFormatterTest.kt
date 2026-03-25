@@ -18,6 +18,8 @@ import no.f12.codenavigator.navigation.SymbolKind
 import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.RankedType
 import no.f12.codenavigator.navigation.ClassComplexity
+import no.f12.codenavigator.navigation.CycleDetail
+import no.f12.codenavigator.navigation.CycleEdge
 import no.f12.codenavigator.navigation.DeadCode
 import no.f12.codenavigator.navigation.DeadCodeKind
 import no.f12.codenavigator.navigation.MetricsResult
@@ -629,5 +631,61 @@ class JsonFormatterTest {
         val result = JsonFormatter.formatMetrics(metrics)
 
         assertTrue(result.contains("\"topHotspots\":[]"))
+    }
+
+    // === Cycles formatting ===
+
+    @Test
+    fun `formatCycles returns empty array for no cycles`() {
+        val result = JsonFormatter.formatCycles(emptyList())
+
+        assertEquals("[]", result)
+    }
+
+    @Test
+    fun `formatCycles includes cycle packages and edges`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf("api", "service"),
+                edges = listOf(
+                    CycleEdge("api", "service", setOf("api.Controller" to "service.Service")),
+                    CycleEdge("service", "api", setOf("service.Service" to "api.Controller")),
+                ),
+            ),
+        )
+
+        val result = JsonFormatter.formatCycles(details)
+
+        assertTrue(result.contains("\"packages\":[\"api\",\"service\"]"))
+        assertTrue(result.contains("\"from\":\"api\""))
+        assertTrue(result.contains("\"to\":\"service\""))
+        assertTrue(result.contains("\"source\":\"api.Controller\""))
+        assertTrue(result.contains("\"target\":\"service.Service\""))
+    }
+
+    @Test
+    fun `formatCycles handles multiple cycles`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf("a", "b"),
+                edges = listOf(
+                    CycleEdge("a", "b", setOf("a.X" to "b.Y")),
+                    CycleEdge("b", "a", setOf("b.Y" to "a.X")),
+                ),
+            ),
+            CycleDetail(
+                packages = listOf("x", "y", "z"),
+                edges = listOf(
+                    CycleEdge("x", "y", setOf("x.A" to "y.B")),
+                ),
+            ),
+        )
+
+        val result = JsonFormatter.formatCycles(details)
+
+        assertTrue(result.startsWith("[{"))
+        assertTrue(result.endsWith("}]"))
+        assertTrue(result.contains("\"packages\":[\"a\",\"b\"]"))
+        assertTrue(result.contains("\"packages\":[\"x\",\"y\",\"z\"]"))
     }
 }

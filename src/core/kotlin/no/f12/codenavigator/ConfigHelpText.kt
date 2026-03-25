@@ -88,6 +88,8 @@ object ConfigHelpText {
 
         val dsmParams = collectTaskParams(TaskRegistry.DSM, globalParamNames)
 
+        val cyclesParams = collectTaskParams(TaskRegistry.CYCLE_DETECTION, globalParamNames)
+
         val deadParams = collectTaskParams(TaskRegistry.DEAD, globalParamNames)
 
         val complexityParams = collectTaskParams(TaskRegistry.COMPLEXITY, globalParamNames)
@@ -105,6 +107,7 @@ object ConfigHelpText {
             Section("Navigation Tasks", navigationParams),
             Section("Type Ranking", rankParams),
             Section("DSM (Dependency Structure Matrix)", dsmParams),
+            Section("Cycle Detection (Tarjan's SCC)", cyclesParams),
             Section("Dead Code Detection", deadParams),
             Section("Class Complexity", complexityParams),
             Section("Git History Analysis", gitParams),

@@ -31,6 +31,7 @@ enum class BuildTool(
             "find-interfaces" to "cnavInterfaces",
             "package-deps" to "cnavDeps",
             "dsm" to "cnavDsm",
+            "cycles" to "cnavCycles",
             "find-usages" to "cnavUsages",
             "rank" to "cnavRank",
             "dead" to "cnavDead",

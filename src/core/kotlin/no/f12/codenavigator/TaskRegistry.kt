@@ -58,6 +58,7 @@ object TaskRegistry {
     private val MIN_SHARED_REVS = ParamDef("min-shared-revs", "<N>", "Min shared commits", flag = false, defaultValue = "5")
     private val MIN_COUPLING = ParamDef("min-coupling", "<N>", "Min coupling degree %", flag = false, defaultValue = "30")
     private val MAX_CHANGESET_SIZE = ParamDef("max-changeset-size", "<N>", "Skip commits touching more files", flag = false, defaultValue = "30")
+    private val DEPTH = ParamDef("depth", "<N>", "Package grouping depth", flag = false, defaultValue = "2")
 
     private val FORMAT_PARAMS = listOf(FORMAT, LLM)
 
@@ -123,6 +124,13 @@ object TaskRegistry {
         goal = "dsm",
         description = "Generate Dependency Structure Matrix",
         params = FORMAT_PARAMS + listOf(ROOT_PACKAGE, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE),
+        requiresCompilation = true,
+    )
+
+    val CYCLE_DETECTION = TaskDef(
+        goal = "cycles",
+        description = "Detect dependency cycles using Tarjan's SCC algorithm",
+        params = FORMAT_PARAMS + listOf(ROOT_PACKAGE, DEPTH),
         requiresCompilation = true,
     )
 
@@ -227,6 +235,7 @@ object TaskRegistry {
         FIND_INTERFACES,
         PACKAGE_DEPS,
         DSM,
+        CYCLE_DETECTION,
         FIND_USAGES,
         RANK,
         DEAD,
