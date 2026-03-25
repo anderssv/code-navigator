@@ -124,6 +124,24 @@ class TypeRankerTest {
         assertTrue("java.util.List" !in classNames, "External class should be excluded")
     }
 
+    @Test
+    fun `lambda classes collapse into enclosing class`() {
+        val graph = callGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "work"),
+            method("com.example.Controller\$handle\$1", "invoke") to method("com.example.Service", "work"),
+            method("com.example.Controller\$handle\$2", "invoke") to method("com.example.Service", "work"),
+        )
+
+        val ranked = TypeRanker.rank(graph, collapseLambdas = true)
+
+        val classNames = ranked.map { it.className }.toSet()
+        assertTrue("com.example.Controller\$handle\$1" !in classNames, "Lambda classes should not appear")
+        assertTrue("com.example.Controller\$handle\$2" !in classNames, "Lambda classes should not appear")
+        assertTrue("com.example.Controller" in classNames)
+        assertTrue("com.example.Service" in classNames)
+        assertEquals(2, ranked.size, "Should have only Controller and Service after collapsing")
+    }
+
     private fun callGraph(
         vararg edges: Pair<MethodRef, MethodRef>,
         projectClasses: Set<String> = emptySet(),

@@ -48,4 +48,18 @@ class RankConfigTest {
 
         assertEquals(OutputFormat.LLM, config.format)
     }
+
+    @Test
+    fun `defaults collapseLambdas to true when absent`() {
+        val config = RankConfig.parse(emptyMap())
+
+        assertEquals(true, config.collapseLambdas)
+    }
+
+    @Test
+    fun `parses collapse-lambdas false`() {
+        val config = RankConfig.parse(mapOf("collapse-lambdas" to "false"))
+
+        assertEquals(false, config.collapseLambdas)
+    }
 }

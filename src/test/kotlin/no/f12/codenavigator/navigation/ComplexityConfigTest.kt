@@ -58,4 +58,18 @@ class ComplexityConfigTest {
 
         assertEquals(OutputFormat.LLM, config.format)
     }
+
+    @Test
+    fun `defaults collapseLambdas to true when absent`() {
+        val config = ComplexityConfig.parse(mapOf("classname" to "Foo"))
+
+        assertEquals(true, config.collapseLambdas)
+    }
+
+    @Test
+    fun `parses collapse-lambdas false`() {
+        val config = ComplexityConfig.parse(mapOf("classname" to "Foo", "collapse-lambdas" to "false"))
+
+        assertEquals(false, config.collapseLambdas)
+    }
 }

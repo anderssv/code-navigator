@@ -12,13 +12,14 @@ object TypeRanker {
     private const val DAMPING = 0.85
     private const val ITERATIONS = 20
 
-    fun rank(graph: CallGraph, top: Int = Int.MAX_VALUE, projectOnly: Boolean = false): List<RankedType> {
+    fun rank(graph: CallGraph, top: Int = Int.MAX_VALUE, projectOnly: Boolean = false, collapseLambdas: Boolean = false): List<RankedType> {
+        val collapse: (String) -> String = if (collapseLambdas) LambdaCollapser::collapse else { it -> it }
         val typeEdges = mutableMapOf<String, MutableSet<String>>()
         val allTypes = mutableSetOf<String>()
 
         graph.forEachEdge { caller, callee ->
-            val from = caller.className
-            val to = callee.className
+            val from = collapse(caller.className)
+            val to = collapse(callee.className)
             if (from != to) {
                 typeEdges.getOrPut(from) { mutableSetOf() }.add(to)
             }
@@ -29,7 +30,7 @@ object TypeRanker {
         if (allTypes.isEmpty()) return emptyList()
 
         val types = if (projectOnly) {
-            val projectClasses = graph.projectClasses()
+            val projectClasses = graph.projectClasses().map(collapse).toSet()
             allTypes.filter { it in projectClasses }
         } else {
             allTypes.toList()

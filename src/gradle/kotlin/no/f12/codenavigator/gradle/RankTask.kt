@@ -23,7 +23,7 @@ abstract class RankTask : DefaultTask() {
     fun showRank() {
         val config = RankConfig.parse(
             project.buildPropertyMap(
-                propertyNames = listOf("top", "projectonly", "format", "llm"),
+                propertyNames = listOf("top", "projectonly", "collapse-lambdas", "format", "llm"),
                 flagNames = emptyList(),
             ),
         )
@@ -38,7 +38,7 @@ abstract class RankTask : DefaultTask() {
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val graph = result.data
 
-        val ranked = TypeRanker.rank(graph, top = config.top, projectOnly = config.projectOnly)
+        val ranked = TypeRanker.rank(graph, top = config.top, projectOnly = config.projectOnly, collapseLambdas = config.collapseLambdas)
 
         if (ranked.isEmpty()) {
             logger.lifecycle("No ranked types found.")

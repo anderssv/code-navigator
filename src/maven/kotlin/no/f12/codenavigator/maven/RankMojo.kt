@@ -36,6 +36,9 @@ class RankMojo : AbstractMojo() {
     @Parameter(property = "projectonly")
     private var projectonly: String? = null
 
+    @Parameter(property = "collapse-lambdas")
+    private var collapseLambdas: String? = null
+
     override fun execute() {
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
@@ -50,7 +53,7 @@ class RankMojo : AbstractMojo() {
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val graph = result.data
 
-        val ranked = TypeRanker.rank(graph, top = config.top, projectOnly = config.projectOnly)
+        val ranked = TypeRanker.rank(graph, top = config.top, projectOnly = config.projectOnly, collapseLambdas = config.collapseLambdas)
 
         if (ranked.isEmpty()) {
             println("No ranked types found.")
@@ -70,5 +73,6 @@ class RankMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         top?.let { put("top", it) }
         projectonly?.let { put("projectonly", it) }
+        collapseLambdas?.let { put("collapse-lambdas", it) }
     }
 }

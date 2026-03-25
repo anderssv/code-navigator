@@ -8,6 +8,7 @@ import no.f12.codenavigator.navigation.CallGraphCache
 import no.f12.codenavigator.navigation.ClassComplexityAnalyzer
 import no.f12.codenavigator.navigation.ComplexityConfig
 import no.f12.codenavigator.navigation.ComplexityFormatter
+import no.f12.codenavigator.navigation.LambdaCollapser
 import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
@@ -23,7 +24,7 @@ abstract class ComplexityTask : DefaultTask() {
     fun showComplexity() {
         val config = ComplexityConfig.parse(
             project.buildPropertyMap(
-                propertyNames = listOf("classname", "projectonly", "detail", "format", "llm"),
+                propertyNames = listOf("classname", "projectonly", "detail", "collapse-lambdas", "format", "llm"),
                 flagNames = emptyList(),
             ),
         )
@@ -38,11 +39,12 @@ abstract class ComplexityTask : DefaultTask() {
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val graph = result.data
 
-        val results = ClassComplexityAnalyzer.analyze(
+        val rawResults = ClassComplexityAnalyzer.analyze(
             graph = graph,
             classPattern = config.classPattern,
             projectOnly = config.projectOnly,
         )
+        val results = if (config.collapseLambdas) LambdaCollapser.collapseComplexity(rawResults) else rawResults
 
         if (results.isEmpty()) {
             logger.lifecycle("No matching classes found.")

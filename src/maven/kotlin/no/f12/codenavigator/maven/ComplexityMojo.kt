@@ -8,6 +8,7 @@ import no.f12.codenavigator.navigation.CallGraphBuilder
 import no.f12.codenavigator.navigation.ClassComplexityAnalyzer
 import no.f12.codenavigator.navigation.ComplexityConfig
 import no.f12.codenavigator.navigation.ComplexityFormatter
+import no.f12.codenavigator.navigation.LambdaCollapser
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
@@ -40,6 +41,9 @@ class ComplexityMojo : AbstractMojo() {
     @Parameter(property = "llm")
     private var llm: String? = null
 
+    @Parameter(property = "collapse-lambdas")
+    private var collapseLambdas: String? = null
+
     override fun execute() {
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
@@ -58,11 +62,12 @@ class ComplexityMojo : AbstractMojo() {
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val graph = result.data
 
-        val results = ClassComplexityAnalyzer.analyze(
+        val rawResults = ClassComplexityAnalyzer.analyze(
             graph = graph,
             classPattern = config.classPattern,
             projectOnly = config.projectOnly,
         )
+        val results = if (config.collapseLambdas) LambdaCollapser.collapseComplexity(rawResults) else rawResults
 
         if (results.isEmpty()) {
             println("No matching classes found.")
@@ -81,6 +86,7 @@ class ComplexityMojo : AbstractMojo() {
         classname?.let { put("classname", it) }
         projectonly?.let { put("projectonly", it) }
         detail?.let { put("detail", it) }
+        collapseLambdas?.let { put("collapse-lambdas", it) }
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
     }

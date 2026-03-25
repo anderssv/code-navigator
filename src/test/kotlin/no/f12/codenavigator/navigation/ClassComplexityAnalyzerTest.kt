@@ -10,7 +10,7 @@ class ClassComplexityAnalyzerTest {
     fun `no matching class returns empty list`() {
         val graph = callGraph()
 
-        val result = ClassComplexityAnalyzer.analyze(graph, "NonExistent")
+        val result = ClassComplexityAnalyzer.analyze(graph, "NonExistent", projectOnly = true)
 
         assertTrue(result.isEmpty())
     }
@@ -21,7 +21,7 @@ class ClassComplexityAnalyzerTest {
             method("com.example.Service", "doWork") to method("com.example.Repo", "save"),
         )
 
-        val result = ClassComplexityAnalyzer.analyze(graph, "Service")
+        val result = ClassComplexityAnalyzer.analyze(graph, "Service", projectOnly = true)
 
         assertEquals(1, result.size)
         val c = result.first()
@@ -37,7 +37,7 @@ class ClassComplexityAnalyzerTest {
             method("com.example.Controller", "handle") to method("com.example.Service", "doWork"),
         )
 
-        val result = ClassComplexityAnalyzer.analyze(graph, "Service")
+        val result = ClassComplexityAnalyzer.analyze(graph, "Service", projectOnly = true)
 
         assertEquals(1, result.size)
         val c = result.first()
@@ -53,7 +53,7 @@ class ClassComplexityAnalyzerTest {
             method("com.example.Service", "doWork") to method("com.example.Repo", "save"),
         )
 
-        val result = ClassComplexityAnalyzer.analyze(graph, "Service")
+        val result = ClassComplexityAnalyzer.analyze(graph, "Service", projectOnly = true)
 
         val c = result.first()
         assertEquals(1, c.fanOut, "self-call should not count as outgoing")
@@ -68,7 +68,7 @@ class ClassComplexityAnalyzerTest {
             method("com.example.Service", "doWork") to method("com.example.Repo", "delete"),
         )
 
-        val result = ClassComplexityAnalyzer.analyze(graph, "Service")
+        val result = ClassComplexityAnalyzer.analyze(graph, "Service", projectOnly = true)
 
         val c = result.first()
         assertEquals(3, c.fanOut)
@@ -83,7 +83,7 @@ class ClassComplexityAnalyzerTest {
             method("com.example.Service", "c") to method("com.example.Cache", "get"),
         )
 
-        val result = ClassComplexityAnalyzer.analyze(graph, "Service")
+        val result = ClassComplexityAnalyzer.analyze(graph, "Service", projectOnly = true)
 
         val c = result.first()
         assertEquals(listOf("com.example.Repo" to 2, "com.example.Cache" to 1), c.outgoingByClass)
@@ -97,7 +97,7 @@ class ClassComplexityAnalyzerTest {
             method("com.example.Scheduler", "run") to method("com.example.Service", "work"),
         )
 
-        val result = ClassComplexityAnalyzer.analyze(graph, "Service")
+        val result = ClassComplexityAnalyzer.analyze(graph, "Service", projectOnly = true)
 
         val c = result.first()
         assertEquals(listOf("com.example.Controller" to 2, "com.example.Scheduler" to 1), c.incomingByClass)
@@ -141,7 +141,7 @@ class ClassComplexityAnalyzerTest {
             method("com.example.OrderService", "work") to method("com.example.Repo", "save"),
         )
 
-        val result = ClassComplexityAnalyzer.analyze(graph, "Service")
+        val result = ClassComplexityAnalyzer.analyze(graph, "Service", projectOnly = true)
 
         assertEquals(2, result.size)
         val classNames = result.map { it.className }.toSet()
@@ -155,7 +155,7 @@ class ClassComplexityAnalyzerTest {
             method("com.example.Service", "work") to method("com.example.Repo", "save"),
         )
 
-        val result = ClassComplexityAnalyzer.analyze(graph, "Service")
+        val result = ClassComplexityAnalyzer.analyze(graph, "Service", projectOnly = true)
 
         assertEquals("Service.kt", result.first().sourceFile)
     }
@@ -168,7 +168,7 @@ class ClassComplexityAnalyzerTest {
             method("com.example.RAClient\$Companion", "create") to method("com.example.Repo", "save"),
         )
 
-        val result = ClassComplexityAnalyzer.analyze(graph, "RAClient")
+        val result = ClassComplexityAnalyzer.analyze(graph, "RAClient", projectOnly = true)
 
         val classNames = result.map { it.className }
         assertEquals(listOf("com.example.RAClient"), classNames, "Only the real class should match, not \$-inner classes")

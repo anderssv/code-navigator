@@ -15,7 +15,7 @@ object ClassComplexityAnalyzer {
     fun analyze(
         graph: CallGraph,
         classPattern: String,
-        projectOnly: Boolean = true,
+        projectOnly: Boolean,
     ): List<ClassComplexity> {
         val regex = Regex(classPattern)
         val projectClasses = graph.projectClasses()
@@ -36,14 +36,17 @@ object ClassComplexityAnalyzer {
         val incoming = mutableListOf<Pair<String, String>>()
 
         graph.forEachEdge { caller, callee ->
-            if (caller.className == className && callee.className != className) {
+            val callerClass = caller.className
+            val calleeClass = callee.className
+
+            if (callerClass == className && calleeClass != className) {
                 if (!projectOnly || callee.className in projectClasses) {
-                    outgoing.add(callee.className to callee.methodName)
+                    outgoing.add(calleeClass to callee.methodName)
                 }
             }
-            if (callee.className == className && caller.className != className) {
+            if (calleeClass == className && callerClass != className) {
                 if (!projectOnly || caller.className in projectClasses) {
-                    incoming.add(caller.className to caller.methodName)
+                    incoming.add(callerClass to caller.methodName)
                 }
             }
         }

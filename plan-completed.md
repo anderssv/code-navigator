@@ -88,3 +88,11 @@ Fixed `DsmTask.kt` to use `project.file(config.htmlPath)` instead of `File(htmlP
 ## ~~52. Fix `cnavComplexity` LLM output readability (Low effort, high polish)~~ DONE
 
 Rewrote `LlmFormatter.formatComplexity()` to use multi-line format instead of cramming all outgoing/incoming types into a single line. Each class now shows its header line followed by indented `outgoing:` and `incoming:` sections with one type per line. Empty lists show `none` on the same line. Multiple classes are separated by blank lines.
+
+## ~~17. Refactor Gradle tasks to use Config data classes (Medium value, low effort)~~ DONE
+
+Already implemented. All 19 Gradle tasks delegate to `XxxConfig.parse()` via `project.buildPropertyMap()`. No changes needed.
+
+## ~~63. Collapse Kotlin lambdas (Very high value, medium effort)~~ DONE
+
+Implemented `LambdaCollapser` utility that collapses Kotlin lambda inner classes (e.g., `Foo$bar$1$2`) into their enclosing class (`Foo`). Applied to `cnavComplexity` and `cnavRank` tasks via `-Pcollapse-lambdas=true` (default). Design follows "collapse as late as possible" principle: `TypeRanker.rank()` collapses in the resolution layer (affects PageRank topology), while `ClassComplexityAnalyzer.analyze()` returns raw data and collapsing is applied via reusable `LambdaCollapser.collapseComplexity()` transformer in the task layer just before formatting. Named inner classes (uppercase-starting segments like `$Bar`) are preserved.
