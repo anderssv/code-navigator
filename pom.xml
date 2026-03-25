@@ -6,7 +6,7 @@
 
     <groupId>no.f12</groupId>
     <artifactId>code-navigator-maven-plugin</artifactId>
-    <version>0.1.22-SNAPSHOT</version>
+    <version>0.1.22</version>
     <packaging>maven-plugin</packaging>
 
     <name>Code Navigator Maven Plugin</name>

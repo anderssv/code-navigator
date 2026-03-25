@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.22
+
+- Add `cnavComplexity` task / `cnav:complexity` goal — analyzes class complexity via fan-in (incoming calls) and fan-out (outgoing calls). Parameters: `-Pclassname=<pattern>` (filter by class), `-Ptop=N` (default 50), `-Pprojectonly=true|false` (default true). TEXT, JSON, and LLM output formats.
+- Add `classes-only` mode to `cnavDead` — when `-Pclasses-only=true`, reports only dead classes (no individual methods). Useful for a high-level overview.
+- **Noise reduction:** `cnavDead` now filters Kotlin compiler-generated noise from results:
+  - Coroutine inner classes (`$`-containing class names)
+  - Data class boilerplate (`copy`, `copy$default`, `equals`, `hashCode`, `toString`, `componentN`)
+  - Name-mangled copy methods for inline value class parameters (`copy-<hash>`, `copy-<hash>$default`)
+  - Inline value class methods (`box-impl`, `unbox-impl`, `equals-impl`, `hashCode-impl`, `toString-impl`, `constructor-impl`)
+  - Bridge/synthetic methods (`access$*`, lambda methods)
+  - Constructors/initializers (`<init>`, `<clinit>`)
+  - Enum boilerplate (`$values`, `valueOf`, `values`)
+  - Entry points (`main`)
+- **Noise reduction:** `cnavComplexity` now filters `$`-containing generated inner classes from pattern matching
+- **Fix:** Rename `cnavComplexity` parameter from `-Pclass` to `-Pclassname` to avoid Gradle built-in property collision
+- Refactor Gradle tasks and Maven mojos to use central parameter registry (`ParamDef`, `TaskDef`, `TaskRegistry`) — single source of truth for parameter definitions across both build tools
+
 ## 0.1.21
 
 - Add `cnavRank` task / `cnav:rank` goal — ranks types by structural importance using PageRank on the call graph. Types called by many important types score higher. Includes inDegree and outDegree counts. Parameters: `-Ptop=N` (default 50), `-Pprojectonly=true|false` (default true). TEXT, JSON, and LLM output formats.

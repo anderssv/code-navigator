@@ -72,7 +72,7 @@ Apply the plugin in your `build.gradle.kts`:
 
 ```kotlin
 plugins {
-    id("no.f12.code-navigator") version "0.1.21"
+    id("no.f12.code-navigator") version "0.1.22"
 }
 ```
 
@@ -102,7 +102,7 @@ Add the plugin to your `pom.xml`:
         <plugin>
             <groupId>no.f12</groupId>
             <artifactId>code-navigator-maven-plugin</artifactId>
-            <version>0.1.21</version>
+            <version>0.1.22</version>
         </plugin>
     </plugins>
 </build>
