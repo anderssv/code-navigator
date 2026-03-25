@@ -212,6 +212,61 @@ class DeadCodeFinderTest {
     }
 
     @Test
+    fun `filters out dead methods on generated inner classes`() {
+        val graph = callGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.Service", "process") to method("com.example.Service\$process\$1", "invokeSuspend"),
+            method("com.example.Service\$process\$1", "invokeSuspend") to method("com.example.Repo", "save"),
+            method("com.example.Service\$process\$1", "create") to method("com.example.Repo", "save"),
+            method("com.example.Service\$Companion", "create") to method("com.example.Repo", "save"),
+            method("com.example.Service", "unused") to method("com.example.Repo", "save"),
+            projectClasses = setOf(
+                "com.example.Controller",
+                "com.example.Service",
+                "com.example.Service\$process\$1",
+                "com.example.Service\$Companion",
+                "com.example.Repo",
+            ),
+        )
+
+        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
+        val deadMethodEntries = deadMethods.map { "${it.className}.${it.memberName}" }
+        assertTrue("com.example.Service.unused" in deadMethodEntries, "Real unused method should be reported")
+        assertTrue(
+            deadMethodEntries.none { it.contains("\$") },
+            "No methods on generated inner classes should appear, but found: ${deadMethodEntries.filter { it.contains("\$") }}",
+        )
+    }
+
+    @Test
+    fun `filters out data class boilerplate on sealed class variants`() {
+        val graph = callGraph(
+            method("com.example.Controller", "handle") to method("com.example.ServiceResult\$Success", "getMessage"),
+            method("com.example.Controller", "handle") to method("com.example.ServiceResult\$Failure", "getError"),
+            method("com.example.ServiceResult\$Success", "copy") to method("com.example.Repo", "save"),
+            method("com.example.ServiceResult\$Success", "hashCode") to method("com.example.Repo", "save"),
+            method("com.example.ServiceResult\$Failure", "equals") to method("com.example.Repo", "save"),
+            method("com.example.ServiceResult\$Failure", "copy\$default") to method("com.example.Repo", "save"),
+            projectClasses = setOf(
+                "com.example.Controller",
+                "com.example.ServiceResult\$Success",
+                "com.example.ServiceResult\$Failure",
+                "com.example.Repo",
+            ),
+        )
+
+        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
+        assertTrue(
+            deadMethods.isEmpty(),
+            "Data class boilerplate on sealed variants should be filtered, but found: ${deadMethods.map { "${it.className}.${it.memberName}" }}",
+        )
+    }
+
+    @Test
     fun `classesOnly suppresses all dead methods`() {
         val graph = callGraph(
             method("com.example.Controller", "handle") to method("com.example.Service", "process"),

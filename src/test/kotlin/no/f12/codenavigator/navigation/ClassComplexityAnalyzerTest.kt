@@ -160,6 +160,20 @@ class ClassComplexityAnalyzerTest {
         assertEquals("Service.kt", result.first().sourceFile)
     }
 
+    @Test
+    fun `generated inner classes are excluded from matching`() {
+        val graph = callGraph(
+            method("com.example.RAClient", "getInfo") to method("com.example.Repo", "save"),
+            method("com.example.RAClient\$getInfo\$1", "invokeSuspend") to method("com.example.Repo", "save"),
+            method("com.example.RAClient\$Companion", "create") to method("com.example.Repo", "save"),
+        )
+
+        val result = ClassComplexityAnalyzer.analyze(graph, "RAClient")
+
+        val classNames = result.map { it.className }
+        assertEquals(listOf("com.example.RAClient"), classNames, "Only the real class should match, not \$-inner classes")
+    }
+
     private fun callGraph(
         vararg edges: Pair<MethodRef, MethodRef>,
         projectClasses: Set<String> = emptySet(),
