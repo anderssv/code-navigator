@@ -8,8 +8,10 @@ data class FindClassDetailConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): FindClassDetailConfig = FindClassDetailConfig(
-            pattern = properties["pattern"]
-                ?: throw IllegalArgumentException("Missing required property 'pattern'"),
+            pattern = PatternEnhancer.enhance(
+                properties["pattern"]
+                    ?: throw IllegalArgumentException("Missing required property 'pattern'"),
+            ),
             format = OutputFormat.from(
                 format = properties["format"],
                 llm = properties["llm"]?.toBoolean(),

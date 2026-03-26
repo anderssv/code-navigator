@@ -9,8 +9,10 @@ data class FindInterfaceImplsConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): FindInterfaceImplsConfig = FindInterfaceImplsConfig(
-            pattern = properties["pattern"]
-                ?: throw IllegalArgumentException("Missing required property 'pattern'"),
+            pattern = PatternEnhancer.enhance(
+                properties["pattern"]
+                    ?: throw IllegalArgumentException("Missing required property 'pattern'"),
+            ),
             includeTest = properties["includetest"]?.toBoolean() ?: false,
             format = OutputFormat.from(
                 format = properties["format"],
