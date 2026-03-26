@@ -1,17 +1,14 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.CacheFreshness
-
 import java.io.File
 
-object SymbolIndexCache {
+object SymbolIndexCache : FileCache<List<SymbolInfo>>() {
 
-    private const val FIELD_SEPARATOR = "\t"
-
-    fun write(cacheFile: File, symbols: List<SymbolInfo>) {
+    override fun write(cacheFile: File, data: List<SymbolInfo>) {
         CacheFreshness.atomicWrite(cacheFile) { file ->
             file.bufferedWriter().use { writer ->
-                symbols.forEach { symbol ->
+                data.forEach { symbol ->
                     writer.write(
                         listOf(
                             symbol.packageName.toString(),
@@ -27,7 +24,7 @@ object SymbolIndexCache {
         }
     }
 
-    fun read(cacheFile: File): List<SymbolInfo> =
+    override fun read(cacheFile: File): List<SymbolInfo> =
         cacheFile.useLines { lines ->
             lines
                 .filter { it.isNotBlank() }
@@ -44,20 +41,6 @@ object SymbolIndexCache {
                 .toList()
         }
 
-    fun isFresh(cacheFile: File, classDirectories: List<File>): Boolean =
-        CacheFreshness.isFresh(cacheFile, classDirectories)
-
-    fun getOrScan(cacheFile: File, classDirectories: List<File>): ScanResult<List<SymbolInfo>> {
-        if (isFresh(cacheFile, classDirectories)) {
-            try {
-                return ScanResult(read(cacheFile), emptyList())
-            } catch (_: Exception) {
-                cacheFile.delete()
-            }
-        }
-
-        val result = SymbolScanner.scan(classDirectories)
-        write(cacheFile, result.data)
-        return result
-    }
+    override fun build(classDirectories: List<File>): ScanResult<List<SymbolInfo>> =
+        SymbolScanner.scan(classDirectories)
 }

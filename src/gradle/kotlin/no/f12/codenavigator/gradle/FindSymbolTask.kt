@@ -40,7 +40,7 @@ abstract class FindSymbolTask : DefaultTask() {
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
 
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/symbol-index.cache")
-        val result = SymbolIndexCache.getOrScan(cacheFile, classDirectories)
+        val result = SymbolIndexCache.getOrBuild(cacheFile, classDirectories)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val allSymbols = result.data

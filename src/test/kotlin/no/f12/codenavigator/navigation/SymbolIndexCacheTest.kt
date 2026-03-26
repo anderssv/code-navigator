@@ -102,7 +102,7 @@ class SymbolIndexCacheTest {
         cacheFile.writeText("only-one-field\n")
         cacheFile.setLastModified(System.currentTimeMillis() + 10_000)
 
-        val result = SymbolIndexCache.getOrScan(cacheFile, listOf(classesDir))
+        val result = SymbolIndexCache.getOrBuild(cacheFile, listOf(classesDir))
 
         // Corrupt cache was deleted and rebuilt — empty class has no symbols
         assertTrue(result.data.isEmpty())
