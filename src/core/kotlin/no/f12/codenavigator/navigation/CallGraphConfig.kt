@@ -12,7 +12,7 @@ data class CallGraphConfig(
     fun buildFilter(graph: CallGraph): ((MethodRef) -> Boolean)? {
         val filters = buildList {
             if (projectOnly) add(graph.projectClassFilter())
-            if (filterSynthetic) add { ref: MethodRef -> !KotlinMethodFilter.isGenerated(ref.methodName) }
+            if (filterSynthetic) add { ref: MethodRef -> !ref.isGenerated() }
         }
         return if (filters.isEmpty()) null else { ref -> filters.all { it(ref) } }
     }

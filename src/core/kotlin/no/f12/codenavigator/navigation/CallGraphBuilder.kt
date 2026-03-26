@@ -10,7 +10,9 @@ data class MethodRef(
     val className: ClassName,
     val methodName: String,
 ) {
-    val qualifiedName: String get() = "${className.value}.$methodName"
+    val qualifiedName: String get() = "$className.$methodName"
+
+    fun isGenerated(): Boolean = KotlinMethodFilter.isGenerated(methodName)
 }
 
 class CallGraph(

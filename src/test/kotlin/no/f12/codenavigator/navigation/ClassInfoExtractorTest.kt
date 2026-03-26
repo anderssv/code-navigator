@@ -74,7 +74,8 @@ class ClassInfoExtractorTest {
         val result = ClassInfoExtractor.extract(classFile)
 
         assertTrue(result.isUserDefinedClass)
-        assertEquals("com.example.Foo.Bar", result.className.value)
+        assertEquals("com.example.Foo\$Bar", result.className.value)
+        assertEquals("com.example.Foo.Bar", result.className.displayName())
     }
 
     @Test

@@ -71,8 +71,8 @@ class DsmFormatterTest {
                 (PackageName("service") to PackageName("api")) to 1,
             ),
             classDependencies = mapOf(
-                (PackageName("api") to PackageName("service")) to setOf(ClassName("Controller") to ClassName("Service")),
-                (PackageName("service") to PackageName("api")) to setOf(ClassName("Service") to ClassName("Controller")),
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller")),
             ),
         )
 
@@ -130,8 +130,13 @@ class DsmFormatterTest {
                 (PackageName("service") to PackageName("api")) to 1,
             ),
             classDependencies = mapOf(
-                (PackageName("api") to PackageName("service")) to setOf(ClassName("Controller") to ClassName("Service"), ClassName("Filter") to ClassName("Service")),
-                (PackageName("service") to PackageName("api")) to setOf(ClassName("Service") to ClassName("Controller")),
+                (PackageName("api") to PackageName("service")) to setOf(
+                    ClassName("com.example.api.Controller") to ClassName("com.example.service.Service"),
+                    ClassName("com.example.api.Filter") to ClassName("com.example.service.Service"),
+                ),
+                (PackageName("service") to PackageName("api")) to setOf(
+                    ClassName("com.example.service.Service") to ClassName("com.example.api.Controller"),
+                ),
             ),
         )
 
@@ -151,7 +156,7 @@ class DsmFormatterTest {
             packages = listOf(PackageName("api"), PackageName("model")),
             cells = mapOf((PackageName("api") to PackageName("model")) to 3),
             classDependencies = mapOf(
-                (PackageName("api") to PackageName("model")) to setOf(ClassName("Controller") to ClassName("User")),
+                (PackageName("api") to PackageName("model")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.model.User")),
             ),
         )
 
@@ -171,10 +176,10 @@ class DsmFormatterTest {
                 (PackageName("service") to PackageName("model")) to 1,
             ),
             classDependencies = mapOf(
-                (PackageName("api") to PackageName("service")) to setOf(ClassName("Controller") to ClassName("Service")),
-                (PackageName("service") to PackageName("api")) to setOf(ClassName("Service") to ClassName("Controller")),
-                (PackageName("model") to PackageName("service")) to setOf(ClassName("User") to ClassName("Service")),
-                (PackageName("service") to PackageName("model")) to setOf(ClassName("Service") to ClassName("User")),
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller")),
+                (PackageName("model") to PackageName("service")) to setOf(ClassName("com.example.model.User") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("model")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.model.User")),
             ),
         )
 
@@ -197,10 +202,10 @@ class DsmFormatterTest {
                 (PackageName("service") to PackageName("model")) to 1,
             ),
             classDependencies = mapOf(
-                (PackageName("api") to PackageName("service")) to setOf(ClassName("Controller") to ClassName("Service")),
-                (PackageName("service") to PackageName("api")) to setOf(ClassName("Service") to ClassName("Controller")),
-                (PackageName("model") to PackageName("service")) to setOf(ClassName("User") to ClassName("Service")),
-                (PackageName("service") to PackageName("model")) to setOf(ClassName("Service") to ClassName("User")),
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller")),
+                (PackageName("model") to PackageName("service")) to setOf(ClassName("com.example.model.User") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("model")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.model.User")),
             ),
         )
 
@@ -219,8 +224,8 @@ class DsmFormatterTest {
                 (PackageName("service") to PackageName("api")) to 1,
             ),
             classDependencies = mapOf(
-                (PackageName("api") to PackageName("service")) to setOf(ClassName("Controller") to ClassName("Service")),
-                (PackageName("service") to PackageName("api")) to setOf(ClassName("Service") to ClassName("Controller")),
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller")),
             ),
         )
 
@@ -238,8 +243,8 @@ class DsmFormatterTest {
                 (PackageName("service") to PackageName("api")) to 1,
             ),
             classDependencies = mapOf(
-                (PackageName("api") to PackageName("service")) to setOf(ClassName("Controller") to ClassName("Service")),
-                (PackageName("service") to PackageName("api")) to setOf(ClassName("Service") to ClassName("Controller")),
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller")),
             ),
         )
 

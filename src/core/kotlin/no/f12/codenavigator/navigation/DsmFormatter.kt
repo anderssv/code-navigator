@@ -11,7 +11,7 @@ object DsmFormatter {
             appendLine()
             appendLine("Legend:")
             packages.forEachIndexed { i, pkg ->
-                appendLine("  ${(i + 1).toString().padStart(3)}: ${pkg.value}")
+                appendLine("  ${(i + 1).toString().padStart(3)}: $pkg")
             }
             appendLine()
 
@@ -21,7 +21,7 @@ object DsmFormatter {
             appendLine()
 
             val colWidth = maxOf(packages.size.toString().length, 4)
-            val labelWidth = packages.maxOf { it.value.length }.coerceAtLeast(10)
+            val labelWidth = packages.maxOf { it.toString().length }.coerceAtLeast(10)
 
             append("".padEnd(labelWidth + 6))
             packages.forEachIndexed { i, _ ->
@@ -33,7 +33,7 @@ object DsmFormatter {
             appendLine("-".repeat(totalWidth))
 
             packages.forEachIndexed { rowIdx, rowPkg ->
-                append("${(rowIdx + 1).toString().padStart(3)}. ${rowPkg.value.padEnd(labelWidth)}")
+                append("${(rowIdx + 1).toString().padStart(3)}. ${rowPkg.toString().padEnd(labelWidth)}")
                 packages.forEachIndexed { colIdx, colPkg ->
                     val cell = when {
                         rowIdx == colIdx -> "."
@@ -49,11 +49,11 @@ object DsmFormatter {
                 appendLine()
                 appendLine("WARNING: Cyclic dependencies detected:")
                 cyclicPairs.forEach { (a, b, counts) ->
-                    appendLine("  ${a.value} <-> ${b.value}  (${counts.first} refs / ${counts.second} refs)")
+                    appendLine("  $a <-> $b  (${counts.first} refs / ${counts.second} refs)")
                     val fwd = matrix.classDependencies[a to b]
                     val bwd = matrix.classDependencies[b to a]
-                    fwd?.take(5)?.forEach { (src, tgt) -> appendLine("    ${a.value}.${src.value} -> ${b.value}.${tgt.value}") }
-                    bwd?.take(5)?.forEach { (src, tgt) -> appendLine("    ${b.value}.${src.value} -> ${a.value}.${tgt.value}") }
+                    fwd?.take(5)?.forEach { (src, tgt) -> appendLine("    $a.${src.simpleName()} -> $b.${tgt.simpleName()}") }
+                    bwd?.take(5)?.forEach { (src, tgt) -> appendLine("    $b.${src.simpleName()} -> $a.${tgt.simpleName()}") }
                 }
             }
         }.trimEnd()
@@ -68,16 +68,16 @@ object DsmFormatter {
                 if (idx > 0) appendLine()
                 val fwdLabel = if (counts.first == 1) "ref" else "refs"
                 val bwdLabel = if (counts.second == 1) "ref" else "refs"
-                appendLine("CYCLE: ${a.value} <-> ${b.value} (${counts.first} $fwdLabel / ${counts.second} $bwdLabel)")
-                appendLine("  ${a.value} -> ${b.value}:")
+                appendLine("CYCLE: $a <-> $b (${counts.first} $fwdLabel / ${counts.second} $bwdLabel)")
+                appendLine("  $a -> $b:")
                 val fwd = matrix.classDependencies[a to b]
-                fwd?.sortedBy { "${it.first.value}-${it.second.value}" }?.forEach { (src, tgt) ->
-                    appendLine("    ${a.value}.${src.value} -> ${b.value}.${tgt.value}")
+                fwd?.sortedBy { "${it.first}-${it.second}" }?.forEach { (src, tgt) ->
+                    appendLine("    $a.${src.simpleName()} -> $b.${tgt.simpleName()}")
                 }
-                appendLine("  ${b.value} -> ${a.value}:")
+                appendLine("  $b -> $a:")
                 val bwd = matrix.classDependencies[b to a]
-                bwd?.sortedBy { "${it.first.value}-${it.second.value}" }?.forEach { (src, tgt) ->
-                    appendLine("    ${b.value}.${src.value} -> ${a.value}.${tgt.value}")
+                bwd?.sortedBy { "${it.first}-${it.second}" }?.forEach { (src, tgt) ->
+                    appendLine("    $b.${src.simpleName()} -> $a.${tgt.simpleName()}")
                 }
             }
         }.trimEnd()

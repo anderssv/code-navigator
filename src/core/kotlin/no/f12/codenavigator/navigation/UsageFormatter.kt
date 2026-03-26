@@ -7,7 +7,7 @@ object UsageFormatter {
         return usages
             .sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))
             .joinToString("\n") { u ->
-                "${u.callerClass.value}.${u.callerMethod} → ${u.targetOwner.value}.${u.targetName} (${u.sourceFile}) [${u.kind.name.lowercase()}]"
+                "${u.callerClass}.${u.callerMethod} → ${u.targetOwner}.${u.targetName} (${u.sourceFile}) [${u.kind.name.lowercase()}]"
             }
     }
 

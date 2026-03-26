@@ -19,9 +19,9 @@ object CallGraphCache {
                 graph.forEachEdge { caller, callee ->
                     writer.write(
                         listOf(
-                            caller.className.value,
+                            caller.className.toString(),
                             caller.methodName,
-                            callee.className.value,
+                            callee.className.toString(),
                             callee.methodName,
                         ).joinToString(FIELD_SEPARATOR),
                     )
@@ -31,7 +31,7 @@ object CallGraphCache {
                 writer.newLine()
                 graph.forEachSourceFile { className, sourceFile ->
                     writer.write(
-                        listOf(className.value, sourceFile).joinToString(FIELD_SEPARATOR),
+                        listOf(className.toString(), sourceFile).joinToString(FIELD_SEPARATOR),
                     )
                     writer.newLine()
                 }
@@ -39,7 +39,7 @@ object CallGraphCache {
                 writer.newLine()
                 graph.forEachLineNumber { method, lineNumber ->
                     writer.write(
-                        listOf(method.className.value, method.methodName, lineNumber.toString()).joinToString(FIELD_SEPARATOR),
+                        listOf(method.className.toString(), method.methodName, lineNumber.toString()).joinToString(FIELD_SEPARATOR),
                     )
                     writer.newLine()
                 }

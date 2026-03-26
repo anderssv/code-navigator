@@ -33,17 +33,17 @@ object JsonFormatter {
     fun formatClasses(classes: List<ClassInfo>): String =
         jsonArray(classes.sortedBy { it.className }) { c ->
             jsonObject(
-                "className" to c.className.value,
+                "className" to c.className.displayName(),
                 "sourceFile" to c.sourceFileName,
                 "sourcePath" to c.reconstructedSourcePath,
             )
         }
 
     fun formatSymbols(symbols: List<SymbolInfo>): String =
-        jsonArray(symbols.sortedWith(compareBy({ it.packageName.value }, { it.className }, { it.symbolName }))) { s ->
+        jsonArray(symbols.sortedWith(compareBy({ it.packageName.toString() }, { it.className.toString() }, { it.symbolName }))) { s ->
             jsonObject(
-                "package" to s.packageName.value,
-                "class" to s.className,
+                "package" to s.packageName.toString(),
+                "class" to s.className.simpleName(),
                 "symbol" to s.symbolName,
                 "kind" to s.kind.name.lowercase(),
                 "sourceFile" to s.sourceFile,
@@ -53,10 +53,10 @@ object JsonFormatter {
     fun formatClassDetails(details: List<ClassDetail>): String =
         jsonArray(details.sortedBy { it.className }) { d ->
             jsonObject(
-                "className" to d.className.value,
+                "className" to d.className.toString(),
                 "sourceFile" to d.sourceFile,
-                "superClass" to d.superClass?.value,
-                "interfaces" to JsonRaw(jsonStringArray(d.interfaces.map { it.value })),
+                "superClass" to d.superClass?.toString(),
+                "interfaces" to JsonRaw(jsonStringArray(d.interfaces.map { it.toString() })),
                 "fields" to JsonRaw(jsonArray(d.fields) { f ->
                     jsonObject("name" to f.name, "type" to f.type)
                 }),
@@ -88,9 +88,9 @@ object JsonFormatter {
         jsonArray(interfaceNames.sorted()) { name ->
             val implementors = registry.implementorsOf(name)
             jsonObject(
-                "interface" to name.value,
+                "interface" to name.toString(),
                 "implementors" to JsonRaw(jsonArray(implementors.sortedBy { it.className }) { impl ->
-                    jsonObject("className" to impl.className.value, "sourceFile" to impl.sourceFile)
+                    jsonObject("className" to impl.className.toString(), "sourceFile" to impl.sourceFile)
                 }),
             )
         }
@@ -104,8 +104,8 @@ object JsonFormatter {
             val related = if (reverse) deps.dependentsOf(pkg) else deps.dependenciesOf(pkg)
             val key = if (reverse) "dependents" else "dependencies"
             jsonObject(
-                "package" to pkg.value,
-                key to JsonRaw(jsonStringArray(related.map { it.value })),
+                "package" to pkg.toString(),
+                key to JsonRaw(jsonStringArray(related.map { it.toString() })),
             )
         }
 
@@ -158,23 +158,23 @@ object JsonFormatter {
         }
 
     fun formatDsm(matrix: DsmMatrix): String {
-        val packages = jsonStringArray(matrix.packages.map { it.value })
-        val cells = jsonArray(matrix.cells.entries.toList().sortedBy { "${it.key.first.value}-${it.key.second.value}" }) { (key, count) ->
+        val packages = jsonStringArray(matrix.packages.map { it.toString() })
+        val cells = jsonArray(matrix.cells.entries.toList().sortedBy { "${it.key.first}-${it.key.second}" }) { (key, count) ->
             val classDeps = matrix.classDependencies[key]
             jsonObject(
-                "from" to key.first.value,
-                "to" to key.second.value,
+                "from" to key.first.toString(),
+                "to" to key.second.toString(),
                 "count" to count,
                 "classes" to JsonRaw(
-                    jsonArray(classDeps?.toList()?.sortedBy { "${it.first.value}-${it.second.value}" } ?: emptyList()) { (src, tgt) ->
-                        jsonObject("source" to src.value, "target" to tgt.value)
+                    jsonArray(classDeps?.toList()?.sortedBy { "${it.first}-${it.second}" } ?: emptyList()) { (src, tgt) ->
+                        jsonObject("source" to src.toString(), "target" to tgt.toString())
                     },
                 ),
             )
         }
         val cycles = matrix.findCyclicPairs()
         val cyclesJson = jsonArray(cycles) { (a, b, counts) ->
-            jsonObject("packageA" to a.value, "packageB" to b.value, "forwardRefs" to counts.first, "backwardRefs" to counts.second)
+            jsonObject("packageA" to a.toString(), "packageB" to b.toString(), "forwardRefs" to counts.first, "backwardRefs" to counts.second)
         }
         return jsonObject("packages" to JsonRaw(packages), "cells" to JsonRaw(cells), "cycles" to JsonRaw(cyclesJson))
     }
@@ -185,18 +185,18 @@ object JsonFormatter {
             val fwdEdges = matrix.classDependencies[a to b]
             val bwdEdges = matrix.classDependencies[b to a]
             jsonObject(
-                "packageA" to a.value,
-                "packageB" to b.value,
+                "packageA" to a.toString(),
+                "packageB" to b.toString(),
                 "forwardRefs" to counts.first,
                 "backwardRefs" to counts.second,
                 "forwardEdges" to JsonRaw(
-                    jsonArray(fwdEdges?.toList()?.sortedBy { "${it.first.value}-${it.second.value}" } ?: emptyList()) { (src, tgt) ->
-                        jsonObject("source" to src.value, "target" to tgt.value)
+                    jsonArray(fwdEdges?.toList()?.sortedBy { "${it.first}-${it.second}" } ?: emptyList()) { (src, tgt) ->
+                        jsonObject("source" to src.toString(), "target" to tgt.toString())
                     },
                 ),
                 "backwardEdges" to JsonRaw(
-                    jsonArray(bwdEdges?.toList()?.sortedBy { "${it.first.value}-${it.second.value}" } ?: emptyList()) { (src, tgt) ->
-                        jsonObject("source" to src.value, "target" to tgt.value)
+                    jsonArray(bwdEdges?.toList()?.sortedBy { "${it.first}-${it.second}" } ?: emptyList()) { (src, tgt) ->
+                        jsonObject("source" to src.toString(), "target" to tgt.toString())
                     },
                 ),
             )
@@ -206,10 +206,10 @@ object JsonFormatter {
     fun formatUsages(usages: List<UsageSite>): String =
         jsonArray(usages.sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))) { u ->
             jsonObject(
-                "callerClass" to u.callerClass.value,
+                "callerClass" to u.callerClass.toString(),
                 "callerMethod" to u.callerMethod,
                 "sourceFile" to u.sourceFile,
-                "targetOwner" to u.targetOwner.value,
+                "targetOwner" to u.targetOwner.toString(),
                 "targetMethod" to u.targetName,
                 "targetDescriptor" to u.targetDescriptor,
                 "kind" to u.kind.name.lowercase(),
@@ -219,7 +219,7 @@ object JsonFormatter {
     fun formatRank(ranked: List<RankedType>): String =
         jsonArray(ranked) { r ->
             jsonObject(
-                "className" to r.className.value,
+                "className" to r.className.toString(),
                 "rank" to r.rank,
                 "inDegree" to r.inDegree,
                 "outDegree" to r.outDegree,
@@ -229,7 +229,7 @@ object JsonFormatter {
     fun formatDead(dead: List<DeadCode>): String =
         jsonArray(dead) { d ->
             jsonObject(
-                "className" to d.className.value,
+                "className" to d.className.toString(),
                 "memberName" to d.memberName,
                 "kind" to d.kind.name.lowercase(),
                 "sourceFile" to d.sourceFile,
@@ -239,17 +239,17 @@ object JsonFormatter {
     fun formatComplexity(results: List<ClassComplexity>): String =
         jsonArray(results) { c ->
             jsonObject(
-                "className" to c.className.value,
+                "className" to c.className.toString(),
                 "sourceFile" to c.sourceFile,
                 "fanOut" to c.fanOut,
                 "fanIn" to c.fanIn,
                 "distinctOutgoingClasses" to c.distinctOutgoingClasses,
                 "distinctIncomingClasses" to c.distinctIncomingClasses,
                 "outgoingByClass" to JsonRaw(jsonArray(c.outgoingByClass) { (cls, count) ->
-                    jsonObject("className" to cls.value, "count" to count)
+                    jsonObject("className" to cls.toString(), "count" to count)
                 }),
                 "incomingByClass" to JsonRaw(jsonArray(c.incomingByClass) { (cls, count) ->
-                    jsonObject("className" to cls.value, "count" to count)
+                    jsonObject("className" to cls.toString(), "count" to count)
                 }),
             )
         }
@@ -257,14 +257,14 @@ object JsonFormatter {
     fun formatCycles(details: List<CycleDetail>): String =
         jsonArray(details) { detail ->
             jsonObject(
-                "packages" to JsonRaw(jsonStringArray(detail.packages.map { it.value })),
+                "packages" to JsonRaw(jsonStringArray(detail.packages.map { it.toString() })),
                 "edges" to JsonRaw(jsonArray(detail.edges) { edge ->
                     jsonObject(
-                        "from" to edge.from.value,
-                        "to" to edge.to.value,
+                        "from" to edge.from.toString(),
+                        "to" to edge.to.toString(),
                         "classEdges" to JsonRaw(
-                            jsonArray(edge.classEdges.toList().sortedBy { "${it.first.value}-${it.second.value}" }) { (src, tgt) ->
-                                jsonObject("source" to src.value, "target" to tgt.value)
+                            jsonArray(edge.classEdges.toList().sortedBy { "${it.first}-${it.second}" }) { (src, tgt) ->
+                                jsonObject("source" to src.toString(), "target" to tgt.toString())
                             },
                         ),
                     )

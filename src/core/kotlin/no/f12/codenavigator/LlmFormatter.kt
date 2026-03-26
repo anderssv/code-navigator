@@ -25,18 +25,18 @@ import no.f12.codenavigator.navigation.UsageSite
 object LlmFormatter {
 
     fun formatClasses(classes: List<ClassInfo>): String =
-        classes.sortedBy { it.className }.joinToString("\n") { "${it.className.value} ${it.sourceFileName}" }
+        classes.sortedBy { it.className }.joinToString("\n") { "${it.className.displayName()} ${it.sourceFileName}" }
 
     fun formatSymbols(symbols: List<SymbolInfo>): String =
-        symbols.sortedWith(compareBy({ it.packageName.value }, { it.className }, { it.symbolName }))
-            .joinToString("\n") { "${it.packageName.value}.${it.className}.${it.symbolName} ${it.kind.name.lowercase()} ${it.sourceFile}" }
+        symbols.sortedWith(compareBy({ it.packageName.toString() }, { it.className.toString() }, { it.symbolName }))
+            .joinToString("\n") { "${it.className}.${it.symbolName} ${it.kind.name.lowercase()} ${it.sourceFile}" }
 
     fun formatClassDetails(details: List<ClassDetail>): String =
         details.sortedBy { it.className }.joinToString("\n") { d ->
             buildString {
-                append("${d.className.value} ${d.sourceFile}")
-                if (d.superClass != null) append(" extends:${d.superClass.value}")
-                if (d.interfaces.isNotEmpty()) append(" implements:${d.interfaces.joinToString(",") { it.value }}")
+                append("${d.className} ${d.sourceFile}")
+                if (d.superClass != null) append(" extends:${d.superClass}")
+                if (d.interfaces.isNotEmpty()) append(" implements:${d.interfaces.joinToString(",")}")
                 if (d.fields.isNotEmpty()) append(" fields:${d.fields.joinToString(",") { "${it.name}:${it.type}" }}")
                 if (d.methods.isNotEmpty()) append(" methods:${d.methods.joinToString(",") { "${it.name}(${it.parameterTypes.joinToString(",")}):${it.returnType}" }}")
             }
@@ -45,7 +45,7 @@ object LlmFormatter {
     fun formatInterfaces(registry: InterfaceRegistry, interfaceNames: List<ClassName>): String =
         interfaceNames.sorted().joinToString("\n") { name ->
             val impls = registry.implementorsOf(name).sortedBy { it.className }
-            "${name.value}: ${impls.joinToString(",") { "${it.className.value}(${it.sourceFile})" }}"
+            "$name: ${impls.joinToString(",") { "${it.className}(${it.sourceFile})" }}"
         }
 
     fun renderCallTrees(trees: List<CallTreeNode>, direction: CallDirection): String = buildString {
@@ -63,7 +63,7 @@ object LlmFormatter {
         val arrow = if (reverse) "<-" else "->"
         return packageNames.sorted().joinToString("\n") { pkg ->
             val related = if (reverse) deps.dependentsOf(pkg) else deps.dependenciesOf(pkg)
-            "${pkg.value} $arrow ${related.joinToString(",") { it.value }}"
+            "$pkg $arrow ${related.joinToString(",")}"
         }
     }
 
@@ -84,32 +84,32 @@ object LlmFormatter {
 
     fun formatUsages(usages: List<UsageSite>): String =
         usages.sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))
-            .joinToString("\n") { "${it.callerClass.value}.${it.callerMethod} -> ${it.targetOwner.value}.${it.targetName}${it.targetDescriptor} ${it.kind.name.lowercase()} ${it.sourceFile}" }
+            .joinToString("\n") { "${it.callerClass}.${it.callerMethod} -> ${it.targetOwner}.${it.targetName}${it.targetDescriptor} ${it.kind.name.lowercase()} ${it.sourceFile}" }
 
     fun formatRank(ranked: List<RankedType>): String =
-        ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className.value} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }
+        ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }
 
     fun formatDead(dead: List<DeadCode>): String =
         dead.joinToString("\n") { d ->
-            val name = if (d.memberName != null) "${d.className.value}.${d.memberName}" else d.className.value
+            val name = if (d.memberName != null) "${d.className}.${d.memberName}" else d.className.toString()
             "$name ${d.kind.name} ${d.sourceFile}"
         }
 
     fun formatComplexity(results: List<ClassComplexity>): String =
         results.joinToString("\n\n") { c ->
             buildString {
-                append("${c.className.value} out=${c.fanOut}/${c.distinctOutgoingClasses} in=${c.fanIn}/${c.distinctIncomingClasses}")
+                append("${c.className} out=${c.fanOut}/${c.distinctOutgoingClasses} in=${c.fanIn}/${c.distinctIncomingClasses}")
                 if (c.outgoingByClass.isEmpty()) {
                     append("\n  outgoing: none")
                 } else {
                     append("\n  outgoing:")
-                    c.outgoingByClass.forEach { append("\n    ${it.first.value}(${it.second})") }
+                    c.outgoingByClass.forEach { append("\n    ${it.first}(${it.second})") }
                 }
                 if (c.incomingByClass.isEmpty()) {
                     append("\n  incoming: none")
                 } else {
                     append("\n  incoming:")
-                    c.incomingByClass.forEach { append("\n    ${it.first.value}(${it.second})") }
+                    c.incomingByClass.forEach { append("\n    ${it.first}(${it.second})") }
                 }
             }
         }
@@ -119,11 +119,11 @@ object LlmFormatter {
 
         return details.joinToString("\n") { detail ->
             buildString {
-                append("CYCLE ${detail.packages.joinToString(",") { it.value }}")
+                append("CYCLE ${detail.packages.joinToString(",")}")
                 for (edge in detail.edges) {
-                    val classStr = edge.classEdges.sortedBy { "${it.first.value}-${it.second.value}" }
-                        .joinToString(",") { "${it.first.value}->${it.second.value}" }
-                    append("\n  ${edge.from.value}->${edge.to.value}: $classStr")
+                    val classStr = edge.classEdges.sortedBy { "${it.first}-${it.second}" }
+                        .joinToString(",") { "${it.first}->${it.second}" }
+                    append("\n  ${edge.from}->${edge.to}: $classStr")
                 }
             }
         }
@@ -145,22 +145,22 @@ object LlmFormatter {
     }
 
     fun formatDsm(matrix: DsmMatrix): String = buildString {
-        append("packages:${matrix.packages.joinToString(",") { it.value }}")
+        append("packages:${matrix.packages.joinToString(",")}")
         if (matrix.cells.isEmpty()) {
             append("\n(no dependencies)")
         } else {
-            for ((key, count) in matrix.cells.entries.sortedBy { "${it.key.first.value}-${it.key.second.value}" }) {
-                append("\n${key.first.value}->${key.second.value}:$count")
+            for ((key, count) in matrix.cells.entries.sortedBy { "${it.key.first}-${it.key.second}" }) {
+                append("\n${key.first}->${key.second}:$count")
                 val classDeps = matrix.classDependencies[key]
                 if (!classDeps.isNullOrEmpty()) {
-                    val classStr = classDeps.sortedBy { "${it.first.value}-${it.second.value}" }
-                        .joinToString(",") { "${it.first.value}->${it.second.value}" }
+                    val classStr = classDeps.sortedBy { "${it.first}-${it.second}" }
+                        .joinToString(",") { "${it.first}->${it.second}" }
                     append(" [$classStr]")
                 }
             }
             val cyclicPairs = matrix.findCyclicPairs()
             if (cyclicPairs.isNotEmpty()) {
-                val cycleStr = cyclicPairs.joinToString(",") { (a, b, _) -> "${a.value}<->${b.value}" }
+                val cycleStr = cyclicPairs.joinToString(",") { (a, b, _) -> "$a<->$b" }
                 append("\nCYCLES: $cycleStr")
             }
         }
@@ -173,14 +173,14 @@ object LlmFormatter {
         return cyclicPairs.joinToString("\n") { (a, b, counts) ->
             val fwd = matrix.classDependencies[a to b]
             val bwd = matrix.classDependencies[b to a]
-            val fwdStr = fwd?.sortedBy { "${it.first.value}-${it.second.value}" }
-                ?.joinToString(",") { "${it.first.value}->${it.second.value}" } ?: ""
-            val bwdStr = bwd?.sortedBy { "${it.first.value}-${it.second.value}" }
-                ?.joinToString(",") { "${it.first.value}->${it.second.value}" } ?: ""
+            val fwdStr = fwd?.sortedBy { "${it.first}-${it.second}" }
+                ?.joinToString(",") { "${it.first}->${it.second}" } ?: ""
+            val bwdStr = bwd?.sortedBy { "${it.first}-${it.second}" }
+                ?.joinToString(",") { "${it.first}->${it.second}" } ?: ""
             buildString {
-                append("CYCLE ${a.value}<->${b.value} ${counts.first}/${counts.second}")
-                if (fwdStr.isNotEmpty()) append("\n  ${a.value}->${b.value}: $fwdStr")
-                if (bwdStr.isNotEmpty()) append("\n  ${b.value}->${a.value}: $bwdStr")
+                append("CYCLE $a<->$b ${counts.first}/${counts.second}")
+                if (fwdStr.isNotEmpty()) append("\n  $a->$b: $fwdStr")
+                if (bwdStr.isNotEmpty()) append("\n  $b->$a: $bwdStr")
             }
         }
     }

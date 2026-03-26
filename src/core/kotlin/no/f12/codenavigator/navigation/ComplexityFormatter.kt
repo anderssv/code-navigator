@@ -9,7 +9,7 @@ object ComplexityFormatter {
     }
 
     private fun formatClass(c: ClassComplexity): String = buildString {
-        appendLine("${c.className.value} (${c.sourceFile})")
+        appendLine("${c.className} (${c.sourceFile})")
         appendLine("  Fan-out: ${c.fanOut} calls to ${c.distinctOutgoingClasses} distinct classes")
         appendLine("  Fan-in:  ${c.fanIn} calls from ${c.distinctIncomingClasses} distinct classes")
         appendLine("  Top outgoing: ${formatByClass(c.outgoingByClass)}")
@@ -18,5 +18,5 @@ object ComplexityFormatter {
 
     private fun formatByClass(byClass: List<Pair<ClassName, Int>>): String =
         if (byClass.isEmpty()) "(none)"
-        else byClass.joinToString(", ") { (cls, count) -> "${cls.value} ($count)" }
+        else byClass.joinToString(", ") { (cls, count) -> "$cls ($count)" }
 }

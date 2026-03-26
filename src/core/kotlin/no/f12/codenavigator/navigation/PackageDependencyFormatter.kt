@@ -12,13 +12,13 @@ object PackageDependencyFormatter {
 
         packageNames.forEachIndexed { index, pkg ->
             if (index > 0) appendLine()
-            appendLine(pkg.value)
+            appendLine(pkg)
             val related = if (reverse) deps.dependentsOf(pkg) else deps.dependenciesOf(pkg)
             if (related.isEmpty()) {
                 appendLine("  $emptyMessage")
             } else {
                 related.forEach { dep ->
-                    appendLine("  $arrow ${dep.value}")
+                    appendLine("  $arrow $dep")
                 }
             }
         }

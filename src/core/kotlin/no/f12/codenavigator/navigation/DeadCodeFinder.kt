@@ -60,7 +60,7 @@ object DeadCodeFinder {
                 if (method.className in calledTypes &&
                     method !in calledMethods &&
                     !method.className.isGenerated() &&
-                    !KotlinMethodFilter.isGenerated(method.methodName)
+                    !method.isGenerated()
                 ) {
                     results.add(
                         DeadCode(

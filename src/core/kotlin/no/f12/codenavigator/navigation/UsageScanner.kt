@@ -27,7 +27,7 @@ enum class UsageKind {
 object UsageScanner {
     fun filterOutsidePackage(usages: List<UsageSite>, outsidePackage: String?): List<UsageSite> {
         if (outsidePackage == null) return usages
-        val prefix = if (outsidePackage.endsWith(".")) outsidePackage else "$outsidePackage."
+        val prefix = PackageName(if (outsidePackage.endsWith(".")) outsidePackage else "$outsidePackage.")
         return usages.filter { !it.callerClass.startsWith(prefix) }
     }
 
@@ -92,7 +92,7 @@ object UsageScanner {
                 ): FieldVisitor? {
                     if (typeRegex != null) {
                         val referencedTypes = extractTypesFromDescriptor(descriptor)
-                        if (referencedTypes.any { matchesType(it, typeRegex) }) {
+                        if (referencedTypes.any { it.matches(typeRegex) }) {
                             usages.add(
                                 UsageSite(
                                     callerClass = callerClass,
@@ -117,7 +117,7 @@ object UsageScanner {
 
                     if (typeRegex != null) {
                         val referencedTypes = extractTypesFromDescriptor(descriptor)
-                        if (referencedTypes.any { matchesType(it, typeRegex) }) {
+                        if (referencedTypes.any { it.matches(typeRegex) }) {
                             usages.add(
                                 UsageSite(
                                     callerClass = callerClass,
@@ -138,10 +138,9 @@ object UsageScanner {
                             instrDescriptor: String, isInterface: Boolean,
                         ) {
                             val instrOwnerClass = ClassName.fromInternal(instrOwner)
-                            val instrOwnerDot = instrOwnerClass.value
-                            val ownerMatched = field == null && matchesOwner(instrOwnerDot, ownerRegex) && matchesMethod(instrName, method)
-                            val fieldMatched = field != null && matchesOwner(instrOwnerDot, ownerRegex) && matchesFieldAccessor(instrName, field)
-                            val typeMatched = typeRegex != null && matchesType(instrOwnerDot, typeRegex) && matchesMethod(instrName, method)
+                            val ownerMatched = field == null && matchesOwner(instrOwnerClass, ownerRegex) && matchesMethod(instrName, method)
+                            val fieldMatched = field != null && matchesOwner(instrOwnerClass, ownerRegex) && matchesFieldAccessor(instrName, field)
+                            val typeMatched = typeRegex != null && instrOwnerClass.matches(typeRegex) && matchesMethod(instrName, method)
                             if (ownerMatched || fieldMatched || typeMatched) {
                                 usages.add(
                                     UsageSite(
@@ -162,10 +161,9 @@ object UsageScanner {
                             instrDescriptor: String,
                         ) {
                             val instrOwnerClass = ClassName.fromInternal(instrOwner)
-                            val instrOwnerDot = instrOwnerClass.value
-                            val ownerMatched = field == null && matchesOwner(instrOwnerDot, ownerRegex) && matchesMethod(instrName, method)
-                            val fieldMatched = field != null && matchesOwner(instrOwnerDot, ownerRegex) && instrName == field
-                            val typeMatched = typeRegex != null && matchesType(instrOwnerDot, typeRegex) && matchesMethod(instrName, method)
+                            val ownerMatched = field == null && matchesOwner(instrOwnerClass, ownerRegex) && matchesMethod(instrName, method)
+                            val fieldMatched = field != null && matchesOwner(instrOwnerClass, ownerRegex) && instrName == field
+                            val typeMatched = typeRegex != null && instrOwnerClass.matches(typeRegex) && matchesMethod(instrName, method)
                             if (ownerMatched || fieldMatched || typeMatched) {
                                 usages.add(
                                     UsageSite(
@@ -183,8 +181,7 @@ object UsageScanner {
 
                         override fun visitTypeInsn(opcode: Int, instrType: String) {
                             val instrTypeClass = ClassName.fromInternal(instrType)
-                            val instrTypeDot = instrTypeClass.value
-                            if (typeRegex != null && matchesType(instrTypeDot, typeRegex)) {
+                            if (typeRegex != null && instrTypeClass.matches(typeRegex)) {
                                 usages.add(
                                     UsageSite(
                                         callerClass = callerClass,
@@ -205,9 +202,9 @@ object UsageScanner {
         )
     }
 
-    private fun matchesOwner(actual: String, filter: Regex?): Boolean {
+    private fun matchesOwner(actual: ClassName, filter: Regex?): Boolean {
         if (filter == null) return false
-        return filter.containsMatchIn(actual)
+        return actual.matches(filter)
     }
 
     private fun matchesMethod(actual: String, filter: String?): Boolean {
@@ -222,12 +219,9 @@ object UsageScanner {
             methodName == "is$capitalized"
     }
 
-    private fun matchesType(actual: String, filter: Regex): Boolean =
-        filter.containsMatchIn(actual)
-
-    private fun extractTypesFromDescriptor(descriptor: String): List<String> {
+    private fun extractTypesFromDescriptor(descriptor: String): List<ClassName> {
         val type = runCatching { Type.getType(descriptor) }.getOrNull() ?: return emptyList()
-        val types = mutableListOf<String>()
+        val types = mutableListOf<ClassName>()
         when (type.sort) {
             Type.METHOD -> {
                 collectType(type.returnType, types)
@@ -238,9 +232,9 @@ object UsageScanner {
         return types
     }
 
-    private fun collectType(type: Type, into: MutableList<String>) {
+    private fun collectType(type: Type, into: MutableList<ClassName>) {
         when (type.sort) {
-            Type.OBJECT -> into.add(type.internalName.replace('/', '.'))
+            Type.OBJECT -> into.add(ClassName.fromInternal(type.internalName))
             Type.ARRAY -> collectType(type.elementType, into)
         }
     }

@@ -5,11 +5,11 @@ object ClassDetailFormatter {
     fun format(details: List<ClassDetail>): String = buildString {
         details.forEachIndexed { index, detail ->
             if (index > 0) appendLine()
-            appendLine("=== ${detail.className.value} (${detail.sourceFile}) ===")
+            appendLine("=== ${detail.className} (${detail.sourceFile}) ===")
 
-            detail.superClass?.let { appendLine("Extends: ${it.value}") }
+            detail.superClass?.let { appendLine("Extends: $it") }
             if (detail.interfaces.isNotEmpty()) {
-                appendLine("Implements: ${detail.interfaces.joinToString(", ") { it.value }}")
+                appendLine("Implements: ${detail.interfaces.joinToString(", ")}")
             }
 
             if (detail.fields.isNotEmpty()) {

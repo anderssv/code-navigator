@@ -12,19 +12,7 @@ package no.f12.codenavigator.navigation
  */
 object LambdaCollapser {
 
-    private val TRAILING_NUMERIC_SEGMENT = Regex("""\$\d+$""")
-    private val TRAILING_LOWERCASE_SEGMENT = Regex("""\$[a-z][^$]*$""")
-
-    fun collapse(className: ClassName): ClassName {
-        var result = className.value
-        while (true) {
-            val afterNumeric = result.replace(TRAILING_NUMERIC_SEGMENT, "")
-            if (afterNumeric == result) break
-            val afterFunction = afterNumeric.replace(TRAILING_LOWERCASE_SEGMENT, "")
-            result = afterFunction
-        }
-        return ClassName(result)
-    }
+    fun collapse(className: ClassName): ClassName = className.collapseLambda()
 
     fun collapseComplexity(results: List<ClassComplexity>): List<ClassComplexity> =
         results.map { complexity ->

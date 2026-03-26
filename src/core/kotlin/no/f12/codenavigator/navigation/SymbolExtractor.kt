@@ -14,7 +14,7 @@ enum class SymbolKind {
 
 data class SymbolInfo(
     val packageName: PackageName,
-    val className: String,
+    val className: ClassName,
     val symbolName: String,
     val kind: SymbolKind,
     val sourceFile: String,
@@ -36,7 +36,7 @@ object SymbolExtractor {
             val fullClassName = ClassName.fromInternal(internalName)
             return SymbolInfo(
                 packageName = fullClassName.packageName(),
-                className = fullClassName.simpleName(),
+                className = fullClassName,
                 symbolName = name,
                 kind = kind,
                 sourceFile = sourceFile ?: "<unknown>",

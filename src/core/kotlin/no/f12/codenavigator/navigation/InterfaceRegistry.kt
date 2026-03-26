@@ -20,7 +20,7 @@ class InterfaceRegistry(
         val regex = Regex(pattern, RegexOption.IGNORE_CASE)
         return interfaceToImplementors.keys
             .filter { it.matches(regex) }
-            .sortedBy { it.value }
+            .sortedBy { it.toString() }
     }
 
     fun forEachEntry(action: (interfaceName: ClassName, implementors: List<ImplementorInfo>) -> Unit) {
@@ -46,7 +46,7 @@ class InterfaceRegistry(
                         }
                 }
 
-            val sorted = map.mapValues { (_, impls) -> impls.sortedBy { it.className.value } }
+            val sorted = map.mapValues { (_, impls) -> impls.sortedBy { it.className.toString() } }
             return ScanResult(
                 data = InterfaceRegistry(sorted),
                 skippedFiles = skipped,

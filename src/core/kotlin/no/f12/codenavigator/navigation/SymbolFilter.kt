@@ -5,7 +5,7 @@ object SymbolFilter {
         val regex = Regex(pattern, RegexOption.IGNORE_CASE)
         return symbols.filter { symbol ->
             symbol.packageName.matches(regex) ||
-                regex.containsMatchIn(symbol.className) ||
+                symbol.className.matches(regex) ||
                 regex.containsMatchIn(symbol.symbolName) ||
                 regex.containsMatchIn(symbol.sourceFile)
         }

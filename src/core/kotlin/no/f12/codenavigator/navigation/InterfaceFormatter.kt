@@ -6,9 +6,9 @@ object InterfaceFormatter {
         interfaceNames.forEachIndexed { index, ifaceName ->
             if (index > 0) appendLine()
             val implementors = registry.implementorsOf(ifaceName)
-            appendLine("=== ${ifaceName.value} (${implementors.size} implementors) ===")
+            appendLine("=== $ifaceName (${implementors.size} implementors) ===")
             implementors.forEach { impl ->
-                appendLine("  ${impl.className.value} (${impl.sourceFile})")
+                appendLine("  ${impl.className} (${impl.sourceFile})")
             }
         }
     }.trimEnd()

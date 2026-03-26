@@ -60,7 +60,7 @@ class ClassScannerTest {
         assertEquals(2, results.size)
         val classNames = results.map { it.className.value }.toSet()
         assertTrue("com.example.Outer" in classNames)
-        assertTrue("com.example.Outer.Inner" in classNames)
+        assertTrue("com.example.Outer\$Inner" in classNames)
     }
 
     @Test

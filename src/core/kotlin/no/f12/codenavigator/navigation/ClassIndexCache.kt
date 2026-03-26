@@ -14,7 +14,7 @@ object ClassIndexCache {
                 classes.forEach { info ->
                     writer.write(
                         listOf(
-                            info.className.value,
+                            info.className.toString(),
                             info.sourceFileName,
                             info.reconstructedSourcePath,
                             info.isUserDefinedClass.toString(),

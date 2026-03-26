@@ -7,9 +7,9 @@ import kotlin.test.assertTrue
 class SymbolFilterTest {
 
     private val symbols = listOf(
-        SymbolInfo(PackageName("com.example.services"), "UserService", "findUser", SymbolKind.METHOD, "UserService.kt"),
-        SymbolInfo(PackageName("com.example.domain"), "UserInfo", "nationalId", SymbolKind.FIELD, "UserInfo.kt"),
-        SymbolInfo(PackageName("com.example.services"), "ResetService", "resetPassword", SymbolKind.METHOD, "ResetService.kt"),
+        SymbolInfo(PackageName("com.example.services"), ClassName("com.example.services.UserService"), "findUser", SymbolKind.METHOD, "UserService.kt"),
+        SymbolInfo(PackageName("com.example.domain"), ClassName("com.example.domain.UserInfo"), "nationalId", SymbolKind.FIELD, "UserInfo.kt"),
+        SymbolInfo(PackageName("com.example.services"), ClassName("com.example.services.ResetService"), "resetPassword", SymbolKind.METHOD, "ResetService.kt"),
     )
 
     @Test
@@ -25,7 +25,7 @@ class SymbolFilterTest {
         val results = SymbolFilter.filter(symbols, "UserService")
 
         assertEquals(1, results.size)
-        assertEquals("UserService", results.first().className)
+        assertEquals(ClassName("com.example.services.UserService"), results.first().className)
     }
 
     @Test

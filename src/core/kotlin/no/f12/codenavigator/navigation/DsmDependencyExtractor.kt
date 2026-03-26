@@ -21,7 +21,7 @@ object DsmDependencyExtractor {
                     .filter { it.isFile && it.extension == "class" }
                     .forEach { classFile ->
                         try {
-                            extractFromClass(classFile, rootPrefix.value, dependencies)
+                            extractFromClass(classFile, rootPrefix, dependencies)
                         } catch (e: UnsupportedBytecodeVersionException) {
                             skipped.add(e)
                         }
@@ -36,7 +36,7 @@ object DsmDependencyExtractor {
 
     private fun extractFromClass(
         classFile: File,
-        rootPrefix: String,
+        rootPrefix: PackageName,
         dependencies: MutableSet<PackageDependency>,
     ) {
         val reader = createClassReader(classFile)
@@ -60,7 +60,7 @@ object DsmDependencyExtractor {
     }
 }
 
-private class DependencyCollector(private val rootPrefix: String) : ClassVisitor(Opcodes.ASM9) {
+private class DependencyCollector(private val rootPrefix: PackageName) : ClassVisitor(Opcodes.ASM9) {
     val referencedTypes = mutableSetOf<ClassName>()
 
     override fun visit(
@@ -117,8 +117,7 @@ private class DependencyCollector(private val rootPrefix: String) : ClassVisitor
         if (internalName.startsWith('[')) return
         val className = ClassName.fromInternal(internalName)
         if (rootPrefix.isNotEmpty() && !className.startsWith(rootPrefix)) return
-        val baseName = className.value.substringBefore('$')
-        referencedTypes += ClassName(baseName)
+        referencedTypes += className.topLevelClass()
     }
 
     private fun addDescriptorTypes(descriptor: String) {

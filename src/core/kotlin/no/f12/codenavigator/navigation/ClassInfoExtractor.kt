@@ -14,9 +14,6 @@ data class ClassInfo(
 
 object ClassInfoExtractor {
 
-    private val SYNTHETIC_SUFFIX = Regex("""\$\d+$""")
-    private val LAMBDA_PATTERN = Regex("""\${'$'}lambda\${'$'}""")
-
     fun extract(classFile: File): ClassInfo {
         val reader = createClassReader(classFile)
         var internalName = ""
@@ -42,11 +39,10 @@ object ClassInfoExtractor {
             ClassReader.SKIP_CODE or ClassReader.SKIP_DEBUG.inv() or ClassReader.SKIP_FRAMES,
         )
 
-        val dottedName = internalName.replace('/', '.').replace('$', '.')
-        val isUserDefined = !SYNTHETIC_SUFFIX.containsMatchIn(internalName) &&
-            !LAMBDA_PATTERN.containsMatchIn(internalName)
+        val className = ClassName.fromInternal(internalName)
+        val isUserDefined = !className.isSynthetic()
 
-        val packageDir = internalName.substringBeforeLast('/', "")
+        val packageDir = className.packagePath()
         val sourceFileName = sourceFile
         val reconstructedPath = when {
             sourceFileName == null -> "<unknown>"
@@ -55,7 +51,7 @@ object ClassInfoExtractor {
         }
 
         return ClassInfo(
-            className = ClassName(dottedName),
+            className = className,
             sourceFileName = sourceFile ?: "<unknown>",
             reconstructedSourcePath = reconstructedPath,
             isUserDefinedClass = isUserDefined,

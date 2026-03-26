@@ -24,7 +24,7 @@ class SymbolExtractorTest {
         assertEquals(1, symbols.size)
         val symbol = symbols.first()
         assertEquals("com.example", symbol.packageName.value)
-        assertEquals("MyService", symbol.className)
+        assertEquals(ClassName("com.example.MyService"), symbol.className)
         assertEquals("resetPassword", symbol.symbolName)
         assertEquals(SymbolKind.METHOD, symbol.kind)
         assertEquals("MyService.kt", symbol.sourceFile)
@@ -44,7 +44,7 @@ class SymbolExtractorTest {
         val symbol = symbols.first()
         assertEquals("nationalId", symbol.symbolName)
         assertEquals(SymbolKind.FIELD, symbol.kind)
-        assertEquals("UserInfo", symbol.className)
+        assertEquals(ClassName("com.example.UserInfo"), symbol.className)
     }
 
     // [TEST] Extracts a public field as a FIELD symbol -- DONE
@@ -161,7 +161,7 @@ class SymbolExtractorTest {
 
         assertEquals(1, symbols.size)
         assertEquals("formatDate", symbols.first().symbolName)
-        assertEquals("UtilsKt", symbols.first().className)
+        assertEquals(ClassName("com.example.UtilsKt"), symbols.first().className)
         assertEquals("Utils.kt", symbols.first().sourceFile)
     }
 

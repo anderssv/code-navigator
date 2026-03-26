@@ -23,17 +23,11 @@ object SymbolScanner {
             }
 
         return ScanResult(
-            data = symbols.sortedWith(compareBy({ it.packageName.value }, { it.className }, { it.symbolName })),
+            data = symbols.sortedWith(compareBy({ it.packageName.toString() }, { it.className }, { it.symbolName })),
             skippedFiles = skipped,
         )
     }
 
-    private val SYNTHETIC_SUFFIX = Regex("""\$\d+""")
-    private val LAMBDA_PATTERN = Regex("""\${'$'}lambda\${'$'}""")
-
-    private fun isSyntheticClassFile(file: File): Boolean {
-        val nameWithoutExtension = file.nameWithoutExtension
-        return SYNTHETIC_SUFFIX.containsMatchIn(nameWithoutExtension) ||
-            LAMBDA_PATTERN.containsMatchIn(nameWithoutExtension)
-    }
+    private fun isSyntheticClassFile(file: File): Boolean =
+        ClassName.isSyntheticName(file.nameWithoutExtension)
 }

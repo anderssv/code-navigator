@@ -30,7 +30,7 @@ object DsmHtmlRenderer {
             )
 
             appendLine("<details><summary>Package legend</summary><ol>")
-            packages.forEach { pkg -> appendLine("<li>${pkg.value}</li>") }
+            packages.forEach { pkg -> appendLine("<li>$pkg</li>") }
             appendLine("</ol></details>")
 
             appendLine("<table>")
@@ -40,7 +40,7 @@ object DsmHtmlRenderer {
 
             packages.forEachIndexed { rowIdx, rowPkg ->
                 appendLine("<tr>")
-                appendLine("<td class=\"row-label\">${rowIdx + 1}. ${rowPkg.value}</td>")
+                appendLine("<td class=\"row-label\">${rowIdx + 1}. $rowPkg</td>")
                 packages.forEachIndexed { colIdx, colPkg ->
                     val count = matrix.cells[rowPkg to colPkg]
                     when {
@@ -49,11 +49,11 @@ object DsmHtmlRenderer {
                         else -> {
                             val cssClass = if (rowIdx > colIdx) "forward" else "backward"
                             val deps = matrix.classDependencies[rowPkg to colPkg]
-                                ?.joinToString("<br>") { (src, tgt) -> "${src.value} -> ${tgt.value}" }
+                                ?.joinToString("<br>") { (src, tgt) -> "$src -> $tgt" }
                                 ?: ""
                             appendLine("<td class=\"$cssClass\" style=\"position:relative\">$count")
                             if (deps.isNotEmpty()) {
-                                appendLine("<div class=\"tooltip\"><strong>${rowPkg.value} -> ${colPkg.value}</strong><br>$deps</div>")
+                                appendLine("<div class=\"tooltip\"><strong>$rowPkg -> $colPkg</strong><br>$deps</div>")
                             }
                             appendLine("</td>")
                         }

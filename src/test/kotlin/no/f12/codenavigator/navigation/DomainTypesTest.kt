@@ -115,13 +115,18 @@ class ClassNameTest {
     // --- startsWith ---
 
     @Test
-    fun `startsWith returns true for matching prefix`() {
-        assertTrue(ClassName("com.example.MyService").startsWith("com.example"))
+    fun `startsWith with PackageName matches on package prefix`() {
+        assertTrue(ClassName("com.example.MyService").startsWith(PackageName("com.example")))
     }
 
     @Test
-    fun `startsWith returns false for non-matching prefix`() {
-        assertFalse(ClassName("com.example.MyService").startsWith("com.other"))
+    fun `startsWith with PackageName rejects non-matching prefix`() {
+        assertFalse(ClassName("com.example.MyService").startsWith(PackageName("com.other")))
+    }
+
+    @Test
+    fun `startsWith with empty PackageName matches everything`() {
+        assertTrue(ClassName("com.example.MyService").startsWith(PackageName("")))
     }
 
     // --- fromInternal ---
@@ -151,6 +156,101 @@ class ClassNameTest {
     @Test
     fun `simpleName for default package class`() {
         assertEquals("MyService", ClassName("MyService").simpleName())
+    }
+
+    // --- topLevelClass ---
+
+    @Test
+    fun `topLevelClass strips all dollar segments from inner class`() {
+        assertEquals(ClassName("com.example.Outer"), ClassName("com.example.Outer\$Inner").topLevelClass())
+    }
+
+    @Test
+    fun `topLevelClass strips all dollar segments from lambda class`() {
+        assertEquals(ClassName("com.example.Service"), ClassName("com.example.Service\$handle\$1").topLevelClass())
+    }
+
+    @Test
+    fun `topLevelClass returns same class when no dollar sign`() {
+        assertEquals(ClassName("com.example.MyService"), ClassName("com.example.MyService").topLevelClass())
+    }
+
+    @Test
+    fun `topLevelClass handles deeply nested classes`() {
+        assertEquals(ClassName("com.example.A"), ClassName("com.example.A\$B\$C\$D").topLevelClass())
+    }
+
+    // --- collapseLambda ---
+
+    @Test
+    fun `collapseLambda strips trailing numeric then function segments iteratively`() {
+        assertEquals(ClassName("com.example.Controller"), ClassName("com.example.Controller\$handle\$1").collapseLambda())
+    }
+
+    @Test
+    fun `collapseLambda handles multiple levels of lambda nesting`() {
+        assertEquals(ClassName("com.example.Service"), ClassName("com.example.Service\$process\$1\$invoke\$2").collapseLambda())
+    }
+
+    @Test
+    fun `collapseLambda stops when no more numeric segments match`() {
+        assertEquals(ClassName("com.example.Outer\$Inner"), ClassName("com.example.Outer\$Inner").collapseLambda())
+    }
+
+    @Test
+    fun `collapseLambda returns same class for non-lambda class`() {
+        assertEquals(ClassName("com.example.MyService"), ClassName("com.example.MyService").collapseLambda())
+    }
+
+    // --- displayName ---
+
+    @Test
+    fun `displayName replaces dollar signs with dots`() {
+        assertEquals("com.example.Outer.Inner", ClassName("com.example.Outer\$Inner").displayName())
+    }
+
+    @Test
+    fun `displayName returns same value when no dollar signs`() {
+        assertEquals("com.example.MyService", ClassName("com.example.MyService").displayName())
+    }
+
+    // --- packagePath ---
+
+    @Test
+    fun `packagePath returns slash-separated package directory`() {
+        assertEquals("com/example/service", ClassName("com.example.service.MyService").packagePath())
+    }
+
+    @Test
+    fun `packagePath returns empty string for default package class`() {
+        assertEquals("", ClassName("MyService").packagePath())
+    }
+
+    // --- isSyntheticName (companion) ---
+
+    @Test
+    fun `isSyntheticName detects anonymous class pattern in filename`() {
+        assertTrue(ClassName.isSyntheticName("Foo\$1"))
+    }
+
+    @Test
+    fun `isSyntheticName detects lambda pattern in filename`() {
+        assertTrue(ClassName.isSyntheticName("Service\$lambda\$1"))
+    }
+
+    @Test
+    fun `isSyntheticName returns false for regular class filename`() {
+        assertFalse(ClassName.isSyntheticName("MyService"))
+    }
+
+    @Test
+    fun `isSyntheticName returns false for named inner class`() {
+        assertFalse(ClassName.isSyntheticName("Outer\$Inner"))
+    }
+
+    @Test
+    fun `isSyntheticName detects numeric suffix mid-name`() {
+        assertTrue(ClassName.isSyntheticName("Foo\$1\$bar"))
     }
 }
 
@@ -264,5 +364,29 @@ class PackageNameTest {
         val pkg = PackageName("com.example.api")
 
         assertEquals(PackageName("com.example"), pkg.truncate(PackageName(""), 2))
+    }
+}
+
+class MethodRefTest {
+
+    @Test
+    fun `isGenerated returns true for synthetic access method`() {
+        val ref = MethodRef(ClassName("com.example.Service"), "access\$doWork")
+
+        assertTrue(ref.isGenerated())
+    }
+
+    @Test
+    fun `isGenerated returns true for constructor`() {
+        val ref = MethodRef(ClassName("com.example.Service"), "<init>")
+
+        assertTrue(ref.isGenerated())
+    }
+
+    @Test
+    fun `isGenerated returns false for regular method`() {
+        val ref = MethodRef(ClassName("com.example.Service"), "doWork")
+
+        assertFalse(ref.isGenerated())
     }
 }
