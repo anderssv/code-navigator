@@ -10,7 +10,7 @@ class CalleeTreeFormatterTest {
         val graph = CallGraph(emptyMap())
         val target = MethodRef(ClassName("com.example.Service"), "doWork")
 
-        val result = CalleeTreeFormatter.format(graph, listOf(target), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(target), maxDepth = 3, direction = CallDirection.CALLEES)
 
         assertEquals(
             """
@@ -30,7 +30,7 @@ class CalleeTreeFormatterTest {
             sourceFiles = mapOf(ClassName("com.example.Service") to "Service.kt"),
         )
 
-        val result = CalleeTreeFormatter.format(graph, listOf(caller), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(caller), maxDepth = 3, direction = CallDirection.CALLEES)
 
         assertEquals(
             """
@@ -57,7 +57,7 @@ class CalleeTreeFormatterTest {
             ),
         )
 
-        val result = CalleeTreeFormatter.format(graph, listOf(caller), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(caller), maxDepth = 3, direction = CallDirection.CALLEES)
 
         assertEquals(
             """
@@ -85,7 +85,7 @@ class CalleeTreeFormatterTest {
             ),
         )
 
-        val result = CalleeTreeFormatter.format(graph, listOf(a), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(a), maxDepth = 3, direction = CallDirection.CALLEES)
 
         assertEquals(
             """
@@ -113,7 +113,7 @@ class CalleeTreeFormatterTest {
             ),
         )
 
-        val result = CalleeTreeFormatter.format(graph, listOf(a), maxDepth = 1)
+        val result = CallTreeFormatter.format(graph, listOf(a), maxDepth = 1, direction = CallDirection.CALLEES)
 
         assertEquals(
             """
@@ -139,7 +139,7 @@ class CalleeTreeFormatterTest {
             ),
         )
 
-        val result = CalleeTreeFormatter.format(graph, listOf(a), maxDepth = 10)
+        val result = CallTreeFormatter.format(graph, listOf(a), maxDepth = 10, direction = CallDirection.CALLEES)
 
         assertEquals(
             """
@@ -160,7 +160,7 @@ class CalleeTreeFormatterTest {
             sourceFiles = emptyMap(),
         )
 
-        val result = CalleeTreeFormatter.format(graph, listOf(caller), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(caller), maxDepth = 3, direction = CallDirection.CALLEES)
 
         assertEquals(
             """
@@ -186,10 +186,11 @@ class CalleeTreeFormatterTest {
         )
         val projectClasses = setOf("com.example.Service", "com.example.Repo")
 
-        val result = CalleeTreeFormatter.format(
+        val result = CallTreeFormatter.format(
             graph,
             listOf(caller),
             maxDepth = 3,
+            direction = CallDirection.CALLEES,
             filter = { it.className.value in projectClasses },
         )
 
@@ -211,10 +212,11 @@ class CalleeTreeFormatterTest {
         )
         val projectClasses = setOf("com.example.Service")
 
-        val result = CalleeTreeFormatter.format(
+        val result = CallTreeFormatter.format(
             graph,
             listOf(caller),
             maxDepth = 3,
+            direction = CallDirection.CALLEES,
             filter = { it.className.value in projectClasses },
         )
 
@@ -245,10 +247,11 @@ class CalleeTreeFormatterTest {
         )
         val projectClasses = setOf("com.example.A", "com.example.B", "com.example.C")
 
-        val result = CalleeTreeFormatter.format(
+        val result = CallTreeFormatter.format(
             graph,
             listOf(a),
             maxDepth = 3,
+            direction = CallDirection.CALLEES,
             filter = { it.className.value in projectClasses },
         )
 
@@ -279,7 +282,7 @@ class CalleeTreeFormatterTest {
             ),
         )
 
-        val result = CalleeTreeFormatter.format(graph, listOf(a, b), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(a, b), maxDepth = 3, direction = CallDirection.CALLEES)
 
         assertEquals(
             """

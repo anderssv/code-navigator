@@ -202,7 +202,7 @@ class CallGraphCacheTest {
 
         // Full tree from restored cache should show all levels
         val methods = listOf(MethodRef(ClassName("com.example.UserService"), "buildNotificationMessage"))
-        val result = CallerTreeFormatter.format(restored, methods, maxDepth = 5)
+        val result = CallTreeFormatter.format(restored, methods, maxDepth = 5, direction = CallDirection.CALLERS)
         assertTrue(result.contains("resetPassword"), "Tree should show resetPassword at depth 2, got:\n$result")
         assertTrue(result.contains("handleReset"), "Tree should show handleReset at depth 3, got:\n$result")
     }

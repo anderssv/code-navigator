@@ -11,7 +11,7 @@ class CallerTreeFormatterTest {
         val graph = CallGraph(emptyMap())
         val target = MethodRef(ClassName("com.example.Service"), "doWork")
 
-        val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(target), maxDepth = 3, direction = CallDirection.CALLERS)
 
         assertEquals(
             """
@@ -32,7 +32,7 @@ class CallerTreeFormatterTest {
             sourceFiles = mapOf(ClassName("com.example.Controller") to "Controller.kt"),
         )
 
-        val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(target), maxDepth = 3, direction = CallDirection.CALLERS)
 
         assertEquals(
             """
@@ -60,7 +60,7 @@ class CallerTreeFormatterTest {
             ),
         )
 
-        val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(target), maxDepth = 3, direction = CallDirection.CALLERS)
 
         assertEquals(
             """
@@ -89,7 +89,7 @@ class CallerTreeFormatterTest {
             ),
         )
 
-        val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(target), maxDepth = 3, direction = CallDirection.CALLERS)
 
         assertEquals(
             """
@@ -118,7 +118,7 @@ class CallerTreeFormatterTest {
             ),
         )
 
-        val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 1)
+        val result = CallTreeFormatter.format(graph, listOf(target), maxDepth = 1, direction = CallDirection.CALLERS)
 
         assertEquals(
             """
@@ -145,7 +145,7 @@ class CallerTreeFormatterTest {
             ),
         )
 
-        val result = CallerTreeFormatter.format(graph, listOf(b), maxDepth = 10)
+        val result = CallTreeFormatter.format(graph, listOf(b), maxDepth = 10, direction = CallDirection.CALLERS)
 
         assertEquals(
             """
@@ -167,7 +167,7 @@ class CallerTreeFormatterTest {
             sourceFiles = emptyMap(),
         )
 
-        val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(target), maxDepth = 3, direction = CallDirection.CALLERS)
 
         assertEquals(
             """
@@ -196,7 +196,7 @@ class CallerTreeFormatterTest {
             ),
         )
 
-        val result = CallerTreeFormatter.format(graph, listOf(targetA, targetB), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(targetA, targetB), maxDepth = 3, direction = CallDirection.CALLERS)
 
         assertEquals(
             """
@@ -236,7 +236,7 @@ class CallerTreeFormatterTest {
             ),
         )
 
-        val result = CallerTreeFormatter.format(graph, listOf(buildMsg), maxDepth = 5)
+        val result = CallTreeFormatter.format(graph, listOf(buildMsg), maxDepth = 5, direction = CallDirection.CALLERS)
 
         assertEquals(
             """
@@ -268,10 +268,11 @@ class CallerTreeFormatterTest {
         )
         val projectClasses = setOf("com.example.Service", "com.example.Controller")
 
-        val result = CallerTreeFormatter.format(
+        val result = CallTreeFormatter.format(
             graph,
             listOf(target),
             maxDepth = 3,
+            direction = CallDirection.CALLERS,
             filter = { it.className.value in projectClasses },
         )
 
@@ -294,7 +295,7 @@ class CallerTreeFormatterTest {
             lineNumbers = mapOf(caller to 42),
         )
 
-        val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(target), maxDepth = 3, direction = CallDirection.CALLERS)
 
         assertEquals(
             """
@@ -314,7 +315,7 @@ class CallerTreeFormatterTest {
             sourceFiles = mapOf(ClassName("com.example.Controller") to "Controller.kt"),
         )
 
-        val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 3)
+        val result = CallTreeFormatter.format(graph, listOf(target), maxDepth = 3, direction = CallDirection.CALLERS)
 
         assertEquals(
             """

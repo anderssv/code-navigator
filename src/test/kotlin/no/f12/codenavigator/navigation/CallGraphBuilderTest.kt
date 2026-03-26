@@ -387,7 +387,7 @@ class CallGraphBuilderTest {
         assertEquals("handleReset", passwordCallers.first().methodName)
 
         // Full tree via formatter should show 3 levels deep
-        val result = CallerTreeFormatter.format(graph, listOf(MethodRef(ClassName("com.example.UserService"), "buildNotificationMessage")), maxDepth = 5)
+        val result = CallTreeFormatter.format(graph, listOf(MethodRef(ClassName("com.example.UserService"), "buildNotificationMessage")), maxDepth = 5, direction = CallDirection.CALLERS)
         assertTrue(result.contains("sendResetNotification"), "Should contain sendResetNotification")
         assertTrue(result.contains("resetPassword"), "Should contain resetPassword at depth 2")
         assertTrue(result.contains("handleReset"), "Should contain handleReset at depth 3")

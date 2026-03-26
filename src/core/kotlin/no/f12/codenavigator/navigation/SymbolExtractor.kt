@@ -22,9 +22,6 @@ data class SymbolInfo(
 
 object SymbolExtractor {
 
-    private val KOTLIN_ACCESSOR = Regex("""^(get|set|is)[A-Z]""")
-    private val EXCLUDED_FIELDS = setOf("INSTANCE")
-
     fun extract(classFile: File): List<SymbolInfo> {
         val reader = createClassReader(classFile)
         val symbols = mutableListOf<SymbolInfo>()
@@ -68,7 +65,7 @@ object SymbolExtractor {
                     value: Any?,
                 ): FieldVisitor? {
                     if (access and Opcodes.ACC_SYNTHETIC != 0) return null
-                    if (name in EXCLUDED_FIELDS) return null
+                    if (name in KotlinMethodFilter.EXCLUDED_FIELDS) return null
 
                     fieldNames.add(name)
                     symbols.add(buildSymbol(name, SymbolKind.FIELD))
@@ -82,7 +79,7 @@ object SymbolExtractor {
                     signature: String?,
                     exceptions: Array<out String>?,
                 ): MethodVisitor? {
-                    if (isExcludedMethod(name, access)) return null
+                    if (KotlinMethodFilter.isExcludedMethod(name, access)) return null
                     symbols.add(buildSymbol(name, SymbolKind.METHOD))
                     return null
                 }
@@ -91,26 +88,7 @@ object SymbolExtractor {
         )
 
         return symbols.filter { symbol ->
-            !(symbol.kind == SymbolKind.METHOD && isAccessorForField(symbol.symbolName, fieldNames))
+            !(symbol.kind == SymbolKind.METHOD && KotlinMethodFilter.isAccessorForField(symbol.symbolName, fieldNames))
         }
-    }
-
-    private fun isExcludedMethod(name: String, access: Int): Boolean {
-        if (KotlinMethodFilter.isGenerated(name)) return true
-        if (access and Opcodes.ACC_SYNTHETIC != 0) return true
-        return false
-    }
-
-    private fun isAccessorForField(methodName: String, fieldNames: Set<String>): Boolean {
-        if (!KOTLIN_ACCESSOR.containsMatchIn(methodName)) return false
-
-        val prefix = when {
-            methodName.startsWith("get") -> "get"
-            methodName.startsWith("set") -> "set"
-            methodName.startsWith("is") -> "is"
-            else -> return false
-        }
-        val propertyName = methodName.removePrefix(prefix).replaceFirstChar { it.lowercase() }
-        return propertyName in fieldNames
     }
 }

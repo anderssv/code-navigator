@@ -1,7 +1,8 @@
 package no.f12.codenavigator
 
 import no.f12.codenavigator.navigation.CallGraphBuilder
-import no.f12.codenavigator.navigation.CallerTreeFormatter
+import no.f12.codenavigator.navigation.CallDirection
+import no.f12.codenavigator.navigation.CallTreeFormatter
 import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.MethodRef
 import kotlin.test.Test
@@ -46,7 +47,7 @@ class IntegrationTest {
 
         // Full tree should show all levels
         val methods = listOf(MethodRef(ClassName("com.example.services.UserService"), "buildNotificationMessage"))
-        val result = CallerTreeFormatter.format(graph, methods, maxDepth = 5)
+        val result = CallTreeFormatter.format(graph, methods, maxDepth = 5, direction = CallDirection.CALLERS)
         println("RESULT:\n$result")
         assertTrue(result.contains("sendResetNotification"), "Tree should show sendResetNotification")
         assertTrue(result.contains("resetPassword"), "Tree should show resetPassword at depth 2")

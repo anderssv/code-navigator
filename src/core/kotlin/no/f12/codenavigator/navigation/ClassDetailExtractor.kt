@@ -30,9 +30,6 @@ data class ClassDetail(
 
 object ClassDetailExtractor {
 
-    private val KOTLIN_ACCESSOR = Regex("""^(get|set|is)[A-Z]""")
-    private val EXCLUDED_FIELDS = setOf("INSTANCE")
-
     fun extract(classFile: File): ClassDetail {
         val reader = createClassReader(classFile)
         var className = ClassName("")
@@ -76,7 +73,7 @@ object ClassDetailExtractor {
                     value: Any?,
                 ): FieldVisitor? {
                     if (access and Opcodes.ACC_SYNTHETIC != 0) return null
-                    if (name in EXCLUDED_FIELDS) return null
+                    if (name in KotlinMethodFilter.EXCLUDED_FIELDS) return null
 
                     fieldNames.add(name)
                     fields.add(FieldDetail(name, simplifyType(Type.getType(descriptor))))
@@ -90,7 +87,7 @@ object ClassDetailExtractor {
                     signature: String?,
                     exceptions: Array<out String>?,
                 ): MethodVisitor? {
-                    if (isExcludedMethod(name, access)) return null
+                    if (KotlinMethodFilter.isExcludedMethod(name, access)) return null
 
                     val argTypes = Type.getArgumentTypes(descriptor).map { simplifyType(it) }
                     val retType = simplifyType(Type.getReturnType(descriptor))
@@ -102,7 +99,7 @@ object ClassDetailExtractor {
         )
 
         val filteredMethods = methods.filter { method ->
-            !isAccessorForField(method.name, fieldNames)
+            !KotlinMethodFilter.isAccessorForField(method.name, fieldNames)
         }
 
         return ClassDetail(
@@ -128,24 +125,5 @@ object ClassDetailExtractor {
         Type.ARRAY -> "${simplifyType(type.elementType)}[]"
         Type.OBJECT -> type.className.substringAfterLast('.')
         else -> type.className
-    }
-
-    private fun isExcludedMethod(name: String, access: Int): Boolean {
-        if (KotlinMethodFilter.isGenerated(name)) return true
-        if (access and Opcodes.ACC_SYNTHETIC != 0) return true
-        return false
-    }
-
-    private fun isAccessorForField(methodName: String, fieldNames: Set<String>): Boolean {
-        if (!KOTLIN_ACCESSOR.containsMatchIn(methodName)) return false
-
-        val prefix = when {
-            methodName.startsWith("get") -> "get"
-            methodName.startsWith("set") -> "set"
-            methodName.startsWith("is") -> "is"
-            else -> return false
-        }
-        val propertyName = methodName.removePrefix(prefix).replaceFirstChar { it.lowercase() }
-        return propertyName in fieldNames
     }
 }

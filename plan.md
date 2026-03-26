@@ -1,5 +1,40 @@
 # Plan
 
+## Self-analysis findings (from running code-navigator on itself)
+
+### S1. Break cyclic package dependencies — move `OutputFormat` (High value, low effort)
+
+The DSM at depth 4 reveals two bidirectional dependencies caused by `OutputFormat` living in the root `codenavigator` package while `*Config` classes in `navigation` and `analysis` import it:
+
+- `codenavigator` <-> `codenavigator.analysis` (10 refs each direction)
+- `codenavigator` <-> `codenavigator.navigation` (82 refs / 32 refs)
+
+Fix: Move `OutputFormat` into a location that both sub-packages can depend on without creating a cycle. Options: move into `navigation` (since it has the most dependents), create a `codenavigator.common` package, or change configs to store a raw `String` for format and resolve at the task layer.
+
+### S2. Dead classes — delete `CalleeTreeFormatter` and `CallerTreeFormatter` (Low effort)
+
+Both are reported as dead code. They were superseded by the shared `CallTreeFormatter`. Confirm no references exist and delete.
+
+### S3. Reduce `JsonFormatter` / `LlmFormatter` complexity (Medium value, medium effort)
+
+These are the two highest-complexity classes (fan-out 162/134, 26/20 methods each) and have 100% change coupling (17 shared commits). They do the same job in parallel for every output type.
+
+Options:
+- Extract per-feature format functions (e.g. `CallTreeJsonFormat`, `DsmJsonFormat`) to reduce method count per class
+- Introduce a `ResultFormatter` interface so the task layer uses polymorphism instead of `when(format)`
+
+### S4. Consolidate cache classes into generic `FileCache<T>` (Medium value, low effort)
+
+`CallGraphCache`, `InterfaceRegistryCache`, and `SymbolIndexCache` have 100% change coupling (6 shared commits) and identical `read()`/`write()`/`isFresh()` patterns. Extract a generic base to eliminate triplication.
+
+### S5. Consolidate duplicated methods across extractors (Low effort)
+
+`SymbolExtractor` and `ClassDetailExtractor` both have `isAccessorForField` and `isExcludedMethod` methods. These should live in one place (likely `KotlinMethodFilter` or a shared utility).
+
+### S6. Split root package to clarify dependency direction (Medium value, medium effort)
+
+The root `codenavigator` package serves as both "shared infrastructure" (OutputFormat, formatters, TaskRegistry) and "library API consumed by sub-packages." Splitting into `codenavigator.format` (formatters + OutputFormat) and `codenavigator.registry` (TaskRegistry, BuildTool) would make the dependency direction explicit and eliminate the cycle from S1.
+
 ## 6. `cnavLayerCheck` — architecture conformance (High value, ambitious)
 
 Allow declaring layer rules and validate them against the actual call graph. Like ArchUnit but without writing test code. Catches architecture violations early and is complementary to the DSM.

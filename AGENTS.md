@@ -32,7 +32,7 @@ src/
 **`navigation/`** — bytecode-based analysis (requires compiled `classes`):
 - **Scanning**: `ClassScanner`, `ClassInfoExtractor`, `ClassDetailExtractor`, `ClassDetailScanner`, `SymbolScanner`, `SymbolExtractor`, `UsageScanner`
 - **Call graph**: `CallGraphBuilder` (ASM bytecode → `CallGraph`), `CallGraphCache`, `CallTreeBuilder` (→ `CallTreeNode` trees)
-- **Formatters**: `CallerTreeFormatter`, `CalleeTreeFormatter`, `CallTreeFormatter` (shared), `ClassDetailFormatter`, `SymbolTableFormatter`, `UsageFormatter`, `InterfaceFormatter`, `ComplexityFormatter`, `DeadCodeFormatter`, `RankFormatter`, `MetricsFormatter`, `DsmFormatter`, `PackageDependencyFormatter`, `CyclesFormatter`
+- **Formatters**: `CallTreeFormatter` (callers + callees via `CallDirection`), `ClassDetailFormatter`, `SymbolTableFormatter`, `UsageFormatter`, `InterfaceFormatter`, `ComplexityFormatter`, `DeadCodeFormatter`, `RankFormatter`, `MetricsFormatter`, `DsmFormatter`, `PackageDependencyFormatter`, `CyclesFormatter`
 - **Builders/analyzers**: `InterfaceRegistry` (+cache), `PackageDependencyBuilder`, `DsmMatrixBuilder`, `DsmDependencyExtractor`, `CycleDetector`, `DeadCodeFinder`, `TypeRanker`, `ClassComplexityAnalyzer`, `MetricsBuilder`
 - **Config**: one `*Config.kt` per task (e.g. `CallGraphConfig`, `DeadCodeConfig`, `FindUsagesConfig`)
 - **Shared**: `DomainTypes.kt` (`ClassName`, `MethodRef`), `ClassFilter.kt`, `KotlinMethodFilter.kt`, `LambdaCollapser.kt`, `PatternEnhancer.kt`, `BytecodeReader.kt` (`ScanResult<T>`), `SkippedFileReporter.kt`
