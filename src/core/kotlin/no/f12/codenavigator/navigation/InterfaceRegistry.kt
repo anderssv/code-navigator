@@ -28,9 +28,6 @@ class InterfaceRegistry(
     }
 
     companion object {
-        private val SYNTHETIC_SUFFIX = Regex("""\$\d+$""")
-        private val LAMBDA_PATTERN = Regex("""\${'$'}lambda\${'$'}""")
-
         fun build(classDirectories: List<File>): ScanResult<InterfaceRegistry> {
             val map = mutableMapOf<ClassName, MutableList<ImplementorInfo>>()
             val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
@@ -77,7 +74,7 @@ class InterfaceRegistry(
                         interfaces: Array<out String>?,
                     ) {
                         className = ClassName(name.replace('/', '.'))
-                        isSynthetic = isSyntheticClass(name)
+                        isSynthetic = className.isSynthetic()
                         implementedInterfaces = interfaces
                             ?.map { ClassName(it.replace('/', '.')) }
                             ?: emptyList()
@@ -99,9 +96,5 @@ class InterfaceRegistry(
                 map.getOrPut(ifaceName) { mutableListOf() }.add(info)
             }
         }
-
-        private fun isSyntheticClass(internalName: String): Boolean =
-            SYNTHETIC_SUFFIX.containsMatchIn(internalName) ||
-                LAMBDA_PATTERN.containsMatchIn(internalName)
     }
 }

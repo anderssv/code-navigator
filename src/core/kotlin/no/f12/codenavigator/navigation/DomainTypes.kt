@@ -7,9 +7,18 @@ value class ClassName(val value: String) : Comparable<ClassName> {
 
     fun isGenerated(): Boolean = '$' in value
 
+    fun isSynthetic(): Boolean =
+        SYNTHETIC_SUFFIX.containsMatchIn(value) ||
+            LAMBDA_PATTERN.containsMatchIn(value)
+
     override fun compareTo(other: ClassName): Int = value.compareTo(other.value)
 
     override fun toString(): String = value
+
+    companion object {
+        private val SYNTHETIC_SUFFIX = Regex("""\$\d+$""")
+        private val LAMBDA_PATTERN = Regex("""\${'$'}lambda\${'$'}""")
+    }
 }
 
 @JvmInline
