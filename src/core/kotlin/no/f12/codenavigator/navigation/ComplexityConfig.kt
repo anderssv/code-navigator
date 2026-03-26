@@ -11,8 +11,7 @@ data class ComplexityConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): ComplexityConfig = ComplexityConfig(
-            classPattern = properties["classname"]
-                ?: throw IllegalArgumentException("Missing required property 'classname'"),
+            classPattern = properties["classname"] ?: ".*",
             projectOnly = properties["projectonly"]?.toBoolean() ?: true,
             detail = properties["detail"]?.toBoolean() ?: false,
             collapseLambdas = properties["collapse-lambdas"]?.toBoolean() ?: true,

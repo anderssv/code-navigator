@@ -23,7 +23,7 @@ object ClassComplexityAnalyzer {
 
         return matchingClasses.map { className ->
             analyzeClass(graph, className, projectOnly, projectClasses)
-        }
+        }.sortedByDescending { it.fanOut }
     }
 
     private fun analyzeClass(

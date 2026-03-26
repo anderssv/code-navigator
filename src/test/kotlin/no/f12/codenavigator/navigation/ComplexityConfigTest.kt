@@ -3,7 +3,8 @@ package no.f12.codenavigator.navigation
 import no.f12.codenavigator.OutputFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
+
+
 
 class ComplexityConfigTest {
 
@@ -25,10 +26,10 @@ class ComplexityConfigTest {
     }
 
     @Test
-    fun `requires classname property - throws on missing`() {
-        assertFailsWith<IllegalArgumentException> {
-            ComplexityConfig.parse(emptyMap())
-        }
+    fun `defaults classPattern to match-all when classname not provided`() {
+        val config = ComplexityConfig.parse(emptyMap())
+
+        assertEquals(".*", config.classPattern)
     }
 
     @Test

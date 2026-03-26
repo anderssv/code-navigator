@@ -174,6 +174,25 @@ class ClassComplexityAnalyzerTest {
         assertEquals(listOf("com.example.RAClient"), classNames, "Only the real class should match, not \$-inner classes")
     }
 
+    @Test
+    fun `results are sorted by fan-out descending`() {
+        val graph = callGraph(
+            method("com.example.Low", "a") to method("com.example.Ext", "x"),
+            method("com.example.High", "a") to method("com.example.Ext", "x"),
+            method("com.example.High", "b") to method("com.example.Ext", "y"),
+            method("com.example.High", "c") to method("com.example.Other", "z"),
+            method("com.example.Mid", "a") to method("com.example.Ext", "x"),
+            method("com.example.Mid", "b") to method("com.example.Ext", "y"),
+        )
+
+        val result = ClassComplexityAnalyzer.analyze(graph, ".*", projectOnly = true)
+
+        val classNames = result.map { it.className.value }
+        assertEquals("com.example.High", classNames[0], "Highest fan-out first")
+        assertEquals("com.example.Mid", classNames[1], "Second highest fan-out second")
+        assertEquals("com.example.Low", classNames[2], "Lowest fan-out last")
+    }
+
     private fun callGraph(
         vararg edges: Pair<MethodRef, MethodRef>,
         projectClasses: Set<String> = emptySet(),
