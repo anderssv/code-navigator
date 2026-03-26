@@ -61,7 +61,6 @@ class InterfaceRegistry(
             var className = ClassName("")
             var sourceFile = "<unknown>"
             var implementedInterfaces = emptyList<ClassName>()
-            var isSynthetic = false
 
             reader.accept(
                 object : ClassVisitor(Opcodes.ASM9) {
@@ -74,7 +73,6 @@ class InterfaceRegistry(
                         interfaces: Array<out String>?,
                     ) {
                         className = ClassName(name.replace('/', '.'))
-                        isSynthetic = className.isSynthetic()
                         implementedInterfaces = interfaces
                             ?.map { ClassName(it.replace('/', '.')) }
                             ?: emptyList()
@@ -89,7 +87,7 @@ class InterfaceRegistry(
                 ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES,
             )
 
-            if (isSynthetic || implementedInterfaces.isEmpty()) return
+            if (className.isSynthetic() || implementedInterfaces.isEmpty()) return
 
             val info = ImplementorInfo(className, sourceFile)
             implementedInterfaces.forEach { ifaceName ->
