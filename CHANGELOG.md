@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.25
+
+- **New:** Line numbers in `cnavCallers`/`cnavCallees` output — extracted from bytecode line number tables and shown in all three formats: TEXT `(File.kt:42)`, LLM `File.kt:42`, JSON `"lineNumber":42`. Cached in a backward-compatible `[LINES]` section.
+- **Fix:** `-Pformat=llm` now correctly selects LLM output format — previously only the boolean `-Pllm=true` flag worked, while the string `format` parameter was ignored.
+- **Fix:** Root node source file resolution for inner classes in `cnavCallers`/`cnavCallees` — property expansion now correctly handles inner class boundaries.
+
 ## 0.1.24
 
 - **Fix:** Resolve `<unknown>` source file locations for Kotlin inner classes, lambdas, and companion objects in `cnavCallers`/`cnavCallees` output — progressively strips `$` suffixes to find the outer class source file
