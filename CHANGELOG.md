@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.27
+
+- **Fix:** `cnavUsages` simple name matching — owner class and type references now match correctly when using simple class names (#70)
+- **Refactoring:** Extract filter composition to `CallGraphConfig.buildFilter()` — eliminates duplicated filter-building logic across callers/callees tasks (Gradle + Maven)
+- **Refactoring:** Consolidate all parsing and interpretation logic into `ClassName` and `PackageName` domain types — eliminates `.value` access across 27 production files. Added `startsWith(PackageName)`, `topLevelClass()`, `collapseLambda()`, `isSynthetic()`, `fromInternal()`, `isSyntheticName()`, `matches()`, `packagePath()` to `ClassName`; added `matches()`, `contains()`, `depth()`, `isChildOf()`, `splitSegments()` to `PackageName`; changed `SymbolInfo.className` from `String` to `ClassName`
+- **Refactoring:** Extract shared test utilities (`TestClassWriter`, `TestCallGraphBuilder`) from 13 test files, removing ~900 lines of test duplication
+- **Refactoring:** Add `MethodRef.isGenerated()` delegating to `KotlinMethodFilter` — centralizes generated-method detection
+- **Fix:** DSM formatter display — package prefix no longer doubled in output
+- **Tests:** Added tests for `ClassDetailScanner`, `ClassDetailExtractor`, `DependencyCollector`, `ChangeCouplingFormatter`, `CallGraphConfig.buildFilter()` — coverage improvements across multiple modules
+
 ## 0.1.26
 
 - **New:** `-Pfield=<name>` parameter for `cnavUsages` — find all reads/writes of a field or Kotlin property. Matches direct field access (GETFIELD/PUTFIELD) and property accessor calls (`get<Field>`, `set<Field>`, `is<Field>`). Requires `ownerClass`, mutually exclusive with `method`.
