@@ -79,10 +79,10 @@ class MetricsBuilderTest {
     @Test
     fun `counts dead classes and dead methods separately`() {
         val deadCode = listOf(
-            DeadCode("com.example.Unused", null, DeadCodeKind.CLASS, "Unused.kt"),
-            DeadCode("com.example.Foo", "bar", DeadCodeKind.METHOD, "Foo.kt"),
-            DeadCode("com.example.Foo", "baz", DeadCodeKind.METHOD, "Foo.kt"),
-            DeadCode("com.example.OldStuff", null, DeadCodeKind.CLASS, "OldStuff.kt"),
+            DeadCode(ClassName("com.example.Unused"), null, DeadCodeKind.CLASS, "Unused.kt"),
+            DeadCode(ClassName("com.example.Foo"), "bar", DeadCodeKind.METHOD, "Foo.kt"),
+            DeadCode(ClassName("com.example.Foo"), "baz", DeadCodeKind.METHOD, "Foo.kt"),
+            DeadCode(ClassName("com.example.OldStuff"), null, DeadCodeKind.CLASS, "OldStuff.kt"),
         )
 
         val result = MetricsBuilder.build(

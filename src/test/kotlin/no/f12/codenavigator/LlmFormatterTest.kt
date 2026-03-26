@@ -287,8 +287,8 @@ class LlmFormatterTest {
     @Test
     fun `formats dead code compactly`() {
         val dead = listOf(
-            DeadCode("com.example.Orphan", null, DeadCodeKind.CLASS, "Orphan.kt"),
-            DeadCode("com.example.Service", "unused", DeadCodeKind.METHOD, "Service.kt"),
+            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt"),
+            DeadCode(ClassName("com.example.Service"), "unused", DeadCodeKind.METHOD, "Service.kt"),
         )
 
         val result = LlmFormatter.formatDead(dead)

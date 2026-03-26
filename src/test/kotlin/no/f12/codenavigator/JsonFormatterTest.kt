@@ -537,8 +537,8 @@ class JsonFormatterTest {
     @Test
     fun `formats dead code as JSON array with all fields`() {
         val dead = listOf(
-            DeadCode("com.example.Orphan", null, DeadCodeKind.CLASS, "Orphan.kt"),
-            DeadCode("com.example.Service", "unused", DeadCodeKind.METHOD, "Service.kt"),
+            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt"),
+            DeadCode(ClassName("com.example.Service"), "unused", DeadCodeKind.METHOD, "Service.kt"),
         )
 
         val result = JsonFormatter.formatDead(dead)

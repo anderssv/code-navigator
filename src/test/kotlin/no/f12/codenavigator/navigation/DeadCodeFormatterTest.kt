@@ -16,8 +16,8 @@ class DeadCodeFormatterTest {
     @Test
     fun `formats dead classes and methods as columnar table`() {
         val dead = listOf(
-            DeadCode("com.example.Orphan", null, DeadCodeKind.CLASS, "Orphan.kt"),
-            DeadCode("com.example.Service", "unused", DeadCodeKind.METHOD, "Service.kt"),
+            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt"),
+            DeadCode(ClassName("com.example.Service"), "unused", DeadCodeKind.METHOD, "Service.kt"),
         )
 
         val output = DeadCodeFormatter.format(dead)
@@ -36,7 +36,7 @@ class DeadCodeFormatterTest {
     @Test
     fun `class entries show dash for member column`() {
         val dead = listOf(
-            DeadCode("com.example.Orphan", null, DeadCodeKind.CLASS, "Orphan.kt"),
+            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt"),
         )
 
         val output = DeadCodeFormatter.format(dead)

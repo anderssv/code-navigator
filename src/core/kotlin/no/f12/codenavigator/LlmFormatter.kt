@@ -90,7 +90,7 @@ object LlmFormatter {
 
     fun formatDead(dead: List<DeadCode>): String =
         dead.joinToString("\n") { d ->
-            val name = if (d.memberName != null) "${d.className}.${d.memberName}" else d.className
+            val name = if (d.memberName != null) "${d.className.value}.${d.memberName}" else d.className.value
             "$name ${d.kind.name} ${d.sourceFile}"
         }
 

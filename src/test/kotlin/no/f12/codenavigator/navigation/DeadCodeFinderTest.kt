@@ -23,7 +23,7 @@ class DeadCodeFinderTest {
 
         val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }
         assertEquals(1, deadClasses.size)
-        assertEquals("com.example.Lonely", deadClasses[0].className)
+        assertEquals("com.example.Lonely", deadClasses[0].className.value)
     }
     @Test
     fun `class called by another class is not dead`() {
@@ -34,7 +34,7 @@ class DeadCodeFinderTest {
 
         val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className }
+        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
         assertTrue("com.example.Service" !in deadClassNames, "Service is called by Caller so should not be dead")
         assertTrue("com.example.Caller" in deadClassNames, "Caller has no callers so should be dead")
     }
@@ -48,7 +48,7 @@ class DeadCodeFinderTest {
 
         val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className }
+        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
         assertTrue("com.example.Orphan" in deadClassNames)
         assertTrue("com.example.Controller" in deadClassNames)
         assertTrue("com.example.Service" !in deadClassNames)
@@ -62,7 +62,7 @@ class DeadCodeFinderTest {
 
         val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className }
+        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
         assertTrue("com.example.Recursive" in deadClassNames, "Self-referencing class with no external callers is dead")
     }
     @Test
@@ -76,7 +76,7 @@ class DeadCodeFinderTest {
         val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
 
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
-        val deadMethodNames = deadMethods.map { "${it.className}.${it.memberName}" }
+        val deadMethodNames = deadMethods.map { "${it.className.value}.${it.memberName}" }
         assertTrue("com.example.Service.unused" in deadMethodNames, "unused() has no callers so should be dead")
         assertTrue("com.example.Service.process" !in deadMethodNames, "process() is called by Controller")
     }
@@ -103,7 +103,7 @@ class DeadCodeFinderTest {
 
         val dead = DeadCodeFinder.find(graph, filter = Regex("Service"), exclude = null, classesOnly = false)
 
-        val deadClassNames = dead.map { it.className }
+        val deadClassNames = dead.map { it.className.value }
         assertTrue("com.example.OrphanService" in deadClassNames)
         assertTrue("com.example.OrphanUtil" !in deadClassNames, "OrphanUtil doesn't match filter")
     }
@@ -117,7 +117,7 @@ class DeadCodeFinderTest {
 
         val dead = DeadCodeFinder.find(graph, filter = null, exclude = Regex("Main|Test"), classesOnly = false)
 
-        val deadClassNames = dead.map { it.className }
+        val deadClassNames = dead.map { it.className.value }
         assertTrue("com.example.Main" !in deadClassNames, "Main excluded by regex")
         assertTrue("com.example.TestHelper" !in deadClassNames, "TestHelper excluded by regex")
     }
@@ -137,7 +137,7 @@ class DeadCodeFinderTest {
         val methods = dead.filter { it.kind == DeadCodeKind.METHOD }
 
         assertTrue(dead.indexOf(classes.first()) < dead.indexOf(methods.first()), "CLASSes come before METHODs")
-        assertEquals(listOf("com.example.Controller", "com.example.Zombie"), classes.map { it.className })
+        assertEquals(listOf("com.example.Controller", "com.example.Zombie"), classes.map { it.className.value })
         assertEquals(listOf("unusedA", "unusedB"), methods.map { it.memberName })
     }
     @Test
@@ -151,7 +151,7 @@ class DeadCodeFinderTest {
         val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
 
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
-        val deadMethodNames = deadMethods.map { "${it.className}.${it.memberName}" }
+        val deadMethodNames = deadMethods.map { "${it.className.value}.${it.memberName}" }
         assertTrue("com.example.Service.helper" in deadMethodNames, "helper() is only called within Service itself")
         assertTrue("com.example.Service.process" !in deadMethodNames, "process() is called by Controller")
     }
@@ -205,7 +205,7 @@ class DeadCodeFinderTest {
 
         val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
 
-        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className }
+        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
         assertTrue("com.example.Service" in deadClasses, "Service has no callers")
         assertTrue("com.example.Service\$Companion" !in deadClasses, "Companion inner class should be filtered")
         assertTrue("com.example.Service\$process\$1" !in deadClasses, "Coroutine inner class should be filtered")
@@ -232,7 +232,7 @@ class DeadCodeFinderTest {
         val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
 
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
-        val deadMethodEntries = deadMethods.map { "${it.className}.${it.memberName}" }
+        val deadMethodEntries = deadMethods.map { "${it.className.value}.${it.memberName}" }
         assertTrue("com.example.Service.unused" in deadMethodEntries, "Real unused method should be reported")
         assertTrue(
             deadMethodEntries.none { it.contains("\$") },
@@ -262,7 +262,7 @@ class DeadCodeFinderTest {
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
         assertTrue(
             deadMethods.isEmpty(),
-            "Data class boilerplate on sealed variants should be filtered, but found: ${deadMethods.map { "${it.className}.${it.memberName}" }}",
+            "Data class boilerplate on sealed variants should be filtered, but found: ${deadMethods.map { "${it.className.value}.${it.memberName}" }}",
         )
     }
 

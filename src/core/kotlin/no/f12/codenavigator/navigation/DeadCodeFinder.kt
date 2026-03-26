@@ -6,7 +6,7 @@ enum class DeadCodeKind {
 }
 
 data class DeadCode(
-    val className: String,
+    val className: ClassName,
     val memberName: String?,
     val kind: DeadCodeKind,
     val sourceFile: String,
@@ -46,7 +46,7 @@ object DeadCodeFinder {
             if (cls !in calledTypes && !isGeneratedClass(cls.value)) {
                 results.add(
                     DeadCode(
-                        className = cls.value,
+                        className = cls,
                         memberName = null,
                         kind = DeadCodeKind.CLASS,
                         sourceFile = graph.sourceFileOf(cls),
@@ -64,7 +64,7 @@ object DeadCodeFinder {
                 ) {
                     results.add(
                         DeadCode(
-                            className = method.className.value,
+                            className = method.className,
                             memberName = method.methodName,
                             kind = DeadCodeKind.METHOD,
                             sourceFile = graph.sourceFileOf(method.className),
@@ -75,8 +75,8 @@ object DeadCodeFinder {
         }
 
         return results
-            .filter { item -> filter == null || filter.containsMatchIn(item.className) }
-            .filter { item -> exclude == null || !exclude.containsMatchIn(item.className) }
+            .filter { item -> filter == null || filter.containsMatchIn(item.className.value) }
+            .filter { item -> exclude == null || !exclude.containsMatchIn(item.className.value) }
             .sortedWith(compareBy({ it.kind }, { it.className }, { it.memberName ?: "" }))
     }
 

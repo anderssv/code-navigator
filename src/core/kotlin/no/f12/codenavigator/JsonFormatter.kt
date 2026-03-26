@@ -229,7 +229,7 @@ object JsonFormatter {
     fun formatDead(dead: List<DeadCode>): String =
         jsonArray(dead) { d ->
             jsonObject(
-                "className" to d.className,
+                "className" to d.className.value,
                 "memberName" to d.memberName,
                 "kind" to d.kind.name.lowercase(),
                 "sourceFile" to d.sourceFile,
