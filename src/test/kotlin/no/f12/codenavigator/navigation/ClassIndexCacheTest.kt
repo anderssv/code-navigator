@@ -119,7 +119,7 @@ class ClassIndexCacheTest {
         cacheFile.writeText("only-one-field\n")
         cacheFile.setLastModified(System.currentTimeMillis() + 10_000)
 
-        val result = ClassIndexCache.getOrScan(cacheFile, listOf(classesDir))
+        val result = ClassIndexCache.getOrBuild(cacheFile, listOf(classesDir))
 
         assertEquals(1, result.data.size)
         assertEquals("com.example.Foo", result.data[0].className.value)

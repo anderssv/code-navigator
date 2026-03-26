@@ -32,7 +32,7 @@ abstract class ListClassesTask : DefaultTask() {
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/class-index.cache")
 
-        val result = ClassIndexCache.getOrScan(cacheFile, classDirectories)
+        val result = ClassIndexCache.getOrBuild(cacheFile, classDirectories)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val classes = result.data
