@@ -370,6 +370,7 @@ From user feedback: `cnavAgentHelp` explains what the tasks do but not how to in
 
 ## Future ideas (not yet planned)
 
+- **Consider removing the cnav disk cache**: Benchmarking on a ~20k LOC / 488-class project showed zero measurable difference between warm and cold cache — Gradle per-invocation overhead (~0.7s) completely dominates. The cache adds complexity across four cache classes, freshness checks, atomic writes, and corrupt-cache recovery. Removing it would simplify the codebase significantly. Needs testing on larger projects (thousands of classes) to confirm the cache isn't needed there either.
 - **Consider just failing on first file with wrong bytecode**: The current `ScanResult<T>` partial-fail approach adds complexity across scanners, caches, tasks, and mojos. A simpler alternative: fail fast on the first unsupported bytecode file with a clear error message. Less graceful but dramatically less code.
 - **Expand support for older JDKs**: The plugin currently requires JDK 21+ (Gradle 9.x minimum). Explore lowering the bytecode target or supporting Gradle 8.x to reach projects still on JDK 17 or JDK 11.
 - **Cross-referencing hotspots with bytecode data**: Combine `cnavHotspots` with `cnavCallers`/`cnavDeps` to answer "hotspot files and their structural dependencies". Would require mapping git file paths to bytecode class names via the source file metadata already extracted.
