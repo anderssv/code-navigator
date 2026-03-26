@@ -39,8 +39,8 @@ object DsmMatrixBuilder {
         if (dependencies.isEmpty()) return DsmMatrix(emptyList(), emptyMap(), emptyMap())
 
         val allTruncated = dependencies.map { dep ->
-            Triple(truncate(dep.sourcePackage, rootPrefix, depth),
-                   truncate(dep.targetPackage, rootPrefix, depth),
+            Triple(dep.sourcePackage.truncate(rootPrefix, depth),
+                   dep.targetPackage.truncate(rootPrefix, depth),
                    dep)
         }
 
@@ -60,13 +60,4 @@ object DsmMatrixBuilder {
         return DsmMatrix(packages, cells, classDeps)
     }
 
-    private fun truncate(pkg: PackageName, rootPrefix: PackageName, depth: Int): PackageName {
-        val stripped = if (rootPrefix.value.isNotEmpty() && pkg.value.startsWith("${rootPrefix.value}.")) {
-            pkg.value.removePrefix("${rootPrefix.value}.")
-        } else {
-            pkg.value
-        }
-        val segments = stripped.split(".")
-        return PackageName(segments.take(depth).joinToString("."))
-    }
 }

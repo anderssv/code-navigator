@@ -75,8 +75,8 @@ object DeadCodeFinder {
         }
 
         return results
-            .filter { item -> filter == null || filter.containsMatchIn(item.className.value) }
-            .filter { item -> exclude == null || !exclude.containsMatchIn(item.className.value) }
+            .filter { item -> filter == null || item.className.matches(filter) }
+            .filter { item -> exclude == null || !item.className.matches(exclude) }
             .sortedWith(compareBy({ it.kind }, { it.className }, { it.memberName ?: "" }))
     }
 }

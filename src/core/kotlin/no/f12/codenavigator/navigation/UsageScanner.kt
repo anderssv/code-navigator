@@ -28,7 +28,7 @@ object UsageScanner {
     fun filterOutsidePackage(usages: List<UsageSite>, outsidePackage: String?): List<UsageSite> {
         if (outsidePackage == null) return usages
         val prefix = if (outsidePackage.endsWith(".")) outsidePackage else "$outsidePackage."
-        return usages.filter { !it.callerClass.value.startsWith(prefix) }
+        return usages.filter { !it.callerClass.startsWith(prefix) }
     }
 
     fun scan(
@@ -79,7 +79,7 @@ object UsageScanner {
                     version: Int, access: Int, name: String,
                     signature: String?, superName: String?, interfaces: Array<out String>?,
                 ) {
-                    callerClass = ClassName(name.replace('/', '.'))
+                    callerClass = ClassName.fromInternal(name)
                 }
 
                 override fun visitSource(source: String?, debug: String?) {
@@ -137,7 +137,8 @@ object UsageScanner {
                             opcode: Int, instrOwner: String, instrName: String,
                             instrDescriptor: String, isInterface: Boolean,
                         ) {
-                            val instrOwnerDot = instrOwner.replace('/', '.')
+                            val instrOwnerClass = ClassName.fromInternal(instrOwner)
+                            val instrOwnerDot = instrOwnerClass.value
                             val ownerMatched = field == null && matchesOwner(instrOwnerDot, ownerRegex) && matchesMethod(instrName, method)
                             val fieldMatched = field != null && matchesOwner(instrOwnerDot, ownerRegex) && matchesFieldAccessor(instrName, field)
                             val typeMatched = typeRegex != null && matchesType(instrOwnerDot, typeRegex) && matchesMethod(instrName, method)
@@ -147,7 +148,7 @@ object UsageScanner {
                                         callerClass = callerClass,
                                         callerMethod = callerMethod,
                                         sourceFile = sourceFile,
-                                        targetOwner = ClassName(instrOwnerDot),
+                                        targetOwner = instrOwnerClass,
                                         targetName = instrName,
                                         targetDescriptor = instrDescriptor,
                                         kind = UsageKind.METHOD_CALL,
@@ -160,7 +161,8 @@ object UsageScanner {
                             opcode: Int, instrOwner: String, instrName: String,
                             instrDescriptor: String,
                         ) {
-                            val instrOwnerDot = instrOwner.replace('/', '.')
+                            val instrOwnerClass = ClassName.fromInternal(instrOwner)
+                            val instrOwnerDot = instrOwnerClass.value
                             val ownerMatched = field == null && matchesOwner(instrOwnerDot, ownerRegex) && matchesMethod(instrName, method)
                             val fieldMatched = field != null && matchesOwner(instrOwnerDot, ownerRegex) && instrName == field
                             val typeMatched = typeRegex != null && matchesType(instrOwnerDot, typeRegex) && matchesMethod(instrName, method)
@@ -170,7 +172,7 @@ object UsageScanner {
                                         callerClass = callerClass,
                                         callerMethod = callerMethod,
                                         sourceFile = sourceFile,
-                                        targetOwner = ClassName(instrOwnerDot),
+                                        targetOwner = instrOwnerClass,
                                         targetName = instrName,
                                         targetDescriptor = instrDescriptor,
                                         kind = UsageKind.FIELD_ACCESS,
@@ -180,14 +182,15 @@ object UsageScanner {
                         }
 
                         override fun visitTypeInsn(opcode: Int, instrType: String) {
-                            val instrTypeDot = instrType.replace('/', '.')
+                            val instrTypeClass = ClassName.fromInternal(instrType)
+                            val instrTypeDot = instrTypeClass.value
                             if (typeRegex != null && matchesType(instrTypeDot, typeRegex)) {
                                 usages.add(
                                     UsageSite(
                                         callerClass = callerClass,
                                         callerMethod = callerMethod,
                                         sourceFile = sourceFile,
-                                        targetOwner = ClassName(instrTypeDot),
+                                        targetOwner = instrTypeClass,
                                         targetName = typeInsnName(opcode),
                                         targetDescriptor = "",
                                         kind = UsageKind.TYPE_REFERENCE,

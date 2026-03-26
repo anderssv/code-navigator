@@ -19,7 +19,7 @@ object ClassComplexityAnalyzer {
     ): List<ClassComplexity> {
         val regex = Regex(classPattern)
         val projectClasses = graph.projectClasses()
-        val matchingClasses = projectClasses.filter { regex.containsMatchIn(it.value) && '$' !in it.value }
+        val matchingClasses = projectClasses.filter { it.matches(regex) && !it.isGenerated() }
 
         return matchingClasses.map { className ->
             analyzeClass(graph, className, projectOnly, projectClasses)

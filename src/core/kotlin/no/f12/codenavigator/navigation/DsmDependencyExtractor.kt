@@ -43,14 +43,14 @@ object DsmDependencyExtractor {
         val collector = DependencyCollector(rootPrefix)
         reader.accept(collector, ClassReader.SKIP_DEBUG or ClassReader.SKIP_FRAMES)
 
-        val sourceClass = ClassName(reader.className.replace('/', '.'))
+        val sourceClass = ClassName.fromInternal(reader.className)
         val sourcePackage = sourceClass.packageName()
 
-        if (rootPrefix.isNotEmpty() && !sourceClass.value.startsWith(rootPrefix)) return
+        if (rootPrefix.isNotEmpty() && !sourceClass.startsWith(rootPrefix)) return
 
         collector.referencedTypes
             .filter { it != sourceClass }
-            .filter { rootPrefix.isEmpty() || it.value.startsWith(rootPrefix) }
+            .filter { rootPrefix.isEmpty() || it.startsWith(rootPrefix) }
             .forEach { targetClass ->
                 val targetPackage = targetClass.packageName()
                 if (targetPackage != sourcePackage) {
@@ -114,10 +114,10 @@ private class DependencyCollector(private val rootPrefix: String) : ClassVisitor
     }
 
     private fun addInternalName(internalName: String) {
-        val className = internalName.replace('/', '.')
-        if (className.startsWith('[')) return
+        if (internalName.startsWith('[')) return
+        val className = ClassName.fromInternal(internalName)
         if (rootPrefix.isNotEmpty() && !className.startsWith(rootPrefix)) return
-        val baseName = className.substringBefore('$')
+        val baseName = className.value.substringBefore('$')
         referencedTypes += ClassName(baseName)
     }
 

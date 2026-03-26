@@ -22,7 +22,7 @@ class PackageDependencies(
     fun findPackages(pattern: String): List<PackageName> {
         val regex = Regex(pattern, RegexOption.IGNORE_CASE)
         return allPackages()
-            .filter { regex.containsMatchIn(it.value) }
+            .filter { it.matches(regex) }
     }
 
     fun allPackages(): List<PackageName> {
@@ -44,7 +44,7 @@ object PackageDependencyBuilder {
             val callerPackage = caller.className.packageName()
             val calleePackage = callee.className.packageName()
 
-            if (callerPackage.value.isNotEmpty() && calleePackage.value.isNotEmpty() && callerPackage != calleePackage) {
+            if (callerPackage.isNotEmpty() && calleePackage.isNotEmpty() && callerPackage != calleePackage) {
                 packageDeps.getOrPut(callerPackage) { mutableSetOf() }.add(calleePackage)
             }
         }

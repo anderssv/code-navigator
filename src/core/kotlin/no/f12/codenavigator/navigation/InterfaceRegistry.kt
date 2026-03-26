@@ -19,7 +19,7 @@ class InterfaceRegistry(
     fun findInterfaces(pattern: String): List<ClassName> {
         val regex = Regex(pattern, RegexOption.IGNORE_CASE)
         return interfaceToImplementors.keys
-            .filter { regex.containsMatchIn(it.value) }
+            .filter { it.matches(regex) }
             .sortedBy { it.value }
     }
 
@@ -72,9 +72,9 @@ class InterfaceRegistry(
                         superName: String?,
                         interfaces: Array<out String>?,
                     ) {
-                        className = ClassName(name.replace('/', '.'))
+                        className = ClassName.fromInternal(name)
                         implementedInterfaces = interfaces
-                            ?.map { ClassName(it.replace('/', '.')) }
+                            ?.map { ClassName.fromInternal(it) }
                             ?: emptyList()
                     }
 

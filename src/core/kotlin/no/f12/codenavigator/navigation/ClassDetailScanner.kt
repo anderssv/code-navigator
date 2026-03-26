@@ -17,7 +17,7 @@ object ClassDetailScanner {
                     .forEach { classFile ->
                         try {
                             val info = ClassInfoExtractor.extract(classFile)
-                            if (info.isUserDefinedClass && regex.containsMatchIn(info.className.value)) {
+                            if (info.isUserDefinedClass && info.className.matches(regex)) {
                                 details.add(ClassDetailExtractor.extract(classFile))
                             }
                         } catch (e: UnsupportedBytecodeVersionException) {

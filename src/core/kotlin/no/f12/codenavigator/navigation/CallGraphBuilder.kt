@@ -70,12 +70,12 @@ class CallGraph(
 
     fun sourceFileOf(className: ClassName): String {
         sourceFiles[className]?.let { return it }
-        var name = className.value
+        var current = className
         while (true) {
-            val idx = name.lastIndexOf('$')
-            if (idx < 0) return "<unknown>"
-            name = name.substring(0, idx)
-            sourceFiles[ClassName(name)]?.let { return it }
+            val outer = current.outerClass()
+            if (outer == current) return "<unknown>"
+            sourceFiles[outer]?.let { return it }
+            current = outer
         }
     }
 
@@ -149,7 +149,7 @@ object CallGraphBuilder {
                     superName: String?,
                     interfaces: Array<out String>?,
                 ) {
-                    ownerClassName = ClassName(name.replace('/', '.'))
+                    ownerClassName = ClassName.fromInternal(name)
                 }
 
                 override fun visitSource(source: String?, debug: String?) {
@@ -183,7 +183,7 @@ object CallGraphBuilder {
                             descriptor: String,
                             isInterface: Boolean,
                         ) {
-                            val callee = MethodRef(ClassName(owner.replace('/', '.')), name)
+                            val callee = MethodRef(ClassName.fromInternal(owner), name)
                             graph.getOrPut(caller) { mutableSetOf() }.add(callee)
                         }
 

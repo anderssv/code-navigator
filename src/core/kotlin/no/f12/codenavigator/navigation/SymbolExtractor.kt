@@ -32,13 +32,16 @@ object SymbolExtractor {
         var sourceFile: String? = null
         val fieldNames = mutableSetOf<String>()
 
-        fun buildSymbol(name: String, kind: SymbolKind) = SymbolInfo(
-            packageName = PackageName(internalName.substringBeforeLast('/', "").replace('/', '.')),
-            className = internalName.substringAfterLast('/').substringBefore('$'),
-            symbolName = name,
-            kind = kind,
-            sourceFile = sourceFile ?: "<unknown>",
-        )
+        fun buildSymbol(name: String, kind: SymbolKind): SymbolInfo {
+            val fullClassName = ClassName.fromInternal(internalName)
+            return SymbolInfo(
+                packageName = fullClassName.packageName(),
+                className = fullClassName.simpleName(),
+                symbolName = name,
+                kind = kind,
+                sourceFile = sourceFile ?: "<unknown>",
+            )
+        }
 
         reader.accept(
             object : ClassVisitor(Opcodes.ASM9) {

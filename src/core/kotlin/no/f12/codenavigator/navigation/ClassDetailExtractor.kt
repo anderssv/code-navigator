@@ -53,12 +53,12 @@ object ClassDetailExtractor {
                     superName: String?,
                     interfaces: Array<out String>?,
                 ) {
-                    className = ClassName(name.replace('/', '.'))
+                    className = ClassName.fromInternal(name)
                     superClass = superName
                         ?.takeIf { it != "java/lang/Object" }
-                        ?.let { ClassName(it.replace('/', '.')) }
+                        ?.let { ClassName.fromInternal(it) }
                     interfaceList = interfaces
-                        ?.map { ClassName(it.replace('/', '.')) }
+                        ?.map { ClassName.fromInternal(it) }
                         ?: emptyList()
                 }
 
