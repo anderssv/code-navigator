@@ -390,18 +390,9 @@ From user feedback: all bytecode tasks mix production and test callers in a sing
 - **Implementation**: Add a `sourceSet: SourceSet` (enum: MAIN, TEST) field to `ClassInfo` during scanning. When building the call graph, propagate the source set to call edges. Formatters append `[test]`/`[prod]` tags.
 - **Why high value**: Makes every bytecode task output immediately actionable without manual filtering. Test-only dependencies on a class are normal and expected; only prod dependencies indicate coupling.
 
-## 64. Fan-in/fan-out interpretation guidance in agentHelp (Low effort, high polish)
+## ~~64. Fan-in/fan-out interpretation guidance in agentHelp~~ DONE
 
-From user feedback: `cnavAgentHelp` explains what the tasks do but not how to interpret results. Agents (and humans) need guidelines to avoid false alarms — e.g., `PollsRepository` with high fan-in is normal for a core repository, not a god object.
-
-- **Add to agentHelp**: A "Result interpretation" section with heuristics:
-  - Fan-in > 20 on a concrete class → may indicate a god object or central service (investigate)
-  - Fan-in > 20 on an interface/abstract class → normal for core domain abstractions
-  - Fan-in > 20 on a repository → normal, repositories are meant to be widely used
-  - High fan-out → class depends on too many things, candidate for decomposition
-  - Dead code with framework annotations → likely false positive (entry point via reflection)
-  - Coupled files with high coupling degree but low shared revs → may be coincidence
-- **Key file**: `AgentHelpText.kt`
+Added a "Result Interpretation" section to `AgentHelpText` with heuristics for fan-in, fan-out, dead code, change coupling, and hotspots.
 
 ## Future ideas (not yet planned)
 
