@@ -23,7 +23,7 @@ object SymbolScanner {
             }
 
         return ScanResult(
-            data = symbols.sortedWith(compareBy({ it.packageName }, { it.className }, { it.symbolName })),
+            data = symbols.sortedWith(compareBy({ it.packageName.value }, { it.className }, { it.symbolName })),
             skippedFiles = skipped,
         )
     }

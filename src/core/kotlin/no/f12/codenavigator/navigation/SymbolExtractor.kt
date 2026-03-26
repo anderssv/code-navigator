@@ -13,7 +13,7 @@ enum class SymbolKind {
 }
 
 data class SymbolInfo(
-    val packageName: String,
+    val packageName: PackageName,
     val className: String,
     val symbolName: String,
     val kind: SymbolKind,
@@ -33,7 +33,7 @@ object SymbolExtractor {
         val fieldNames = mutableSetOf<String>()
 
         fun buildSymbol(name: String, kind: SymbolKind) = SymbolInfo(
-            packageName = internalName.substringBeforeLast('/', "").replace('/', '.'),
+            packageName = PackageName(internalName.substringBeforeLast('/', "").replace('/', '.')),
             className = internalName.substringAfterLast('/').substringBefore('$'),
             symbolName = name,
             kind = kind,

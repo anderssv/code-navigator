@@ -37,9 +37,9 @@ class SymbolIndexCacheTest {
     @Test
     fun `writes and reads back symbols with methods and fields`() {
         val symbols = listOf(
-            SymbolInfo("com.example", "Service", "handle", SymbolKind.METHOD, "Service.kt"),
-            SymbolInfo("com.example", "Service", "name", SymbolKind.FIELD, "Service.kt"),
-            SymbolInfo("com.example", "Repo", "save", SymbolKind.METHOD, "Repo.kt"),
+            SymbolInfo(PackageName("com.example"), "Service", "handle", SymbolKind.METHOD, "Service.kt"),
+            SymbolInfo(PackageName("com.example"), "Service", "name", SymbolKind.FIELD, "Service.kt"),
+            SymbolInfo(PackageName("com.example"), "Repo", "save", SymbolKind.METHOD, "Repo.kt"),
         )
 
         SymbolIndexCache.write(cacheFile, symbols)
@@ -85,7 +85,7 @@ class SymbolIndexCacheTest {
     @Test
     fun `handles symbol with unknown source file`() {
         val symbols = listOf(
-            SymbolInfo("com.example", "Generated", "process", SymbolKind.METHOD, "<unknown>"),
+            SymbolInfo(PackageName("com.example"), "Generated", "process", SymbolKind.METHOD, "<unknown>"),
         )
 
         SymbolIndexCache.write(cacheFile, symbols)

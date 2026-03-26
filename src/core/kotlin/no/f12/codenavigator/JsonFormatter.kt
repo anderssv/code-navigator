@@ -40,9 +40,9 @@ object JsonFormatter {
         }
 
     fun formatSymbols(symbols: List<SymbolInfo>): String =
-        jsonArray(symbols.sortedWith(compareBy({ it.packageName }, { it.className }, { it.symbolName }))) { s ->
+        jsonArray(symbols.sortedWith(compareBy({ it.packageName.value }, { it.className }, { it.symbolName }))) { s ->
             jsonObject(
-                "package" to s.packageName,
+                "package" to s.packageName.value,
                 "class" to s.className,
                 "symbol" to s.symbolName,
                 "kind" to s.kind.name.lowercase(),

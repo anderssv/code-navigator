@@ -24,7 +24,7 @@ class SymbolExtractorTest {
 
         assertEquals(1, symbols.size)
         val symbol = symbols.first()
-        assertEquals("com.example", symbol.packageName)
+        assertEquals("com.example", symbol.packageName.value)
         assertEquals("MyService", symbol.className)
         assertEquals("resetPassword", symbol.symbolName)
         assertEquals(SymbolKind.METHOD, symbol.kind)

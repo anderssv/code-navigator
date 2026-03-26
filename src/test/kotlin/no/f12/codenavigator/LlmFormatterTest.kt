@@ -51,8 +51,8 @@ class LlmFormatterTest {
     @Test
     fun `formats symbols compactly`() {
         val symbols = listOf(
-            SymbolInfo("com.example", "Service", "doWork", SymbolKind.METHOD, "Service.kt"),
-            SymbolInfo("com.example", "Service", "name", SymbolKind.FIELD, "Service.kt"),
+            SymbolInfo(PackageName("com.example"), "Service", "doWork", SymbolKind.METHOD, "Service.kt"),
+            SymbolInfo(PackageName("com.example"), "Service", "name", SymbolKind.FIELD, "Service.kt"),
         )
 
         val result = LlmFormatter.formatSymbols(symbols)

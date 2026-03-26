@@ -9,8 +9,8 @@ class SymbolTableFormatterTest {
     @Test
     fun `formats symbols as an aligned table`() {
         val symbols = listOf(
-            SymbolInfo("com.example", "UserService", "findUser", SymbolKind.METHOD, "UserService.kt"),
-            SymbolInfo("com.example", "UserInfo", "name", SymbolKind.FIELD, "UserInfo.kt"),
+            SymbolInfo(PackageName("com.example"), "UserService", "findUser", SymbolKind.METHOD, "UserService.kt"),
+            SymbolInfo(PackageName("com.example"), "UserInfo", "name", SymbolKind.FIELD, "UserInfo.kt"),
         )
 
         val result = SymbolTableFormatter.format(symbols)
@@ -35,8 +35,8 @@ class SymbolTableFormatterTest {
     @Test
     fun `columns are properly aligned`() {
         val symbols = listOf(
-            SymbolInfo("a", "B", "c", SymbolKind.METHOD, "B.kt"),
-            SymbolInfo("aa", "BB", "cc", SymbolKind.FIELD, "BB.kt"),
+            SymbolInfo(PackageName("a"), "B", "c", SymbolKind.METHOD, "B.kt"),
+            SymbolInfo(PackageName("aa"), "BB", "cc", SymbolKind.FIELD, "BB.kt"),
         )
 
         val result = SymbolTableFormatter.format(symbols)
@@ -50,7 +50,7 @@ class SymbolTableFormatterTest {
     @Test
     fun `shows count matching number of symbols`() {
         val symbols = listOf(
-            SymbolInfo("com.example", "Foo", "bar", SymbolKind.METHOD, "Foo.kt"),
+            SymbolInfo(PackageName("com.example"), "Foo", "bar", SymbolKind.METHOD, "Foo.kt"),
         )
 
         val result = SymbolTableFormatter.format(symbols)

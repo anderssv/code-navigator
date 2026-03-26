@@ -14,7 +14,7 @@ object SymbolIndexCache {
                 symbols.forEach { symbol ->
                     writer.write(
                         listOf(
-                            symbol.packageName,
+                            symbol.packageName.value,
                             symbol.className,
                             symbol.symbolName,
                             symbol.kind.name,
@@ -34,7 +34,7 @@ object SymbolIndexCache {
                 .map { line ->
                     val parts = line.split(FIELD_SEPARATOR)
                     SymbolInfo(
-                        packageName = parts[0],
+                        packageName = PackageName(parts[0]),
                         className = parts[1],
                         symbolName = parts[2],
                         kind = SymbolKind.valueOf(parts[3]),

@@ -5,7 +5,7 @@ object SymbolTableFormatter {
         if (symbols.isEmpty()) return "No symbols found."
 
         val headers = listOf("Package", "Class", "Symbol", "Kind", "Source File")
-        val rows = symbols.map { listOf(it.packageName, it.className, it.symbolName, it.kind.name, it.sourceFile) }
+        val rows = symbols.map { listOf(it.packageName.value, it.className, it.symbolName, it.kind.name, it.sourceFile) }
 
         val columnWidths = headers.indices.map { col ->
             maxOf(headers[col].length, rows.maxOf { it[col].length })

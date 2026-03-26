@@ -94,7 +94,7 @@ class JsonFormatterTest {
     @Test
     fun `single symbol produces JSON object with all fields`() {
         val symbols = listOf(
-            SymbolInfo("com.example", "Service", "doWork", SymbolKind.METHOD, "Service.kt"),
+            SymbolInfo(PackageName("com.example"), "Service", "doWork", SymbolKind.METHOD, "Service.kt"),
         )
 
         val result = JsonFormatter.formatSymbols(symbols)
@@ -108,7 +108,7 @@ class JsonFormatterTest {
     @Test
     fun `field symbol kind is lowercase string`() {
         val symbols = listOf(
-            SymbolInfo("com.example", "Entity", "name", SymbolKind.FIELD, "Entity.kt"),
+            SymbolInfo(PackageName("com.example"), "Entity", "name", SymbolKind.FIELD, "Entity.kt"),
         )
 
         val result = JsonFormatter.formatSymbols(symbols)

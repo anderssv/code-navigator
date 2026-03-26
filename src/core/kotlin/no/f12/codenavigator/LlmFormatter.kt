@@ -28,8 +28,8 @@ object LlmFormatter {
         classes.sortedBy { it.className }.joinToString("\n") { "${it.className.value} ${it.sourceFileName}" }
 
     fun formatSymbols(symbols: List<SymbolInfo>): String =
-        symbols.sortedWith(compareBy({ it.packageName }, { it.className }, { it.symbolName }))
-            .joinToString("\n") { "${it.packageName}.${it.className}.${it.symbolName} ${it.kind.name.lowercase()} ${it.sourceFile}" }
+        symbols.sortedWith(compareBy({ it.packageName.value }, { it.className }, { it.symbolName }))
+            .joinToString("\n") { "${it.packageName.value}.${it.className}.${it.symbolName} ${it.kind.name.lowercase()} ${it.sourceFile}" }
 
     fun formatClassDetails(details: List<ClassDetail>): String =
         details.sortedBy { it.className }.joinToString("\n") { d ->

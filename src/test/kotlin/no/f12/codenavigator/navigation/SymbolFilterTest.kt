@@ -7,9 +7,9 @@ import kotlin.test.assertTrue
 class SymbolFilterTest {
 
     private val symbols = listOf(
-        SymbolInfo("com.example.services", "UserService", "findUser", SymbolKind.METHOD, "UserService.kt"),
-        SymbolInfo("com.example.domain", "UserInfo", "nationalId", SymbolKind.FIELD, "UserInfo.kt"),
-        SymbolInfo("com.example.services", "ResetService", "resetPassword", SymbolKind.METHOD, "ResetService.kt"),
+        SymbolInfo(PackageName("com.example.services"), "UserService", "findUser", SymbolKind.METHOD, "UserService.kt"),
+        SymbolInfo(PackageName("com.example.domain"), "UserInfo", "nationalId", SymbolKind.FIELD, "UserInfo.kt"),
+        SymbolInfo(PackageName("com.example.services"), "ResetService", "resetPassword", SymbolKind.METHOD, "ResetService.kt"),
     )
 
     @Test
