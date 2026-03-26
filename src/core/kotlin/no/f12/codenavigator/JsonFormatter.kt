@@ -5,15 +5,11 @@ import no.f12.codenavigator.analysis.FileAge
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.analysis.ModuleAuthors
-import no.f12.codenavigator.navigation.CallDirection
-import no.f12.codenavigator.navigation.CallGraph
-import no.f12.codenavigator.navigation.CallTreeBuilder
 import no.f12.codenavigator.navigation.CallTreeNode
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
 import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.InterfaceRegistry
-import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.PackageName
 import no.f12.codenavigator.navigation.SymbolInfo
@@ -69,17 +65,6 @@ object JsonFormatter {
                 }),
             )
         }
-
-    fun formatCallTree(
-        graph: CallGraph,
-        methods: List<MethodRef>,
-        maxDepth: Int,
-        direction: CallDirection,
-        filter: ((MethodRef) -> Boolean)? = null,
-    ): String {
-        val trees = CallTreeBuilder.build(graph, methods, maxDepth, direction, filter)
-        return renderCallTrees(trees)
-    }
 
     fun renderCallTrees(trees: List<CallTreeNode>): String =
         jsonArray(trees) { node -> renderCallNode(node) }

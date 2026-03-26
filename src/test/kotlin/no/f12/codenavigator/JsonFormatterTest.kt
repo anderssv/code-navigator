@@ -5,6 +5,7 @@ import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallGraph
+import no.f12.codenavigator.navigation.CallTreeBuilder
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
 import no.f12.codenavigator.navigation.ClassName
@@ -180,7 +181,8 @@ class JsonFormatterTest {
         val graph = CallGraph(emptyMap())
         val method = MethodRef(ClassName("com.example.Service"), "doWork")
 
-        val result = JsonFormatter.formatCallTree(graph, listOf(method), maxDepth = 3, CallDirection.CALLEES)
+        val trees = CallTreeBuilder.build(graph, listOf(method), maxDepth = 3, CallDirection.CALLEES)
+        val result = JsonFormatter.renderCallTrees(trees)
 
         assertEquals(
             """[{"method":"com.example.Service.doWork","sourceFile":"<unknown>","children":[]}]""",
@@ -200,7 +202,8 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatCallTree(graph, listOf(caller), maxDepth = 3, CallDirection.CALLEES)
+        val trees = CallTreeBuilder.build(graph, listOf(caller), maxDepth = 3, CallDirection.CALLEES)
+        val result = JsonFormatter.renderCallTrees(trees)
 
         assertEquals(
             """[{"method":"com.example.Controller.handle","sourceFile":"Controller.kt","children":[""" +
@@ -223,7 +226,8 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatCallTree(graph, listOf(a), maxDepth = 3, CallDirection.CALLEES)
+        val trees = CallTreeBuilder.build(graph, listOf(a), maxDepth = 3, CallDirection.CALLEES)
+        val result = JsonFormatter.renderCallTrees(trees)
 
         assertEquals(
             """[{"method":"com.example.A.start","sourceFile":"A.kt","children":[""" +
@@ -247,7 +251,8 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatCallTree(graph, listOf(a), maxDepth = 1, CallDirection.CALLEES)
+        val trees = CallTreeBuilder.build(graph, listOf(a), maxDepth = 1, CallDirection.CALLEES)
+        val result = JsonFormatter.renderCallTrees(trees)
 
         assertEquals(
             """[{"method":"com.example.A.start","sourceFile":"A.kt","children":[""" +
@@ -265,7 +270,8 @@ class JsonFormatterTest {
             sourceFiles = mapOf(ClassName("com.example.A") to "A.kt", ClassName("com.example.B") to "B.kt"),
         )
 
-        val result = JsonFormatter.formatCallTree(graph, listOf(a), maxDepth = 10, CallDirection.CALLEES)
+        val trees = CallTreeBuilder.build(graph, listOf(a), maxDepth = 10, CallDirection.CALLEES)
+        val result = JsonFormatter.renderCallTrees(trees)
 
         assertEquals(
             """[{"method":"com.example.A.callB","sourceFile":"A.kt","children":[""" +
@@ -288,7 +294,8 @@ class JsonFormatterTest {
             lineNumbers = mapOf(caller to 10, callee to 25),
         )
 
-        val result = JsonFormatter.formatCallTree(graph, listOf(caller), maxDepth = 3, CallDirection.CALLEES)
+        val trees = CallTreeBuilder.build(graph, listOf(caller), maxDepth = 3, CallDirection.CALLEES)
+        val result = JsonFormatter.renderCallTrees(trees)
 
         assertEquals(
             """[{"method":"com.example.Controller.handle","sourceFile":"Controller.kt","lineNumber":10,"children":[""" +
@@ -302,7 +309,8 @@ class JsonFormatterTest {
         val graph = CallGraph(emptyMap())
         val method = MethodRef(ClassName("com.example.Service"), "doWork")
 
-        val result = JsonFormatter.formatCallTree(graph, listOf(method), maxDepth = 3, CallDirection.CALLEES)
+        val trees = CallTreeBuilder.build(graph, listOf(method), maxDepth = 3, CallDirection.CALLEES)
+        val result = JsonFormatter.renderCallTrees(trees)
 
         assertEquals(
             """[{"method":"com.example.Service.doWork","sourceFile":"<unknown>","children":[]}]""",
