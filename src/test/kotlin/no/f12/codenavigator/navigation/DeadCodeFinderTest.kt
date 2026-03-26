@@ -8,13 +8,13 @@ class DeadCodeFinderTest {
 
     @Test
     fun `empty call graph produces empty result`() {
-        val graph = callGraph()
+        val graph = testCallGraph()
 
         val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
     }
     @Test
     fun `single class with no callers is dead`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Lonely", "doWork") to method("com.example.External", "process"),
             projectClasses = setOf("com.example.Lonely"),
         )
@@ -27,7 +27,7 @@ class DeadCodeFinderTest {
     }
     @Test
     fun `class called by another class is not dead`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Caller", "handle") to method("com.example.Service", "process"),
             projectClasses = setOf("com.example.Caller", "com.example.Service"),
         )
@@ -40,7 +40,7 @@ class DeadCodeFinderTest {
     }
     @Test
     fun `class that calls others but is never called is dead`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Orphan", "run") to method("com.example.Service", "process"),
             method("com.example.Controller", "handle") to method("com.example.Service", "process"),
             projectClasses = setOf("com.example.Orphan", "com.example.Service", "com.example.Controller"),
@@ -55,7 +55,7 @@ class DeadCodeFinderTest {
     }
     @Test
     fun `self-referencing class with no external callers is dead`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Recursive", "start") to method("com.example.Recursive", "step"),
             projectClasses = setOf("com.example.Recursive"),
         )
@@ -67,7 +67,7 @@ class DeadCodeFinderTest {
     }
     @Test
     fun `method with no callers from any class is dead method`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Controller", "handle") to method("com.example.Service", "process"),
             method("com.example.Service", "unused") to method("com.example.Repo", "save"),
             projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.Repo"),
@@ -82,7 +82,7 @@ class DeadCodeFinderTest {
     }
     @Test
     fun `method called by another method in a different class is not dead`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Controller", "handle") to method("com.example.Service", "process"),
             method("com.example.Controller", "handle") to method("com.example.Service", "validate"),
             projectClasses = setOf("com.example.Controller", "com.example.Service"),
@@ -95,7 +95,7 @@ class DeadCodeFinderTest {
     }
     @Test
     fun `filter regex limits results to matching classes`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.OrphanService", "run") to method("com.example.Repo", "save"),
             method("com.example.OrphanUtil", "help") to method("com.example.Repo", "save"),
             projectClasses = setOf("com.example.OrphanService", "com.example.OrphanUtil", "com.example.Repo"),
@@ -109,7 +109,7 @@ class DeadCodeFinderTest {
     }
     @Test
     fun `exclude regex removes matching classes from results`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Main", "main") to method("com.example.Service", "run"),
             method("com.example.TestHelper", "setup") to method("com.example.Service", "run"),
             projectClasses = setOf("com.example.Main", "com.example.TestHelper", "com.example.Service"),
@@ -123,7 +123,7 @@ class DeadCodeFinderTest {
     }
     @Test
     fun `results are sorted by kind then by class name then by member name`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Controller", "handle") to method("com.example.Service", "process"),
             method("com.example.Service", "unusedB") to method("com.example.Repo", "save"),
             method("com.example.Service", "unusedA") to method("com.example.Repo", "save"),
@@ -142,7 +142,7 @@ class DeadCodeFinderTest {
     }
     @Test
     fun `method called only within same class is dead method`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Controller", "handle") to method("com.example.Service", "process"),
             method("com.example.Service", "process") to method("com.example.Service", "helper"),
             projectClasses = setOf("com.example.Controller", "com.example.Service"),
@@ -158,7 +158,7 @@ class DeadCodeFinderTest {
 
     @Test
     fun `filters out Kotlin generated methods from dead method results`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Controller", "handle") to method("com.example.Service", "process"),
             method("com.example.Service", "copy") to method("com.example.Repo", "save"),
             method("com.example.Service", "hashCode") to method("com.example.Repo", "save"),
@@ -191,7 +191,7 @@ class DeadCodeFinderTest {
 
     @Test
     fun `filters out inner classes with dollar sign from dead class results`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Service", "process") to method("com.example.Repo", "save"),
             method("com.example.Service\$Companion", "create") to method("com.example.Repo", "save"),
             method("com.example.Service\$process\$1", "invokeSuspend") to method("com.example.Repo", "save"),
@@ -213,7 +213,7 @@ class DeadCodeFinderTest {
 
     @Test
     fun `filters out dead methods on generated inner classes`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Controller", "handle") to method("com.example.Service", "process"),
             method("com.example.Service", "process") to method("com.example.Service\$process\$1", "invokeSuspend"),
             method("com.example.Service\$process\$1", "invokeSuspend") to method("com.example.Repo", "save"),
@@ -242,7 +242,7 @@ class DeadCodeFinderTest {
 
     @Test
     fun `filters out data class boilerplate on sealed class variants`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Controller", "handle") to method("com.example.ServiceResult\$Success", "getMessage"),
             method("com.example.Controller", "handle") to method("com.example.ServiceResult\$Failure", "getError"),
             method("com.example.ServiceResult\$Success", "copy") to method("com.example.Repo", "save"),
@@ -268,7 +268,7 @@ class DeadCodeFinderTest {
 
     @Test
     fun `classesOnly suppresses all dead methods`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Controller", "handle") to method("com.example.Service", "process"),
             method("com.example.Service", "unused") to method("com.example.Repo", "save"),
             projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.Repo"),
@@ -282,25 +282,4 @@ class DeadCodeFinderTest {
         assertTrue(deadClasses.isNotEmpty(), "classesOnly should still report dead classes")
     }
 
-    private fun callGraph(
-        vararg edges: Pair<MethodRef, MethodRef>,
-        projectClasses: Set<String> = emptySet(),
-    ): CallGraph {
-        val callerToCallees = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
-        val sourceFiles = mutableMapOf<ClassName, String>()
-
-        for ((caller, callee) in edges) {
-            callerToCallees.getOrPut(caller) { mutableSetOf() }.add(callee)
-        }
-
-        val allClasses = edges.flatMap { listOf(it.first.className.value, it.second.className.value) }.toSet()
-        val classesWithSource = if (projectClasses.isNotEmpty()) projectClasses else allClasses
-        for (cls in classesWithSource) {
-            sourceFiles[ClassName(cls)] = "${cls.substringAfterLast('.')}.kt"
-        }
-
-        return CallGraph(callerToCallees, sourceFiles)
-    }
-
-    private fun method(className: String, methodName: String) = MethodRef(ClassName(className), methodName)
 }

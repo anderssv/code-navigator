@@ -1,8 +1,6 @@
 package no.f12.codenavigator.navigation
 
-import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.Type
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -33,11 +31,11 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `detects method call dependency between packages`() {
-        writeClassWithCalls(
-            "com/example/api/Controller", "Controller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
             "handle", listOf(Call("com/example/service/Service", "process", "()V")),
         )
-        writeEmptyClass("com/example/service/Service", "Service.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -49,11 +47,11 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `excludes same-package dependencies`() {
-        writeClassWithCalls(
-            "com/example/api/ControllerA", "ControllerA.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/ControllerA", "ControllerA.kt",
             "handle", listOf(Call("com/example/api/ControllerB", "other", "()V")),
         )
-        writeEmptyClass("com/example/api/ControllerB", "ControllerB.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/api/ControllerB", "ControllerB.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -62,11 +60,10 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `detects field type dependency`() {
-        writeClassWithField(
-            "com/example/api/Controller", "Controller.kt",
-            "service", "Lcom/example/service/Service;",
-        )
-        writeEmptyClass("com/example/service/Service", "Service.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/api/Controller", "Controller.kt") {
+            visitField(Opcodes.ACC_PRIVATE, "service", "Lcom/example/service/Service;", null, null)
+        }
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -76,11 +73,11 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `detects superclass dependency`() {
-        writeClassWithSuperclass(
-            "com/example/impl/ConcreteService", "ConcreteService.kt",
-            "com/example/base/AbstractService",
+        TestClassWriter.writeClassFile(
+            classesDir, "com/example/impl/ConcreteService", "ConcreteService.kt",
+            superName = "com/example/base/AbstractService",
         )
-        writeEmptyClass("com/example/base/AbstractService", "AbstractService.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/base/AbstractService", "AbstractService.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -90,11 +87,11 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `detects interface implementation dependency`() {
-        writeClassWithInterface(
-            "com/example/impl/UserRepo", "UserRepo.kt",
-            "com/example/domain/Repository",
+        TestClassWriter.writeClassFile(
+            classesDir, "com/example/impl/UserRepo", "UserRepo.kt",
+            interfaces = arrayOf("com/example/domain/Repository"),
         )
-        writeEmptyClass("com/example/domain/Repository", "Repository.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/domain/Repository", "Repository.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -104,11 +101,11 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `filters by root prefix`() {
-        writeClassWithCalls(
-            "com/example/api/Controller", "Controller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
             "handle", listOf(Call("com/other/lib/Helper", "help", "()V")),
         )
-        writeEmptyClass("com/other/lib/Helper", "Helper.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/other/lib/Helper", "Helper.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -117,11 +114,11 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `empty root prefix includes all packages`() {
-        writeClassWithCalls(
-            "com/example/api/Controller", "Controller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
             "handle", listOf(Call("com/other/lib/Helper", "help", "()V")),
         )
-        writeEmptyClass("com/other/lib/Helper", "Helper.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/other/lib/Helper", "Helper.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("")).data
 
@@ -131,11 +128,11 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `strips inner class names to base class`() {
-        writeClassWithCalls(
-            "com/example/api/Controller", "Controller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
             "handle", listOf(Call("com/example/service/Service\$Companion", "getInstance", "()Lcom/example/service/Service;")),
         )
-        writeEmptyClass("com/example/service/Service", "Service.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -145,14 +142,14 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `produces unique dependencies per class pair`() {
-        writeClassWithCalls(
-            "com/example/api/Controller", "Controller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
             "handle", listOf(
                 Call("com/example/service/Service", "process", "()V"),
                 Call("com/example/service/Service", "validate", "()V"),
             ),
         )
-        writeEmptyClass("com/example/service/Service", "Service.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -162,14 +159,12 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `detects dependency from field access instruction in method body`() {
-        writeClassWithFieldAccess(
-            "com/example/api/Controller", "Controller.kt",
+        TestClassWriter.writeClassWithFieldAccessAndCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
             "handle",
-            fieldOwner = "com/example/service/Service",
-            fieldName = "instance",
-            fieldDescriptor = "Lcom/example/service/Service;",
+            FieldAccess("com/example/service/Service", "instance", "Lcom/example/service/Service;", Opcodes.GETSTATIC),
         )
-        writeEmptyClass("com/example/service/Service", "Service.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -179,12 +174,11 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `detects dependency from type instruction (NEW)`() {
-        writeClassWithTypeInsn(
-            "com/example/api/Controller", "Controller.kt",
-            "create",
-            typeOperand = "com/example/model/Entity",
+        TestClassWriter.writeClassWithTypeInsn(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            "create", Opcodes.NEW, "com/example/model/Entity",
         )
-        writeEmptyClass("com/example/model/Entity", "Entity.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/model/Entity", "Entity.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -194,12 +188,11 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `detects dependency from class literal (LDC Type)`() {
-        writeClassWithLdcType(
-            "com/example/api/Controller", "Controller.kt",
-            "getType",
-            referencedType = "com/example/model/Entity",
+        TestClassWriter.writeClassWithLdcType(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            "getType", "com/example/model/Entity",
         )
-        writeEmptyClass("com/example/model/Entity", "Entity.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/model/Entity", "Entity.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -209,12 +202,12 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `detects dependency through method parameter descriptor`() {
-        writeClassWithMethodDescriptor(
-            "com/example/api/Controller", "Controller.kt",
+        TestClassWriter.writeClassWithMethodDescriptor(
+            classesDir, "com/example/api/Controller", "Controller.kt",
             "handle", "(Lcom/example/model/Request;)Lcom/example/model/Response;",
         )
-        writeEmptyClass("com/example/model/Request", "Request.kt")
-        writeEmptyClass("com/example/model/Response", "Response.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/model/Request", "Request.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/model/Response", "Response.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -226,12 +219,11 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `detects dependency through exception declaration`() {
-        writeClassWithException(
-            "com/example/api/Controller", "Controller.kt",
-            "handle",
-            exception = "com/example/errors/AppException",
+        TestClassWriter.writeClassWithException(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            "handle", "com/example/errors/AppException",
         )
-        writeEmptyClass("com/example/errors/AppException", "AppException.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/errors/AppException", "AppException.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -241,11 +233,10 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `detects dependency through array field type`() {
-        writeClassWithField(
-            "com/example/api/Controller", "Controller.kt",
-            "services", "[Lcom/example/service/Service;",
-        )
-        writeEmptyClass("com/example/service/Service", "Service.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/api/Controller", "Controller.kt") {
+            visitField(Opcodes.ACC_PRIVATE, "services", "[Lcom/example/service/Service;", null, null)
+        }
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -255,12 +246,12 @@ class DsmDependencyExtractorTest {
 
     @Test
     fun `detects dependency from method call with object return type in descriptor`() {
-        writeClassWithCalls(
-            "com/example/api/Controller", "Controller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
             "handle", listOf(Call("com/example/service/Service", "getModel", "()Lcom/example/model/Entity;")),
         )
-        writeEmptyClass("com/example/service/Service", "Service.kt")
-        writeEmptyClass("com/example/model/Entity", "Entity.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/model/Entity", "Entity.kt")
 
         val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
 
@@ -293,216 +284,5 @@ class DsmDependencyExtractorTest {
         val output = process.inputStream.bufferedReader().readText()
         val exitCode = process.waitFor()
         check(exitCode == 0) { "Failed to build test-project (exit $exitCode): $output" }
-    }
-
-    // --- helpers ---
-
-    private data class Call(val owner: String, val name: String, val descriptor: String)
-
-    private fun writeClassWithCalls(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        calls: List<Call>,
-    ) {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        init.visitCode()
-        init.visitVarInsn(Opcodes.ALOAD, 0)
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        init.visitInsn(Opcodes.RETURN)
-        init.visitMaxs(1, 1)
-        init.visitEnd()
-
-        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, null)
-        mv.visitCode()
-        for (call in calls) {
-            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, call.owner, call.name, call.descriptor, false)
-        }
-        mv.visitInsn(Opcodes.RETURN)
-        mv.visitMaxs(1, 1)
-        mv.visitEnd()
-
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithField(
-        className: String,
-        sourceFile: String,
-        fieldName: String,
-        fieldDescriptor: String,
-    ) {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-        writer.visitField(Opcodes.ACC_PRIVATE, fieldName, fieldDescriptor, null, null)
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithSuperclass(
-        className: String,
-        sourceFile: String,
-        superName: String,
-    ) {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, superName, null)
-        writer.visitSource(sourceFile, null)
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithInterface(
-        className: String,
-        sourceFile: String,
-        interfaceName: String,
-    ) {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", arrayOf(interfaceName))
-        writer.visitSource(sourceFile, null)
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeEmptyClass(className: String, sourceFile: String) {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassFile(className: String, writer: ClassWriter) {
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            classesDir.resolve(packageDir).also { it.mkdirs() }
-        } else {
-            classesDir
-        }
-        File(dir, simpleFileName).writeBytes(writer.toByteArray())
-    }
-
-    private fun writeClassWithFieldAccess(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        fieldOwner: String,
-        fieldName: String,
-        fieldDescriptor: String,
-    ) {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        init.visitCode()
-        init.visitVarInsn(Opcodes.ALOAD, 0)
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        init.visitInsn(Opcodes.RETURN)
-        init.visitMaxs(1, 1)
-        init.visitEnd()
-
-        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, null)
-        mv.visitCode()
-        mv.visitFieldInsn(Opcodes.GETSTATIC, fieldOwner, fieldName, fieldDescriptor)
-        mv.visitInsn(Opcodes.POP)
-        mv.visitInsn(Opcodes.RETURN)
-        mv.visitMaxs(1, 1)
-        mv.visitEnd()
-
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithTypeInsn(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        typeOperand: String,
-    ) {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        init.visitCode()
-        init.visitVarInsn(Opcodes.ALOAD, 0)
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        init.visitInsn(Opcodes.RETURN)
-        init.visitMaxs(1, 1)
-        init.visitEnd()
-
-        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, null)
-        mv.visitCode()
-        mv.visitTypeInsn(Opcodes.NEW, typeOperand)
-        mv.visitInsn(Opcodes.POP)
-        mv.visitInsn(Opcodes.RETURN)
-        mv.visitMaxs(1, 1)
-        mv.visitEnd()
-
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithLdcType(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        referencedType: String,
-    ) {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        init.visitCode()
-        init.visitVarInsn(Opcodes.ALOAD, 0)
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        init.visitInsn(Opcodes.RETURN)
-        init.visitMaxs(1, 1)
-        init.visitEnd()
-
-        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()Ljava/lang/Class;", null, null)
-        mv.visitCode()
-        mv.visitLdcInsn(Type.getObjectType(referencedType))
-        mv.visitInsn(Opcodes.ARETURN)
-        mv.visitMaxs(1, 1)
-        mv.visitEnd()
-
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithMethodDescriptor(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        descriptor: String,
-    ) {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-        writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, descriptor, null, null)
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithException(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        exception: String,
-    ) {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-        writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, arrayOf(exception))
-        writer.visitEnd()
-        writeClassFile(className, writer)
     }
 }

@@ -8,7 +8,7 @@ class TypeRankerTest {
 
     @Test
     fun `empty call graph produces empty ranking`() {
-        val graph = callGraph()
+        val graph = testCallGraph()
 
         val ranked = TypeRanker.rank(graph)
 
@@ -16,7 +16,7 @@ class TypeRankerTest {
     }
     @Test
     fun `single edge produces two ranked types`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Caller", "doWork") to method("com.example.Target", "process"),
         )
 
@@ -32,7 +32,7 @@ class TypeRankerTest {
     }
     @Test
     fun `type called by many others ranks higher than isolated type`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.A", "doA") to method("com.example.Core", "process"),
             method("com.example.B", "doB") to method("com.example.Core", "process"),
             method("com.example.C", "doC") to method("com.example.Core", "process"),
@@ -47,7 +47,7 @@ class TypeRankerTest {
     }
     @Test
     fun `transitive importance — type called by high-rank type ranks higher`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.A", "a") to method("com.example.Hub", "hub"),
             method("com.example.B", "b") to method("com.example.Hub", "hub"),
             method("com.example.C", "c") to method("com.example.Hub", "hub"),
@@ -63,7 +63,7 @@ class TypeRankerTest {
     }
     @Test
     fun `results are sorted by rank descending`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.A", "a") to method("com.example.Core", "c"),
             method("com.example.B", "b") to method("com.example.Core", "c"),
             method("com.example.C", "c") to method("com.example.Core", "c"),
@@ -78,7 +78,7 @@ class TypeRankerTest {
     }
     @Test
     fun `returns correct inDegree and outDegree counts`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.A", "a1") to method("com.example.B", "b1"),
             method("com.example.A", "a2") to method("com.example.C", "c1"),
             method("com.example.B", "b1") to method("com.example.C", "c1"),
@@ -98,7 +98,7 @@ class TypeRankerTest {
     }
     @Test
     fun `top parameter limits number of results`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.A", "a") to method("com.example.B", "b"),
             method("com.example.B", "b") to method("com.example.C", "c"),
             method("com.example.C", "c") to method("com.example.D", "d"),
@@ -110,7 +110,7 @@ class TypeRankerTest {
     }
     @Test
     fun `projectOnly filter excludes external classes`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Service", "work") to method("java.util.List", "add"),
             method("com.example.Controller", "handle") to method("com.example.Service", "work"),
             projectClasses = setOf("com.example.Service", "com.example.Controller"),
@@ -126,7 +126,7 @@ class TypeRankerTest {
 
     @Test
     fun `lambda classes collapse into enclosing class`() {
-        val graph = callGraph(
+        val graph = testCallGraph(
             method("com.example.Controller", "handle") to method("com.example.Service", "work"),
             method("com.example.Controller\$handle\$1", "invoke") to method("com.example.Service", "work"),
             method("com.example.Controller\$handle\$2", "invoke") to method("com.example.Service", "work"),
@@ -142,25 +142,4 @@ class TypeRankerTest {
         assertEquals(2, ranked.size, "Should have only Controller and Service after collapsing")
     }
 
-    private fun callGraph(
-        vararg edges: Pair<MethodRef, MethodRef>,
-        projectClasses: Set<String> = emptySet(),
-    ): CallGraph {
-        val callerToCallees = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
-        val sourceFiles = mutableMapOf<ClassName, String>()
-
-        for ((caller, callee) in edges) {
-            callerToCallees.getOrPut(caller) { mutableSetOf() }.add(callee)
-        }
-
-        val allClasses = edges.flatMap { listOf(it.first.className.value, it.second.className.value) }.toSet()
-        val classesWithSource = if (projectClasses.isNotEmpty()) projectClasses else allClasses
-        for (cls in classesWithSource) {
-            sourceFiles[ClassName(cls)] = "${cls.substringAfterLast('.')}.kt"
-        }
-
-        return CallGraph(callerToCallees, sourceFiles)
-    }
-
-    private fun method(className: String, methodName: String) = MethodRef(ClassName(className), methodName)
 }

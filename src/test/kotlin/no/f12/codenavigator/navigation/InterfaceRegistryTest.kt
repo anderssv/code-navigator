@@ -1,7 +1,5 @@
 package no.f12.codenavigator.navigation
 
-import org.objectweb.asm.ClassWriter
-import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path
@@ -16,10 +14,9 @@ class InterfaceRegistryTest {
 
     @Test
     fun `finds implementors of an interface`() {
-        writeClassFile("com/example/Repository", "Repository.kt")
-        writeClassFile(
-            "com/example/UserRepository",
-            "UserRepository.kt",
+        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Repository", "Repository.kt")
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/UserRepository", "UserRepository.kt",
             interfaces = arrayOf("com/example/Repository"),
         )
 
@@ -34,7 +31,7 @@ class InterfaceRegistryTest {
     // [TEST-DONE] Finds implementors of an interface
     @Test
     fun `returns empty list for interface with no implementors`() {
-        writeClassFile("com/example/Repository", "Repository.kt")
+        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Repository", "Repository.kt")
 
         val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
 
@@ -45,14 +42,12 @@ class InterfaceRegistryTest {
 
     @Test
     fun `finds multiple implementors of the same interface`() {
-        writeClassFile(
-            "com/example/UserRepo",
-            "UserRepo.kt",
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/UserRepo", "UserRepo.kt",
             interfaces = arrayOf("com/example/Repository"),
         )
-        writeClassFile(
-            "com/example/OrderRepo",
-            "OrderRepo.kt",
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/OrderRepo", "OrderRepo.kt",
             interfaces = arrayOf("com/example/Repository"),
         )
 
@@ -66,9 +61,8 @@ class InterfaceRegistryTest {
 
     @Test
     fun `class implementing multiple interfaces appears under each`() {
-        writeClassFile(
-            "com/example/FullRepo",
-            "FullRepo.kt",
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/FullRepo", "FullRepo.kt",
             interfaces = arrayOf("com/example/Readable", "com/example/Writable"),
         )
 
@@ -83,14 +77,12 @@ class InterfaceRegistryTest {
 
     @Test
     fun `findInterfaces matches pattern case-insensitively`() {
-        writeClassFile(
-            "com/example/UserRepo",
-            "UserRepo.kt",
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/UserRepo", "UserRepo.kt",
             interfaces = arrayOf("com/example/Repository"),
         )
-        writeClassFile(
-            "com/example/EventHandler",
-            "EventHandler.kt",
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/EventHandler", "EventHandler.kt",
             interfaces = arrayOf("com/example/Handler"),
         )
 
@@ -104,19 +96,16 @@ class InterfaceRegistryTest {
 
     @Test
     fun `skips synthetic and lambda classes`() {
-        writeClassFile(
-            "com/example/Service\$1",
-            "Service.kt",
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/Service\$1", "Service.kt",
             interfaces = arrayOf("com/example/Callback"),
         )
-        writeClassFile(
-            "com/example/Service\$lambda\$0",
-            "Service.kt",
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/Service\$lambda\$0", "Service.kt",
             interfaces = arrayOf("com/example/Callback"),
         )
-        writeClassFile(
-            "com/example/RealImpl",
-            "RealImpl.kt",
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/RealImpl", "RealImpl.kt",
             interfaces = arrayOf("com/example/Callback"),
         )
 
@@ -130,9 +119,9 @@ class InterfaceRegistryTest {
 
     @Test
     fun `returns implementors sorted by class name`() {
-        writeClassFile("com/example/Zebra", "Zebra.kt", interfaces = arrayOf("com/example/Animal"))
-        writeClassFile("com/example/Apple", "Apple.kt", interfaces = arrayOf("com/example/Animal"))
-        writeClassFile("com/example/Mango", "Mango.kt", interfaces = arrayOf("com/example/Animal"))
+        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Zebra", "Zebra.kt", interfaces = arrayOf("com/example/Animal"))
+        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Apple", "Apple.kt", interfaces = arrayOf("com/example/Animal"))
+        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Mango", "Mango.kt", interfaces = arrayOf("com/example/Animal"))
 
         val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
 
@@ -147,16 +136,12 @@ class InterfaceRegistryTest {
         val mainDir = tempDir.resolve("main").toFile().also { it.mkdirs() }
         val testDir = tempDir.resolve("test").toFile().also { it.mkdirs() }
 
-        writeClassFileTo(
-            mainDir,
-            "com/example/RealRepo",
-            "RealRepo.kt",
+        TestClassWriter.writeClassFile(
+            mainDir, "com/example/RealRepo", "RealRepo.kt",
             interfaces = arrayOf("com/example/Repository"),
         )
-        writeClassFileTo(
-            testDir,
-            "com/example/FakeRepo",
-            "FakeRepo.kt",
+        TestClassWriter.writeClassFile(
+            testDir, "com/example/FakeRepo", "FakeRepo.kt",
             interfaces = arrayOf("com/example/Repository"),
         )
 
@@ -164,56 +149,5 @@ class InterfaceRegistryTest {
 
         val names = registry.implementorsOf(ClassName("com.example.Repository")).map { it.className.value }
         assertEquals(listOf("com.example.FakeRepo", "com.example.RealRepo"), names)
-    }
-
-    private fun writeClassFile(
-        className: String,
-        sourceFile: String?,
-        superName: String = "java/lang/Object",
-        interfaces: Array<String>? = null,
-    ): File {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, superName, interfaces)
-        if (sourceFile != null) {
-            writer.visitSource(sourceFile, null)
-        }
-        writer.visitEnd()
-
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            tempDir.resolve(packageDir).toFile().also { it.mkdirs() }
-        } else {
-            tempDir.toFile()
-        }
-        val file = File(dir, simpleFileName)
-        file.writeBytes(writer.toByteArray())
-        return file
-    }
-
-    private fun writeClassFileTo(
-        baseDir: File,
-        className: String,
-        sourceFile: String?,
-        superName: String = "java/lang/Object",
-        interfaces: Array<String>? = null,
-    ): File {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, superName, interfaces)
-        if (sourceFile != null) {
-            writer.visitSource(sourceFile, null)
-        }
-        writer.visitEnd()
-
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            baseDir.resolve(packageDir).also { it.mkdirs() }
-        } else {
-            baseDir
-        }
-        val file = File(dir, simpleFileName)
-        file.writeBytes(writer.toByteArray())
-        return file
     }
 }

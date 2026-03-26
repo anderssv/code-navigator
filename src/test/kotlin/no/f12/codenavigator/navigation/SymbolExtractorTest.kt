@@ -1,6 +1,5 @@
 package no.f12.codenavigator.navigation
 
-import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -16,7 +15,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `extracts a public method as a METHOD symbol`() {
-        val classFile = writeClassFile("com/example/MyService", "MyService.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/MyService", "MyService.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "resetPassword", "()V", null, null)
         }
 
@@ -35,7 +34,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `extracts a public field as a FIELD symbol`() {
-        val classFile = writeClassFile("com/example/UserInfo", "UserInfo.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/UserInfo", "UserInfo.kt") {
             visitField(Opcodes.ACC_PUBLIC, "nationalId", "Ljava/lang/String;", null, null)
         }
 
@@ -54,7 +53,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `filters out constructors`() {
-        val classFile = writeClassFile("com/example/Foo", "Foo.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Foo", "Foo.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
             visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "doWork", "()V", null, null)
@@ -69,7 +68,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `filters out synthetic and access bridge methods`() {
-        val classFile = writeClassFile("com/example/Foo", "Foo.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Foo", "Foo.kt") {
             visitMethod(Opcodes.ACC_STATIC or Opcodes.ACC_SYNTHETIC, "access\$getName", "()Ljava/lang/String;", null, null)
             visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_SYNTHETIC, "bridge\$method", "()V", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "realMethod", "()V", null, null)
@@ -83,7 +82,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `filters out Kotlin property accessors for fields`() {
-        val classFile = writeClassFile("com/example/User", "User.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/User", "User.kt") {
             visitField(Opcodes.ACC_PRIVATE, "name", "Ljava/lang/String;", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "getName", "()Ljava/lang/String;", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "setName", "(Ljava/lang/String;)V", null, null)
@@ -98,7 +97,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `filters out data class generated methods`() {
-        val classFile = writeClassFile("com/example/Data", "Data.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Data", "Data.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "component1", "()Ljava/lang/String;", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "component2", "()I", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "copy", "(Ljava/lang/String;I)Lcom/example/Data;", null, null)
@@ -116,7 +115,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `keeps non-accessor methods that start with get or set`() {
-        val classFile = writeClassFile("com/example/Service", "Service.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Service", "Service.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "getActiveUsers", "()Ljava/util/List;", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "setUpEnvironment", "()V", null, null)
         }
@@ -129,7 +128,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `handles class with no methods or fields`() {
-        val classFile = writeClassFile("com/example/Empty", "Empty.kt") {}
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Empty", "Empty.kt") {}
 
         val symbols = SymbolExtractor.extract(classFile)
 
@@ -138,7 +137,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `extracts symbols from class with both methods and fields`() {
-        val classFile = writeClassFile("com/example/Mixed", "Mixed.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Mixed", "Mixed.kt") {
             visitField(Opcodes.ACC_PUBLIC, "count", "I", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "increment", "()V", null, null)
         }
@@ -154,7 +153,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `extracts static methods`() {
-        val classFile = writeClassFile("com/example/UtilsKt", "Utils.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/UtilsKt", "Utils.kt") {
             visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, "formatDate", "(Ljava/time/LocalDate;)Ljava/lang/String;", null, null)
         }
 
@@ -168,7 +167,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `filters out lambda-generated method names`() {
-        val classFile = writeClassFile("com/example/Service", "Service.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Service", "Service.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "doWork\$lambda\$0", "()V", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "doWork\$lambda\$0\$0", "()V", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "doWork", "()V", null, null)
@@ -182,7 +181,7 @@ class SymbolExtractorTest {
 
     @Test
     fun `filters out companion object field INSTANCE`() {
-        val classFile = writeClassFile("com/example/Foo\$Companion", "Foo.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Foo\$Companion", "Foo.kt") {
             visitField(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC or Opcodes.ACC_FINAL, "INSTANCE", "Lcom/example/Foo\$Companion;", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "create", "()Lcom/example/Foo;", null, null)
         }
@@ -191,30 +190,5 @@ class SymbolExtractorTest {
 
         assertEquals(1, symbols.size)
         assertEquals("create", symbols.first().symbolName)
-    }
-
-    private fun writeClassFile(
-        className: String,
-        sourceFile: String?,
-        configure: ClassWriter.() -> Unit = {},
-    ): File {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        if (sourceFile != null) {
-            writer.visitSource(sourceFile, null)
-        }
-        writer.configure()
-        writer.visitEnd()
-
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            tempDir.resolve(packageDir).toFile().also { it.mkdirs() }
-        } else {
-            tempDir.toFile()
-        }
-        val file = File(dir, simpleFileName)
-        file.writeBytes(writer.toByteArray())
-        return file
     }
 }

@@ -1,8 +1,5 @@
 package no.f12.codenavigator.navigation
 
-import org.objectweb.asm.ClassWriter
-import org.objectweb.asm.Label
-import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -26,11 +23,11 @@ class CallGraphBuilderTest {
 
     @Test
     fun `detects a method call from caller to callee`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(Call("com/example/Target", "process", "()V")),
         )
-        writeClassWithCalls("com/example/Target", "Target.kt", "process", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/Target", "Target.kt", "process", emptyList())
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -42,7 +39,7 @@ class CallGraphBuilderTest {
 
     @Test
     fun `returns empty set for method with no callers`() {
-        writeClassWithCalls("com/example/Lonely", "Lonely.kt", "alone", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/Lonely", "Lonely.kt", "alone", emptyList())
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -52,15 +49,15 @@ class CallGraphBuilderTest {
 
     @Test
     fun `detects multiple callers of the same method`() {
-        writeClassWithCalls(
-            "com/example/CallerA", "CallerA.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/CallerA", "CallerA.kt",
             "fromA", listOf(Call("com/example/Target", "shared", "()V")),
         )
-        writeClassWithCalls(
-            "com/example/CallerB", "CallerB.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/CallerB", "CallerB.kt",
             "fromB", listOf(Call("com/example/Target", "shared", "()V")),
         )
-        writeClassWithCalls("com/example/Target", "Target.kt", "shared", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/Target", "Target.kt", "shared", emptyList())
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -73,15 +70,15 @@ class CallGraphBuilderTest {
 
     @Test
     fun `detects transitive callers through the graph`() {
-        writeClassWithCalls(
-            "com/example/A", "A.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/A", "A.kt",
             "start", listOf(Call("com/example/B", "middle", "()V")),
         )
-        writeClassWithCalls(
-            "com/example/B", "B.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/B", "B.kt",
             "middle", listOf(Call("com/example/C", "end", "()V")),
         )
-        writeClassWithCalls("com/example/C", "C.kt", "end", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/C", "C.kt", "end", emptyList())
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -96,15 +93,15 @@ class CallGraphBuilderTest {
 
     @Test
     fun `detects method calling multiple other methods`() {
-        writeClassWithCalls(
-            "com/example/Orchestrator", "Orchestrator.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Orchestrator", "Orchestrator.kt",
             "orchestrate", listOf(
                 Call("com/example/StepA", "execute", "()V"),
                 Call("com/example/StepB", "execute", "()V"),
             ),
         )
-        writeClassWithCalls("com/example/StepA", "StepA.kt", "execute", emptyList())
-        writeClassWithCalls("com/example/StepB", "StepB.kt", "execute", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/StepA", "StepA.kt", "execute", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/StepB", "StepB.kt", "execute", emptyList())
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -118,15 +115,15 @@ class CallGraphBuilderTest {
 
     @Test
     fun `matches callers by pattern`() {
-        writeClassWithCalls(
-            "com/example/ServiceA", "ServiceA.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/ServiceA", "ServiceA.kt",
             "handle", listOf(Call("com/example/Repo", "save", "()V")),
         )
-        writeClassWithCalls(
-            "com/example/ServiceB", "ServiceB.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/ServiceB", "ServiceB.kt",
             "process", listOf(Call("com/example/Repo", "save", "()V")),
         )
-        writeClassWithCalls("com/example/Repo", "Repo.kt", "save", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/Repo", "Repo.kt", "save", emptyList())
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -146,8 +143,8 @@ class CallGraphBuilderTest {
 
     @Test
     fun `tracks source file for classes`() {
-        writeClassWithCalls("com/example/MyService", "MyService.kt", "execute", emptyList())
-        writeClassWithCalls("com/example/OtherService", "OtherService.kt", "run", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/MyService", "MyService.kt", "execute", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/OtherService", "OtherService.kt", "run", emptyList())
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -158,15 +155,15 @@ class CallGraphBuilderTest {
 
     @Test
     fun `calleesOf returns methods called by a given method`() {
-        writeClassWithCalls(
-            "com/example/Orchestrator", "Orchestrator.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Orchestrator", "Orchestrator.kt",
             "orchestrate", listOf(
                 Call("com/example/StepA", "execute", "()V"),
                 Call("com/example/StepB", "run", "()V"),
             ),
         )
-        writeClassWithCalls("com/example/StepA", "StepA.kt", "execute", emptyList())
-        writeClassWithCalls("com/example/StepB", "StepB.kt", "run", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/StepA", "StepA.kt", "execute", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/StepB", "StepB.kt", "run", emptyList())
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -179,7 +176,7 @@ class CallGraphBuilderTest {
 
     @Test
     fun `calleesOf returns empty set for method with no calls`() {
-        writeClassWithCalls("com/example/Leaf", "Leaf.kt", "doNothing", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/Leaf", "Leaf.kt", "doNothing", emptyList())
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -189,11 +186,11 @@ class CallGraphBuilderTest {
 
     @Test
     fun `handles constructor calls`() {
-        writeClassWithCalls(
-            "com/example/Factory", "Factory.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Factory", "Factory.kt",
             "create", listOf(Call("com/example/Product", "<init>", "()V")),
         )
-        writeEmptyClass("com/example/Product", "Product.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Product", "Product.kt")
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -204,8 +201,8 @@ class CallGraphBuilderTest {
 
     @Test
     fun `projectClasses returns classes with known source files`() {
-        writeClassWithCalls("com/example/MyService", "MyService.kt", "execute", emptyList())
-        writeClassWithCalls("com/example/OtherService", "OtherService.kt", "run", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/MyService", "MyService.kt", "execute", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/OtherService", "OtherService.kt", "run", emptyList())
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -355,12 +352,8 @@ class CallGraphBuilderTest {
 
     @Test
     fun `multiple methods on same class each have independent caller chains`() {
-        // UserService has: buildNotificationMessage, sendResetNotification, sendDeactivationNotification,
-        //                  resetPassword, deactivateUser
-        // Chain: buildNotificationMessage ← sendResetNotification ← resetPassword
-        //        buildNotificationMessage ← sendDeactivationNotification ← deactivateUser
-        writeClassWithMultipleMethods(
-            "com/example/UserService", "UserService.kt",
+        TestClassWriter.writeClassWithMultipleMethods(
+            classesDir, "com/example/UserService", "UserService.kt",
             listOf(
                 MethodDef("buildNotificationMessage", emptyList()),
                 MethodDef("sendResetNotification", listOf(Call("com/example/UserService", "buildNotificationMessage", "()V"))),
@@ -369,8 +362,8 @@ class CallGraphBuilderTest {
                 MethodDef("deactivateUser", listOf(Call("com/example/UserService", "sendDeactivationNotification", "()V"))),
             ),
         )
-        writeClassWithCalls(
-            "com/example/UserRoute", "UserRoute.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/UserRoute", "UserRoute.kt",
             "handleReset", listOf(Call("com/example/UserService", "resetPassword", "()V")),
         )
 
@@ -402,8 +395,8 @@ class CallGraphBuilderTest {
 
     @Test
     fun `extracts first line number for a method with line number table`() {
-        writeClassWithLineNumbers(
-            "com/example/Service", "Service.kt",
+        TestClassWriter.writeClassWithLineNumbers(
+            classesDir, "com/example/Service", "Service.kt",
             listOf(MethodWithLines("doWork", 42, emptyList())),
         )
 
@@ -414,7 +407,7 @@ class CallGraphBuilderTest {
 
     @Test
     fun `returns null line number for method without line number table`() {
-        writeClassWithCalls("com/example/Stripped", "Stripped.kt", "execute", emptyList())
+        TestClassWriter.writeClassWithCalls(classesDir, "com/example/Stripped", "Stripped.kt", "execute", emptyList())
 
         val graph = CallGraphBuilder.build(listOf(classesDir)).data
 
@@ -423,8 +416,8 @@ class CallGraphBuilderTest {
 
     @Test
     fun `extracts independent line numbers for multiple methods in same class`() {
-        writeClassWithLineNumbers(
-            "com/example/Service", "Service.kt",
+        TestClassWriter.writeClassWithLineNumbers(
+            classesDir, "com/example/Service", "Service.kt",
             listOf(
                 MethodWithLines("doWork", 10, emptyList()),
                 MethodWithLines("doOtherWork", 25, emptyList()),
@@ -435,151 +428,5 @@ class CallGraphBuilderTest {
 
         assertEquals(10, graph.lineNumberOf(MethodRef(ClassName("com.example.Service"), "doWork")))
         assertEquals(25, graph.lineNumberOf(MethodRef(ClassName("com.example.Service"), "doOtherWork")))
-    }
-
-    private data class MethodDef(val name: String, val calls: List<Call>)
-
-    private data class Call(val owner: String, val name: String, val descriptor: String)
-
-    private fun writeClassWithMultipleMethods(
-        className: String,
-        sourceFile: String,
-        methods: List<MethodDef>,
-    ) {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        init.visitCode()
-        init.visitVarInsn(Opcodes.ALOAD, 0)
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        init.visitInsn(Opcodes.RETURN)
-        init.visitMaxs(1, 1)
-        init.visitEnd()
-
-        for (method in methods) {
-            val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, method.name, "()V", null, null)
-            mv.visitCode()
-            for (call in method.calls) {
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, call.owner, call.name, call.descriptor, false)
-            }
-            mv.visitInsn(Opcodes.RETURN)
-            mv.visitMaxs(1, 1)
-            mv.visitEnd()
-        }
-
-        writer.visitEnd()
-
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            classesDir.resolve(packageDir).also { it.mkdirs() }
-        } else {
-            classesDir
-        }
-        File(dir, simpleFileName).writeBytes(writer.toByteArray())
-    }
-
-    private fun writeClassWithCalls(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        calls: List<Call>,
-    ) {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        // Default constructor
-        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        init.visitCode()
-        init.visitVarInsn(Opcodes.ALOAD, 0)
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        init.visitInsn(Opcodes.RETURN)
-        init.visitMaxs(1, 1)
-        init.visitEnd()
-
-        // Method with calls
-        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, null)
-        mv.visitCode()
-        for (call in calls) {
-            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, call.owner, call.name, call.descriptor, false)
-        }
-        mv.visitInsn(Opcodes.RETURN)
-        mv.visitMaxs(1, 1)
-        mv.visitEnd()
-
-        writer.visitEnd()
-
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            classesDir.resolve(packageDir).also { it.mkdirs() }
-        } else {
-            classesDir
-        }
-        File(dir, simpleFileName).writeBytes(writer.toByteArray())
-    }
-
-    private fun writeEmptyClass(className: String, sourceFile: String) {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-        writer.visitEnd()
-
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            classesDir.resolve(packageDir).also { it.mkdirs() }
-        } else {
-            classesDir
-        }
-        File(dir, simpleFileName).writeBytes(writer.toByteArray())
-    }
-
-    private data class MethodWithLines(val name: String, val lineNumber: Int, val calls: List<Call>)
-
-    private fun writeClassWithLineNumbers(
-        className: String,
-        sourceFile: String,
-        methods: List<MethodWithLines>,
-    ) {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        init.visitCode()
-        init.visitVarInsn(Opcodes.ALOAD, 0)
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        init.visitInsn(Opcodes.RETURN)
-        init.visitMaxs(1, 1)
-        init.visitEnd()
-
-        for (method in methods) {
-            val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, method.name, "()V", null, null)
-            mv.visitCode()
-            val startLabel = Label()
-            mv.visitLabel(startLabel)
-            mv.visitLineNumber(method.lineNumber, startLabel)
-            for (call in method.calls) {
-                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, call.owner, call.name, call.descriptor, false)
-            }
-            mv.visitInsn(Opcodes.RETURN)
-            mv.visitMaxs(1, 1)
-            mv.visitEnd()
-        }
-
-        writer.visitEnd()
-
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            classesDir.resolve(packageDir).also { it.mkdirs() }
-        } else {
-            classesDir
-        }
-        File(dir, simpleFileName).writeBytes(writer.toByteArray())
     }
 }

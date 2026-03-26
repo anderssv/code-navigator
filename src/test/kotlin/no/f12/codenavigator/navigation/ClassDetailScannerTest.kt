@@ -1,7 +1,5 @@
 package no.f12.codenavigator.navigation
 
-import org.objectweb.asm.ClassWriter
-import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -25,8 +23,8 @@ class ClassDetailScannerTest {
 
     @Test
     fun `returns matching classes with details`() {
-        writeClassFile("com/example/ServiceA", "ServiceA.kt")
-        writeClassFile("com/example/ServiceB", "ServiceB.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceA", "ServiceA.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceB", "ServiceB.kt")
 
         val results = ClassDetailScanner.scan(listOf(classesDir), "Service").data
 
@@ -38,8 +36,8 @@ class ClassDetailScannerTest {
 
     @Test
     fun `filters by regex pattern`() {
-        writeClassFile("com/example/UserService", "UserService.kt")
-        writeClassFile("com/example/OrderController", "OrderController.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/UserService", "UserService.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/OrderController", "OrderController.kt")
 
         val results = ClassDetailScanner.scan(listOf(classesDir), "Service").data
 
@@ -49,7 +47,7 @@ class ClassDetailScannerTest {
 
     @Test
     fun `pattern matching is case insensitive`() {
-        writeClassFile("com/example/UserService", "UserService.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/UserService", "UserService.kt")
 
         val results = ClassDetailScanner.scan(listOf(classesDir), "userservice").data
 
@@ -58,7 +56,7 @@ class ClassDetailScannerTest {
 
     @Test
     fun `returns empty list when no classes match pattern`() {
-        writeClassFile("com/example/ServiceA", "ServiceA.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceA", "ServiceA.kt")
 
         val results = ClassDetailScanner.scan(listOf(classesDir), "Controller").data
 
@@ -83,9 +81,9 @@ class ClassDetailScannerTest {
 
     @Test
     fun `results are sorted by class name`() {
-        writeClassFile("com/example/Zebra", "Zebra.kt")
-        writeClassFile("com/example/Alpha", "Alpha.kt")
-        writeClassFile("com/example/Middle", "Middle.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Zebra", "Zebra.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Alpha", "Alpha.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Middle", "Middle.kt")
 
         val results = ClassDetailScanner.scan(listOf(classesDir), ".*").data
 
@@ -97,9 +95,9 @@ class ClassDetailScannerTest {
 
     @Test
     fun `skips synthetic and anonymous classes`() {
-        writeClassFile("com/example/Foo", "Foo.kt")
-        writeClassFile("com/example/Foo\$1", "Foo.kt")
-        writeClassFile("com/example/Foo\$lambda\$1", "Foo.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Foo", "Foo.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Foo\$1", "Foo.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Foo\$lambda\$1", "Foo.kt")
 
         val results = ClassDetailScanner.scan(listOf(classesDir), "Foo").data
 
@@ -112,8 +110,8 @@ class ClassDetailScannerTest {
         val javaClassesDir = tempDir.resolve("build/classes/java/main").toFile()
         javaClassesDir.mkdirs()
 
-        writeClassFile("com/example/KotlinService", "KotlinService.kt")
-        writeClassFile("com/example/JavaService", "JavaService.java", targetDir = javaClassesDir)
+        TestClassWriter.writeClassFile(classesDir, "com/example/KotlinService", "KotlinService.kt")
+        TestClassWriter.writeClassFile(javaClassesDir, "com/example/JavaService", "JavaService.java")
 
         val results = ClassDetailScanner.scan(listOf(classesDir, javaClassesDir), "Service").data
 
@@ -122,37 +120,10 @@ class ClassDetailScannerTest {
 
     @Test
     fun `populates source file in results`() {
-        writeClassFile("com/example/MyService", "MyService.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/MyService", "MyService.kt")
 
         val result = ClassDetailScanner.scan(listOf(classesDir), "MyService").data.single()
 
         assertEquals("MyService.kt", result.sourceFile)
-    }
-
-    private fun writeClassFile(
-        className: String,
-        sourceFile: String,
-        targetDir: File = classesDir,
-    ) {
-        val writer = ClassWriter(0)
-        writer.visit(
-            Opcodes.V21,
-            Opcodes.ACC_PUBLIC,
-            className,
-            null,
-            "java/lang/Object",
-            null,
-        )
-        writer.visitSource(sourceFile, null)
-        writer.visitEnd()
-
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            targetDir.resolve(packageDir).also { it.mkdirs() }
-        } else {
-            targetDir
-        }
-        File(dir, simpleFileName).writeBytes(writer.toByteArray())
     }
 }

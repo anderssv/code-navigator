@@ -1,6 +1,5 @@
 package no.f12.codenavigator.navigation
 
-import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -16,7 +15,7 @@ class ClassDetailExtractorTest {
 
     @Test
     fun `extracts class name and source file`() {
-        val classFile = writeClassFile("com/example/MyService", "MyService.kt")
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/MyService", "MyService.kt")
 
         val detail = ClassDetailExtractor.extract(classFile)
 
@@ -27,9 +26,8 @@ class ClassDetailExtractorTest {
     // [TEST-DONE] Extracts class name and source file
     @Test
     fun `extracts superclass name when not Object`() {
-        val classFile = writeClassFile(
-            "com/example/AdminService",
-            "AdminService.kt",
+        val classFile = TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/AdminService", "AdminService.kt",
             superName = "com/example/BaseService",
         )
 
@@ -41,9 +39,8 @@ class ClassDetailExtractorTest {
     // [TEST-DONE] Extracts superclass name (non-Object)
     @Test
     fun `extracts implemented interfaces`() {
-        val classFile = writeClassFile(
-            "com/example/MyRepo",
-            "MyRepo.kt",
+        val classFile = TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/MyRepo", "MyRepo.kt",
             interfaces = arrayOf("com/example/Repository", "java/io/Serializable"),
         )
 
@@ -55,7 +52,7 @@ class ClassDetailExtractorTest {
     // [TEST-DONE] Extracts implemented interfaces
     @Test
     fun `extracts public methods with parameter types and return type`() {
-        val classFile = writeClassFile("com/example/Service", "Service.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Service", "Service.kt") {
             visitMethod(
                 Opcodes.ACC_PUBLIC,
                 "findUser",
@@ -77,7 +74,7 @@ class ClassDetailExtractorTest {
     // [TEST-DONE] Extracts public methods with parameter types and return type
     @Test
     fun `extracts public fields with type`() {
-        val classFile = writeClassFile("com/example/Config", "Config.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Config", "Config.kt") {
             visitField(Opcodes.ACC_PUBLIC, "name", "Ljava/lang/String;", null, null)
             visitField(Opcodes.ACC_PUBLIC, "count", "I", null, null)
             visitField(Opcodes.ACC_PUBLIC, "items", "[Ljava/lang/String;", null, null)
@@ -94,7 +91,7 @@ class ClassDetailExtractorTest {
     // [TEST-DONE] Extracts public fields with type
     @Test
     fun `filters out constructors and synthetic methods`() {
-        val classFile = writeClassFile("com/example/Foo", "Foo.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Foo", "Foo.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
             visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null)
             visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_SYNTHETIC, "bridge\$method", "()V", null, null)
@@ -111,7 +108,7 @@ class ClassDetailExtractorTest {
     // [TEST-DONE] Filters out constructors and synthetic methods
     @Test
     fun `filters out Kotlin property accessors for fields`() {
-        val classFile = writeClassFile("com/example/User", "User.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/User", "User.kt") {
             visitField(Opcodes.ACC_PRIVATE, "name", "Ljava/lang/String;", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "getName", "()Ljava/lang/String;", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "setName", "(Ljava/lang/String;)V", null, null)
@@ -127,7 +124,7 @@ class ClassDetailExtractorTest {
     // [TEST-DONE] Filters out Kotlin property accessors for fields
     @Test
     fun `filters out data class generated methods`() {
-        val classFile = writeClassFile("com/example/Data", "Data.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Data", "Data.kt") {
             visitField(Opcodes.ACC_PRIVATE, "value", "Ljava/lang/String;", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "component1", "()Ljava/lang/String;", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "copy", "(Ljava/lang/String;)Lcom/example/Data;", null, null)
@@ -146,7 +143,7 @@ class ClassDetailExtractorTest {
     // [TEST-DONE] Filters out data class generated methods
     @Test
     fun `default superclass Object is shown as null`() {
-        val classFile = writeClassFile("com/example/Simple", "Simple.kt")
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Simple", "Simple.kt")
 
         val detail = ClassDetailExtractor.extract(classFile)
 
@@ -157,7 +154,7 @@ class ClassDetailExtractorTest {
 
     @Test
     fun `class with no interfaces has empty list`() {
-        val classFile = writeClassFile("com/example/Plain", "Plain.kt")
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Plain", "Plain.kt")
 
         val detail = ClassDetailExtractor.extract(classFile)
 
@@ -168,7 +165,7 @@ class ClassDetailExtractorTest {
 
     @Test
     fun `INSTANCE field is excluded from fields`() {
-        val classFile = writeClassFile("com/example/Singleton", "Singleton.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Singleton", "Singleton.kt") {
             visitField(
                 Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC,
                 "INSTANCE",
@@ -186,7 +183,7 @@ class ClassDetailExtractorTest {
 
     @Test
     fun `is-prefix accessor for boolean field is filtered from methods`() {
-        val classFile = writeClassFile("com/example/Flags", "Flags.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Flags", "Flags.kt") {
             visitField(Opcodes.ACC_PRIVATE, "active", "Z", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "isActive", "()Z", null, null)
             visitMethod(Opcodes.ACC_PUBLIC, "toggle", "()V", null, null)
@@ -200,7 +197,7 @@ class ClassDetailExtractorTest {
 
     @Test
     fun `simplifyType handles all primitive types`() {
-        val classFile = writeClassFile("com/example/Primitives", "Primitives.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Primitives", "Primitives.kt") {
             visitField(Opcodes.ACC_PUBLIC, "flag", "Z", null, null)
             visitField(Opcodes.ACC_PUBLIC, "letter", "C", null, null)
             visitField(Opcodes.ACC_PUBLIC, "tiny", "B", null, null)
@@ -224,7 +221,7 @@ class ClassDetailExtractorTest {
 
     @Test
     fun `sourceFile defaults to unknown when no source is provided`() {
-        val classFile = writeClassFile("com/example/NoSource", null)
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/NoSource", null)
 
         val detail = ClassDetailExtractor.extract(classFile)
 
@@ -233,7 +230,7 @@ class ClassDetailExtractorTest {
 
     @Test
     fun `synthetic fields are excluded`() {
-        val classFile = writeClassFile("com/example/WithSynthetic", "WithSynthetic.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/WithSynthetic", "WithSynthetic.kt") {
             visitField(Opcodes.ACC_SYNTHETIC, "\$\$delegatedProperties", "[Ljava/lang/Object;", null, null)
             visitField(Opcodes.ACC_PUBLIC, "realField", "Ljava/lang/String;", null, null)
         }
@@ -245,7 +242,7 @@ class ClassDetailExtractorTest {
 
     @Test
     fun `method with return type using array of primitives`() {
-        val classFile = writeClassFile("com/example/ArrayMethods", "ArrayMethods.kt") {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/ArrayMethods", "ArrayMethods.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "getIds", "()[I", null, null)
         }
 
@@ -253,32 +250,5 @@ class ClassDetailExtractorTest {
 
         assertEquals(1, detail.methods.size)
         assertEquals("int[]", detail.methods.first().returnType)
-    }
-
-    private fun writeClassFile(
-        className: String,
-        sourceFile: String?,
-        superName: String = "java/lang/Object",
-        interfaces: Array<String>? = null,
-        configure: ClassWriter.() -> Unit = {},
-    ): File {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, superName, interfaces)
-        if (sourceFile != null) {
-            writer.visitSource(sourceFile, null)
-        }
-        writer.configure()
-        writer.visitEnd()
-
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            tempDir.resolve(packageDir).toFile().also { it.mkdirs() }
-        } else {
-            tempDir.toFile()
-        }
-        val file = File(dir, simpleFileName)
-        file.writeBytes(writer.toByteArray())
-        return file
     }
 }

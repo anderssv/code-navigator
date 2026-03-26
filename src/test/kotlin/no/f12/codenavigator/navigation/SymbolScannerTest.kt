@@ -1,6 +1,5 @@
 package no.f12.codenavigator.navigation
 
-import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
@@ -25,10 +24,10 @@ class SymbolScannerTest {
 
     @Test
     fun `scans directory and finds symbols from all class files`() {
-        writeClassFile("com/example/ServiceA", "ServiceA.kt") {
+        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceA", "ServiceA.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "doWork", "()V", null, null)
         }
-        writeClassFile("com/example/ServiceB", "ServiceB.kt") {
+        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceB", "ServiceB.kt") {
             visitField(Opcodes.ACC_PUBLIC, "count", "I", null, null)
         }
 
@@ -48,10 +47,10 @@ class SymbolScannerTest {
 
     @Test
     fun `results are sorted by package then class then symbol name`() {
-        writeClassFile("com/example/Zebra", "Zebra.kt") {
+        TestClassWriter.writeClassFile(classesDir, "com/example/Zebra", "Zebra.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "zzz", "()V", null, null)
         }
-        writeClassFile("com/example/Alpha", "Alpha.kt") {
+        TestClassWriter.writeClassFile(classesDir, "com/example/Alpha", "Alpha.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "aaa", "()V", null, null)
         }
 
@@ -74,10 +73,10 @@ class SymbolScannerTest {
 
     @Test
     fun `skips synthetic and lambda class files`() {
-        writeClassFile("com/example/Foo", "Foo.kt") {
+        TestClassWriter.writeClassFile(classesDir, "com/example/Foo", "Foo.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "realMethod", "()V", null, null)
         }
-        writeClassFile("com/example/Foo\$1", "Foo.kt") {
+        TestClassWriter.writeClassFile(classesDir, "com/example/Foo\$1", "Foo.kt") {
             visitMethod(Opcodes.ACC_PUBLIC, "invoke", "()V", null, null)
         }
 
@@ -85,27 +84,5 @@ class SymbolScannerTest {
 
         assertEquals(1, results.size)
         assertEquals("realMethod", results.first().symbolName)
-    }
-
-    private fun writeClassFile(
-        className: String,
-        sourceFile: String,
-        targetDir: File = classesDir,
-        configure: ClassWriter.() -> Unit = {},
-    ) {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-        writer.configure()
-        writer.visitEnd()
-
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            targetDir.resolve(packageDir).also { it.mkdirs() }
-        } else {
-            targetDir
-        }
-        File(dir, simpleFileName).writeBytes(writer.toByteArray())
     }
 }

@@ -1,7 +1,5 @@
 package no.f12.codenavigator.navigation
 
-import org.objectweb.asm.ClassWriter
-import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -25,8 +23,8 @@ class ClassScannerTest {
 
     @Test
     fun `scans directory and finds all class files`() {
-        writeClassFile("com/example/ServiceA", "ServiceA.kt")
-        writeClassFile("com/example/ServiceB", "ServiceB.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceA", "ServiceA.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceB", "ServiceB.kt")
 
         val results = ClassScanner.scan(listOf(classesDir)).data
 
@@ -42,9 +40,9 @@ class ClassScannerTest {
 
     @Test
     fun `filters out anonymous and synthetic classes`() {
-        writeClassFile("com/example/Foo", "Foo.kt")
-        writeClassFile("com/example/Foo\$1", "Foo.kt")
-        writeClassFile("com/example/Foo\$lambda\$1", "Foo.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Foo", "Foo.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Foo\$1", "Foo.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Foo\$lambda\$1", "Foo.kt")
 
         val results = ClassScanner.scan(listOf(classesDir)).data
 
@@ -54,8 +52,8 @@ class ClassScannerTest {
 
     @Test
     fun `keeps named inner classes`() {
-        writeClassFile("com/example/Outer", "Outer.kt")
-        writeClassFile("com/example/Outer\$Inner", "Outer.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Outer", "Outer.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Outer\$Inner", "Outer.kt")
 
         val results = ClassScanner.scan(listOf(classesDir)).data
 
@@ -70,8 +68,8 @@ class ClassScannerTest {
         val javaClassesDir = tempDir.resolve("build/classes/java/main").toFile()
         javaClassesDir.mkdirs()
 
-        writeClassFile("com/example/KotlinService", "KotlinService.kt")
-        writeClassFile("com/example/JavaService", "JavaService.java", targetDir = javaClassesDir)
+        TestClassWriter.writeClassFile(classesDir, "com/example/KotlinService", "KotlinService.kt")
+        TestClassWriter.writeClassFile(javaClassesDir, "com/example/JavaService", "JavaService.java")
 
         val results = ClassScanner.scan(listOf(classesDir, javaClassesDir)).data
 
@@ -80,9 +78,9 @@ class ClassScannerTest {
 
     @Test
     fun `results are sorted alphabetically by class name`() {
-        writeClassFile("com/example/Zebra", "Zebra.kt")
-        writeClassFile("com/example/Alpha", "Alpha.kt")
-        writeClassFile("com/example/Middle", "Middle.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Zebra", "Zebra.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Alpha", "Alpha.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Middle", "Middle.kt")
 
         val results = ClassScanner.scan(listOf(classesDir)).data
 
@@ -99,32 +97,5 @@ class ClassScannerTest {
         val results = ClassScanner.scan(listOf(nonExistent)).data
 
         assertTrue(results.isEmpty())
-    }
-
-    private fun writeClassFile(
-        className: String,
-        sourceFile: String,
-        targetDir: File = classesDir,
-    ) {
-        val writer = ClassWriter(0)
-        writer.visit(
-            Opcodes.V21,
-            Opcodes.ACC_PUBLIC,
-            className,
-            null,
-            "java/lang/Object",
-            null,
-        )
-        writer.visitSource(sourceFile, null)
-        writer.visitEnd()
-
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            targetDir.resolve(packageDir).also { it.mkdirs() }
-        } else {
-            targetDir
-        }
-        File(dir, simpleFileName).writeBytes(writer.toByteArray())
     }
 }

@@ -1,6 +1,5 @@
 package no.f12.codenavigator.navigation
 
-import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
@@ -27,11 +26,11 @@ class UsageScannerTest {
 
     @Test
     fun `finds method call usage by owner and method name`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(Call("com/example/Target", "process", "()V")),
         )
-        writeEmptyClass("com/example/Target", "Target.kt")
+        TestClassWriter.writeClassFile(classesDir, "com/example/Target", "Target.kt")
 
         val usages = UsageScanner.scan(
             listOf(classesDir),
@@ -48,8 +47,8 @@ class UsageScannerTest {
 
     @Test
     fun `returns empty list when no usages match`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(Call("com/example/Target", "process", "()V")),
         )
 
@@ -64,12 +63,12 @@ class UsageScannerTest {
 
     @Test
     fun `finds multiple call sites for the same target method`() {
-        writeClassWithCalls(
-            "com/example/CallerA", "CallerA.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/CallerA", "CallerA.kt",
             "fromA", listOf(Call("com/example/Target", "process", "()V")),
         )
-        writeClassWithCalls(
-            "com/example/CallerB", "CallerB.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/CallerB", "CallerB.kt",
             "fromB", listOf(Call("com/example/Target", "process", "()V")),
         )
 
@@ -87,8 +86,8 @@ class UsageScannerTest {
 
     @Test
     fun `finds all methods called on an owner when no method filter given`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(
                 Call("com/example/Target", "process", "()V"),
                 Call("com/example/Target", "validate", "(Ljava/lang/String;)Z"),
@@ -110,8 +109,8 @@ class UsageScannerTest {
 
     @Test
     fun `finds field read (GETFIELD) usage`() {
-        writeClassWithFieldAccess(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithFieldAccessAndCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork",
             FieldAccess("com/example/Target", "name", "Ljava/lang/String;", Opcodes.GETFIELD),
         )
@@ -132,8 +131,8 @@ class UsageScannerTest {
 
     @Test
     fun `finds static field access (GETSTATIC) usage`() {
-        writeClassWithFieldAccess(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithFieldAccessAndCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork",
             FieldAccess("com/example/Constants", "MAX_SIZE", "I", Opcodes.GETSTATIC),
         )
@@ -153,8 +152,8 @@ class UsageScannerTest {
 
     @Test
     fun `finds type used in NEW instruction`() {
-        writeClassWithTypeInsn(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithTypeInsn(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", Opcodes.NEW, "com/example/Target",
         )
 
@@ -170,8 +169,8 @@ class UsageScannerTest {
 
     @Test
     fun `finds type used in CHECKCAST instruction`() {
-        writeClassWithTypeInsn(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithTypeInsn(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", Opcodes.CHECKCAST, "com/example/Target",
         )
 
@@ -186,8 +185,8 @@ class UsageScannerTest {
 
     @Test
     fun `finds type used as method parameter in descriptor`() {
-        writeClassWithMethodDescriptor(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithMethodDescriptor(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", "(Lcom/example/Target;)V",
         )
 
@@ -204,8 +203,8 @@ class UsageScannerTest {
 
     @Test
     fun `finds type used as method return type in descriptor`() {
-        writeClassWithMethodDescriptor(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithMethodDescriptor(
+            classesDir, "com/example/Caller", "Caller.kt",
             "getTarget", "()Lcom/example/Target;",
         )
 
@@ -221,10 +220,9 @@ class UsageScannerTest {
 
     @Test
     fun `finds type used as field declaration type`() {
-        writeClassWithField(
-            "com/example/Caller", "Caller.kt",
-            "target", "Lcom/example/Target;",
-        )
+        TestClassWriter.writeClassFile(classesDir, "com/example/Caller", "Caller.kt") {
+            visitField(Opcodes.ACC_PRIVATE, "target", "Lcom/example/Target;", null, null)
+        }
 
         val usages = UsageScanner.scan(
             listOf(classesDir),
@@ -239,15 +237,10 @@ class UsageScannerTest {
 
     // --- Type parameter also matches method call/field owners ---
 
-    // [TEST] -Ptype finds method calls where owner matches the type (INVOKESTATIC on file-facade class)
-    // [TEST] -Ptype finds field access where owner matches the type
-    // [TEST] -Ptype finds both method calls AND type references for same type (comprehensive)
-    // [TEST] -Ptype with method filter narrows method call results by method name
-
     @Test
     fun `type parameter with method filter narrows to specific method`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(
                 Call("com/example/Target", "process", "()V"),
                 Call("com/example/Target", "validate", "(Ljava/lang/String;)Z"),
@@ -267,12 +260,12 @@ class UsageScannerTest {
 
     @Test
     fun `type parameter finds method calls and type references for same type`() {
-        writeClassWithStaticCall(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithStaticCall(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", Call("com/example/Target", "process", "()V"),
         )
-        writeClassWithTypeInsn(
-            "com/example/Creator", "Creator.kt",
+        TestClassWriter.writeClassWithTypeInsn(
+            classesDir, "com/example/Creator", "Creator.kt",
             "create", Opcodes.NEW, "com/example/Target",
         )
 
@@ -288,8 +281,8 @@ class UsageScannerTest {
 
     @Test
     fun `type parameter finds field access where owner matches the type`() {
-        writeClassWithFieldAccess(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithFieldAccessAndCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork",
             FieldAccess("com/example/Constants", "MAX_SIZE", "I", Opcodes.GETSTATIC),
         )
@@ -307,8 +300,8 @@ class UsageScannerTest {
 
     @Test
     fun `type parameter finds method calls where owner matches the type`() {
-        writeClassWithStaticCall(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithStaticCall(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", Call("com/example/ContextKt", "locateResourceFile", "(Ljava/lang/String;)Ljava/lang/String;"),
         )
 
@@ -329,12 +322,12 @@ class UsageScannerTest {
 
     @Test
     fun `filters usages to project classes only`() {
-        writeClassWithCalls(
-            "com/example/ProjectCaller", "ProjectCaller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/ProjectCaller", "ProjectCaller.kt",
             "doWork", listOf(Call("com/external/Library", "process", "()V")),
         )
-        writeClassWithCalls(
-            "com/external/OtherCaller", "OtherCaller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/external/OtherCaller", "OtherCaller.kt",
             "doOther", listOf(Call("com/external/Library", "process", "()V")),
         )
 
@@ -354,8 +347,8 @@ class UsageScannerTest {
 
     @Test
     fun `ownerClass filter matches case-insensitively`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(Call("com/example/Target", "process", "()V")),
         )
 
@@ -370,8 +363,8 @@ class UsageScannerTest {
 
     @Test
     fun `method filter matches exact bytecode method name`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(
                 Call("com/example/Target", "process", "()V"),
                 Call("com/example/Target", "processAll", "()V"),
@@ -402,8 +395,8 @@ class UsageScannerTest {
 
     @Test
     fun `includes descriptor in method usage results`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(Call("com/example/Target", "process", "(Ljava/lang/String;)I")),
         )
 
@@ -420,8 +413,8 @@ class UsageScannerTest {
 
     @Test
     fun `tracks source file for caller class`() {
-        writeClassWithCalls(
-            "com/example/MyService", "MyService.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/MyService", "MyService.kt",
             "doWork", listOf(Call("com/example/Target", "process", "()V")),
         )
 
@@ -439,8 +432,8 @@ class UsageScannerTest {
 
     @Test
     fun `deduplicates when same method is called multiple times from same caller`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(
                 Call("com/example/Target", "process", "()V"),
                 Call("com/example/Target", "process", "()V"),
@@ -461,8 +454,8 @@ class UsageScannerTest {
 
     @Test
     fun `field parameter finds direct field access on owner`() {
-        writeClassWithFieldAccess(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithFieldAccessAndCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork",
             FieldAccess("com/example/Account", "accountNumber", "Ljava/lang/String;", Opcodes.GETFIELD),
         )
@@ -480,8 +473,8 @@ class UsageScannerTest {
 
     @Test
     fun `field parameter finds getter method call on owner`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(Call("com/example/Account", "getAccountNumber", "()Ljava/lang/String;")),
         )
 
@@ -498,8 +491,8 @@ class UsageScannerTest {
 
     @Test
     fun `field parameter finds setter method call on owner`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(Call("com/example/Account", "setAccountNumber", "(Ljava/lang/String;)V")),
         )
 
@@ -516,8 +509,8 @@ class UsageScannerTest {
 
     @Test
     fun `field parameter finds is-prefixed method call on owner`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(Call("com/example/Account", "isActive", "()Z")),
         )
 
@@ -534,8 +527,8 @@ class UsageScannerTest {
 
     @Test
     fun `field parameter finds both field access and getter call combined`() {
-        writeClassWithFieldAccessAndCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithFieldAccessAndCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork",
             fieldAccess = FieldAccess("com/example/Account", "accountNumber", "Ljava/lang/String;", Opcodes.GETFIELD),
             calls = listOf(Call("com/example/Account", "getAccountNumber", "()Ljava/lang/String;")),
@@ -555,8 +548,8 @@ class UsageScannerTest {
 
     @Test
     fun `field parameter does not match unrelated methods on same owner`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(
                 Call("com/example/Account", "getAccountNumber", "()Ljava/lang/String;"),
                 Call("com/example/Account", "process", "()V"),
@@ -578,8 +571,8 @@ class UsageScannerTest {
 
     @Test
     fun `ownerClass simple name matches fully-qualified class name`() {
-        writeClassWithCalls(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", listOf(Call("com/example/Target", "process", "()V")),
         )
 
@@ -595,8 +588,8 @@ class UsageScannerTest {
 
     @Test
     fun `type simple name matches fully-qualified class name`() {
-        writeClassWithTypeInsn(
-            "com/example/Caller", "Caller.kt",
+        TestClassWriter.writeClassWithTypeInsn(
+            classesDir, "com/example/Caller", "Caller.kt",
             "doWork", Opcodes.NEW, "com/example/Target",
         )
 
@@ -613,12 +606,12 @@ class UsageScannerTest {
 
     @Test
     fun `outside-package filter excludes usages where caller is inside the specified package`() {
-        writeClassWithCalls(
-            "com/example/ra/InternalCaller", "InternalCaller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/ra/InternalCaller", "InternalCaller.kt",
             "doWork", listOf(Call("com/example/Target", "process", "()V")),
         )
-        writeClassWithCalls(
-            "com/example/services/ExternalCaller", "ExternalCaller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/services/ExternalCaller", "ExternalCaller.kt",
             "callTarget", listOf(Call("com/example/Target", "process", "()V")),
         )
 
@@ -638,12 +631,12 @@ class UsageScannerTest {
 
     @Test
     fun `outside-package filter keeps usages where caller is outside the specified package`() {
-        writeClassWithCalls(
-            "com/example/services/CallerA", "CallerA.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/services/CallerA", "CallerA.kt",
             "fromA", listOf(Call("com/example/Target", "process", "()V")),
         )
-        writeClassWithCalls(
-            "com/example/web/CallerB", "CallerB.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/web/CallerB", "CallerB.kt",
             "fromB", listOf(Call("com/example/Target", "process", "()V")),
         )
 
@@ -660,8 +653,8 @@ class UsageScannerTest {
 
     @Test
     fun `outside-package filter with null value returns all usages`() {
-        writeClassWithCalls(
-            "com/example/ra/InternalCaller", "InternalCaller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/ra/InternalCaller", "InternalCaller.kt",
             "doWork", listOf(Call("com/example/Target", "process", "()V")),
         )
 
@@ -678,12 +671,12 @@ class UsageScannerTest {
 
     @Test
     fun `outside-package filter does not exclude package with same prefix`() {
-        writeClassWithCalls(
-            "com/example/ra/InternalCaller", "InternalCaller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/ra/InternalCaller", "InternalCaller.kt",
             "doWork", listOf(Call("com/example/Target", "process", "()V")),
         )
-        writeClassWithCalls(
-            "com/example/rabbit/SimilarCaller", "SimilarCaller.kt",
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/rabbit/SimilarCaller", "SimilarCaller.kt",
             "callTarget", listOf(Call("com/example/Target", "process", "()V")),
         )
 
@@ -699,212 +692,5 @@ class UsageScannerTest {
 
         assertEquals(1, filtered.size)
         assertEquals(ClassName("com.example.rabbit.SimilarCaller"), filtered[0].callerClass)
-    }
-
-    // --- helpers ---
-
-    private data class Call(val owner: String, val name: String, val descriptor: String)
-    private data class FieldAccess(val owner: String, val name: String, val descriptor: String, val opcode: Int)
-
-    private fun writeClassWithCalls(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        calls: List<Call>,
-    ) {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        init.visitCode()
-        init.visitVarInsn(Opcodes.ALOAD, 0)
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        init.visitInsn(Opcodes.RETURN)
-        init.visitMaxs(1, 1)
-        init.visitEnd()
-
-        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, null)
-        mv.visitCode()
-        for (call in calls) {
-            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, call.owner, call.name, call.descriptor, false)
-        }
-        mv.visitInsn(Opcodes.RETURN)
-        mv.visitMaxs(1, 1)
-        mv.visitEnd()
-
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithTypeInsn(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        opcode: Int,
-        typeRef: String,
-    ) {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        init.visitCode()
-        init.visitVarInsn(Opcodes.ALOAD, 0)
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        init.visitInsn(Opcodes.RETURN)
-        init.visitMaxs(1, 1)
-        init.visitEnd()
-
-        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, null)
-        mv.visitCode()
-        if (opcode == Opcodes.CHECKCAST || opcode == Opcodes.INSTANCEOF) {
-            mv.visitInsn(Opcodes.ACONST_NULL)
-        }
-        mv.visitTypeInsn(opcode, typeRef)
-        if (opcode == Opcodes.NEW || opcode == Opcodes.CHECKCAST) {
-            mv.visitInsn(Opcodes.POP)
-        } else if (opcode == Opcodes.INSTANCEOF) {
-            mv.visitInsn(Opcodes.POP)
-        }
-        mv.visitInsn(Opcodes.RETURN)
-        mv.visitMaxs(2, 2)
-        mv.visitEnd()
-
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithMethodDescriptor(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        descriptor: String,
-    ) {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, descriptor, null, null)
-        mv.visitCode()
-        mv.visitInsn(Opcodes.ACONST_NULL)
-        mv.visitInsn(Opcodes.ARETURN)
-        mv.visitMaxs(1, 2)
-        mv.visitEnd()
-
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithField(
-        className: String,
-        sourceFile: String,
-        fieldName: String,
-        fieldDescriptor: String,
-    ) {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-        writer.visitField(Opcodes.ACC_PRIVATE, fieldName, fieldDescriptor, null, null)
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithFieldAccess(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        fieldAccess: FieldAccess,
-    ) {
-        writeClassWithFieldAccessAndCalls(className, sourceFile, methodName, fieldAccess, emptyList())
-    }
-
-    private fun writeClassWithFieldAccessAndCalls(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        fieldAccess: FieldAccess,
-        calls: List<Call>,
-    ) {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        init.visitCode()
-        init.visitVarInsn(Opcodes.ALOAD, 0)
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        init.visitInsn(Opcodes.RETURN)
-        init.visitMaxs(1, 1)
-        init.visitEnd()
-
-        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, null)
-        mv.visitCode()
-        if (fieldAccess.opcode == Opcodes.GETFIELD || fieldAccess.opcode == Opcodes.PUTFIELD) {
-            mv.visitVarInsn(Opcodes.ALOAD, 0)
-        }
-        mv.visitFieldInsn(fieldAccess.opcode, fieldAccess.owner, fieldAccess.name, fieldAccess.descriptor)
-        if (fieldAccess.opcode == Opcodes.GETFIELD || fieldAccess.opcode == Opcodes.GETSTATIC) {
-            mv.visitInsn(Opcodes.POP)
-        }
-        for (call in calls) {
-            mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, call.owner, call.name, call.descriptor, false)
-        }
-        mv.visitInsn(Opcodes.RETURN)
-        mv.visitMaxs(2, 2)
-        mv.visitEnd()
-
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassWithStaticCall(
-        className: String,
-        sourceFile: String,
-        methodName: String,
-        call: Call,
-    ) {
-        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-
-        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
-        init.visitCode()
-        init.visitVarInsn(Opcodes.ALOAD, 0)
-        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
-        init.visitInsn(Opcodes.RETURN)
-        init.visitMaxs(1, 1)
-        init.visitEnd()
-
-        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, null)
-        mv.visitCode()
-        mv.visitInsn(Opcodes.ACONST_NULL)
-        mv.visitMethodInsn(Opcodes.INVOKESTATIC, call.owner, call.name, call.descriptor, false)
-        mv.visitInsn(Opcodes.POP)
-        mv.visitInsn(Opcodes.RETURN)
-        mv.visitMaxs(2, 2)
-        mv.visitEnd()
-
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeEmptyClass(className: String, sourceFile: String) {
-        val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
-        writer.visitSource(sourceFile, null)
-        writer.visitEnd()
-        writeClassFile(className, writer)
-    }
-
-    private fun writeClassFile(className: String, writer: ClassWriter) {
-        val packageDir = className.substringBeforeLast("/", "")
-        val simpleFileName = className.substringAfterLast("/") + ".class"
-        val dir = if (packageDir.isNotEmpty()) {
-            classesDir.resolve(packageDir).also { it.mkdirs() }
-        } else {
-            classesDir
-        }
-        File(dir, simpleFileName).writeBytes(writer.toByteArray())
     }
 }
