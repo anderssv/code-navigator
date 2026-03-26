@@ -16,6 +16,7 @@ data class MethodRef(
 class CallGraph(
     private val callerToCallees: Map<MethodRef, Set<MethodRef>>,
     private val sourceFiles: Map<ClassName, String> = emptyMap(),
+    private val lineNumbers: Map<MethodRef, Int> = emptyMap(),
 ) {
     private val calleeToCallers: Map<MethodRef, Set<MethodRef>> by lazy {
         val inverted = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
@@ -80,6 +81,8 @@ class CallGraph(
 
     fun projectClasses(): Set<ClassName> = sourceFiles.keys
 
+    fun lineNumberOf(method: MethodRef): Int? = lineNumbers[method]
+
     fun projectClassFilter(): (MethodRef) -> Boolean {
         val classes = projectClasses()
         return { it.className in classes }
@@ -94,12 +97,17 @@ class CallGraph(
     fun forEachSourceFile(action: (className: ClassName, sourceFile: String) -> Unit) {
         sourceFiles.forEach { (className, sourceFile) -> action(className, sourceFile) }
     }
+
+    fun forEachLineNumber(action: (method: MethodRef, lineNumber: Int) -> Unit) {
+        lineNumbers.forEach { (method, lineNumber) -> action(method, lineNumber) }
+    }
 }
 
 object CallGraphBuilder {
     fun build(classDirectories: List<File>): ScanResult<CallGraph> {
         val callerToCallees = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
         val sourceFiles = mutableMapOf<ClassName, String>()
+        val lineNumbers = mutableMapOf<MethodRef, Int>()
         val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
 
         classDirectories
@@ -109,7 +117,7 @@ object CallGraphBuilder {
                     .filter { it.isFile && it.extension == "class" }
                     .forEach { classFile ->
                         try {
-                            extractCalls(classFile, callerToCallees, sourceFiles)
+                            extractCalls(classFile, callerToCallees, sourceFiles, lineNumbers)
                         } catch (e: UnsupportedBytecodeVersionException) {
                             skipped.add(e)
                         }
@@ -117,7 +125,7 @@ object CallGraphBuilder {
             }
 
         return ScanResult(
-            data = CallGraph(callerToCallees, sourceFiles),
+            data = CallGraph(callerToCallees, sourceFiles, lineNumbers),
             skippedFiles = skipped,
         )
     }
@@ -126,6 +134,7 @@ object CallGraphBuilder {
         classFile: File,
         graph: MutableMap<MethodRef, MutableSet<MethodRef>>,
         sourceFiles: MutableMap<ClassName, String>,
+        lineNumbers: MutableMap<MethodRef, Int>,
     ) {
         val reader = createClassReader(classFile)
         var ownerClassName = ClassName("")
@@ -159,6 +168,14 @@ object CallGraphBuilder {
                     val caller = MethodRef(ownerClassName, name)
 
                     return object : MethodVisitor(Opcodes.ASM9) {
+                        private var firstLineNumber: Int? = null
+
+                        override fun visitLineNumber(line: Int, start: org.objectweb.asm.Label) {
+                            if (firstLineNumber == null) {
+                                firstLineNumber = line
+                            }
+                        }
+
                         override fun visitMethodInsn(
                             opcode: Int,
                             owner: String,
@@ -168,6 +185,10 @@ object CallGraphBuilder {
                         ) {
                             val callee = MethodRef(ClassName(owner.replace('/', '.')), name)
                             graph.getOrPut(caller) { mutableSetOf() }.add(callee)
+                        }
+
+                        override fun visitEnd() {
+                            firstLineNumber?.let { lineNumbers[caller] = it }
                         }
                     }
                 }

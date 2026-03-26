@@ -207,6 +207,30 @@ class CallGraphCacheTest {
         assertTrue(result.contains("handleReset"), "Tree should show handleReset at depth 3, got:\n$result")
     }
 
+    @Test
+    fun `writes and reads back line number mappings`() {
+        val method = MethodRef(ClassName("com.example.Service"), "handle")
+        val edges = mapOf(method to emptySet<MethodRef>())
+        val sourceFiles = mapOf(ClassName("com.example.Service") to "Service.kt")
+        val lineNumbers = mapOf(method to 42)
+        val graph = CallGraph(edges, sourceFiles, lineNumbers)
+
+        CallGraphCache.write(cacheFile, graph)
+        val result = CallGraphCache.read(cacheFile)
+
+        assertEquals(42, result.lineNumberOf(method))
+    }
+
+    @Test
+    fun `line number is null for methods not in cache`() {
+        val graph = CallGraph(emptyMap(), emptyMap())
+
+        CallGraphCache.write(cacheFile, graph)
+        val result = CallGraphCache.read(cacheFile)
+
+        assertEquals(null, result.lineNumberOf(MethodRef(ClassName("com.example.Missing"), "method")))
+    }
+
     private fun writeClassFile(className: String, targetDir: File = classesDir) {
         val writer = ClassWriter(0)
         writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)

@@ -56,4 +56,9 @@ class OutputWrapperTest {
     fun `OutputFormat returns TEXT when llm is false`() {
         assertEquals(OutputFormat.TEXT, OutputFormat.from(format = null, llm = false))
     }
+
+    @Test
+    fun `OutputFormat returns LLM when format string is llm`() {
+        assertEquals(OutputFormat.LLM, OutputFormat.from(format = "llm", llm = null))
+    }
 }

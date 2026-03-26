@@ -283,4 +283,45 @@ class CallerTreeFormatterTest {
             result,
         )
     }
+
+    @Test
+    fun `renders line number after source file when available`() {
+        val caller = MethodRef(ClassName("com.example.Controller"), "handleRequest")
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
+        val graph = CallGraph(
+            mapOf(caller to setOf(target)),
+            sourceFiles = mapOf(ClassName("com.example.Controller") to "Controller.kt"),
+            lineNumbers = mapOf(caller to 42),
+        )
+
+        val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 3)
+
+        assertEquals(
+            """
+            com.example.Service.doWork
+              ← com.example.Controller.handleRequest (Controller.kt:42)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `renders without line number when null`() {
+        val caller = MethodRef(ClassName("com.example.Controller"), "handleRequest")
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
+        val graph = CallGraph(
+            mapOf(caller to setOf(target)),
+            sourceFiles = mapOf(ClassName("com.example.Controller") to "Controller.kt"),
+        )
+
+        val result = CallerTreeFormatter.format(graph, listOf(target), maxDepth = 3)
+
+        assertEquals(
+            """
+            com.example.Service.doWork
+              ← com.example.Controller.handleRequest (Controller.kt)
+            """.trimIndent(),
+            result,
+        )
+    }
 }

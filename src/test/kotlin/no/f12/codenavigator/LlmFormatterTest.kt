@@ -87,10 +87,12 @@ class LlmFormatterTest {
             CallTreeNode(
                 method = MethodRef(ClassName("com.example.Service"), "doWork"),
                 sourceFile = "Service.kt",
+                lineNumber = null,
                 children = listOf(
                     CallTreeNode(
                         method = MethodRef(ClassName("com.example.Controller"), "handle"),
                         sourceFile = "Controller.kt",
+                        lineNumber = null,
                         children = emptyList(),
                     )
                 ),
@@ -100,6 +102,29 @@ class LlmFormatterTest {
         val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
 
         assertEquals("com.example.Service.doWork Service.kt\n  ← com.example.Controller.handle Controller.kt", result)
+    }
+
+    @Test
+    fun `formats call trees with line numbers`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Service"), "doWork"),
+                sourceFile = "Service.kt",
+                lineNumber = 15,
+                children = listOf(
+                    CallTreeNode(
+                        method = MethodRef(ClassName("com.example.Controller"), "handle"),
+                        sourceFile = "Controller.kt",
+                        lineNumber = 42,
+                        children = emptyList(),
+                    )
+                ),
+            )
+        )
+
+        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+
+        assertEquals("com.example.Service.doWork Service.kt:15\n  ← com.example.Controller.handle Controller.kt:42", result)
     }
 
     @Test

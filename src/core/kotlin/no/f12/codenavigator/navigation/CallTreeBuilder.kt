@@ -3,6 +3,7 @@ package no.f12.codenavigator.navigation
 data class CallTreeNode(
     val method: MethodRef,
     val sourceFile: String?,
+    val lineNumber: Int?,
     val children: List<CallTreeNode>,
 )
 
@@ -30,6 +31,7 @@ object CallTreeBuilder {
         filter: ((MethodRef) -> Boolean)?,
     ): CallTreeNode {
         val sourceFile = graph.sourceFileOf(method.className)
+        val lineNumber = graph.lineNumberOf(method)
         val depthCheck = depth < maxDepth
         val visitedCheck = method !in visited
         val children = if (depthCheck && visitedCheck) {
@@ -42,6 +44,6 @@ object CallTreeBuilder {
         } else {
             emptyList()
         }
-        return CallTreeNode(method, sourceFile, children)
+        return CallTreeNode(method, sourceFile, lineNumber, children)
     }
 }

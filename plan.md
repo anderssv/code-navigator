@@ -382,16 +382,6 @@ From user feedback: `cnavAgentHelp` explains what the tasks do but not how to in
   - Coupled files with high coupling degree but low shared revs → may be coincidence
 - **Key file**: `AgentHelpText.kt`
 
-## 65. Include line numbers when listing classes, methods, or symbols (Medium value, low effort)
-
-All listing and search tasks (`cnavListClasses`, `cnavFindClass`, `cnavFindSymbol`, `cnavClass`, `cnavCallers`, `cnavCallees`, etc.) should include source line numbers in their output. This lets agents and humans jump directly to the relevant code location without a second search step.
-
-- **Needs**: Bytecode line number tables (already available via ASM's `visitLineNumber`) and/or debug info
-- **Approach**: When scanning bytecode, extract the first line number for each method from the `LineNumberTable` attribute. For classes, use the first line number of the first declared method (or constructor). Propagate line numbers through data structures to formatters.
-- **Applies to**: `cnavListClasses`, `cnavFindClass`, `cnavFindSymbol`, `cnavClass`, `cnavCallers`, `cnavCallees`, `cnavDead`, `cnavComplexity`, `cnavUsages`, `cnavInterfaces`
-- **Output example**: `com.example.UserService.resetPassword (UserService.kt:42)` instead of `com.example.UserService.resetPassword (UserService.kt)`
-- **Why useful**: Eliminates a grep/search step when navigating from analysis output to source code. Especially valuable for AI agents that can open files at specific line numbers.
-
 ## Future ideas (not yet planned)
 
 - **Consider just failing on first file with wrong bytecode**: The current `ScanResult<T>` partial-fail approach adds complexity across scanners, caches, tasks, and mojos. A simpler alternative: fail fast on the first unsupported bytecode file with a clear error message. Less graceful but dramatically less code.

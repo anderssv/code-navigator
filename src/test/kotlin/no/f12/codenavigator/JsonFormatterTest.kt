@@ -275,6 +275,41 @@ class JsonFormatterTest {
         )
     }
 
+    @Test
+    fun `call tree JSON includes lineNumber when available`() {
+        val caller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val callee = MethodRef(ClassName("com.example.Service"), "doWork")
+        val graph = CallGraph(
+            mapOf(caller to setOf(callee)),
+            sourceFiles = mapOf(
+                ClassName("com.example.Controller") to "Controller.kt",
+                ClassName("com.example.Service") to "Service.kt",
+            ),
+            lineNumbers = mapOf(caller to 10, callee to 25),
+        )
+
+        val result = JsonFormatter.formatCallTree(graph, listOf(caller), maxDepth = 3, CallDirection.CALLEES)
+
+        assertEquals(
+            """[{"method":"com.example.Controller.handle","sourceFile":"Controller.kt","lineNumber":10,"children":[""" +
+                """{"method":"com.example.Service.doWork","sourceFile":"Service.kt","lineNumber":25,"children":[]}]}]""",
+            result,
+        )
+    }
+
+    @Test
+    fun `call tree JSON omits lineNumber when null`() {
+        val graph = CallGraph(emptyMap())
+        val method = MethodRef(ClassName("com.example.Service"), "doWork")
+
+        val result = JsonFormatter.formatCallTree(graph, listOf(method), maxDepth = 3, CallDirection.CALLEES)
+
+        assertEquals(
+            """[{"method":"com.example.Service.doWork","sourceFile":"<unknown>","children":[]}]""",
+            result,
+        )
+    }
+
     // === Interface formatting ===
 
     @Test

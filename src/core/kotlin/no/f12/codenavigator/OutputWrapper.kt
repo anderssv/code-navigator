@@ -6,6 +6,7 @@ enum class OutputFormat {
     companion object {
         fun from(format: String?, llm: Boolean?): OutputFormat = when {
             llm == true -> LLM
+            format == "llm" -> LLM
             format == "json" -> JSON
             else -> TEXT
         }

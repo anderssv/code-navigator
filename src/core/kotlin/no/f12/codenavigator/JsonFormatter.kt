@@ -295,6 +295,7 @@ object JsonFormatter {
         return jsonObject(
             "method" to node.method.qualifiedName,
             "sourceFile" to node.sourceFile,
+            "lineNumber" to node.lineNumber,
             "children" to JsonRaw(children),
         )
     }

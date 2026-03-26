@@ -259,4 +259,49 @@ class CallTreeBuilderTest {
         assertEquals(1, result[0].children.size)
         assertEquals("handle", result[0].children[0].method.methodName)
     }
+
+    @Test
+    fun `child nodes include line number from graph`() {
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
+        val caller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val graph = CallGraph(
+            mapOf(caller to setOf(target)),
+            sourceFiles = mapOf(
+                ClassName("com.example.Controller") to "Controller.kt",
+                ClassName("com.example.Service") to "Service.kt",
+            ),
+            lineNumbers = mapOf(caller to 42),
+        )
+
+        val result = CallTreeBuilder.build(graph, listOf(target), maxDepth = 3, CallDirection.CALLERS)
+
+        assertEquals(42, result[0].children[0].lineNumber)
+    }
+
+    @Test
+    fun `root node includes line number from graph`() {
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
+        val graph = CallGraph(
+            emptyMap(),
+            sourceFiles = mapOf(ClassName("com.example.Service") to "Service.kt"),
+            lineNumbers = mapOf(target to 15),
+        )
+
+        val result = CallTreeBuilder.build(graph, listOf(target), maxDepth = 3, CallDirection.CALLERS)
+
+        assertEquals(15, result[0].lineNumber)
+    }
+
+    @Test
+    fun `line number is null when method has no line number in graph`() {
+        val target = MethodRef(ClassName("com.example.Service"), "doWork")
+        val graph = CallGraph(
+            emptyMap(),
+            sourceFiles = mapOf(ClassName("com.example.Service") to "Service.kt"),
+        )
+
+        val result = CallTreeBuilder.build(graph, listOf(target), maxDepth = 3, CallDirection.CALLERS)
+
+        assertEquals(null, result[0].lineNumber)
+    }
 }

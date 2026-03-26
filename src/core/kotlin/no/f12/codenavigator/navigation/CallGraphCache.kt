@@ -9,6 +9,7 @@ object CallGraphCache {
     private const val FIELD_SEPARATOR = "\t"
     private const val EDGES_HEADER = "[EDGES]"
     private const val SOURCES_HEADER = "[SOURCES]"
+    private const val LINES_HEADER = "[LINES]"
 
     fun write(cacheFile: File, graph: CallGraph) {
         CacheFreshness.atomicWrite(cacheFile) { file ->
@@ -34,6 +35,14 @@ object CallGraphCache {
                     )
                     writer.newLine()
                 }
+                writer.write(LINES_HEADER)
+                writer.newLine()
+                graph.forEachLineNumber { method, lineNumber ->
+                    writer.write(
+                        listOf(method.className.value, method.methodName, lineNumber.toString()).joinToString(FIELD_SEPARATOR),
+                    )
+                    writer.newLine()
+                }
             }
         }
     }
@@ -41,6 +50,7 @@ object CallGraphCache {
     fun read(cacheFile: File): CallGraph {
         val callerToCallees = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
         val sourceFiles = mutableMapOf<ClassName, String>()
+        val lineNumbers = mutableMapOf<MethodRef, Int>()
 
         var section = ""
         cacheFile.useLines { lines ->
@@ -48,6 +58,7 @@ object CallGraphCache {
                 when {
                     line == EDGES_HEADER -> section = EDGES_HEADER
                     line == SOURCES_HEADER -> section = SOURCES_HEADER
+                    line == LINES_HEADER -> section = LINES_HEADER
                     section == EDGES_HEADER -> {
                         val parts = line.split(FIELD_SEPARATOR)
                         val caller = MethodRef(ClassName(parts[0]), parts[1])
@@ -58,11 +69,16 @@ object CallGraphCache {
                         val parts = line.split(FIELD_SEPARATOR)
                         sourceFiles[ClassName(parts[0])] = parts[1]
                     }
+                    section == LINES_HEADER -> {
+                        val parts = line.split(FIELD_SEPARATOR)
+                        val method = MethodRef(ClassName(parts[0]), parts[1])
+                        lineNumbers[method] = parts[2].toInt()
+                    }
                 }
             }
         }
 
-        return CallGraph(callerToCallees, sourceFiles)
+        return CallGraph(callerToCallees, sourceFiles, lineNumbers)
     }
 
     fun isFresh(cacheFile: File, classDirectories: List<File>): Boolean =

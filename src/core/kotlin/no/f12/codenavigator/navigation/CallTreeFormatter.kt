@@ -44,7 +44,8 @@ object CallTreeFormatter {
         val indent = "  ".repeat(depth)
         for (node in children) {
             val sourceFile = node.sourceFile ?: "<unknown>"
-            appendLine("$indent${direction.arrow} ${node.method.qualifiedName} ($sourceFile)")
+            val lineRef = node.lineNumber?.let { ":$it" } ?: ""
+            appendLine("$indent${direction.arrow} ${node.method.qualifiedName} ($sourceFile$lineRef)")
             if (node.children.isNotEmpty()) {
                 renderChildren(node.children, direction, depth + 1)
             }

@@ -51,7 +51,8 @@ object LlmFormatter {
     fun renderCallTrees(trees: List<CallTreeNode>, direction: CallDirection): String = buildString {
         trees.forEachIndexed { index, tree ->
             if (index > 0) appendLine()
-            append("${tree.method.qualifiedName} ${tree.sourceFile ?: "<unknown>"}")
+            val lineRef = tree.lineNumber?.let { ":$it" } ?: ""
+            append("${tree.method.qualifiedName} ${tree.sourceFile ?: "<unknown>"}$lineRef")
             if (tree.children.isNotEmpty()) {
                 renderChildren(tree.children, direction, 1)
             }
@@ -187,8 +188,9 @@ object LlmFormatter {
     private fun StringBuilder.renderChildren(children: List<CallTreeNode>, direction: CallDirection, depth: Int) {
         val indent = "  ".repeat(depth)
         for (node in children) {
+            val lineRef = node.lineNumber?.let { ":$it" } ?: ""
             appendLine()
-            append("$indent${direction.arrow} ${node.method.qualifiedName} ${node.sourceFile ?: "<unknown>"}")
+            append("$indent${direction.arrow} ${node.method.qualifiedName} ${node.sourceFile ?: "<unknown>"}$lineRef")
             if (node.children.isNotEmpty()) {
                 renderChildren(node.children, direction, depth + 1)
             }

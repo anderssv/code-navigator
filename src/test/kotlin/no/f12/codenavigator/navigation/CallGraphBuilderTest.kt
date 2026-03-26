@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
@@ -399,6 +400,43 @@ class CallGraphBuilderTest {
         assertTrue(result.contains("handleReset"), "Should contain handleReset at depth 3")
     }
 
+    @Test
+    fun `extracts first line number for a method with line number table`() {
+        writeClassWithLineNumbers(
+            "com/example/Service", "Service.kt",
+            listOf(MethodWithLines("doWork", 42, emptyList())),
+        )
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        assertEquals(42, graph.lineNumberOf(MethodRef(ClassName("com.example.Service"), "doWork")))
+    }
+
+    @Test
+    fun `returns null line number for method without line number table`() {
+        writeClassWithCalls("com/example/Stripped", "Stripped.kt", "execute", emptyList())
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        assertEquals(null, graph.lineNumberOf(MethodRef(ClassName("com.example.Stripped"), "execute")))
+    }
+
+    @Test
+    fun `extracts independent line numbers for multiple methods in same class`() {
+        writeClassWithLineNumbers(
+            "com/example/Service", "Service.kt",
+            listOf(
+                MethodWithLines("doWork", 10, emptyList()),
+                MethodWithLines("doOtherWork", 25, emptyList()),
+            ),
+        )
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        assertEquals(10, graph.lineNumberOf(MethodRef(ClassName("com.example.Service"), "doWork")))
+        assertEquals(25, graph.lineNumberOf(MethodRef(ClassName("com.example.Service"), "doOtherWork")))
+    }
+
     private data class MethodDef(val name: String, val calls: List<Call>)
 
     private data class Call(val owner: String, val name: String, val descriptor: String)
@@ -488,6 +526,51 @@ class CallGraphBuilderTest {
         val writer = ClassWriter(0)
         writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitSource(sourceFile, null)
+        writer.visitEnd()
+
+        val packageDir = className.substringBeforeLast("/", "")
+        val simpleFileName = className.substringAfterLast("/") + ".class"
+        val dir = if (packageDir.isNotEmpty()) {
+            classesDir.resolve(packageDir).also { it.mkdirs() }
+        } else {
+            classesDir
+        }
+        File(dir, simpleFileName).writeBytes(writer.toByteArray())
+    }
+
+    private data class MethodWithLines(val name: String, val lineNumber: Int, val calls: List<Call>)
+
+    private fun writeClassWithLineNumbers(
+        className: String,
+        sourceFile: String,
+        methods: List<MethodWithLines>,
+    ) {
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visitSource(sourceFile, null)
+
+        val init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null)
+        init.visitCode()
+        init.visitVarInsn(Opcodes.ALOAD, 0)
+        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+        init.visitInsn(Opcodes.RETURN)
+        init.visitMaxs(1, 1)
+        init.visitEnd()
+
+        for (method in methods) {
+            val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, method.name, "()V", null, null)
+            mv.visitCode()
+            val startLabel = Label()
+            mv.visitLabel(startLabel)
+            mv.visitLineNumber(method.lineNumber, startLabel)
+            for (call in method.calls) {
+                mv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, call.owner, call.name, call.descriptor, false)
+            }
+            mv.visitInsn(Opcodes.RETURN)
+            mv.visitMaxs(1, 1)
+            mv.visitEnd()
+        }
+
         writer.visitEnd()
 
         val packageDir = className.substringBeforeLast("/", "")
