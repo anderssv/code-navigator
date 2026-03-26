@@ -39,8 +39,8 @@ object DsmMatrixBuilder {
         if (dependencies.isEmpty()) return DsmMatrix(emptyList(), emptyMap(), emptyMap())
 
         val allTruncated = dependencies.map { dep ->
-            Triple(truncate(dep.sourcePackage.value, rootPrefix.value, depth),
-                   truncate(dep.targetPackage.value, rootPrefix.value, depth),
+            Triple(truncate(dep.sourcePackage, rootPrefix, depth),
+                   truncate(dep.targetPackage, rootPrefix, depth),
                    dep)
         }
 
@@ -50,23 +50,23 @@ object DsmMatrixBuilder {
         val classDeps = mutableMapOf<Pair<PackageName, PackageName>, MutableSet<Pair<ClassName, ClassName>>>()
 
         for ((src, tgt, dep) in crossPackage) {
-            val key = PackageName(src) to PackageName(tgt)
+            val key = src to tgt
             cells[key] = (cells[key] ?: 0) + 1
             classDeps.getOrPut(key) { mutableSetOf() }.add(dep.sourceClass to dep.targetClass)
         }
 
-        val packages = (crossPackage.flatMap { listOf(it.first, it.second) }).distinct().sorted().map { PackageName(it) }
+        val packages = (crossPackage.flatMap { listOf(it.first, it.second) }).distinct().sorted()
 
         return DsmMatrix(packages, cells, classDeps)
     }
 
-    private fun truncate(pkg: String, rootPrefix: String, depth: Int): String {
-        val stripped = if (rootPrefix.isNotEmpty() && pkg.startsWith("$rootPrefix.")) {
-            pkg.removePrefix("$rootPrefix.")
+    private fun truncate(pkg: PackageName, rootPrefix: PackageName, depth: Int): PackageName {
+        val stripped = if (rootPrefix.value.isNotEmpty() && pkg.value.startsWith("${rootPrefix.value}.")) {
+            pkg.value.removePrefix("${rootPrefix.value}.")
         } else {
-            pkg
+            pkg.value
         }
         val segments = stripped.split(".")
-        return segments.take(depth).joinToString(".")
+        return PackageName(segments.take(depth).joinToString("."))
     }
 }
