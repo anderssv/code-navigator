@@ -10,7 +10,7 @@ data class CyclesConfig(
     companion object {
         fun parse(properties: Map<String, String?>): CyclesConfig = CyclesConfig(
             rootPackage = PackageName(properties["root-package"] ?: ""),
-            depth = properties["depth"]?.toIntOrNull() ?: 2,
+            depth = properties["dsm-depth"]?.toIntOrNull() ?: 2,
             format = OutputFormat.from(
                 format = properties["format"],
                 llm = properties["llm"]?.toBoolean(),

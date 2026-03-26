@@ -25,7 +25,7 @@ abstract class CyclesTask : DefaultTask() {
         val resolvedRootPackage = extension.resolveRootPackage(project.findProperty("root-package"))
 
         val props = project.buildPropertyMap(
-            propertyNames = listOf("depth", "format", "llm"),
+            propertyNames = listOf("dsm-depth", "format", "llm"),
             flagNames = emptyList(),
         ) + ("root-package" to resolvedRootPackage)
 

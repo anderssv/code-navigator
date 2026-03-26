@@ -34,7 +34,7 @@ class CyclesMojo : AbstractMojo() {
     @Parameter(property = "root-package")
     private var rootPackage: String? = null
 
-    @Parameter(property = "depth")
+    @Parameter(property = "dsm-depth")
     private var depth: String? = null
 
     override fun execute() {
@@ -68,6 +68,6 @@ class CyclesMojo : AbstractMojo() {
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
         rootPackage?.let { put("root-package", it) }
-        depth?.let { put("depth", it) }
+        depth?.let { put("dsm-depth", it) }
     }
 }

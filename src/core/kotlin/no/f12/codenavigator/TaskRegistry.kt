@@ -58,7 +58,6 @@ object TaskRegistry {
     private val MIN_SHARED_REVS = ParamDef("min-shared-revs", "<N>", "Min shared commits", flag = false, defaultValue = "5")
     private val MIN_COUPLING = ParamDef("min-coupling", "<N>", "Min coupling degree %", flag = false, defaultValue = "30")
     private val MAX_CHANGESET_SIZE = ParamDef("max-changeset-size", "<N>", "Skip commits touching more files", flag = false, defaultValue = "30")
-    private val DEPTH = ParamDef("depth", "<N>", "Package grouping depth", flag = false, defaultValue = "2")
 
     private val FORMAT_PARAMS = listOf(FORMAT, LLM)
 
@@ -130,7 +129,7 @@ object TaskRegistry {
     val CYCLE_DETECTION = TaskDef(
         goal = "cycles",
         description = "Detect dependency cycles using Tarjan's SCC algorithm",
-        params = FORMAT_PARAMS + listOf(ROOT_PACKAGE, DEPTH),
+        params = FORMAT_PARAMS + listOf(ROOT_PACKAGE, DSM_DEPTH),
         requiresCompilation = true,
     )
 
@@ -186,7 +185,7 @@ object TaskRegistry {
     val COUPLING = TaskDef(
         goal = "coupling",
         description = "Find files that change together (temporal coupling)",
-        params = FORMAT_PARAMS + listOf(AFTER, MIN_SHARED_REVS, MIN_COUPLING, MAX_CHANGESET_SIZE, NO_FOLLOW),
+        params = FORMAT_PARAMS + listOf(AFTER, MIN_SHARED_REVS, MIN_COUPLING, MAX_CHANGESET_SIZE, TOP, NO_FOLLOW),
         requiresCompilation = false,
     )
 

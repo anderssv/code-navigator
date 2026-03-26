@@ -16,9 +16,9 @@ class CyclesConfigTest {
     }
 
     @Test
-    fun `parses root-package and depth`() {
+    fun `parses root-package and dsm-depth`() {
         val config = CyclesConfig.parse(
-            mapOf("root-package" to "com.example", "depth" to "3"),
+            mapOf("root-package" to "com.example", "dsm-depth" to "3"),
         )
 
         assertEquals(PackageName("com.example"), config.rootPackage)

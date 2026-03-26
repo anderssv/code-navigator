@@ -176,4 +176,60 @@ class CycleDetectorTest {
         val serviceToApi = detail.edges.find { it.from == PackageName("service") && it.to == PackageName("api") }!!
         assertEquals(1, serviceToApi.classEdges.size)
     }
+
+    @Test
+    fun `hub-and-spoke bidirectional edges — finds one large SCC`() {
+        val graph = mapOf(
+            PackageName("admin") to setOf(PackageName("no.mikill")),
+            PackageName("creation") to setOf(PackageName("no.mikill")),
+            PackageName("mypolls") to setOf(PackageName("no.mikill")),
+            PackageName("participant") to setOf(PackageName("no.mikill")),
+            PackageName("transfer") to setOf(PackageName("no.mikill")),
+            PackageName("no.mikill") to setOf(
+                PackageName("admin"),
+                PackageName("creation"),
+                PackageName("mypolls"),
+                PackageName("participant"),
+                PackageName("transfer"),
+            ),
+        )
+
+        val cycles = CycleDetector.findCycles(graph)
+
+        assertEquals(1, cycles.size, "All connected through hub: one large SCC")
+        assertEquals(6, cycles.first().packages.size)
+    }
+
+    @Test
+    fun `findCycles and findCyclicPairs both detect cycles from same matrix`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.example.admin"), PackageName("com.example.root"), ClassName("com.example.admin.Routes"), ClassName("com.example.root.App")),
+            PackageDependency(PackageName("com.example.root"), PackageName("com.example.admin"), ClassName("com.example.root.App"), ClassName("com.example.admin.Routes")),
+        )
+        val matrix = DsmMatrixBuilder.build(deps, PackageName("com.example"), 2)
+
+        val cyclicPairs = matrix.findCyclicPairs()
+        val adjacency = CycleDetector.adjacencyMapFrom(matrix)
+        val cycles = CycleDetector.findCycles(adjacency)
+
+        assertTrue(cyclicPairs.isNotEmpty(), "findCyclicPairs should find the bidirectional dependency")
+        assertTrue(cycles.isNotEmpty(), "findCycles should also find the cycle")
+    }
+
+    @Test
+    fun `root-package classes truncated to wrong name still detected as cycles`() {
+        val rootPkg = PackageName("no.mikill.greitt")
+        val deps = listOf(
+            PackageDependency(PackageName("no.mikill.greitt.admin"), PackageName("no.mikill.greitt"), ClassName("no.mikill.greitt.admin.AdminRoutesKt"), ClassName("no.mikill.greitt.AppDependencies")),
+            PackageDependency(PackageName("no.mikill.greitt"), PackageName("no.mikill.greitt.admin"), ClassName("no.mikill.greitt.RoutesKt"), ClassName("no.mikill.greitt.admin.AdminRoutesKt")),
+        )
+        val matrix = DsmMatrixBuilder.build(deps, rootPkg, 2)
+
+        val cyclicPairs = matrix.findCyclicPairs()
+        val adjacency = CycleDetector.adjacencyMapFrom(matrix)
+        val cycles = CycleDetector.findCycles(adjacency)
+
+        assertTrue(cyclicPairs.isNotEmpty(), "findCyclicPairs should find the bidirectional dependency")
+        assertTrue(cycles.isNotEmpty(), "findCycles should also find the cycle")
+    }
 }
