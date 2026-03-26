@@ -29,8 +29,8 @@ class ClassIndexCacheTest {
     @Test
     fun `writes and reads back class info`() {
         val classes = listOf(
-            ClassInfo("com.example.Foo", "Foo.kt", "com/example/Foo.kt", true),
-            ClassInfo("com.example.Bar", "Bar.kt", "com/example/Bar.kt", true),
+            ClassInfo(ClassName("com.example.Foo"), "Foo.kt", "com/example/Foo.kt", true),
+            ClassInfo(ClassName("com.example.Bar"), "Bar.kt", "com/example/Bar.kt", true),
         )
 
         ClassIndexCache.write(cacheFile, classes)
@@ -44,14 +44,14 @@ class ClassIndexCacheTest {
         writeClassFile("com/example/Foo", "Foo.kt")
         Thread.sleep(50)
 
-        ClassIndexCache.write(cacheFile, listOf(ClassInfo("com.example.Foo", "Foo.kt", "com/example/Foo.kt", true)))
+        ClassIndexCache.write(cacheFile, listOf(ClassInfo(ClassName("com.example.Foo"), "Foo.kt", "com/example/Foo.kt", true)))
 
         assertTrue(ClassIndexCache.isFresh(cacheFile, listOf(classesDir)))
     }
 
     @Test
     fun `cache is stale when older than a class file`() {
-        ClassIndexCache.write(cacheFile, listOf(ClassInfo("com.example.Foo", "Foo.kt", "com/example/Foo.kt", true)))
+        ClassIndexCache.write(cacheFile, listOf(ClassInfo(ClassName("com.example.Foo"), "Foo.kt", "com/example/Foo.kt", true)))
         Thread.sleep(50)
 
         writeClassFile("com/example/NewClass", "NewClass.kt")
@@ -72,7 +72,7 @@ class ClassIndexCacheTest {
     @Test
     fun `handles class info with unknown source file`() {
         val classes = listOf(
-            ClassInfo("com.example.Generated", "<unknown>", "<unknown>", true),
+            ClassInfo(ClassName("com.example.Generated"), "<unknown>", "<unknown>", true),
         )
 
         ClassIndexCache.write(cacheFile, classes)
@@ -93,7 +93,7 @@ class ClassIndexCacheTest {
     fun `creates parent directories when writing`() {
         val deepCacheFile = tempDir.resolve("a/b/c/cache.txt").toFile()
 
-        ClassIndexCache.write(deepCacheFile, listOf(ClassInfo("com.Foo", "Foo.kt", "com/Foo.kt", true)))
+        ClassIndexCache.write(deepCacheFile, listOf(ClassInfo(ClassName("com.Foo"), "Foo.kt", "com/Foo.kt", true)))
 
         assertTrue(deepCacheFile.exists())
     }
@@ -103,7 +103,7 @@ class ClassIndexCacheTest {
         val secondDir = tempDir.resolve("classes2").toFile()
         secondDir.mkdirs()
 
-        ClassIndexCache.write(cacheFile, listOf(ClassInfo("com.example.Foo", "Foo.kt", "com/example/Foo.kt", true)))
+        ClassIndexCache.write(cacheFile, listOf(ClassInfo(ClassName("com.example.Foo"), "Foo.kt", "com/example/Foo.kt", true)))
         Thread.sleep(50)
 
         writeClassFile("com/example/New", "New.kt", secondDir)
@@ -122,7 +122,7 @@ class ClassIndexCacheTest {
         val result = ClassIndexCache.getOrScan(cacheFile, listOf(classesDir))
 
         assertEquals(1, result.data.size)
-        assertEquals("com.example.Foo", result.data[0].className)
+        assertEquals("com.example.Foo", result.data[0].className.value)
     }
 
     private fun writeClassFile(className: String, sourceFile: String, targetDir: File = classesDir) {

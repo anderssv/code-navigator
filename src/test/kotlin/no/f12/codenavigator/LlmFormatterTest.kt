@@ -34,8 +34,8 @@ class LlmFormatterTest {
     @Test
     fun `formats class list as one line per class`() {
         val classes = listOf(
-            ClassInfo("com.example.Foo", "Foo.kt", "com/example/Foo.kt", true),
-            ClassInfo("com.example.Bar", "Bar.kt", "com/example/Bar.kt", true),
+            ClassInfo(ClassName("com.example.Foo"), "Foo.kt", "com/example/Foo.kt", true),
+            ClassInfo(ClassName("com.example.Bar"), "Bar.kt", "com/example/Bar.kt", true),
         )
 
         val result = LlmFormatter.formatClasses(classes)

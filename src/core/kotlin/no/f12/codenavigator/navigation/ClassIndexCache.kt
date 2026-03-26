@@ -14,7 +14,7 @@ object ClassIndexCache {
                 classes.forEach { info ->
                     writer.write(
                         listOf(
-                            info.className,
+                            info.className.value,
                             info.sourceFileName,
                             info.reconstructedSourcePath,
                             info.isUserDefinedClass.toString(),
@@ -33,7 +33,7 @@ object ClassIndexCache {
                 .map { line ->
                     val parts = line.split(FIELD_SEPARATOR)
                     ClassInfo(
-                        className = parts[0],
+                        className = ClassName(parts[0]),
                         sourceFileName = parts[1],
                         reconstructedSourcePath = parts[2],
                         isUserDefinedClass = parts[3].toBoolean(),

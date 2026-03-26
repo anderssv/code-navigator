@@ -7,11 +7,11 @@ import kotlin.test.assertTrue
 class ClassFilterTest {
 
     private val classes = listOf(
-        ClassInfo("com.example.services.UserService", "UserService.kt", "com/example/services/UserService.kt", true),
-        ClassInfo("com.example.services.OrderService", "OrderService.kt", "com/example/services/OrderService.kt", true),
-        ClassInfo("com.example.domain.User", "User.kt", "com/example/domain/User.kt", true),
-        ClassInfo("com.example.domain.Order", "Order.kt", "com/example/domain/Order.kt", true),
-        ClassInfo("com.example.config.AppConfig", "AppConfig.kt", "com/example/config/AppConfig.kt", true),
+        ClassInfo(ClassName("com.example.services.UserService"), "UserService.kt", "com/example/services/UserService.kt", true),
+        ClassInfo(ClassName("com.example.services.OrderService"), "OrderService.kt", "com/example/services/OrderService.kt", true),
+        ClassInfo(ClassName("com.example.domain.User"), "User.kt", "com/example/domain/User.kt", true),
+        ClassInfo(ClassName("com.example.domain.Order"), "Order.kt", "com/example/domain/Order.kt", true),
+        ClassInfo(ClassName("com.example.config.AppConfig"), "AppConfig.kt", "com/example/config/AppConfig.kt", true),
     )
 
     @Test
@@ -19,7 +19,7 @@ class ClassFilterTest {
         val results = ClassFilter.filter(classes, "Service")
 
         assertEquals(2, results.size)
-        assertTrue(results.all { it.className.contains("Service") })
+        assertTrue(results.all { it.className.value.contains("Service") })
     }
 
     @Test
@@ -27,7 +27,7 @@ class ClassFilterTest {
         val results = ClassFilter.filter(classes, "com\\.example\\.domain\\.User")
 
         assertEquals(1, results.size)
-        assertEquals("com.example.domain.User", results.single().className)
+        assertEquals("com.example.domain.User", results.single().className.value)
     }
 
     @Test
@@ -42,7 +42,7 @@ class ClassFilterTest {
         val results = ClassFilter.filter(classes, "userservice")
 
         assertEquals(1, results.size)
-        assertEquals("com.example.services.UserService", results.single().className)
+        assertEquals("com.example.services.UserService", results.single().className.value)
     }
 
     @Test
@@ -50,7 +50,7 @@ class ClassFilterTest {
         val results = ClassFilter.filter(classes, ".*Order.*")
 
         assertEquals(2, results.size)
-        val classNames = results.map { it.className }.toSet()
+        val classNames = results.map { it.className.value }.toSet()
         assertTrue("com.example.services.OrderService" in classNames)
         assertTrue("com.example.domain.Order" in classNames)
     }
@@ -60,7 +60,7 @@ class ClassFilterTest {
         val results = ClassFilter.filter(classes, "AppConfig\\.kt")
 
         assertEquals(1, results.size)
-        assertEquals("com.example.config.AppConfig", results.single().className)
+        assertEquals("com.example.config.AppConfig", results.single().className.value)
     }
 
     @Test

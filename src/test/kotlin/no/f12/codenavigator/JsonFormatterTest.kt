@@ -42,7 +42,7 @@ class JsonFormatterTest {
     @Test
     fun `single class produces JSON array with one object`() {
         val classes = listOf(
-            ClassInfo("com.example.Foo", "Foo.kt", "com/example/Foo.kt", isUserDefinedClass = true),
+            ClassInfo(ClassName("com.example.Foo"), "Foo.kt", "com/example/Foo.kt", isUserDefinedClass = true),
         )
 
         val result = JsonFormatter.formatClasses(classes)
@@ -55,8 +55,8 @@ class JsonFormatterTest {
     @Test
     fun `multiple classes produce JSON array sorted by className`() {
         val classes = listOf(
-            ClassInfo("com.example.Zebra", "Zebra.kt", "com/example/Zebra.kt", isUserDefinedClass = true),
-            ClassInfo("com.example.Alpha", "Alpha.kt", "com/example/Alpha.kt", isUserDefinedClass = true),
+            ClassInfo(ClassName("com.example.Zebra"), "Zebra.kt", "com/example/Zebra.kt", isUserDefinedClass = true),
+            ClassInfo(ClassName("com.example.Alpha"), "Alpha.kt", "com/example/Alpha.kt", isUserDefinedClass = true),
         )
 
         val result = JsonFormatter.formatClasses(classes)
@@ -71,7 +71,7 @@ class JsonFormatterTest {
     @Test
     fun `special characters in class names are escaped in JSON`() {
         val classes = listOf(
-            ClassInfo("com.example.Foo\"Bar", "Foo\"Bar.kt", "com/example/Foo\"Bar.kt", isUserDefinedClass = true),
+            ClassInfo(ClassName("com.example.Foo\"Bar"), "Foo\"Bar.kt", "com/example/Foo\"Bar.kt", isUserDefinedClass = true),
         )
 
         val result = JsonFormatter.formatClasses(classes)

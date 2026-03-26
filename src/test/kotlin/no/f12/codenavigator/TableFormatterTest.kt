@@ -1,6 +1,7 @@
 package no.f12.codenavigator
 
 import no.f12.codenavigator.navigation.ClassInfo
+import no.f12.codenavigator.navigation.ClassName
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -11,7 +12,7 @@ class TableFormatterTest {
     fun `formats single class as aligned table`() {
         val classes = listOf(
             ClassInfo(
-                className = "com.example.MyService",
+                className = ClassName("com.example.MyService"),
                 sourceFileName = "MyService.kt",
                 reconstructedSourcePath = "com/example/MyService.kt",
                 isUserDefinedClass = true,
@@ -29,8 +30,8 @@ class TableFormatterTest {
     @Test
     fun `aligns columns based on longest entry`() {
         val classes = listOf(
-            ClassInfo("a.B", "B.kt", "a/B.kt", true),
-            ClassInfo("com.example.very.long.ClassName", "ClassName.kt", "com/example/very/long/ClassName.kt", true),
+            ClassInfo(ClassName("a.B"), "B.kt", "a/B.kt", true),
+            ClassInfo(ClassName("com.example.very.long.ClassName"), "ClassName.kt", "com/example/very/long/ClassName.kt", true),
         )
 
         val lines = TableFormatter.format(classes).lines()
@@ -51,8 +52,8 @@ class TableFormatterTest {
     @Test
     fun `shows total count at the bottom`() {
         val classes = listOf(
-            ClassInfo("a.B", "B.kt", "a/B.kt", true),
-            ClassInfo("a.C", "C.kt", "a/C.kt", true),
+            ClassInfo(ClassName("a.B"), "B.kt", "a/B.kt", true),
+            ClassInfo(ClassName("a.C"), "C.kt", "a/C.kt", true),
         )
 
         val output = TableFormatter.format(classes)

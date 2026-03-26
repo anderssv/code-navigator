@@ -9,9 +9,9 @@ class MetricsBuilderTest {
     @Test
     fun `counts total classes from class info list`() {
         val classes = listOf(
-            ClassInfo("com.example.Foo", "Foo.kt", "com/example/Foo.kt", true),
-            ClassInfo("com.example.Bar", "Bar.kt", "com/example/Bar.kt", true),
-            ClassInfo("com.example.Baz", "Baz.kt", "com/example/Baz.kt", true),
+            ClassInfo(ClassName("com.example.Foo"), "Foo.kt", "com/example/Foo.kt", true),
+            ClassInfo(ClassName("com.example.Bar"), "Bar.kt", "com/example/Bar.kt", true),
+            ClassInfo(ClassName("com.example.Baz"), "Baz.kt", "com/example/Baz.kt", true),
         )
 
         val result = MetricsBuilder.build(

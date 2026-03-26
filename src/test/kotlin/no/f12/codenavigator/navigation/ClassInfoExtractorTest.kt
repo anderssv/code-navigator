@@ -23,7 +23,7 @@ class ClassInfoExtractorTest {
 
         val result = ClassInfoExtractor.extract(classFile)
 
-        assertEquals("com.example.MyService", result.className)
+        assertEquals("com.example.MyService", result.className.value)
     }
 
     @Test
@@ -59,7 +59,7 @@ class ClassInfoExtractorTest {
 
         val result = ClassInfoExtractor.extract(classFile)
 
-        assertEquals("com.example.Generated", result.className)
+        assertEquals("com.example.Generated", result.className.value)
         assertEquals("<unknown>", result.sourceFileName)
         assertEquals("<unknown>", result.reconstructedSourcePath)
     }
@@ -98,7 +98,7 @@ class ClassInfoExtractorTest {
         val result = ClassInfoExtractor.extract(classFile)
 
         assertTrue(result.isUserDefinedClass)
-        assertEquals("com.example.Foo.Bar", result.className)
+        assertEquals("com.example.Foo.Bar", result.className.value)
     }
 
     @Test

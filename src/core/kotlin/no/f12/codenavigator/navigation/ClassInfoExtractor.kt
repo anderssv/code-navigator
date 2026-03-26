@@ -6,7 +6,7 @@ import org.objectweb.asm.Opcodes
 import java.io.File
 
 data class ClassInfo(
-    val className: String,
+    val className: ClassName,
     val sourceFileName: String,
     val reconstructedSourcePath: String,
     val isUserDefinedClass: Boolean,
@@ -55,7 +55,7 @@ object ClassInfoExtractor {
         }
 
         return ClassInfo(
-            className = dottedName,
+            className = ClassName(dottedName),
             sourceFileName = sourceFile ?: "<unknown>",
             reconstructedSourcePath = reconstructedPath,
             isUserDefinedClass = isUserDefined,

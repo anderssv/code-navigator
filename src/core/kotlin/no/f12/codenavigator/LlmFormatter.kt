@@ -25,7 +25,7 @@ import no.f12.codenavigator.navigation.UsageSite
 object LlmFormatter {
 
     fun formatClasses(classes: List<ClassInfo>): String =
-        classes.sortedBy { it.className }.joinToString("\n") { "${it.className} ${it.sourceFileName}" }
+        classes.sortedBy { it.className }.joinToString("\n") { "${it.className.value} ${it.sourceFileName}" }
 
     fun formatSymbols(symbols: List<SymbolInfo>): String =
         symbols.sortedWith(compareBy({ it.packageName }, { it.className }, { it.symbolName }))

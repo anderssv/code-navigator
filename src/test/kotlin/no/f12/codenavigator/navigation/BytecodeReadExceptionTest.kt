@@ -66,7 +66,7 @@ class BytecodeReadExceptionTest {
         val result = ClassScanner.scan(listOf(tempDir.toFile()))
 
         assertEquals(1, result.data.size)
-        assertEquals("com.example.ValidClass", result.data.first().className)
+        assertEquals("com.example.ValidClass", result.data.first().className.value)
         assertEquals(1, result.skippedFiles.size)
     }
 

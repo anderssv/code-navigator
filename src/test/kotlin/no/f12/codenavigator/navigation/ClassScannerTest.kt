@@ -49,7 +49,7 @@ class ClassScannerTest {
         val results = ClassScanner.scan(listOf(classesDir)).data
 
         assertEquals(1, results.size)
-        assertEquals("com.example.Foo", results.single().className)
+        assertEquals("com.example.Foo", results.single().className.value)
     }
 
     @Test
@@ -60,7 +60,7 @@ class ClassScannerTest {
         val results = ClassScanner.scan(listOf(classesDir)).data
 
         assertEquals(2, results.size)
-        val classNames = results.map { it.className }.toSet()
+        val classNames = results.map { it.className.value }.toSet()
         assertTrue("com.example.Outer" in classNames)
         assertTrue("com.example.Outer.Inner" in classNames)
     }
@@ -88,7 +88,7 @@ class ClassScannerTest {
 
         assertEquals(
             listOf("com.example.Alpha", "com.example.Middle", "com.example.Zebra"),
-            results.map { it.className },
+            results.map { it.className.value },
         )
     }
 

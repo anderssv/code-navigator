@@ -33,7 +33,7 @@ object JsonFormatter {
     fun formatClasses(classes: List<ClassInfo>): String =
         jsonArray(classes.sortedBy { it.className }) { c ->
             jsonObject(
-                "className" to c.className,
+                "className" to c.className.value,
                 "sourceFile" to c.sourceFileName,
                 "sourcePath" to c.reconstructedSourcePath,
             )
