@@ -61,7 +61,7 @@ All output is compact, structured text that fits easily into an agent's context 
 
 ## Requirements
 
-- **JDK 21** or newer (both for running the plugin and for compiling your project)
+- **JDK 17** or newer (both for running the plugin and for compiling your project)
 - **Gradle 9.x** or **Maven 3.9+**
 
 ## Installation

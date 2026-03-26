@@ -49,6 +49,15 @@ class BytecodeReadExceptionTest {
     }
 
     @Test
+    fun `succeeds for Java 24 bytecode`() {
+        val classFile = writeClassFileWithVersion(68, "com/example/Java24Class") // Java 24
+
+        val reader = createClassReader(classFile)
+
+        assertEquals("com/example/Java24Class", reader.className)
+    }
+
+    @Test
     fun `ClassScanner returns skipped files when class files are unsupported`() {
         writeClassFileWithVersion(99, "com/example/UnsupportedClass")
 
@@ -73,7 +82,7 @@ class BytecodeReadExceptionTest {
     private fun writeClassFileWithVersion(majorVersion: Int, className: String): File {
         val writer = ClassWriter(0)
         writer.visit(
-            Opcodes.V21,
+            Opcodes.V17,
             Opcodes.ACC_PUBLIC,
             className,
             null,

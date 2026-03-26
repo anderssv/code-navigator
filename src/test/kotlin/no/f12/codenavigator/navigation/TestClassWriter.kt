@@ -60,7 +60,7 @@ object TestClassWriter {
         configure: ClassWriter.() -> Unit = {},
     ): File {
         val writer = ClassWriter(classWriterFlags)
-        writer.visit(Opcodes.V21, access, className, null, superName, interfaces)
+        writer.visit(Opcodes.V17, access, className, null, superName, interfaces)
         if (sourceFile != null) {
             writer.visitSource(sourceFile, null)
         }
@@ -81,7 +81,7 @@ object TestClassWriter {
         calls: List<Call>,
     ): File {
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitSource(sourceFile, null)
         writeDefaultConstructor(writer)
 
@@ -109,7 +109,7 @@ object TestClassWriter {
         call: Call,
     ): File {
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitSource(sourceFile, null)
         writeDefaultConstructor(writer)
 
@@ -136,7 +136,7 @@ object TestClassWriter {
         methods: List<MethodDef>,
     ): File {
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitSource(sourceFile, null)
         writeDefaultConstructor(writer)
 
@@ -165,7 +165,7 @@ object TestClassWriter {
         methods: List<MethodWithLines>,
     ): File {
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitSource(sourceFile, null)
         writeDefaultConstructor(writer)
 
@@ -200,7 +200,7 @@ object TestClassWriter {
         calls: List<Call> = emptyList(),
     ): File {
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitSource(sourceFile, null)
         writeDefaultConstructor(writer)
 
@@ -236,7 +236,7 @@ object TestClassWriter {
         typeOperand: String,
     ): File {
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitSource(sourceFile, null)
         writeDefaultConstructor(writer)
 
@@ -270,7 +270,7 @@ object TestClassWriter {
         referencedType: String,
     ): File {
         val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitSource(sourceFile, null)
         writeDefaultConstructor(writer)
 
@@ -297,7 +297,7 @@ object TestClassWriter {
         descriptor: String,
     ): File {
         val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitSource(sourceFile, null)
         writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, descriptor, null, null)
         writer.visitEnd()
@@ -315,7 +315,7 @@ object TestClassWriter {
         exception: String,
     ): File {
         val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitSource(sourceFile, null)
         writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, arrayOf(exception))
         writer.visitEnd()

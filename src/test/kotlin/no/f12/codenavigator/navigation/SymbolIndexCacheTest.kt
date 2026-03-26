@@ -111,7 +111,7 @@ class SymbolIndexCacheTest {
 
     private fun writeClassFile(className: String, targetDir: File = classesDir) {
         val writer = ClassWriter(0)
-        writer.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitEnd()
 
         val packageDir = className.substringBeforeLast("/", "")
