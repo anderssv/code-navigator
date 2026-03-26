@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.24
+
+- **Fix:** Resolve `<unknown>` source file locations for Kotlin inner classes, lambdas, and companion objects in `cnavCallers`/`cnavCallees` output — progressively strips `$` suffixes to find the outer class source file
+- **New:** Kotlin-aware property name resolution — `cnavCallers -Pmethod=accountNumber` automatically expands to `getAccountNumber`/`setAccountNumber`/`isAccountNumber` when no direct match is found
+- **New:** Filter synthetic/generated methods from `cnavCallers`/`cnavCallees` — `-Pfilter-synthetic=true` (default) hides `equals`, `hashCode`, `copy`, `componentN`, constructors, and other compiler-generated methods
+- **New:** "Common Questions → Which Task" section in `cnavAgentHelp` output — maps natural-language questions to the correct task and parameters for better discoverability
+
 ## 0.1.23
 
 - Add `cnavMetrics` task / `cnav:metrics` goal — quick project health snapshot combining bytecode and git analysis. Shows total classes, package count, average fan-in/fan-out, cycle count (Tarjan SCC), dead code counts, and top hotspots.
