@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.34
+
+- **Changed:** `cnavAgentHelp -Psection=install` output slimmed down to a minimal blurb — announces the tool and points to `cnavAgentHelp` for details. Task lists, parameter docs, and permission setup removed from install section.
+- **New:** `cnavAgentHelp -Psection=setup` — new section with Claude Code permission rule instructions (moved from install).
+
 ## 0.1.33
 
 - **New:** `cnavTypeHierarchy` task / `cnav:type-hierarchy` goal — show the full type hierarchy for classes matching a pattern. Walks supertypes recursively upward (superclass chain + interfaces) and shows implementors downward via `InterfaceRegistry`. Parameters: `-Ppattern=<regex>` (required), `-Pprojectonly=true|false` (optional, default false). Supports TEXT, JSON, and LLM output formats. Filters `java.lang.Object` from the supertype chain.
