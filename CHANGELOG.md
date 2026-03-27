@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.37
+
+- **Improved:** Dead code detection — external interface confidence flagging. Dead methods on classes that implement interfaces from outside the project scope (e.g. `javax.xml.bind.XmlAdapter`, `com.sksamuel.hoplite.Decoder`, `javax.net.ssl.HostnameVerifier`) are now flagged with LOW confidence instead of HIGH, since they are likely invoked by frameworks via reflection. Dead classes are not affected — if no one constructs the class, the external interface doesn't help.
+
 ## 0.1.36
 
 - **Improved:** Dead code detection — Kotlin inline function filtering. Inline functions leave no call edges in bytecode (the compiler inlines the body at each call site), causing them to be falsely flagged as dead. Now parses `@kotlin.Metadata` annotations using `kotlin-metadata-jvm` to identify inline functions and filters them from dead method results. New dependency: `org.jetbrains.kotlin:kotlin-metadata-jvm`.
