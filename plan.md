@@ -86,17 +86,6 @@ The most common agent question is "what could this PR break?" Given a git ref, s
 - **Output**: Changed classes with their affected callers, grouped by change type (added/modified/removed)
 - **Why high value**: Combines git + bytecode analysis to directly answer the most common code review question.
 
-### 57. `cnavTypeHierarchy` — inheritance tree traversal (Medium value, low effort)
-
-`cnavInterfaces` finds implementors (downward), but there's no upward traversal. `cnavClass` shows direct supertypes but doesn't recurse.
-
-```bash
-./gradlew cnavTypeHierarchy -Ppattern=RAClientImpl
-```
-
-- Walk supertypes recursively using existing class metadata. Combine with `InterfaceRegistry` for downward view.
-- **Output**: Tree showing supertypes upward and implementors downward
-
 ### 58. `cnavUnused` — unused build dependencies (Medium value, medium effort)
 
 Analyze which declared Gradle/Maven dependencies have zero references in bytecode. Different from dead code — this finds entire libraries that could be removed.

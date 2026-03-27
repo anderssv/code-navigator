@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.33
+
+- **New:** `cnavTypeHierarchy` task / `cnav:type-hierarchy` goal — show the full type hierarchy for classes matching a pattern. Walks supertypes recursively upward (superclass chain + interfaces) and shows implementors downward via `InterfaceRegistry`. Parameters: `-Ppattern=<regex>` (required), `-Pprojectonly=true|false` (optional, default false). Supports TEXT, JSON, and LLM output formats. Filters `java.lang.Object` from the supertype chain.
+- **New:** `ParamType` refactored to sealed class with generics — `ParamType<T>` variants carry their own parse lambdas, enabling type-safe `ParamDef<T>.parse()` returning the correct type directly.
+
 ## 0.1.32
 
 - **New:** `cnavFindStringConstant` task / `cnav:find-string-constant` goal — search string literals embedded in bytecode via ASM's `visitLdcInsn()`. Parameters: `-Ppattern=<regex>` (required). Finds URL paths, HTTP headers, config keys, SQL fragments, and other compile-time string constants. Supports TEXT, JSON, and LLM output formats.
