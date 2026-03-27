@@ -42,24 +42,149 @@ class ParamDefTest {
     }
 
     @Test
-    fun `parseList splits comma-separated values and trims whitespace`() {
-        val result = ParamDef.parseList("RestController, Scheduled , Component")
+    fun `parse returns value for STRING`() {
+        val param = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+
+        assertEquals("MyService", param.parse("MyService"))
+    }
+
+    @Test
+    fun `parse returns null for STRING when value is null`() {
+        val param = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+
+        assertEquals(null, param.parse(null))
+    }
+
+    @Test
+    fun `parse returns default from ParamDef when value is null for BOOLEAN`() {
+        val param = ParamDef("projectonly", "true", "Hide stdlib", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
+
+        assertEquals(true, param.parse(null))
+    }
+
+    @Test
+    fun `parse returns true when value is true for BOOLEAN`() {
+        val param = ParamDef("projectonly", "true", "Hide stdlib", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
+
+        assertEquals(true, param.parse("true"))
+    }
+
+    @Test
+    fun `parse returns false when value is false for BOOLEAN`() {
+        val param = ParamDef("projectonly", "true", "Hide stdlib", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
+
+        assertEquals(false, param.parse("false"))
+    }
+
+    @Test
+    fun `parse returns false when no defaultValue and value is null for BOOLEAN`() {
+        val param = ParamDef("detail", "true", "Show details", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
+
+        assertEquals(false, param.parse(null))
+    }
+
+    @Test
+    fun `parse returns default from ParamDef when value is null for INT`() {
+        val param = ParamDef("top", "<N>", "Max results", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
+
+        assertEquals(50, param.parse(null))
+    }
+
+    @Test
+    fun `parse returns parsed int when value is valid for INT`() {
+        val param = ParamDef("top", "<N>", "Max results", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
+
+        assertEquals(10, param.parse("10"))
+    }
+
+    @Test
+    fun `parse returns default when value is non-numeric for INT`() {
+        val param = ParamDef("top", "<N>", "Max results", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
+
+        assertEquals(50, param.parse("abc"))
+    }
+
+    @Test
+    fun `parseFrom returns true for FLAG when key is present`() {
+        val param = ParamDef("no-follow", "", "Disable rename tracking", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
+
+        assertEquals(true, param.parseFrom(mapOf("no-follow" to null)))
+    }
+
+    @Test
+    fun `parseFrom returns false for FLAG when key is absent`() {
+        val param = ParamDef("no-follow", "", "Disable rename tracking", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
+
+        assertEquals(false, param.parseFrom(emptyMap()))
+    }
+
+    @Test
+    fun `parse splits comma-separated values for LIST_STRING`() {
+        val param = ParamDef("exclude-annotated", "<ann>", "Annotations", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
+
+        val result = param.parse("RestController, Scheduled , Component")
 
         assertEquals(listOf("RestController", "Scheduled", "Component"), result)
     }
 
     @Test
-    fun `parseList returns empty list for null`() {
-        val result = ParamDef.parseList(null)
+    fun `parse returns empty list for null value for LIST_STRING`() {
+        val param = ParamDef("exclude-annotated", "<ann>", "Annotations", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
 
-        assertEquals(emptyList(), result)
+        val result = param.parse(null)
+
+        assertEquals(emptyList<String>(), result)
     }
 
     @Test
-    fun `parseList filters out blank entries`() {
-        val result = ParamDef.parseList("RestController,,, Scheduled")
+    fun `parse filters out blank entries for LIST_STRING`() {
+        val param = ParamDef("exclude-annotated", "<ann>", "Annotations", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
+
+        val result = param.parse("RestController,,, Scheduled")
 
         assertEquals(listOf("RestController", "Scheduled"), result)
+    }
+
+    @Test
+    fun `parseFormat returns TEXT when no format or llm specified`() {
+        val result = ParamDef.parseFormat(emptyMap())
+
+        assertEquals(no.f12.codenavigator.config.OutputFormat.TEXT, result)
+    }
+
+    @Test
+    fun `parseFormat returns JSON when format is json`() {
+        val result = ParamDef.parseFormat(mapOf("format" to "json"))
+
+        assertEquals(no.f12.codenavigator.config.OutputFormat.JSON, result)
+    }
+
+    @Test
+    fun `parseFormat returns LLM when llm is true`() {
+        val result = ParamDef.parseFormat(mapOf("llm" to "true"))
+
+        assertEquals(no.f12.codenavigator.config.OutputFormat.LLM, result)
+    }
+
+    @Test
+    fun `parseFormat returns LLM when format is llm`() {
+        val result = ParamDef.parseFormat(mapOf("format" to "llm"))
+
+        assertEquals(no.f12.codenavigator.config.OutputFormat.LLM, result)
+    }
+
+    @Test
+    fun `parse returns parsed date when value is valid for DATE`() {
+        val param = ParamDef("after", "YYYY-MM-DD", "After date", flag = false, defaultValue = "1 year ago", enhancePattern = false, type = ParamType.DATE)
+
+        assertEquals(java.time.LocalDate.of(2025, 6, 15), param.parse("2025-06-15"))
+    }
+
+    @Test
+    fun `parse returns one year ago when value is null for DATE`() {
+        val param = ParamDef("after", "YYYY-MM-DD", "After date", flag = false, defaultValue = "1 year ago", enhancePattern = false, type = ParamType.DATE)
+
+        assertEquals(java.time.LocalDate.now().minusYears(1), param.parse(null))
     }
 }
 
@@ -262,6 +387,38 @@ class TaskRegistryTest {
     }
 
     @Test
+    fun `METRICS_TOP param has default value of 5`() {
+        assertEquals("5", TaskRegistry.METRICS_TOP.defaultValue)
+    }
+
+    @Test
+    fun `PROJECTONLY param defaults to false`() {
+        assertEquals("false", TaskRegistry.PROJECTONLY.defaultValue)
+    }
+
+    @Test
+    fun `PROJECTONLY_ON param defaults to true`() {
+        assertEquals("true", TaskRegistry.PROJECTONLY_ON.defaultValue)
+    }
+
+    @Test
+    fun `complexity and rank have collapse-lambdas param`() {
+        val complexityParams = TaskRegistry.COMPLEXITY.params.map { it.name }.toSet()
+        val rankParams = TaskRegistry.RANK.params.map { it.name }.toSet()
+
+        assertTrue(complexityParams.contains("collapse-lambdas"), "complexity should have collapse-lambdas param")
+        assertTrue(rankParams.contains("collapse-lambdas"), "rank should have collapse-lambdas param")
+    }
+
+    @Test
+    fun `collapse-lambdas param defaults to true`() {
+        val param = TaskRegistry.COMPLEXITY.paramByName("collapse-lambdas")
+
+        assertEquals("true", param.defaultValue)
+        assertEquals(ParamType.BOOLEAN, param.type)
+    }
+
+    @Test
     fun `AFTER param has default value of 1 year ago`() {
         assertEquals("1 year ago", TaskRegistry.AFTER.defaultValue)
     }
@@ -285,5 +442,55 @@ class TaskRegistryTest {
         val param = TaskRegistry.FIND_CALLERS.paramByName("filter-synthetic")
 
         assertEquals("true", param.defaultValue)
+    }
+
+    @Test
+    fun `all ParamDef instances have correct ParamType`() {
+        val expectedTypes = mapOf(
+            "format" to ParamType.STRING,
+            "llm" to ParamType.BOOLEAN,
+            "pattern" to ParamType.STRING,
+            "method" to ParamType.STRING,
+            "maxdepth" to ParamType.INT,
+            "projectonly" to ParamType.BOOLEAN,
+            "filter-synthetic" to ParamType.BOOLEAN,
+            "top" to ParamType.INT,
+            "after" to ParamType.DATE,
+            "no-follow" to ParamType.FLAG,
+            "min-revs" to ParamType.INT,
+            "includetest" to ParamType.BOOLEAN,
+            "package" to ParamType.STRING,
+            "reverse" to ParamType.BOOLEAN,
+            "root-package" to ParamType.STRING,
+            "dsm-depth" to ParamType.INT,
+            "dsm-html" to ParamType.STRING,
+            "cycles" to ParamType.BOOLEAN,
+            "cycle" to ParamType.STRING,
+            "ownerClass" to ParamType.STRING,
+            "field" to ParamType.STRING,
+            "type" to ParamType.STRING,
+            "outside-package" to ParamType.STRING,
+            "filter" to ParamType.STRING,
+            "exclude" to ParamType.STRING,
+            "classes-only" to ParamType.BOOLEAN,
+            "exclude-annotated" to ParamType.LIST_STRING,
+            "classname" to ParamType.STRING,
+            "detail" to ParamType.BOOLEAN,
+            "min-shared-revs" to ParamType.INT,
+            "min-coupling" to ParamType.INT,
+            "max-changeset-size" to ParamType.INT,
+            "collapse-lambdas" to ParamType.BOOLEAN,
+            "section" to ParamType.STRING,
+        )
+
+        val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }
+
+        for (param in allParams) {
+            val expected = expectedTypes[param.name]
+            assertNotNull(expected, "No expected type for param '${param.name}' — add it to expectedTypes")
+            assertEquals(expected, param.type, "Param '${param.name}' should have type $expected but was ${param.type}")
+        }
+
+        assertEquals(expectedTypes.size, allParams.size, "expectedTypes count should match actual param count")
     }
 }

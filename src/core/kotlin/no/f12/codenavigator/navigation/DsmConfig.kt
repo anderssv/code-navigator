@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.ParamDef
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 
 data class DsmConfig(
@@ -13,13 +15,10 @@ data class DsmConfig(
     companion object {
         fun parse(properties: Map<String, String?>): DsmConfig = DsmConfig(
             rootPackage = PackageName(properties["root-package"] ?: ""),
-            depth = properties["dsm-depth"]?.toIntOrNull() ?: 2,
+            depth = TaskRegistry.DSM_DEPTH.parse(properties["dsm-depth"]),
             htmlPath = properties["dsm-html"],
-            format = OutputFormat.from(
-                format = properties["format"],
-                llm = properties["llm"]?.toBoolean(),
-            ),
-            cyclesOnly = properties["cycles"]?.toBoolean() ?: false,
+            format = ParamDef.parseFormat(properties),
+            cyclesOnly = TaskRegistry.CYCLES.parse(properties["cycles"]),
             cycleFilter = parseCycleFilter(properties["cycle"]),
         )
 

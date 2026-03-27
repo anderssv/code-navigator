@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.ParamDef
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 
 data class ComplexityConfig(
@@ -12,15 +14,12 @@ data class ComplexityConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): ComplexityConfig = ComplexityConfig(
-            classPattern = properties["classname"] ?: ".*",
-            projectOnly = properties["projectonly"]?.toBoolean() ?: true,
-            detail = properties["detail"]?.toBoolean() ?: false,
-            collapseLambdas = properties["collapse-lambdas"]?.toBoolean() ?: true,
-            top = properties["top"]?.toIntOrNull() ?: 50,
-            format = OutputFormat.from(
-                format = properties["format"],
-                llm = properties["llm"]?.toBoolean(),
-            ),
+            classPattern = properties["classname"] ?: TaskRegistry.CLASS.defaultValue!!,
+            projectOnly = TaskRegistry.PROJECTONLY_ON.parse(properties["projectonly"]),
+            detail = TaskRegistry.DETAIL.parse(properties["detail"]),
+            collapseLambdas = TaskRegistry.COLLAPSE_LAMBDAS.parse(properties["collapse-lambdas"]),
+            top = TaskRegistry.TOP.parse(properties["top"]),
+            format = ParamDef.parseFormat(properties),
         )
     }
 }

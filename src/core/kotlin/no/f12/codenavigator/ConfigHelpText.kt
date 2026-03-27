@@ -57,7 +57,7 @@ object ConfigHelpText {
         if (s.length >= width) "$s " else s.padEnd(width)
 
     private data class ParamEntry(
-        val param: ParamDef,
+        val param: ParamDef<*>,
         val tasks: List<TaskDef>,
         val defaultNote: String?,
     )

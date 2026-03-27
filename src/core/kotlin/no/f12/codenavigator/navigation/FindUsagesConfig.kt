@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.ParamDef
 import no.f12.codenavigator.config.OutputFormat
 
 data class FindUsagesConfig(
@@ -37,10 +38,7 @@ data class FindUsagesConfig(
                 field = field,
                 type = type,
                 outsidePackage = properties["outside-package"],
-                format = OutputFormat.from(
-                    format = properties["format"],
-                    llm = properties["llm"]?.toBoolean(),
-                ),
+                format = ParamDef.parseFormat(properties),
             )
         }
     }

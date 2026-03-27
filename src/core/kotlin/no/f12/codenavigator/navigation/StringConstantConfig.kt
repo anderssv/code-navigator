@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.ParamDef
 import no.f12.codenavigator.config.OutputFormat
 
 data class StringConstantConfig(
@@ -12,10 +13,7 @@ data class StringConstantConfig(
                 ?: throw IllegalArgumentException("Missing required property: pattern")
             return StringConstantConfig(
                 pattern = Regex(patternStr, RegexOption.IGNORE_CASE),
-                format = OutputFormat.from(
-                    format = properties["format"],
-                    llm = properties["llm"]?.toBoolean(),
-                ),
+                format = ParamDef.parseFormat(properties),
             )
         }
     }

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.ParamDef
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 
 data class FindInterfaceImplsConfig(
@@ -11,11 +13,8 @@ data class FindInterfaceImplsConfig(
         fun parse(properties: Map<String, String?>): FindInterfaceImplsConfig = FindInterfaceImplsConfig(
             pattern = properties["pattern"]
                 ?: throw IllegalArgumentException("Missing required property 'pattern'"),
-            includeTest = properties["includetest"]?.toBoolean() ?: false,
-            format = OutputFormat.from(
-                format = properties["format"],
-                llm = properties["llm"]?.toBoolean(),
-            ),
+            includeTest = TaskRegistry.INCLUDETEST.parse(properties["includetest"]),
+            format = ParamDef.parseFormat(properties),
         )
     }
 }

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.ParamDef
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 
 data class PackageDepsConfig(
@@ -11,12 +13,9 @@ data class PackageDepsConfig(
     companion object {
         fun parse(properties: Map<String, String?>): PackageDepsConfig = PackageDepsConfig(
             packagePattern = properties["package"],
-            projectOnly = properties["projectonly"]?.toBoolean() ?: false,
-            reverse = properties["reverse"]?.toBoolean() ?: false,
-            format = OutputFormat.from(
-                format = properties["format"],
-                llm = properties["llm"]?.toBoolean(),
-            ),
+            projectOnly = TaskRegistry.PROJECTONLY.parse(properties["projectonly"]),
+            reverse = TaskRegistry.REVERSE.parse(properties["reverse"]),
+            format = ParamDef.parseFormat(properties),
         )
     }
 }

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.ParamDef
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 
 data class RankConfig(
@@ -10,13 +12,10 @@ data class RankConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): RankConfig = RankConfig(
-            top = properties["top"]?.toIntOrNull() ?: 50,
-            projectOnly = properties["projectonly"]?.toBoolean() ?: true,
-            collapseLambdas = properties["collapse-lambdas"]?.toBoolean() ?: true,
-            format = OutputFormat.from(
-                format = properties["format"],
-                llm = properties["llm"]?.toBoolean(),
-            ),
+            top = TaskRegistry.TOP.parse(properties["top"]),
+            projectOnly = TaskRegistry.PROJECTONLY_ON.parse(properties["projectonly"]),
+            collapseLambdas = TaskRegistry.COLLAPSE_LAMBDAS.parse(properties["collapse-lambdas"]),
+            format = ParamDef.parseFormat(properties),
         )
     }
 }

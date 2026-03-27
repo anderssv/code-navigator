@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.ParamDef
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 import java.time.LocalDate
 
@@ -12,15 +14,11 @@ data class MetricsConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): MetricsConfig = MetricsConfig(
-            after = properties["after"]?.let { LocalDate.parse(it) }
-                ?: LocalDate.now().minusYears(1),
-            top = properties["top"]?.toIntOrNull() ?: 5,
-            followRenames = !properties.containsKey("no-follow"),
+            after = TaskRegistry.AFTER.parse(properties["after"]),
+            top = TaskRegistry.METRICS_TOP.parse(properties["top"]),
+            followRenames = !TaskRegistry.NO_FOLLOW.parseFrom(properties),
             rootPackage = PackageName(properties["root-package"] ?: ""),
-            format = OutputFormat.from(
-                format = properties["format"],
-                llm = properties["llm"]?.toBoolean(),
-            ),
+            format = ParamDef.parseFormat(properties),
         )
     }
 }

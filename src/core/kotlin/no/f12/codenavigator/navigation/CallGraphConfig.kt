@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.ParamDef
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 
 data class CallGraphConfig(
@@ -21,13 +23,10 @@ data class CallGraphConfig(
         fun parse(properties: Map<String, String?>): CallGraphConfig = CallGraphConfig(
             method = properties["method"]
                 ?: throw IllegalArgumentException("Missing required property 'method'"),
-            maxDepth = properties["maxdepth"]?.toIntOrNull() ?: 3,
-            projectOnly = properties["projectonly"]?.toBoolean() ?: false,
-            filterSynthetic = properties["filter-synthetic"]?.toBoolean() ?: true,
-            format = OutputFormat.from(
-                format = properties["format"],
-                llm = properties["llm"]?.toBoolean(),
-            ),
+            maxDepth = TaskRegistry.MAXDEPTH.parse(properties["maxdepth"]),
+            projectOnly = TaskRegistry.PROJECTONLY.parse(properties["projectonly"]),
+            filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parse(properties["filter-synthetic"]),
+            format = ParamDef.parseFormat(properties),
         )
     }
 }

@@ -6,7 +6,7 @@ object HelpText {
         val p = { name: String, value: String -> tool.param(name, value) }
         val pf = { name: String -> tool.paramFlag(name) }
         fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
-        fun pd(param: ParamDef, description: String) = paramDoc(param, tool, description)
+        fun pd(param: ParamDef<*>, description: String) = paramDoc(param, tool, description)
 
         appendLine("=== code-navigator plugin ===")
         appendLine()
@@ -201,6 +201,7 @@ object HelpText {
         appendLine("      ${pd(TaskRegistry.COMPLEXITY.paramByName("classname"), "Class name regex to analyze")}")
         appendLine("      ${pd(TaskRegistry.PROJECTONLY, "Filter to project classes only")}")
         appendLine("      ${pd(TaskRegistry.COMPLEXITY.paramByName("detail"), "Show individual call details")}")
+        appendLine("      ${pd(TaskRegistry.COLLAPSE_LAMBDAS, "Set false to show lambda classes separately")}")
         appendLine("      ${pd(TaskRegistry.TOP, "Maximum results to return")}")
         appendLine("    Usage: ${u("complexity")}")
         appendLine("    Usage: ${u("complexity", p("classname", "Service"))}")
@@ -289,7 +290,7 @@ object HelpText {
         appendLine("If you are an AI coding agent, run ${u("agent-help")} for optimized guidance.")
     }
 
-    private fun paramDoc(param: ParamDef, tool: BuildTool, description: String): String {
+    private fun paramDoc(param: ParamDef<*>, tool: BuildTool, description: String): String {
         val rendered = param.render(tool)
         val annotation = when {
             param.defaultValue != null -> "(optional, default: ${param.defaultValue})"

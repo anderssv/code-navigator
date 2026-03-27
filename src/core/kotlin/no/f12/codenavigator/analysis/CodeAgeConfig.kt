@@ -1,5 +1,7 @@
 package no.f12.codenavigator.analysis
 
+import no.f12.codenavigator.ParamDef
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 import java.time.LocalDate
 
@@ -11,14 +13,10 @@ data class CodeAgeConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): CodeAgeConfig = CodeAgeConfig(
-            after = properties["after"]?.let { LocalDate.parse(it) }
-                ?: LocalDate.now().minusYears(1),
-            top = properties["top"]?.toIntOrNull() ?: 50,
-            followRenames = !properties.containsKey("no-follow"),
-            format = OutputFormat.from(
-                format = properties["format"],
-                llm = properties["llm"]?.toBoolean(),
-            ),
+            after = TaskRegistry.AFTER.parse(properties["after"]),
+            top = TaskRegistry.TOP.parse(properties["top"]),
+            followRenames = !TaskRegistry.NO_FOLLOW.parseFrom(properties),
+            format = ParamDef.parseFormat(properties),
         )
     }
 }
