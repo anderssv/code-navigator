@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.36
+
+- **Improved:** Dead code detection — Kotlin inline function filtering. Inline functions leave no call edges in bytecode (the compiler inlines the body at each call site), causing them to be falsely flagged as dead. Now parses `@kotlin.Metadata` annotations using `kotlin-metadata-jvm` to identify inline functions and filters them from dead method results. New dependency: `org.jetbrains.kotlin:kotlin-metadata-jvm`.
+
 ## 0.1.35
 
 - **Improved:** Dead code detection — intra-class call tracking. Methods called within the same class by an externally-alive method are no longer flagged as dead. Uses transitive BFS propagation so `A→B→C` within a class marks all three alive when `A` is called from outside. Previously the #1 source of false positives.
