@@ -15,6 +15,8 @@ class DeadCodeFinderTest {
         classAnnotations: Map<ClassName, Set<String>> = emptyMap(),
         methodAnnotations: Map<MethodRef, Set<String>> = emptyMap(),
         testGraph: CallGraph? = null,
+        interfaceImplementors: Map<ClassName, Set<ClassName>> = emptyMap(),
+        classFields: Map<ClassName, Set<String>> = emptyMap(),
     ): List<DeadCode> = DeadCodeFinder.find(
         graph = graph,
         filter = filter,
@@ -24,6 +26,8 @@ class DeadCodeFinderTest {
         classAnnotations = classAnnotations,
         methodAnnotations = methodAnnotations,
         testGraph = testGraph,
+        interfaceImplementors = interfaceImplementors,
+        classFields = classFields,
     )
 
     @Test
@@ -161,7 +165,7 @@ class DeadCodeFinderTest {
         assertEquals(listOf("unusedA", "unusedB"), methods.map { it.memberName })
     }
     @Test
-    fun `method called only within same class is dead method`() {
+    fun `method called within same class by alive method is not dead`() {
         val graph = testCallGraph(
             method("com.example.Controller", "handle") to method("com.example.Service", "process"),
             method("com.example.Service", "process") to method("com.example.Service", "helper"),
@@ -172,7 +176,7 @@ class DeadCodeFinderTest {
 
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
         val deadMethodNames = deadMethods.map { "${it.className.value}.${it.memberName}" }
-        assertTrue("com.example.Service.helper" in deadMethodNames, "helper() is only called within Service itself")
+        assertTrue("com.example.Service.helper" !in deadMethodNames, "helper() is called by process() which is alive — should not be dead")
         assertTrue("com.example.Service.process" !in deadMethodNames, "process() is called by Controller")
     }
 
@@ -363,6 +367,178 @@ class DeadCodeFinderTest {
         val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
         assertTrue("com.example.Service" in deadClassNames, "Service is not annotated with RestController, so still dead")
         assertTrue("com.example.Util" in deadClassNames, "Util has no annotations, so still dead")
+    }
+
+    @Test
+    fun `method called within same class transitively through alive chain is not dead`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.Service", "process") to method("com.example.Service", "validate"),
+            method("com.example.Service", "validate") to method("com.example.Service", "sanitize"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service"),
+        )
+
+        val dead = findDead(graph)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.Service.validate" !in deadMethods, "validate() is reachable from alive process()")
+        assertTrue("com.example.Service.sanitize" !in deadMethods, "sanitize() is transitively reachable from alive process()")
+    }
+
+    @Test
+    fun `method called within same class but no alive caller is still dead`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.Service", "orphan") to method("com.example.Service", "orphanHelper"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service"),
+        )
+
+        val dead = findDead(graph)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.Service.orphan" in deadMethods, "orphan() is not called from outside, so it is dead")
+        assertTrue("com.example.Service.orphanHelper" in deadMethods, "orphanHelper() is only called by dead orphan(), so it is dead too")
+    }
+
+    @Test
+    fun `self-recursive method within same class called by alive method is not dead`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.Service", "process") to method("com.example.Service", "recurse"),
+            method("com.example.Service", "recurse") to method("com.example.Service", "recurse"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service"),
+        )
+
+        val dead = findDead(graph)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.Service.recurse" !in deadMethods, "recurse() is reachable from alive process()")
+    }
+
+    // === Interface dispatch resolution tests ===
+
+    @Test
+    fun `method called via interface dispatch is not dead`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.Controller", "init") to method("com.example.ServiceImpl", "setup"),
+            method("com.example.ServiceImpl", "process") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.ServiceImpl", "com.example.Repo"),
+        )
+        val interfaceImplementors = mapOf(
+            ClassName("com.example.Service") to setOf(ClassName("com.example.ServiceImpl")),
+        )
+
+        val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.ServiceImpl.process" !in deadMethods, "process() on ServiceImpl should not be dead — called via interface dispatch on Service")
+    }
+
+    @Test
+    fun `interface dispatch marks implementor class as alive`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.ServiceImpl", "process") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.ServiceImpl", "com.example.Repo"),
+        )
+        val interfaceImplementors = mapOf(
+            ClassName("com.example.Service") to setOf(ClassName("com.example.ServiceImpl")),
+        )
+
+        val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
+
+        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        assertTrue("com.example.ServiceImpl" !in deadClasses, "ServiceImpl should not be dead — it implements Service which is called")
+    }
+
+    @Test
+    fun `without interface dispatch info implementor method is still dead`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.Controller", "init") to method("com.example.ServiceImpl", "setup"),
+            method("com.example.ServiceImpl", "process") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.ServiceImpl", "com.example.Repo"),
+        )
+
+        val dead = findDead(graph, interfaceImplementors = emptyMap())
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.ServiceImpl.process" in deadMethods, "Without interface info, process() on ServiceImpl should be dead")
+    }
+
+    @Test
+    fun `interface dispatch resolves to multiple implementors`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.Controller", "init") to method("com.example.ServiceImplA", "setup"),
+            method("com.example.Controller", "init") to method("com.example.ServiceImplB", "setup"),
+            method("com.example.ServiceImplA", "process") to method("com.example.Repo", "save"),
+            method("com.example.ServiceImplB", "process") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.ServiceImplA", "com.example.ServiceImplB", "com.example.Repo"),
+        )
+        val interfaceImplementors = mapOf(
+            ClassName("com.example.Service") to setOf(ClassName("com.example.ServiceImplA"), ClassName("com.example.ServiceImplB")),
+        )
+
+        val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.ServiceImplA.process" !in deadMethods, "process() on ServiceImplA should not be dead")
+        assertTrue("com.example.ServiceImplB.process" !in deadMethods, "process() on ServiceImplB should not be dead")
+    }
+
+    // === Kotlin property accessor filtering tests ===
+
+    @Test
+    fun `property accessor for declared field is filtered from dead methods`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.Service", "getName") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.Repo"),
+        )
+        val classFields = mapOf(
+            ClassName("com.example.Service") to setOf("name"),
+        )
+
+        val dead = findDead(graph, classFields = classFields)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.Service.getName" !in deadMethods, "getName() is a property accessor for field 'name' and should be filtered")
+    }
+
+    @Test
+    fun `non-accessor method with get prefix is still reported as dead`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.Service", "getData") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.Repo"),
+        )
+        val classFields = mapOf(
+            ClassName("com.example.Service") to setOf("name"),
+        )
+
+        val dead = findDead(graph, classFields = classFields)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.Service.getData" in deadMethods, "getData() does not match any field and should still be dead")
+    }
+
+    @Test
+    fun `setter accessor for declared field is filtered from dead methods`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.Service", "setName") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.Repo"),
+        )
+        val classFields = mapOf(
+            ClassName("com.example.Service") to setOf("name"),
+        )
+
+        val dead = findDead(graph, classFields = classFields)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.Service.setName" !in deadMethods, "setName() is a property accessor for field 'name' and should be filtered")
     }
 
     // === Confidence scoring tests ===

@@ -6,9 +6,12 @@ import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.AnnotationExtractor
 import no.f12.codenavigator.navigation.CallGraphCache
+import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.DeadCodeConfig
 import no.f12.codenavigator.navigation.DeadCodeFinder
 import no.f12.codenavigator.navigation.DeadCodeFormatter
+import no.f12.codenavigator.navigation.FieldExtractor
+import no.f12.codenavigator.navigation.InterfaceRegistryCache
 import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
@@ -57,6 +60,17 @@ abstract class DeadCodeTask : DefaultTask() {
             null
         }
 
+        val interfaceRegistry = InterfaceRegistryCache.getOrBuild(
+            File(project.layout.buildDirectory.asFile.get(), "cnav/interface-registry.cache"),
+            classDirectories,
+        ).data
+        val interfaceImplementors = mutableMapOf<ClassName, MutableSet<ClassName>>()
+        interfaceRegistry.forEachEntry { interfaceName, implementors ->
+            interfaceImplementors[interfaceName] = implementors.map { it.className }.toMutableSet()
+        }
+
+        val classFields = FieldExtractor.scanAll(classDirectories)
+
         val dead = DeadCodeFinder.find(
             graph = graph,
             filter = config.filter,
@@ -66,6 +80,8 @@ abstract class DeadCodeTask : DefaultTask() {
             classAnnotations = classAnnotations,
             methodAnnotations = methodAnnotations,
             testGraph = testGraph,
+            interfaceImplementors = interfaceImplementors,
+            classFields = classFields,
         )
 
         if (dead.isEmpty()) {

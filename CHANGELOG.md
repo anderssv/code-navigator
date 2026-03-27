@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.35
+
+- **Improved:** Dead code detection — intra-class call tracking. Methods called within the same class by an externally-alive method are no longer flagged as dead. Uses transitive BFS propagation so `A→B→C` within a class marks all three alive when `A` is called from outside. Previously the #1 source of false positives.
+- **Improved:** Dead code detection — interface dispatch resolution. When `Interface.method()` is called, all implementing classes' `method()` are now marked as alive. Uses `InterfaceRegistry` data already available in the plugin.
+- **Improved:** Dead code detection — Kotlin property accessor filtering. Generated `getName()`/`setName()` methods matching declared fields are no longer reported as dead. Uses existing `KotlinMethodFilter.isAccessorForField()` with a new `FieldExtractor` that scans class files for field names.
+
 ## 0.1.34
 
 - **Changed:** `cnavAgentHelp -Psection=install` output slimmed down to a minimal blurb — announces the tool and points to `cnavAgentHelp` for details. Task lists, parameter docs, and permission setup removed from install section.

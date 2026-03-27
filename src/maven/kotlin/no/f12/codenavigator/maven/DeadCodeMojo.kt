@@ -6,9 +6,12 @@ import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.AnnotationExtractor
 import no.f12.codenavigator.navigation.CallGraphBuilder
+import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.DeadCodeConfig
 import no.f12.codenavigator.navigation.DeadCodeFinder
 import no.f12.codenavigator.navigation.DeadCodeFormatter
+import no.f12.codenavigator.navigation.FieldExtractor
+import no.f12.codenavigator.navigation.InterfaceRegistry
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute
@@ -71,6 +74,14 @@ class DeadCodeMojo : AbstractMojo() {
             null
         }
 
+        val interfaceRegistry = InterfaceRegistry.build(listOf(classesDir)).data
+        val interfaceImplementors = mutableMapOf<ClassName, MutableSet<ClassName>>()
+        interfaceRegistry.forEachEntry { interfaceName, implementors ->
+            interfaceImplementors[interfaceName] = implementors.map { it.className }.toMutableSet()
+        }
+
+        val classFields = FieldExtractor.scanAll(listOf(classesDir))
+
         val dead = DeadCodeFinder.find(
             graph = graph,
             filter = config.filter,
@@ -80,6 +91,8 @@ class DeadCodeMojo : AbstractMojo() {
             classAnnotations = classAnnotations,
             methodAnnotations = methodAnnotations,
             testGraph = testGraph,
+            interfaceImplementors = interfaceImplementors,
+            classFields = classFields,
         )
 
         if (dead.isEmpty()) {

@@ -30,6 +30,8 @@ object DeadCodeFinder {
         classAnnotations: Map<ClassName, Set<String>>,
         methodAnnotations: Map<MethodRef, Set<String>>,
         testGraph: CallGraph?,
+        interfaceImplementors: Map<ClassName, Set<ClassName>> = emptyMap(),
+        classFields: Map<ClassName, Set<String>> = emptyMap(),
     ): List<DeadCode> {
         val projectClasses = graph.projectClasses()
         if (projectClasses.isEmpty()) return emptyList()
@@ -37,6 +39,8 @@ object DeadCodeFinder {
         val calledTypes = mutableSetOf<ClassName>()
         val calledMethods = mutableSetOf<MethodRef>()
         val projectMethods = mutableSetOf<MethodRef>()
+
+        val intraClassEdges = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
 
         graph.forEachEdge { caller, callee ->
             if (caller.className in projectClasses) {
@@ -48,6 +52,36 @@ object DeadCodeFinder {
             if (caller.className != callee.className && callee.className in projectClasses) {
                 calledTypes.add(callee.className)
                 calledMethods.add(callee)
+            }
+            if (caller.className == callee.className && callee.className in projectClasses) {
+                intraClassEdges.getOrPut(caller) { mutableSetOf() }.add(callee)
+            }
+        }
+
+        // Resolve interface dispatch: when Interface.method() is called,
+        // mark the same method on all implementing classes as called too
+        for (calledMethod in calledMethods.toList()) {
+            val implementors = interfaceImplementors[calledMethod.className] ?: continue
+            for (implClass in implementors) {
+                if (implClass in projectClasses) {
+                    calledTypes.add(implClass)
+                    calledMethods.add(MethodRef(implClass, calledMethod.methodName))
+                }
+            }
+        }
+
+        // Propagate liveness through intra-class calls: if a method is alive
+        // (called from outside the class) and it calls another method in the
+        // same class, that callee becomes alive too (transitive closure).
+        val queue = ArrayDeque(calledMethods.filter { it in projectMethods })
+        while (queue.isNotEmpty()) {
+            val method = queue.removeFirst()
+            val intraCallees = intraClassEdges[method] ?: continue
+            for (callee in intraCallees) {
+                if (callee !in calledMethods) {
+                    calledMethods.add(callee)
+                    queue.add(callee)
+                }
             }
         }
 
@@ -83,7 +117,8 @@ object DeadCodeFinder {
                 if (method.className in calledTypes &&
                     method !in calledMethods &&
                     !method.className.isGenerated() &&
-                    !method.isGenerated()
+                    !method.isGenerated() &&
+                    !isPropertyAccessor(method, classFields)
                 ) {
                     results.add(
                         DeadCode(
@@ -120,6 +155,14 @@ object DeadCodeFinder {
         if (testGraph != null && referencedInTests) return DeadCodeConfidence.MEDIUM
 
         return DeadCodeConfidence.HIGH
+    }
+
+    private fun isPropertyAccessor(
+        method: MethodRef,
+        classFields: Map<ClassName, Set<String>>,
+    ): Boolean {
+        val fields = classFields[method.className] ?: return false
+        return KotlinMethodFilter.isAccessorForField(method.methodName, fields)
     }
 
     private fun isExcludedByAnnotation(
