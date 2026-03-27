@@ -145,4 +145,14 @@ class HelpTextTest {
             "maxdepth should be shown as optional or with default in callers section",
         )
     }
+
+    @Test
+    fun `help text includes agent hint pointing to agent-help`() {
+        val gradleText = HelpText.generate(BuildTool.GRADLE)
+        val mavenText = HelpText.generate(BuildTool.MAVEN)
+
+        assertTrue(gradleText.contains("AI coding agent"), "Should mention AI coding agents")
+        assertTrue(gradleText.contains("cnavAgentHelp"), "Should reference cnavAgentHelp task")
+        assertTrue(mavenText.contains("cnav:agent-help"), "Maven should reference cnav:agent-help goal")
+    }
 }

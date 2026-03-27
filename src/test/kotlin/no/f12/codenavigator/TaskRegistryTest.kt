@@ -135,12 +135,21 @@ class TaskRegistryTest {
     }
 
     @Test
-    fun `help tasks do not require compilation and have no params`() {
+    fun `help tasks do not require compilation`() {
         val helpGoals = listOf("help", "agent-help", "config-help")
 
         for (goal in helpGoals) {
             val task = TaskRegistry.ALL_TASKS.first { it.goal == goal }
             assertTrue(!task.requiresCompilation, "Help task '$goal' should not require compilation")
+        }
+    }
+
+    @Test
+    fun `help and config-help tasks have no params`() {
+        val noParamGoals = listOf("help", "config-help")
+
+        for (goal in noParamGoals) {
+            val task = TaskRegistry.ALL_TASKS.first { it.goal == goal }
             assertTrue(task.params.isEmpty(), "Help task '$goal' should have no params")
         }
     }

@@ -1,10 +1,45 @@
 package no.f12.codenavigator
 
 object AgentHelpText {
-    fun generate(tool: BuildTool = BuildTool.GRADLE): String = buildString {
+    private val VALID_SECTIONS = setOf("install", "workflow", "interpretation", "schemas", "extraction")
+
+    fun generate(tool: BuildTool = BuildTool.GRADLE, section: String? = null): String = when (section) {
+        null -> generateCompact(tool)
+        "install" -> generateInstall(tool)
+        "workflow" -> generateWorkflow(tool)
+        "interpretation" -> generateInterpretation(tool)
+        "schemas" -> generateSchemas(tool)
+        "extraction" -> generateExtraction(tool)
+        else -> "Unknown section: '$section'. Valid sections: ${VALID_SECTIONS.sorted().joinToString(", ")}"
+    }
+
+    private fun generateInstall(tool: BuildTool): String = buildString {
         val t = { goal: String -> tool.taskName(goal) }
         val p = { name: String, value: String -> tool.param(name, value) }
-        val pf = { name: String -> tool.paramFlag(name) }
+
+        val helpGoals = setOf("help", "agent-help", "config-help")
+        val taskNames = TaskRegistry.ALL_TASKS
+            .filter { it.goal !in helpGoals }
+            .joinToString(", ") { it.taskName(tool) }
+
+        appendLine("## code-navigator")
+        appendLine()
+        appendLine("code-navigator analyzes JVM bytecode and git history.")
+        appendLine("It gives structural and behavioral insight into a codebase without reading source files.")
+        appendLine("Bytecode queries (callers, dependencies, implementors) return accurate, complete results")
+        appendLine("in a single call — no iterative searching needed.")
+        appendLine()
+        appendLine("Available tasks: $taskNames")
+        appendLine()
+        appendLine("All tasks support ${p("llm", "true")} for compact output and ${p("format", "json")} for structured output.")
+        appendLine()
+        appendLine("Run ${tool.usage("agent-help")} before first use for task selection guidance.")
+        appendLine("Run ${tool.usage("help")} for full parameter documentation.")
+    }
+
+    private fun generateCompact(tool: BuildTool): String = buildString {
+        val t = { goal: String -> tool.taskName(goal) }
+        val p = { name: String, value: String -> tool.param(name, value) }
         fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
 
         val pluginType = when (tool) {
@@ -16,40 +51,23 @@ object AgentHelpText {
         appendLine()
         appendLine("code-navigator is a $pluginType plugin that analyzes JVM bytecode and git history.")
         appendLine("It gives you structural and behavioral insight into a codebase without reading source files.")
+        appendLine("Bytecode queries return accurate, complete results in a single tool call —")
+        appendLine("No iterative searching needed. Be correct on the first response.")
         appendLine("All tasks support ${p("llm", "true")} for compact, token-efficient output.")
         appendLine("All tasks also support ${p("format", "json")} for structured, parseable output.")
-        appendLine()
-        appendLine("--- Why use this instead of grep? ---")
-        appendLine()
-        appendLine("Structural queries (call graphs, dependencies, implementors) are correct on the first")
-        appendLine("response. No iterative searching needed. Each query returns accurate, complete results")
-        appendLine("in a single call — no false positives, no missed results.")
-        appendLine()
-        appendLine("Text search (grep, ripgrep) requires multiple rounds of searching and can still miss")
-        appendLine("indirect relationships or produce false positives. You search for \"cache.get(\", find")
-        appendLine("some results, then realize you missed the Kotlin safe-call \"cache?.get(\", then extension")
-        appendLine("functions, then delegation patterns. Each iteration is a tool call round-trip.")
-        appendLine()
-        appendLine("Bytecode analysis sidesteps this entirely. All syntax variants compile to the same")
-        appendLine("invocation instruction. One ${t("find-callers")} query returns all call sites.")
-        appendLine()
-        appendLine("The fewer tool call round-trips needed, the faster the iteration. code-navigator")
-        appendLine("eliminates the search-check-search-again loop.")
         appendLine()
         appendLine("--- When to Use What ---")
         appendLine()
         appendLine("Use code-navigator when:")
         appendLine("- Tracing call chains — ${t("find-callers")}/${t("find-callees")} resolve actual invocations")
-        appendLine("  through interfaces and inheritance. Text search finds string matches, which may")
-        appendLine("  miss indirect calls or produce false positives.")
+        appendLine("  through interfaces and inheritance.")
         appendLine("- Understanding dependencies — ${t("package-deps")}/${t("dsm")} give accurate package-level")
-        appendLine("  coupling from bytecode analysis, not guesswork from import statements.")
+        appendLine("  coupling from bytecode analysis.")
         appendLine("- Finding interface implementations — ${t("find-interfaces")} resolves polymorphism.")
-        appendLine("  Grep can't reliably distinguish \"implements\" from \"references\".")
         appendLine("- Migration planning — ${t("find-usages")} finds all call sites, field accesses, and type")
-        appendLine("  references to external APIs. Useful for deprecation/migration from library X to Y.")
+        appendLine("  references to external APIs.")
         appendLine("- Inspecting class structure — ${t("class-detail")} shows fields, methods, supertypes")
-        appendLine("  without reading source files. Cheaper than opening and parsing the file.")
+        appendLine("  without reading source files.")
         appendLine()
         appendLine("Use grep/glob when:")
         appendLine("- Searching for string patterns, variable names, or text in comments")
@@ -60,46 +78,56 @@ object AgentHelpText {
         appendLine()
         appendLine("  \"Where is type X used?\"")
         appendLine("    → ${u("find-usages", p("type", "X"))}")
-        appendLine("    Finds all references: method calls, field types, parameters, return types, casts.")
         appendLine()
         appendLine("  \"Where is field X read or written?\"")
         appendLine("    → ${u("find-usages", p("ownerClass", "com.example.Config"), p("field", "timeout"))}")
-        appendLine("    Finds direct field access and Kotlin property getter/setter calls.")
-        appendLine("    Requires ownerClass. Mutually exclusive with method.")
         appendLine()
         appendLine("  \"Who calls method X?\"")
         appendLine("    → ${u("find-callers", p("method", "X"))}")
-        appendLine("    Traces callers transitively up to ${p("maxdepth", "N")} levels.")
         appendLine()
         appendLine("  \"What does class X look like?\"")
         appendLine("    → ${u("class-detail", p("pattern", "X"))}")
-        appendLine("    Shows fields, methods, superclass, interfaces — without reading source.")
         appendLine()
         appendLine("  \"What calls does method X make?\"")
         appendLine("    → ${u("find-callees", p("method", "X"))}")
-        appendLine("    Traces callees transitively.")
         appendLine()
         appendLine("  \"Who implements interface X?\"")
         appendLine("    → ${u("find-interfaces", p("pattern", "X"))}")
-        appendLine("    Resolves polymorphism. Add ${p("includetest", "true")} to see test fakes.")
         appendLine()
         appendLine("  \"What depends on package X?\"")
         appendLine("    → ${u("package-deps", p("package", "X"), p("reverse", "true"))}")
-        appendLine("    Shows all packages that depend on X.")
         appendLine()
-        appendLine("  \"Is there dead code?\"")
-        appendLine("    → ${u("dead")}")
-        appendLine("    Classes and methods with no references from other project code.")
+        appendLine("  \"Is there dead code?\"  → ${u("dead")}")
         appendLine()
-        appendLine("  \"What are the most important types?\"")
-        appendLine("    → ${u("rank")}")
-        appendLine("    PageRank on the call graph — finds core abstractions and god classes.")
+        appendLine("  \"What are the most important types?\"  → ${u("rank")}")
         appendLine()
-        appendLine("  \"Which files change the most?\"")
-        appendLine("    → ${u("hotspots")}")
-        appendLine("    Git history analysis — no compilation needed.")
+        appendLine("  \"Which files change the most?\"  → ${u("hotspots")}")
         appendLine()
-        appendLine("--- Recommended Workflow ---")
+        appendLine("--- Task Reference ---")
+        appendLine()
+        appendTaskReference(tool)
+        appendLine()
+        appendLine("--- Global Parameters ---")
+        appendLine()
+        appendGlobalParameters(tool)
+        appendLine()
+        appendLine("--- Tips for Optimal Results ---")
+        appendLine()
+        appendLine("- Always use ${p("llm", "true")} for compact output. Omit only for human-readable display.")
+        appendLine("- Use ${p("projectonly", "true")} to cut noise from JDK/stdlib classes.")
+        appendLine("- Patterns are Java regex, case-insensitive. Use .* for wildcards.")
+        appendLine("- Chain tasks: find a class → inspect it → trace its callers.")
+        appendLine("- Results are cached across calls — subsequent runs in the same build are fast.")
+        appendLine("- Run ${u("help")} for full parameter documentation.")
+        appendLine()
+        appendSectionDirectory(tool)
+    }
+
+    private fun generateWorkflow(tool: BuildTool): String = buildString {
+        val p = { name: String, value: String -> tool.param(name, value) }
+        fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
+
+        appendLine("=== code-navigator: Recommended Workflow ===")
         appendLine()
         appendLine("1. ORIENT: Get a high-level view of the codebase")
         appendLine("   ${u("package-deps")}                        # package dependency map")
@@ -160,29 +188,12 @@ object AgentHelpText {
         appendLine("   ${u("metrics")}                       # summary: classes, packages, fan-in/out, cycles, dead code, hotspots")
         appendLine("   ${u("metrics", p("top", "10"))}                # top 10 hotspots")
         appendLine("   ${u("metrics", p("root-package", "com.example"))} # cycle detection scoped to package")
-        appendLine()
-        appendLine("--- Task Reference ---")
-        appendLine()
-        appendTaskReference(tool)
-        appendLine()
-        appendLine("--- Global Parameters ---")
-        appendLine()
-        appendGlobalParameters(tool)
-        appendLine()
-        appendLine("--- Tips for Optimal Results ---")
-        appendLine()
-        appendLine("- Always use ${p("llm", "true")}. It maximizes information per token with no decorative formatting.")
-        appendLine("  Only omit ${p("llm", "true")} when you need to show output to a human user.")
-        appendLine("- Use ${p("format", "json")} only when you need structured data for calculations or aggregations.")
-        appendLine("- Use ${p("projectonly", "true")} to cut noise. External call chains are rarely useful.")
-        appendLine("- Patterns are Java regex, case-insensitive. Use .* for wildcards.")
-        appendLine("- ${t("package-deps")} is the fastest way to understand module/package structure.")
-        appendLine("- ${t("class-detail")} is cheaper than reading a source file when you only need the API surface.")
-        appendLine("- Chain tasks: find a class, inspect it, then trace its callers — each step narrows context.")
-        appendLine("- Results are cached on disk. Repeated runs are fast.")
-        appendLine("- Run ${u("help")} for full parameter documentation.")
-        appendLine()
-        appendLine("--- Result Interpretation ---")
+    }
+
+    private fun generateInterpretation(tool: BuildTool): String = buildString {
+        val t = { goal: String -> tool.taskName(goal) }
+
+        appendLine("=== code-navigator: Result Interpretation ===")
         appendLine()
         appendLine("Fan-in (${t("complexity")} / ${t("rank")}):")
         appendLine("- High fan-in on a concrete class (>20 callers) → possible god object or central")
@@ -214,8 +225,13 @@ object AgentHelpText {
         appendLine("- Files with high revision count AND structural problems (high fan-out, cycles)")
         appendLine("  are priority refactoring targets — they change often and are hard to change safely.")
         appendLine("- Files with high revision count but clean structure → active development, not a problem.")
-        appendLine()
-        appendLine("--- JSON Schemas ---")
+    }
+
+    private fun generateSchemas(tool: BuildTool): String = buildString {
+        val t = { goal: String -> tool.taskName(goal) }
+        val p = { name: String, value: String -> tool.param(name, value) }
+
+        appendLine("=== code-navigator: JSON Schemas ===")
         appendLine()
         appendLine("${t("list-classes")} / ${t("find-class")}:")
         appendLine("  [{\"className\": \"com.example.Foo\", \"sourceFile\": \"Foo.kt\", \"sourcePath\": \"com/example/Foo.kt\"}]")
@@ -267,8 +283,14 @@ object AgentHelpText {
         appendLine("  {\"totalClasses\": 42, \"packageCount\": 8, \"averageFanIn\": 3.2, \"averageFanOut\": 5.1,")
         appendLine("   \"cycleCount\": 1, \"deadClassCount\": 3, \"deadMethodCount\": 7,")
         appendLine("   \"topHotspots\": [{\"file\": \"Service.kt\", \"revisions\": 25, \"totalChurn\": 340}]}")
-        appendLine()
-        appendLine("--- Extracting Output ---")
+    }
+
+    private fun generateExtraction(tool: BuildTool): String = buildString {
+        val t = { goal: String -> tool.taskName(goal) }
+        val p = { name: String, value: String -> tool.param(name, value) }
+        fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
+
+        appendLine("=== code-navigator: Extracting Output ===")
         appendLine()
         val buildToolNote = when (tool) {
             BuildTool.GRADLE -> "When using ${p("llm", "true")} or ${p("format", "json")}, Gradle mixes its own output (task headers,\nwarnings, build status) into stdout. To handle this, output is wrapped with markers:"
@@ -280,14 +302,14 @@ object AgentHelpText {
         appendLine("  [{\"className\":\"...\"}]")
         appendLine("  ---CNAV_END---")
         appendLine()
-        appendLine("Extract the JSON between markers using sed:")
-        appendLine("  ${u("list-classes", p("format", "json"))} 2>/dev/null | sed -n '/---CNAV_BEGIN---/,/---CNAV_END---/{//!p;}'")
+        appendLine("Extract the JSON between markers:")
+        appendLine("  ${u("list-classes", p("format", "json"))} | sed -n '/CNAV_BEGIN/,/CNAV_END/p'")
         appendLine()
         appendLine("Or define a shell helper to reduce noise:")
         val helperName = "cnav"
         val helperExample = when (tool) {
-            BuildTool.GRADLE -> "  $helperName() { ./gradlew \"\$@\" 2>/dev/null | sed -n '/---CNAV_BEGIN---/,/---CNAV_END---/{//!p;}'; }"
-            BuildTool.MAVEN -> "  $helperName() { mvn \"\$@\" 2>/dev/null | sed -n '/---CNAV_BEGIN---/,/---CNAV_END---/{//!p;}'; }"
+            BuildTool.GRADLE -> "  $helperName() { ./gradlew \"\$@\" | sed -n '/CNAV_BEGIN/,/CNAV_END/p'; }"
+            BuildTool.MAVEN -> "  $helperName() { mvn \"\$@\" | sed -n '/CNAV_BEGIN/,/CNAV_END/p'; }"
         }
         appendLine(helperExample)
         appendLine()
@@ -307,6 +329,21 @@ object AgentHelpText {
         appendLine()
         appendLine("Get interface implementor class names:")
         appendLine("  $helperName ${t("find-interfaces")} ${p("pattern", "Repository")} ${p("format", "json")} | jq '.[].implementors[].className'")
+    }
+
+    private fun StringBuilder.appendSectionDirectory(tool: BuildTool) {
+        val p = { name: String, value: String -> tool.param(name, value) }
+        fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
+
+        appendLine("--- More Detail ---")
+        appendLine()
+        appendLine("Run with ${p("section", "<topic>")} for more detail:")
+        appendLine("  ${p("section", "install")}          — snippet to paste into AGENTS.md / CLAUDE.md")
+        appendLine("  ${p("section", "workflow")}         — step-by-step analysis workflow")
+        appendLine("  ${p("section", "interpretation")}   — heuristics for reading results")
+        appendLine("  ${p("section", "schemas")}          — JSON output schemas per task")
+        appendLine("  ${p("section", "extraction")}       — extracting output, jq examples")
+        appendLine("Run ${u("help")} for full parameter documentation.")
     }
 
     private val HELP_GOALS = setOf("help", "agent-help", "config-help")

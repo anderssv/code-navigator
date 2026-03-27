@@ -268,6 +268,8 @@ object HelpText {
         appendLine("      ${pd(TaskRegistry.TOP, "Maximum results to return")}")
         appendLine("    Usage: ${u("churn")}")
         appendLine("    Usage: ${u("churn", p("after", "2024-06-01"), p("top", "30"))}")
+        appendLine()
+        appendLine("If you are an AI coding agent, run ${u("agent-help")} for optimized guidance.")
     }
 
     private fun paramDoc(param: ParamDef, tool: BuildTool, description: String): String {

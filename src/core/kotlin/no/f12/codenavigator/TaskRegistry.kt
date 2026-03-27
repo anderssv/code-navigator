@@ -63,6 +63,7 @@ object TaskRegistry {
     private val MIN_SHARED_REVS = ParamDef("min-shared-revs", "<N>", "Min shared commits", flag = false, defaultValue = "5")
     private val MIN_COUPLING = ParamDef("min-coupling", "<N>", "Min coupling degree %", flag = false, defaultValue = "30")
     private val MAX_CHANGESET_SIZE = ParamDef("max-changeset-size", "<N>", "Skip commits touching more files", flag = false, defaultValue = "30")
+    private val SECTION = ParamDef("section", "<name>", "Help section: install, workflow, interpretation, schemas, extraction", flag = false, defaultValue = null)
 
     private val FORMAT_PARAMS = listOf(FORMAT, LLM)
 
@@ -218,7 +219,7 @@ object TaskRegistry {
     val AGENT_HELP = TaskDef(
         goal = "agent-help",
         description = "Show workflow guidance for AI coding agents",
-        params = emptyList(),
+        params = listOf(SECTION),
         requiresCompilation = false,
     )
 

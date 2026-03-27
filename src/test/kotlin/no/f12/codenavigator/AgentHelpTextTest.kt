@@ -4,8 +4,152 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.assertFalse
 import kotlin.test.assertEquals
+import kotlin.test.assertContains
 
 class AgentHelpTextTest {
+
+    // --- Section parameter and progressive loading ---
+
+    @Test
+    fun `AGENT_HELP task has a section parameter`() {
+        val sectionParam = TaskRegistry.AGENT_HELP.params.find { it.name == "section" }
+
+        assertTrue(sectionParam != null, "AGENT_HELP should have a section param")
+        assertTrue(sectionParam.flag == false, "section should not be a flag")
+    }
+
+    @Test
+    fun `default output does not contain JSON Schemas section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertFalse(text.contains("--- JSON Schemas ---"), "Default output should not include JSON Schemas")
+    }
+
+    @Test
+    fun `default output does not contain Recommended Workflow section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertFalse(text.contains("--- Recommended Workflow ---"), "Default output should not include Recommended Workflow")
+    }
+
+    @Test
+    fun `default output does not contain Result Interpretation section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertFalse(text.contains("--- Result Interpretation ---"), "Default output should not include Result Interpretation")
+    }
+
+    @Test
+    fun `default output contains Common Questions section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "Common Questions")
+    }
+
+    @Test
+    fun `default output contains Task Reference section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "--- Task Reference ---")
+    }
+
+    @Test
+    fun `default output contains section directory listing available sections`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "section=workflow")
+        assertContains(text, "section=interpretation")
+        assertContains(text, "section=schemas")
+        assertContains(text, "section=extraction")
+    }
+
+    @Test
+    fun `install section contains instruction to run agentHelp`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        assertContains(text, "cnavAgentHelp")
+    }
+
+    @Test
+    fun `install section contains all non-help task names`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        val helpGoals = setOf("help", "agent-help", "config-help")
+        for (task in TaskRegistry.ALL_TASKS.filter { it.goal !in helpGoals }) {
+            assertTrue(
+                text.contains(task.taskName(BuildTool.GRADLE)),
+                "install should mention ${task.taskName(BuildTool.GRADLE)}",
+            )
+        }
+    }
+
+    @Test
+    fun `Maven install section uses Maven task names`() {
+        val text = AgentHelpText.generate(BuildTool.MAVEN, section = "install")
+
+        assertContains(text, "cnav:agent-help")
+        assertFalse(text.contains("cnavAgentHelp"), "Maven install should not contain Gradle task names")
+    }
+
+    @Test
+    fun `workflow section contains ORIENT FIND INSPECT TRACE steps`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "workflow")
+
+        assertContains(text, "ORIENT")
+        assertContains(text, "FIND")
+        assertContains(text, "INSPECT")
+        assertContains(text, "TRACE")
+        assertContains(text, "MAP")
+        assertContains(text, "ANALYZE")
+    }
+
+    @Test
+    fun `interpretation section contains fan-in fan-out heuristics`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "interpretation")
+
+        assertContains(text, "Fan-in")
+        assertContains(text, "Fan-out")
+        assertContains(text, "Dead code")
+    }
+
+    @Test
+    fun `schemas section contains JSON schema examples`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "schemas")
+
+        assertContains(text, "className")
+        assertContains(text, "sourceFile")
+        assertContains(text, "\"children\"")
+    }
+
+    @Test
+    fun `extraction section contains jq examples and CNAV markers`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "extraction")
+
+        assertContains(text, "CNAV_BEGIN")
+        assertContains(text, "jq")
+    }
+
+    @Test
+    fun `invalid section returns error listing valid sections`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "bogus")
+
+        assertContains(text, "Unknown section")
+        assertContains(text, "install")
+        assertContains(text, "workflow")
+        assertContains(text, "schemas")
+    }
+
+    @Test
+    fun `default output does not contain workflow or interpretation sections`() {
+        val defaultText = AgentHelpText.generate(BuildTool.GRADLE)
+        val workflowText = AgentHelpText.generate(BuildTool.GRADLE, section = "workflow")
+        val schemasText = AgentHelpText.generate(BuildTool.GRADLE, section = "schemas")
+
+        assertTrue(
+            defaultText.length < defaultText.length + workflowText.length + schemasText.length,
+            "Default should be smaller than combined sections",
+        )
+    }
 
     @Test
     fun `Gradle agent help text contains all task names with Gradle names`() {
@@ -57,19 +201,7 @@ class AgentHelpTextTest {
     }
 
     @Test
-    fun `agent help text includes workflow guidance`() {
-        val text = AgentHelpText.generate(BuildTool.GRADLE)
-
-        assertTrue(text.contains("ORIENT"))
-        assertTrue(text.contains("FIND"))
-        assertTrue(text.contains("INSPECT"))
-        assertTrue(text.contains("TRACE"))
-        assertTrue(text.contains("MAP"))
-        assertTrue(text.contains("ANALYZE"))
-    }
-
-    @Test
-    fun `agent help text includes performance tips`() {
+    fun `default output includes performance tips`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
 
         assertTrue(text.contains("Tips for Optimal Results"))
@@ -121,8 +253,8 @@ class AgentHelpTextTest {
     }
 
     @Test
-    fun `agent help text documents JSON schemas for each task`() {
-        val text = AgentHelpText.generate(BuildTool.GRADLE)
+    fun `schemas section documents JSON schemas for each task`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "schemas")
 
         assertTrue(text.contains("className"), "Should document className field")
         assertTrue(text.contains("sourceFile"), "Should document sourceFile field")
@@ -136,42 +268,42 @@ class AgentHelpTextTest {
     }
 
     @Test
-    fun `agent help text includes jq examples`() {
-        val text = AgentHelpText.generate(BuildTool.GRADLE)
+    fun `extraction section includes jq examples`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "extraction")
 
         assertTrue(text.contains("jq"), "Should mention jq")
         assertTrue(text.contains("| jq"), "Should show pipe to jq")
     }
 
     @Test
-    fun `Gradle jq examples use gradlew command`() {
-        val text = AgentHelpText.generate(BuildTool.GRADLE)
+    fun `Gradle extraction section uses gradlew command`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "extraction")
 
         val listClassesTask = TaskRegistry.LIST_CLASSES.taskName(BuildTool.GRADLE)
         assertTrue(text.contains("./gradlew $listClassesTask"))
     }
 
     @Test
-    fun `Maven jq examples use mvn command`() {
-        val text = AgentHelpText.generate(BuildTool.MAVEN)
+    fun `Maven extraction section uses mvn command`() {
+        val text = AgentHelpText.generate(BuildTool.MAVEN, section = "extraction")
 
         val listClassesTask = TaskRegistry.LIST_CLASSES.taskName(BuildTool.MAVEN)
         assertTrue(text.contains("mvn $listClassesTask"))
     }
 
     @Test
-    fun `agent help text documents JSON schema for find-usages`() {
-        val text = AgentHelpText.generate(BuildTool.GRADLE)
+    fun `schemas section documents JSON schema for find-usages`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "schemas")
 
         assertTrue(text.contains("\"targetOwner\""), "Should document targetOwner field")
         assertTrue(text.contains("\"targetMethod\""), "Should document targetMethod field")
     }
 
     @Test
-    fun `agent help text mentions migration workflows`() {
-        val text = AgentHelpText.generate(BuildTool.GRADLE)
+    fun `workflow section mentions migration workflows`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "workflow")
 
-        assertTrue(text.contains("migrat"), "Should mention migration use case")
+        assertTrue(text.contains("MIGRATE"), "Should mention migration use case")
     }
 
     @Test
@@ -183,7 +315,7 @@ class AgentHelpTextTest {
     }
 
     @Test
-    fun `agent help text emphasizes one-shot accuracy over iterative grep`() {
+    fun `default output emphasizes one-shot accuracy over iterative grep`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
 
         assertTrue(text.contains("single"), "Should mention getting results in a single call")
@@ -201,8 +333,8 @@ class AgentHelpTextTest {
     }
 
     @Test
-    fun `Maven extracting output section uses mvn command`() {
-        val text = AgentHelpText.generate(BuildTool.MAVEN)
+    fun `Maven extraction section uses mvn and not gradlew`() {
+        val text = AgentHelpText.generate(BuildTool.MAVEN, section = "extraction")
 
         val listClassesTask = TaskRegistry.LIST_CLASSES.taskName(BuildTool.MAVEN)
         assertTrue(text.contains("mvn $listClassesTask"), "Maven extraction example should use mvn command")
@@ -224,8 +356,8 @@ class AgentHelpTextTest {
     }
 
     @Test
-    fun `agent help text documents JSON schema for metrics`() {
-        val text = AgentHelpText.generate(BuildTool.GRADLE)
+    fun `schemas section documents JSON schema for metrics`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "schemas")
 
         assertTrue(text.contains("\"totalClasses\""), "Should document totalClasses field")
         assertTrue(text.contains("\"packageCount\""), "Should document packageCount field")
@@ -346,18 +478,12 @@ class AgentHelpTextTest {
         assertFalse(taskReferenceSection.contains(gradleMethodParam), "Should not use -P params")
     }
 
-    @Test
-    fun `agent help text contains Common Questions section`() {
-        val text = AgentHelpText.generate(BuildTool.GRADLE)
-
-        assertTrue(text.contains("Common Questions"), "Should have a Common Questions section")
-    }
 
     @Test
     fun `common questions maps type usage question to find-usages with type param`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
         val commonQuestionsSection = text.substringAfter("Common Questions")
-            .substringBefore("--- Recommended Workflow")
+            .substringBefore("--- Task Reference ---")
 
         val findUsagesTask = TaskRegistry.FIND_USAGES.taskName(BuildTool.GRADLE)
         val typeParam = TaskRegistry.FIND_USAGES.paramByName("type").render(BuildTool.GRADLE)
@@ -376,7 +502,7 @@ class AgentHelpTextTest {
     fun `common questions maps caller question to find-callers with method param`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
         val commonQuestionsSection = text.substringAfter("Common Questions")
-            .substringBefore("--- Recommended Workflow")
+            .substringBefore("--- Task Reference ---")
 
         val findCallersTask = TaskRegistry.FIND_CALLERS.taskName(BuildTool.GRADLE)
         val methodParam = TaskRegistry.METHOD.render(BuildTool.GRADLE)
@@ -395,7 +521,7 @@ class AgentHelpTextTest {
     fun `common questions maps class inspection question to class-detail`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
         val commonQuestionsSection = text.substringAfter("Common Questions")
-            .substringBefore("--- Recommended Workflow")
+            .substringBefore("--- Task Reference ---")
 
         val classDetailTask = TaskRegistry.CLASS_DETAIL.taskName(BuildTool.GRADLE)
 
@@ -409,7 +535,7 @@ class AgentHelpTextTest {
     fun `Maven common questions uses Maven task names and params`() {
         val text = AgentHelpText.generate(BuildTool.MAVEN)
         val commonQuestionsSection = text.substringAfter("Common Questions")
-            .substringBefore("--- Recommended Workflow")
+            .substringBefore("--- Task Reference ---")
 
         val findUsagesTask = TaskRegistry.FIND_USAGES.taskName(BuildTool.MAVEN)
 
@@ -420,8 +546,8 @@ class AgentHelpTextTest {
     }
 
     @Test
-    fun `agent help text contains Result Interpretation section`() {
-        val text = AgentHelpText.generate(BuildTool.GRADLE)
+    fun `interpretation section contains Result Interpretation heading`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "interpretation")
 
         assertTrue(text.contains("Result Interpretation"), "Should have a Result Interpretation section")
     }
