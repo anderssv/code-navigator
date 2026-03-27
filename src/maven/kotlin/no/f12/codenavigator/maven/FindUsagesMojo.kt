@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.FindUsagesConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import no.f12.codenavigator.navigation.UsageFormatter
@@ -47,7 +48,7 @@ class FindUsagesMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            FindUsagesConfig.parse(buildPropertyMap())
+            FindUsagesConfig.parse(TaskRegistry.FIND_USAGES.enhanceProperties(buildPropertyMap()))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "${e.message}\n" +

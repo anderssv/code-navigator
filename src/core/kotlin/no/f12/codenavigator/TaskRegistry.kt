@@ -1,11 +1,14 @@
 package no.f12.codenavigator
 
+import no.f12.codenavigator.navigation.PatternEnhancer
+
 data class ParamDef(
     val name: String,
     val valuePlaceholder: String,
     val description: String,
     val flag: Boolean,
     val defaultValue: String?,
+    val enhancePattern: Boolean,
 ) {
     fun render(tool: BuildTool): String = when (flag) {
         true -> tool.paramFlag(name)
@@ -23,47 +26,54 @@ data class TaskDef(
 
     fun paramByName(name: String): ParamDef =
         params.first { it.name == name }
+
+    fun enhanceProperties(properties: Map<String, String?>): Map<String, String?> {
+        val enhancedNames = params.filter { it.enhancePattern }.map { it.name }.toSet()
+        return properties.mapValues { (key, value) ->
+            if (value != null && key in enhancedNames) PatternEnhancer.enhance(value) else value
+        }
+    }
 }
 
 object TaskRegistry {
 
     // --- Shared parameter definitions ---
 
-    val FORMAT = ParamDef("format", "json", "Output as machine-readable JSON", flag = false, defaultValue = null)
-    val LLM = ParamDef("llm", "true", "Output in compact, token-efficient LLM format", flag = false, defaultValue = null)
-    val PATTERN = ParamDef("pattern", "<regex>", "Class/symbol name regex", flag = false, defaultValue = null)
-    val METHOD = ParamDef("method", "<regex>", "Method name regex", flag = false, defaultValue = null)
-    val MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth", flag = false, defaultValue = "3")
-    val PROJECTONLY = ParamDef("projectonly", "true", "Hide JDK/stdlib/library classes", flag = false, defaultValue = null)
-    val FILTER_SYNTHETIC = ParamDef("filter-synthetic", "false", "Set false to include synthetic methods (equals, hashCode, copy, componentN, etc.)", flag = false, defaultValue = "true")
-    val TOP = ParamDef("top", "<N>", "Max results", flag = false, defaultValue = "50")
-    val AFTER = ParamDef("after", "YYYY-MM-DD", "Only consider commits after this date", flag = false, defaultValue = "1 year ago")
-    val NO_FOLLOW = ParamDef("no-follow", "", "Disable git rename tracking", flag = true, defaultValue = null)
-    val MIN_REVS = ParamDef("min-revs", "<N>", "Min revisions to include", flag = false, defaultValue = "1")
+    val FORMAT = ParamDef("format", "json", "Output as machine-readable JSON", flag = false, defaultValue = null, enhancePattern = false)
+    val LLM = ParamDef("llm", "true", "Output in compact, token-efficient LLM format", flag = false, defaultValue = null, enhancePattern = false)
+    val PATTERN = ParamDef("pattern", "<regex>", "Class/symbol name regex (camelCase-aware: MyService matches com.example.MyService)", flag = false, defaultValue = null, enhancePattern = true)
+    val METHOD = ParamDef("method", "<regex>", "Method name regex", flag = false, defaultValue = null, enhancePattern = false)
+    val MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth", flag = false, defaultValue = "3", enhancePattern = false)
+    val PROJECTONLY = ParamDef("projectonly", "true", "Hide JDK/stdlib/library classes", flag = false, defaultValue = null, enhancePattern = false)
+    val FILTER_SYNTHETIC = ParamDef("filter-synthetic", "false", "Set false to include synthetic methods (equals, hashCode, copy, componentN, etc.)", flag = false, defaultValue = "true", enhancePattern = false)
+    val TOP = ParamDef("top", "<N>", "Max results", flag = false, defaultValue = "50", enhancePattern = false)
+    val AFTER = ParamDef("after", "YYYY-MM-DD", "Only consider commits after this date", flag = false, defaultValue = "1 year ago", enhancePattern = false)
+    val NO_FOLLOW = ParamDef("no-follow", "", "Disable git rename tracking", flag = true, defaultValue = null, enhancePattern = false)
+    val MIN_REVS = ParamDef("min-revs", "<N>", "Min revisions to include", flag = false, defaultValue = "1", enhancePattern = false)
 
     // --- Task-specific parameter definitions ---
 
-    private val INCLUDETEST = ParamDef("includetest", "true", "Include test source set", flag = false, defaultValue = null)
-    private val PACKAGE = ParamDef("package", "<regex>", "Filter packages by regex", flag = false, defaultValue = null)
-    private val REVERSE = ParamDef("reverse", "true", "Show reverse dependencies", flag = false, defaultValue = null)
-    private val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Only include packages under this prefix", flag = false, defaultValue = "all")
-    private val DSM_DEPTH = ParamDef("dsm-depth", "<N>", "Package grouping depth", flag = false, defaultValue = "2")
-    private val DSM_HTML = ParamDef("dsm-html", "<path>", "Write interactive HTML matrix to file", flag = false, defaultValue = null)
-    private val CYCLES = ParamDef("cycles", "true", "Show only cyclic dependencies with class-level edges", flag = false, defaultValue = null)
-    private val CYCLE = ParamDef("cycle", "<pkgA>,<pkgB>", "Show only the cycle between two specific packages", flag = false, defaultValue = null)
-    private val OWNER_CLASS = ParamDef("ownerClass", "<class>", "FQN of type — matches method call and field owners", flag = false, defaultValue = null)
-    private val FIELD = ParamDef("field", "<name>", "Field/property name — also finds getter/setter calls", flag = false, defaultValue = null)
-    private val TYPE = ParamDef("type", "<class>", "Find ALL references to a class: calls, fields, casts, signatures", flag = false, defaultValue = null)
-    private val OUTSIDE_PACKAGE = ParamDef("outside-package", "<pkg>", "Exclude callers inside this package", flag = false, defaultValue = null)
-    private val FILTER = ParamDef("filter", "<regex>", "Only show results matching this regex", flag = false, defaultValue = null)
-    private val EXCLUDE = ParamDef("exclude", "<regex>", "Exclude results matching this regex", flag = false, defaultValue = null)
-    private val CLASSES_ONLY = ParamDef("classes-only", "true", "Show only unreferenced classes, skip dead methods", flag = false, defaultValue = null)
-    private val CLASS = ParamDef("classname", "<pattern>", "Class name regex to analyze", flag = false, defaultValue = ".*")
-    private val DETAIL = ParamDef("detail", "true", "Show individual call details", flag = false, defaultValue = null)
-    private val MIN_SHARED_REVS = ParamDef("min-shared-revs", "<N>", "Min shared commits", flag = false, defaultValue = "5")
-    private val MIN_COUPLING = ParamDef("min-coupling", "<N>", "Min coupling degree %", flag = false, defaultValue = "30")
-    private val MAX_CHANGESET_SIZE = ParamDef("max-changeset-size", "<N>", "Skip commits touching more files", flag = false, defaultValue = "30")
-    private val SECTION = ParamDef("section", "<name>", "Help section: install, workflow, interpretation, schemas, extraction", flag = false, defaultValue = null)
+    private val INCLUDETEST = ParamDef("includetest", "true", "Include test source set", flag = false, defaultValue = null, enhancePattern = false)
+    private val PACKAGE = ParamDef("package", "<regex>", "Filter packages by regex", flag = false, defaultValue = null, enhancePattern = false)
+    private val REVERSE = ParamDef("reverse", "true", "Show reverse dependencies", flag = false, defaultValue = null, enhancePattern = false)
+    private val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Only include packages under this prefix", flag = false, defaultValue = "all", enhancePattern = false)
+    private val DSM_DEPTH = ParamDef("dsm-depth", "<N>", "Package grouping depth", flag = false, defaultValue = "2", enhancePattern = false)
+    private val DSM_HTML = ParamDef("dsm-html", "<path>", "Write interactive HTML matrix to file", flag = false, defaultValue = null, enhancePattern = false)
+    private val CYCLES = ParamDef("cycles", "true", "Show only cyclic dependencies with class-level edges", flag = false, defaultValue = null, enhancePattern = false)
+    private val CYCLE = ParamDef("cycle", "<pkgA>,<pkgB>", "Show only the cycle between two specific packages", flag = false, defaultValue = null, enhancePattern = false)
+    private val OWNER_CLASS = ParamDef("ownerClass", "<class>", "Class name or pattern — matches method call and field owners (camelCase-aware: MyService matches com.example.MyService)", flag = false, defaultValue = null, enhancePattern = true)
+    private val FIELD = ParamDef("field", "<name>", "Field/property name — also finds getter/setter calls", flag = false, defaultValue = null, enhancePattern = false)
+    private val TYPE = ParamDef("type", "<class>", "Find ALL references to a class: calls, fields, casts, signatures (camelCase-aware)", flag = false, defaultValue = null, enhancePattern = true)
+    private val OUTSIDE_PACKAGE = ParamDef("outside-package", "<pkg>", "Exclude callers inside this package", flag = false, defaultValue = null, enhancePattern = false)
+    private val FILTER = ParamDef("filter", "<regex>", "Only show results matching this regex", flag = false, defaultValue = null, enhancePattern = false)
+    private val EXCLUDE = ParamDef("exclude", "<regex>", "Exclude results matching this regex", flag = false, defaultValue = null, enhancePattern = false)
+    private val CLASSES_ONLY = ParamDef("classes-only", "true", "Show only unreferenced classes, skip dead methods", flag = false, defaultValue = null, enhancePattern = false)
+    private val CLASS = ParamDef("classname", "<pattern>", "Class name regex to analyze", flag = false, defaultValue = ".*", enhancePattern = false)
+    private val DETAIL = ParamDef("detail", "true", "Show individual call details", flag = false, defaultValue = null, enhancePattern = false)
+    private val MIN_SHARED_REVS = ParamDef("min-shared-revs", "<N>", "Min shared commits", flag = false, defaultValue = "5", enhancePattern = false)
+    private val MIN_COUPLING = ParamDef("min-coupling", "<N>", "Min coupling degree %", flag = false, defaultValue = "30", enhancePattern = false)
+    private val MAX_CHANGESET_SIZE = ParamDef("max-changeset-size", "<N>", "Skip commits touching more files", flag = false, defaultValue = "30", enhancePattern = false)
+    private val SECTION = ParamDef("section", "<name>", "Help section: install, workflow, interpretation, schemas, extraction", flag = false, defaultValue = null, enhancePattern = false)
 
     private val FORMAT_PARAMS = listOf(FORMAT, LLM)
 

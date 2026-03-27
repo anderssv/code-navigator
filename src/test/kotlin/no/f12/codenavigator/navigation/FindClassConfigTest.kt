@@ -17,7 +17,7 @@ class FindClassConfigTest {
 
         val config = FindClassConfig.parse(props)
 
-        assertEquals("My.*Class", config.pattern)
+        assertEquals("MyClass", config.pattern)
         assertEquals(OutputFormat.JSON, config.format)
     }
 

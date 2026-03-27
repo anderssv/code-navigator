@@ -3,6 +3,7 @@ package no.f12.codenavigator
 import no.f12.codenavigator.analysis.CoupledPair
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
+import no.f12.codenavigator.navigation.AnnotationDetail
 import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallGraph
 import no.f12.codenavigator.navigation.CallTreeBuilder
@@ -137,8 +138,9 @@ class JsonFormatterTest {
                 sourceFile = "Order.kt",
                 superClass = ClassName("com.example.BaseEntity"),
                 interfaces = listOf(ClassName("com.example.Identifiable")),
-                fields = listOf(FieldDetail("id", "Long"), FieldDetail("name", "String")),
-                methods = listOf(MethodDetail("getName", emptyList(), "String")),
+                fields = listOf(FieldDetail("id", "Long", emptyList()), FieldDetail("name", "String", emptyList())),
+                methods = listOf(MethodDetail("getName", emptyList(), "String", emptyList())),
+                annotations = emptyList(),
             ),
         )
 
@@ -163,6 +165,7 @@ class JsonFormatterTest {
                 interfaces = emptyList(),
                 fields = emptyList(),
                 methods = emptyList(),
+                annotations = emptyList(),
             ),
         )
 
@@ -170,6 +173,34 @@ class JsonFormatterTest {
 
         assertEquals(
             """[{"className":"com.example.Simple","sourceFile":"Simple.kt","interfaces":[],"fields":[],"methods":[]}]""",
+            result,
+        )
+    }
+
+    @Test
+    fun `class detail with annotations includes annotation data`() {
+        val details = listOf(
+            ClassDetail(
+                className = ClassName("com.example.Annotated"),
+                sourceFile = "Annotated.kt",
+                superClass = null,
+                interfaces = emptyList(),
+                fields = listOf(FieldDetail("repo", "Repository", listOf(AnnotationDetail("Inject", emptyMap())))),
+                methods = listOf(MethodDetail("find", emptyList(), "User", listOf(
+                    AnnotationDetail("Cacheable", mapOf("value" to "users")),
+                ))),
+                annotations = listOf(AnnotationDetail("Service", emptyMap())),
+            ),
+        )
+
+        val result = JsonFormatter.formatClassDetails(details)
+
+        assertEquals(
+            """[{"className":"com.example.Annotated","sourceFile":"Annotated.kt",""" +
+                """"annotations":[{"name":"Service","parameters":{}}],""" +
+                """"interfaces":[],""" +
+                """"fields":[{"name":"repo","type":"Repository","annotations":[{"name":"Inject","parameters":{}}]}],""" +
+                """"methods":[{"name":"find","parameters":[],"returnType":"User","annotations":[{"name":"Cacheable","parameters":{"value":"users"}}]}]}]""",
             result,
         )
     }

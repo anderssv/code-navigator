@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.31
+
+- **New:** Show annotations in `cnavClass` output — class-level, method-level, and field-level annotations are now extracted from bytecode and displayed in all three output formats (TEXT, LLM, JSON). Annotation parameters with simple values (String, int, boolean, etc.) are included. Spring annotations like `@Service`, `@Transactional`, `@CircuitBreaker` are now visible without reading source files.
+- **New:** Centralized fuzzy/short-name matching — added `enhancePattern` flag to `ParamDef` so pattern enhancement (camelCase-aware, short-name matching) is applied automatically for marked parameters. `cnavUsages -Ptype` and `-PownerClass` now support fuzzy matching, consistent with other tasks. Eliminates the need to first run `cnavFindClass` to resolve FQNs.
+- **Refactoring:** `PatternEnhancer.enhance()` calls removed from 5 individual `Config.parse()` methods — enhancement is now handled centrally in `TaskDef.enhanceProperties()` and `GradleSupport.buildPropertyMap(TaskDef)`.
+
 ## 0.1.30
 
 - **New:** Claude Code permission rule guidance added to README and `cnavAgentHelp` install section — explains how to auto-approve cnav Bash commands with wildcard permission rules for both Gradle and Maven.

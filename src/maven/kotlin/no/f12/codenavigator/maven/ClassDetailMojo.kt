@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.ClassDetailFormatter
 import no.f12.codenavigator.navigation.ClassDetailScanner
 import no.f12.codenavigator.navigation.FindClassDetailConfig
@@ -35,7 +36,7 @@ class ClassDetailMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            FindClassDetailConfig.parse(buildPropertyMap())
+            FindClassDetailConfig.parse(TaskRegistry.CLASS_DETAIL.enhanceProperties(buildPropertyMap()))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "Missing required property 'pattern'. Usage: mvn cnav:class-detail -Dpattern=<regex>",

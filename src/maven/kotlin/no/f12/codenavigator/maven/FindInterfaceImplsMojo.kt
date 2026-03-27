@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.FindInterfaceImplsConfig
 import no.f12.codenavigator.navigation.InterfaceFormatter
 import no.f12.codenavigator.navigation.InterfaceRegistry
@@ -38,7 +39,7 @@ class FindInterfaceImplsMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            FindInterfaceImplsConfig.parse(buildPropertyMap())
+            FindInterfaceImplsConfig.parse(TaskRegistry.FIND_INTERFACES.enhanceProperties(buildPropertyMap()))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(e.message)
         }

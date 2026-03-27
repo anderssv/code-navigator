@@ -18,7 +18,7 @@ class FindInterfaceImplsConfigTest {
 
         val config = FindInterfaceImplsConfig.parse(props)
 
-        assertEquals("My.*Interface", config.pattern)
+        assertEquals("MyInterface", config.pattern)
         assertEquals(true, config.includeTest)
         assertEquals(OutputFormat.JSON, config.format)
     }

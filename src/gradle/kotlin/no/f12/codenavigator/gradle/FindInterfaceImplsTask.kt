@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.FindInterfaceImplsConfig
 import no.f12.codenavigator.navigation.InterfaceFormatter
 import no.f12.codenavigator.navigation.InterfaceRegistryCache
@@ -23,10 +24,7 @@ abstract class FindInterfaceImplsTask : DefaultTask() {
     fun findImplementors() {
         val config = try {
             FindInterfaceImplsConfig.parse(
-                project.buildPropertyMap(
-                    propertyNames = listOf("pattern", "includetest", "format", "llm"),
-                    flagNames = emptyList(),
-                ),
+                project.buildPropertyMap(TaskRegistry.FIND_INTERFACES),
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(

@@ -23,7 +23,8 @@ object UsageFormatter {
         }
         return buildString {
             appendLine("No usages found for '$target'.")
-            appendLine("Hint: Ensure the value is a fully-qualified class name (e.g., com.example.MyClass).")
+            appendLine("Hint: Short names and camelCase patterns are supported (e.g., MyService matches com.example.MyService).")
+            appendLine("Hint: For exact matching, use a fully-qualified class name (e.g., com.example.MyClass).")
             if (ownerClass != null && method != null && field == null) {
                 appendLine("Hint: Try -Pfield=$method to also find getter/setter calls for Kotlin properties.")
             }

@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.FindSymbolConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import no.f12.codenavigator.navigation.SymbolFilter
@@ -24,10 +25,7 @@ abstract class FindSymbolTask : DefaultTask() {
     fun findSymbol() {
         val config = try {
             FindSymbolConfig.parse(
-                project.buildPropertyMap(
-                    propertyNames = listOf("pattern", "format", "llm"),
-                    flagNames = emptyList(),
-                ),
+                project.buildPropertyMap(TaskRegistry.FIND_SYMBOL),
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(

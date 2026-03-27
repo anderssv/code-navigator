@@ -9,32 +9,33 @@ class ParamDefTest {
 
     @Test
     fun `stores name, value placeholder, and description`() {
-        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null)
+        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false)
 
         assertEquals("pattern", param.name)
         assertEquals("<regex>", param.valuePlaceholder)
         assertEquals("Class/symbol regex", param.description)
         assertEquals(false, param.flag)
         assertEquals(null, param.defaultValue)
+        assertEquals(false, param.enhancePattern)
     }
 
     @Test
     fun `renders as Gradle parameter syntax`() {
-        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null)
+        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false)
 
         assertEquals("-Ppattern=<regex>", param.render(BuildTool.GRADLE))
     }
 
     @Test
     fun `renders as Maven parameter syntax`() {
-        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null)
+        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false)
 
         assertEquals("-Dpattern=<regex>", param.render(BuildTool.MAVEN))
     }
 
     @Test
     fun `flag param renders without value`() {
-        val param = ParamDef("no-follow", "", "Disable rename tracking", flag = true, defaultValue = null)
+        val param = ParamDef("no-follow", "", "Disable rename tracking", flag = true, defaultValue = null, enhancePattern = false)
 
         assertEquals("-Pno-follow", param.render(BuildTool.GRADLE))
         assertEquals("-Dno-follow", param.render(BuildTool.MAVEN))
@@ -45,7 +46,7 @@ class TaskDefTest {
 
     @Test
     fun `stores goal, description, params, and requiresCompilation`() {
-        val pattern = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null)
+        val pattern = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false)
         val task = TaskDef(
             goal = "find-class",
             description = "Find classes by regex",
@@ -57,6 +58,38 @@ class TaskDefTest {
         assertEquals("Find classes by regex", task.description)
         assertEquals(listOf(pattern), task.params)
         assertEquals(true, task.requiresCompilation)
+    }
+
+    @Test
+    fun `enhanceProperties applies PatternEnhancer to params marked enhancePattern`() {
+        val enhanced = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = true)
+        val plain = ParamDef("method", "<name>", "Method", flag = false, defaultValue = null, enhancePattern = false)
+        val task = TaskDef(
+            goal = "test",
+            description = "Test",
+            params = listOf(enhanced, plain),
+            requiresCompilation = false,
+        )
+
+        val result = task.enhanceProperties(mapOf("pattern" to "MyService", "method" to "doStuff"))
+
+        assertEquals("My.*Service", result["pattern"])
+        assertEquals("doStuff", result["method"])
+    }
+
+    @Test
+    fun `enhanceProperties leaves null values unchanged`() {
+        val enhanced = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = true)
+        val task = TaskDef(
+            goal = "test",
+            description = "Test",
+            params = listOf(enhanced),
+            requiresCompilation = false,
+        )
+
+        val result = task.enhanceProperties(mapOf("pattern" to null))
+
+        assertEquals(null, result["pattern"])
     }
 
     @Test

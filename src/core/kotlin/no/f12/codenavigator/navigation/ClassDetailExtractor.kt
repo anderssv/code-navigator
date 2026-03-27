@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import org.objectweb.asm.AnnotationVisitor
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
@@ -8,15 +9,22 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import java.io.File
 
+data class AnnotationDetail(
+    val name: String,
+    val parameters: Map<String, String>,
+)
+
 data class FieldDetail(
     val name: String,
     val type: String,
+    val annotations: List<AnnotationDetail>,
 )
 
 data class MethodDetail(
     val name: String,
     val parameterTypes: List<String>,
     val returnType: String,
+    val annotations: List<AnnotationDetail>,
 )
 
 data class ClassDetail(
@@ -26,6 +34,7 @@ data class ClassDetail(
     val interfaces: List<ClassName>,
     val fields: List<FieldDetail>,
     val methods: List<MethodDetail>,
+    val annotations: List<AnnotationDetail>,
 )
 
 object ClassDetailExtractor {
@@ -39,6 +48,7 @@ object ClassDetailExtractor {
         val methods = mutableListOf<MethodDetail>()
         val fields = mutableListOf<FieldDetail>()
         val fieldNames = mutableSetOf<String>()
+        val classAnnotations = mutableListOf<AnnotationDetail>()
 
         reader.accept(
             object : ClassVisitor(Opcodes.ASM9) {
@@ -65,6 +75,9 @@ object ClassDetailExtractor {
                     }
                 }
 
+                override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? =
+                    collectAnnotation(descriptor, classAnnotations)
+
                 override fun visitField(
                     access: Int,
                     name: String,
@@ -76,8 +89,17 @@ object ClassDetailExtractor {
                     if (name in KotlinMethodFilter.EXCLUDED_FIELDS) return null
 
                     fieldNames.add(name)
-                    fields.add(FieldDetail(name, simplifyType(Type.getType(descriptor))))
-                    return null
+                    val fieldType = simplifyType(Type.getType(descriptor))
+                    val fieldAnnotations = mutableListOf<AnnotationDetail>()
+
+                    return object : FieldVisitor(Opcodes.ASM9) {
+                        override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? =
+                            collectAnnotation(descriptor, fieldAnnotations)
+
+                        override fun visitEnd() {
+                            fields.add(FieldDetail(name, fieldType, fieldAnnotations.toList()))
+                        }
+                    }
                 }
 
                 override fun visitMethod(
@@ -91,8 +113,16 @@ object ClassDetailExtractor {
 
                     val argTypes = Type.getArgumentTypes(descriptor).map { simplifyType(it) }
                     val retType = simplifyType(Type.getReturnType(descriptor))
-                    methods.add(MethodDetail(name, argTypes, retType))
-                    return null
+                    val methodAnnotations = mutableListOf<AnnotationDetail>()
+
+                    return object : MethodVisitor(Opcodes.ASM9) {
+                        override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? =
+                            collectAnnotation(descriptor, methodAnnotations)
+
+                        override fun visitEnd() {
+                            methods.add(MethodDetail(name, argTypes, retType, methodAnnotations.toList()))
+                        }
+                    }
                 }
             },
             ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES,
@@ -109,6 +139,7 @@ object ClassDetailExtractor {
             interfaces = interfaceList,
             fields = fields,
             methods = filteredMethods,
+            annotations = classAnnotations,
         )
     }
 
@@ -125,5 +156,29 @@ object ClassDetailExtractor {
         Type.ARRAY -> "${simplifyType(type.elementType)}[]"
         Type.OBJECT -> type.className.substringAfterLast('.')
         else -> type.className
+    }
+
+    private fun annotationName(descriptor: String): String =
+        Type.getType(descriptor).className.substringAfterLast('.')
+
+    private fun collectAnnotation(
+        descriptor: String?,
+        annotations: MutableList<AnnotationDetail>,
+    ): AnnotationVisitor? {
+        if (descriptor == null) return null
+        val name = annotationName(descriptor)
+        val parameters = mutableMapOf<String, String>()
+
+        return object : AnnotationVisitor(Opcodes.ASM9) {
+            override fun visit(paramName: String?, value: Any?) {
+                if (paramName != null && value != null) {
+                    parameters[paramName] = value.toString()
+                }
+            }
+
+            override fun visitEnd() {
+                annotations.add(AnnotationDetail(name, parameters.toMap()))
+            }
+        }
     }
 }

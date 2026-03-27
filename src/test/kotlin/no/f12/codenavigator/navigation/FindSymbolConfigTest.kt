@@ -17,7 +17,7 @@ class FindSymbolConfigTest {
 
         val config = FindSymbolConfig.parse(props)
 
-        assertEquals("my.*Method", config.pattern)
+        assertEquals("myMethod", config.pattern)
         assertEquals(OutputFormat.JSON, config.format)
     }
 

@@ -13,13 +13,14 @@ class ClassDetailFormatterTest {
             superClass = null,
             interfaces = emptyList(),
             fields = listOf(
-                FieldDetail("name", "String"),
-                FieldDetail("count", "int"),
+                FieldDetail("name", "String", emptyList()),
+                FieldDetail("count", "int", emptyList()),
             ),
             methods = listOf(
-                MethodDetail("findUser", listOf("String", "int"), "User"),
-                MethodDetail("doWork", emptyList(), "void"),
+                MethodDetail("findUser", listOf("String", "int"), "User", emptyList()),
+                MethodDetail("doWork", emptyList(), "void", emptyList()),
             ),
+            annotations = emptyList(),
         )
 
         val output = ClassDetailFormatter.format(listOf(detail))
@@ -47,7 +48,8 @@ class ClassDetailFormatterTest {
             superClass = ClassName("com.example.BaseService"),
             interfaces = listOf(ClassName("com.example.Auditable"), ClassName("java.io.Serializable")),
             fields = emptyList(),
-            methods = listOf(MethodDetail("audit", emptyList(), "void")),
+            methods = listOf(MethodDetail("audit", emptyList(), "void", emptyList())),
+            annotations = emptyList(),
         )
 
         val output = ClassDetailFormatter.format(listOf(detail))
@@ -72,7 +74,8 @@ class ClassDetailFormatterTest {
             superClass = null,
             interfaces = emptyList(),
             fields = emptyList(),
-            methods = listOf(MethodDetail("run", emptyList(), "void")),
+            methods = listOf(MethodDetail("run", emptyList(), "void", emptyList())),
+            annotations = emptyList(),
         )
 
         val output = ClassDetailFormatter.format(listOf(detail))
@@ -95,8 +98,9 @@ class ClassDetailFormatterTest {
             sourceFile = "Config.kt",
             superClass = null,
             interfaces = emptyList(),
-            fields = listOf(FieldDetail("name", "String")),
+            fields = listOf(FieldDetail("name", "String", emptyList())),
             methods = emptyList(),
+            annotations = emptyList(),
         )
 
         val output = ClassDetailFormatter.format(listOf(detail))
@@ -116,9 +120,9 @@ class ClassDetailFormatterTest {
     fun `formats multiple matched classes separated by blank line`() {
         val details = listOf(
             ClassDetail(ClassName("com.example.A"), "A.kt", null, emptyList(), emptyList(),
-                listOf(MethodDetail("doA", emptyList(), "void"))),
+                listOf(MethodDetail("doA", emptyList(), "void", emptyList())), emptyList()),
             ClassDetail(ClassName("com.example.B"), "B.kt", null, emptyList(), emptyList(),
-                listOf(MethodDetail("doB", emptyList(), "void"))),
+                listOf(MethodDetail("doB", emptyList(), "void", emptyList())), emptyList()),
         )
 
         val output = ClassDetailFormatter.format(details)
@@ -148,6 +152,7 @@ class ClassDetailFormatterTest {
             interfaces = emptyList(),
             fields = emptyList(),
             methods = emptyList(),
+            annotations = emptyList(),
         )
 
         val output = ClassDetailFormatter.format(listOf(detail))
@@ -157,4 +162,91 @@ class ClassDetailFormatterTest {
 
     // [TEST-DONE] Omits Extends line when superclass is null
     // [TEST-DONE] Omits Implements line when no interfaces
+
+    @Test
+    fun `formats class-level annotations before extends`() {
+        val detail = ClassDetail(
+            className = ClassName("com.example.MyService"),
+            sourceFile = "MyService.kt",
+            superClass = ClassName("com.example.BaseService"),
+            interfaces = emptyList(),
+            fields = emptyList(),
+            methods = listOf(MethodDetail("doWork", emptyList(), "void", emptyList())),
+            annotations = listOf(
+                AnnotationDetail("Service", emptyMap()),
+                AnnotationDetail("Transactional", emptyMap()),
+            ),
+        )
+
+        val output = ClassDetailFormatter.format(listOf(detail))
+
+        val expected = """
+            |=== com.example.MyService (MyService.kt) ===
+            |@Service
+            |@Transactional
+            |Extends: com.example.BaseService
+            |
+            |Methods:
+            |  doWork(): void
+        """.trimMargin()
+        assertEquals(expected, output)
+    }
+
+    @Test
+    fun `formats method annotations before method signature`() {
+        val detail = ClassDetail(
+            className = ClassName("com.example.Svc"),
+            sourceFile = "Svc.kt",
+            superClass = null,
+            interfaces = emptyList(),
+            fields = emptyList(),
+            methods = listOf(
+                MethodDetail("resilientCall", emptyList(), "void", listOf(
+                    AnnotationDetail("CircuitBreaker", mapOf("name" to "backend")),
+                )),
+                MethodDetail("doWork", emptyList(), "void", emptyList()),
+            ),
+            annotations = emptyList(),
+        )
+
+        val output = ClassDetailFormatter.format(listOf(detail))
+
+        val expected = """
+            |=== com.example.Svc (Svc.kt) ===
+            |
+            |Methods:
+            |  @CircuitBreaker(name="backend")
+            |  resilientCall(): void
+            |  doWork(): void
+        """.trimMargin()
+        assertEquals(expected, output)
+    }
+
+    @Test
+    fun `formats field annotations before field`() {
+        val detail = ClassDetail(
+            className = ClassName("com.example.Svc"),
+            sourceFile = "Svc.kt",
+            superClass = null,
+            interfaces = emptyList(),
+            fields = listOf(
+                FieldDetail("repo", "Repository", listOf(AnnotationDetail("Inject", emptyMap()))),
+                FieldDetail("name", "String", emptyList()),
+            ),
+            methods = emptyList(),
+            annotations = emptyList(),
+        )
+
+        val output = ClassDetailFormatter.format(listOf(detail))
+
+        val expected = """
+            |=== com.example.Svc (Svc.kt) ===
+            |
+            |Fields:
+            |  @Inject
+            |  repo: Repository
+            |  name: String
+        """.trimMargin()
+        assertEquals(expected, output)
+    }
 }

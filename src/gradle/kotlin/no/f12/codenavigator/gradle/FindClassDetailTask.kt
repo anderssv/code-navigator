@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.ClassDetailFormatter
 import no.f12.codenavigator.navigation.ClassDetailScanner
 import no.f12.codenavigator.navigation.FindClassDetailConfig
@@ -23,10 +24,7 @@ abstract class FindClassDetailTask : DefaultTask() {
     fun findClassDetail() {
         val config = try {
             FindClassDetailConfig.parse(
-                project.buildPropertyMap(
-                    propertyNames = listOf("pattern", "format", "llm"),
-                    flagNames = emptyList(),
-                ),
+                project.buildPropertyMap(TaskRegistry.CLASS_DETAIL),
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(

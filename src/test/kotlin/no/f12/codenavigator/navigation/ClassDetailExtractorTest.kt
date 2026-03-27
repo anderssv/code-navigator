@@ -83,9 +83,9 @@ class ClassDetailExtractorTest {
         val detail = ClassDetailExtractor.extract(classFile)
 
         assertEquals(3, detail.fields.size)
-        assertEquals(FieldDetail("name", "String"), detail.fields[0])
-        assertEquals(FieldDetail("count", "int"), detail.fields[1])
-        assertEquals(FieldDetail("items", "String[]"), detail.fields[2])
+        assertEquals(FieldDetail("name", "String", emptyList()), detail.fields[0])
+        assertEquals(FieldDetail("count", "int", emptyList()), detail.fields[1])
+        assertEquals(FieldDetail("items", "String[]", emptyList()), detail.fields[2])
     }
 
     // [TEST-DONE] Extracts public fields with type
@@ -238,6 +238,107 @@ class ClassDetailExtractorTest {
         val detail = ClassDetailExtractor.extract(classFile)
 
         assertEquals(listOf("realField"), detail.fields.map { it.name })
+    }
+
+
+    @Test
+    fun `extracts annotation with multiple parameters`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Resilient", "Resilient.kt") {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "callService", "()V", null, null)
+            val av = mv.visitAnnotation("Lio/github/resilience4j/circuitbreaker/annotation/CircuitBreaker;", true)
+            av?.visit("name", "backend")
+            av?.visit("fallbackMethod", "fallback")
+            av?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        val annotation = detail.methods.first().annotations.first()
+        assertEquals("CircuitBreaker", annotation.name)
+        assertEquals(mapOf("name" to "backend", "fallbackMethod" to "fallback"), annotation.parameters)
+    }
+
+    @Test
+    fun `extracts annotation with string parameter`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Cached", "Cached.kt") {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "getUser", "()V", null, null)
+            val av = mv.visitAnnotation("Lorg/springframework/cache/annotation/Cacheable;", true)
+            av?.visit("value", "users")
+            av?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        val annotation = detail.methods.first().annotations.first()
+        assertEquals("Cacheable", annotation.name)
+        assertEquals(mapOf("value" to "users"), annotation.parameters)
+    }
+
+    @Test
+    fun `extracts field-level annotations`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/WithFieldAnnotation", "WithFieldAnnotation.kt") {
+            val fv = visitField(Opcodes.ACC_PUBLIC, "userRepo", "Ljava/lang/Object;", null, null)
+            fv.visitAnnotation("Ljakarta/inject/Inject;", true)?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        assertEquals(1, detail.fields.size)
+        assertEquals(1, detail.fields.first().annotations.size)
+        assertEquals("Inject", detail.fields.first().annotations.first().name)
+    }
+
+    @Test
+    fun `extracts multiple class-level annotations`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/MultiAnnotated", "MultiAnnotated.kt") {
+            visitAnnotation("Lorg/springframework/stereotype/Service;", true)?.visitEnd()
+            visitAnnotation("Lorg/springframework/transaction/annotation/Transactional;", true)?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        assertEquals(2, detail.annotations.size)
+        assertEquals(listOf("Service", "Transactional"), detail.annotations.map { it.name })
+    }
+
+    @Test
+    fun `extracts method-level annotations`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/WithMethodAnnotation", "WithMethodAnnotation.kt") {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "resilientCall", "()V", null, null)
+            mv.visitAnnotation("Lio/github/resilience4j/circuitbreaker/annotation/CircuitBreaker;", true)?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        assertEquals(1, detail.methods.size)
+        assertEquals(1, detail.methods.first().annotations.size)
+        assertEquals("CircuitBreaker", detail.methods.first().annotations.first().name)
+    }
+
+    @Test
+    fun `extracts single class-level annotation`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Annotated", "Annotated.kt") {
+            visitAnnotation("Lorg/springframework/stereotype/Component;", true)?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        assertEquals(1, detail.annotations.size)
+        assertEquals("Component", detail.annotations.first().name)
+    }
+
+    @Test
+    fun `class with no annotations has empty annotation lists`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Plain", "Plain.kt") {
+            visitField(Opcodes.ACC_PUBLIC, "value", "Ljava/lang/String;", null, null)
+            visitMethod(Opcodes.ACC_PUBLIC, "doWork", "()V", null, null)
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        assertTrue(detail.annotations.isEmpty())
+        assertTrue(detail.fields.first().annotations.isEmpty())
+        assertTrue(detail.methods.first().annotations.isEmpty())
     }
 
     @Test

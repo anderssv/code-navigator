@@ -5,6 +5,7 @@ import no.f12.codenavigator.analysis.FileAge
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.analysis.ModuleAuthors
+import no.f12.codenavigator.navigation.AnnotationDetail
 import no.f12.codenavigator.navigation.CallTreeNode
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
@@ -52,15 +53,21 @@ object JsonFormatter {
                 "className" to d.className.toString(),
                 "sourceFile" to d.sourceFile,
                 "superClass" to d.superClass?.toString(),
+                "annotations" to if (d.annotations.isNotEmpty()) JsonRaw(renderAnnotations(d.annotations)) else null,
                 "interfaces" to JsonRaw(jsonStringArray(d.interfaces.map { it.toString() })),
                 "fields" to JsonRaw(jsonArray(d.fields) { f ->
-                    jsonObject("name" to f.name, "type" to f.type)
+                    jsonObject(
+                        "name" to f.name,
+                        "type" to f.type,
+                        "annotations" to if (f.annotations.isNotEmpty()) JsonRaw(renderAnnotations(f.annotations)) else null,
+                    )
                 }),
                 "methods" to JsonRaw(jsonArray(d.methods) { m ->
                     jsonObject(
                         "name" to m.name,
                         "parameters" to JsonRaw(jsonStringArray(m.parameterTypes)),
                         "returnType" to m.returnType,
+                        "annotations" to if (m.annotations.isNotEmpty()) JsonRaw(renderAnnotations(m.annotations)) else null,
                     )
                 }),
             )
@@ -316,4 +323,12 @@ object JsonFormatter {
             .replace("\n", "\\n")
             .replace("\r", "\\r")
             .replace("\t", "\\t")
+
+    private fun renderAnnotations(annotations: List<AnnotationDetail>): String =
+        jsonArray(annotations) { a ->
+            jsonObject(
+                "name" to a.name,
+                "parameters" to JsonRaw(jsonObject(*a.parameters.map { (k, v) -> k to v }.toTypedArray())),
+            )
+        }
 }

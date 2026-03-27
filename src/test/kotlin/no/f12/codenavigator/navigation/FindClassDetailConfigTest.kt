@@ -17,7 +17,7 @@ class FindClassDetailConfigTest {
 
         val config = FindClassDetailConfig.parse(props)
 
-        assertEquals("My.*Service", config.pattern)
+        assertEquals("MyService", config.pattern)
         assertEquals(OutputFormat.JSON, config.format)
     }
 

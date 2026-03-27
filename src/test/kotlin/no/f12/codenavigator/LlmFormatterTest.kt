@@ -3,6 +3,7 @@ package no.f12.codenavigator
 import no.f12.codenavigator.analysis.CoupledPair
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
+import no.f12.codenavigator.navigation.AnnotationDetail
 import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallTreeNode
 import no.f12.codenavigator.navigation.ClassDetail
@@ -68,8 +69,9 @@ class LlmFormatterTest {
                 sourceFile = "UserService.kt",
                 superClass = null,
                 interfaces = listOf(ClassName("UserOperations")),
-                fields = listOf(FieldDetail("repo", "UserRepository")),
-                methods = listOf(MethodDetail("findById", listOf("long"), "User")),
+                fields = listOf(FieldDetail("repo", "UserRepository", emptyList())),
+                methods = listOf(MethodDetail("findById", listOf("long"), "User", emptyList())),
+                annotations = emptyList(),
             )
         )
 
@@ -78,6 +80,30 @@ class LlmFormatterTest {
         assertEquals(
             "com.example.UserService UserService.kt implements:UserOperations fields:repo:UserRepository methods:findById(long):User",
             result
+        )
+    }
+
+    @Test
+    fun `formats class details with annotations compactly`() {
+        val details = listOf(
+            ClassDetail(
+                className = ClassName("com.example.UserService"),
+                sourceFile = "UserService.kt",
+                superClass = null,
+                interfaces = emptyList(),
+                fields = listOf(FieldDetail("repo", "UserRepository", listOf(AnnotationDetail("Inject", emptyMap())))),
+                methods = listOf(MethodDetail("findById", listOf("long"), "User", listOf(
+                    AnnotationDetail("Cacheable", mapOf("value" to "users")),
+                ))),
+                annotations = listOf(AnnotationDetail("Service", emptyMap())),
+            )
+        )
+
+        val result = LlmFormatter.formatClassDetails(details)
+
+        assertEquals(
+            "com.example.UserService UserService.kt annotations:@Service fields:@Inject+repo:UserRepository methods:@Cacheable(value=\"users\")+findById(long):User",
+            result,
         )
     }
 

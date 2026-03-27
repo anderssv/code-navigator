@@ -128,3 +128,35 @@ Implemented line numbers for `cnavCallers` and `cnavCallees` call tree tasks. Du
 ## ~~69. `cnavFieldUsages` — find all reads/writes of a field or Kotlin property (High value, medium effort)~~ DONE
 
 Enhanced `cnavUsages` with `-Pfield=<name>` parameter (Option A from plan). When `field` is set, `UsageScanner` matches both direct field access via `visitFieldInsn` and Kotlin property accessor calls (`get<Field>`, `set<Field>`, `is<Field>`) via `visitMethodInsn`. The `field` parameter requires `ownerClass` and is mutually exclusive with `method`. Validation in `FindUsagesConfig.parse()` with clear error messages. Wired in both Gradle (`FindUsagesTask.kt`) and Maven (`FindUsagesMojo.kt`). Updated `HelpText.kt`, `AgentHelpText.kt`, and `noResultsGuidance()` with field-specific documentation and hints.
+
+## ~~S1. Break cyclic package dependencies — move `OutputFormat`~~ DONE
+
+Created `no.f12.codenavigator.config` package as a dependency-free leaf. Moved `OutputFormat` there, breaking the `codenavigator` <-> `navigation`/`analysis` cycles caused by `*Config` classes importing from the root package. Updated 78 files.
+
+## ~~S2. Dead classes — delete `CalleeTreeFormatter` and `CallerTreeFormatter`~~ DONE
+
+Deleted both wrapper classes. Updated 5 test files to use `CallTreeFormatter` directly.
+
+## ~~S3. Remove resolution logic from `JsonFormatter`~~ DONE
+
+Deleted `JsonFormatter.formatCallTree` which mixed `CallTreeBuilder.build()` resolution with formatting — violating the parsing/resolution/formatting separation. Updated 7 test call sites to call resolution then formatting separately. Removed 4 unused imports. Remaining ideas (extract per-feature format functions, `ResultFormatter` interface) are optional future work tracked in S6.
+
+## ~~S4. Consolidate cache classes into generic `FileCache<T>`~~ DONE
+
+Extracted `FileCache<T>` abstract base class with shared `isFresh()`, `getOrBuild()`, and `FIELD_SEPARATOR`. Migrated all four caches (`ClassIndexCache`, `SymbolIndexCache`, `InterfaceRegistryCache`, `CallGraphCache`) to extend it. Unified `getOrScan`/`getOrBuild` naming to `getOrBuild` everywhere.
+
+## ~~S5. Consolidate duplicated methods across extractors~~ DONE
+
+Moved `isAccessorForField`, `isExcludedMethod`, `KOTLIN_ACCESSOR`, and `EXCLUDED_FIELDS` into `KotlinMethodFilter`. Both `SymbolExtractor` and `ClassDetailExtractor` now delegate to it.
+
+## ~~64. Fan-in/fan-out interpretation guidance in agentHelp~~ DONE
+
+Added a "Result Interpretation" section to `AgentHelpText` with heuristics for fan-in, fan-out, dead code, change coupling, and hotspots.
+
+## ~~63. `cnavUsages` fuzzy/short-name matching — centralized via ParamDef (Medium value, low effort)~~ DONE
+
+Added `enhancePattern: Boolean` to `ParamDef` and `TaskDef.enhanceProperties()` method that applies `PatternEnhancer.enhance()` to marked params. Added `Project.buildPropertyMap(TaskDef)` overload in `GradleSupport.kt`. Marked `PATTERN`, `OWNER_CLASS`, `TYPE` with `enhancePattern = true`. Updated 5 Gradle tasks and 5 Maven mojos to use centralized enhancement. Removed `PatternEnhancer.enhance()` calls from 5 Config.parse() methods.
+
+## ~~65. Show annotations in `cnavClass` output (High value, medium effort)~~ DONE
+
+Added `AnnotationDetail(name, parameters)` data class. Extracts class-level, method-level, and field-level annotations via ASM `visitAnnotation()`. Simple parameter values (`String`, `int`, `boolean`, etc.) captured via `AnnotationVisitor.visit(name, value)`. All three formatters updated (TEXT, LLM, JSON). `AgentHelpText` JSON schema updated to include annotations. Limitation: enum, array, and nested annotation parameters not yet captured (tracked as 65a).

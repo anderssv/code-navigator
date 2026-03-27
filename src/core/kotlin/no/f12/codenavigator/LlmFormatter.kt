@@ -5,6 +5,7 @@ import no.f12.codenavigator.analysis.FileAge
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.analysis.ModuleAuthors
+import no.f12.codenavigator.navigation.AnnotationDetail
 import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallTreeNode
 import no.f12.codenavigator.navigation.ClassComplexity
@@ -12,7 +13,9 @@ import no.f12.codenavigator.navigation.CycleDetail
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
 import no.f12.codenavigator.navigation.ClassName
+import no.f12.codenavigator.navigation.FieldDetail
 import no.f12.codenavigator.navigation.InterfaceRegistry
+import no.f12.codenavigator.navigation.MethodDetail
 import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.PackageName
 import no.f12.codenavigator.navigation.SymbolInfo
@@ -35,10 +38,11 @@ object LlmFormatter {
         details.sortedBy { it.className }.joinToString("\n") { d ->
             buildString {
                 append("${d.className} ${d.sourceFile}")
+                if (d.annotations.isNotEmpty()) append(" annotations:${d.annotations.joinToString(",") { formatAnnotation(it) }}")
                 if (d.superClass != null) append(" extends:${d.superClass}")
                 if (d.interfaces.isNotEmpty()) append(" implements:${d.interfaces.joinToString(",")}")
-                if (d.fields.isNotEmpty()) append(" fields:${d.fields.joinToString(",") { "${it.name}:${it.type}" }}")
-                if (d.methods.isNotEmpty()) append(" methods:${d.methods.joinToString(",") { "${it.name}(${it.parameterTypes.joinToString(",")}):${it.returnType}" }}")
+                if (d.fields.isNotEmpty()) append(" fields:${d.fields.joinToString(",") { formatFieldCompact(it) }}")
+                if (d.methods.isNotEmpty()) append(" methods:${d.methods.joinToString(",") { formatMethodCompact(it) }}")
             }
         }
 
@@ -195,5 +199,23 @@ object LlmFormatter {
                 renderChildren(node.children, direction, depth + 1)
             }
         }
+    }
+
+    private fun formatAnnotation(annotation: AnnotationDetail): String = buildString {
+        append("@${annotation.name}")
+        if (annotation.parameters.isNotEmpty()) {
+            val params = annotation.parameters.entries.joinToString(",") { "${it.key}=\"${it.value}\"" }
+            append("($params)")
+        }
+    }
+
+    private fun formatFieldCompact(field: FieldDetail): String {
+        val prefix = field.annotations.joinToString("") { "${formatAnnotation(it)}+" }
+        return "$prefix${field.name}:${field.type}"
+    }
+
+    private fun formatMethodCompact(method: MethodDetail): String {
+        val prefix = method.annotations.joinToString("") { "${formatAnnotation(it)}+" }
+        return "$prefix${method.name}(${method.parameterTypes.joinToString(",")}):${method.returnType}"
     }
 }

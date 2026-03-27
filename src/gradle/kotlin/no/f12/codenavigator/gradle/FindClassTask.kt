@@ -5,6 +5,7 @@ import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TableFormatter
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.ClassFilter
 import no.f12.codenavigator.navigation.ClassIndexCache
 import no.f12.codenavigator.navigation.FindClassConfig
@@ -24,10 +25,7 @@ abstract class FindClassTask : DefaultTask() {
     fun findClass() {
         val config = try {
             FindClassConfig.parse(
-                project.buildPropertyMap(
-                    propertyNames = listOf("pattern", "format", "llm"),
-                    flagNames = emptyList(),
-                ),
+                project.buildPropertyMap(TaskRegistry.FIND_CLASS),
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(

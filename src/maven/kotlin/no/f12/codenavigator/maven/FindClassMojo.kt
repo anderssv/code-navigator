@@ -5,6 +5,7 @@ import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TableFormatter
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.ClassFilter
 import no.f12.codenavigator.navigation.ClassScanner
 import no.f12.codenavigator.navigation.FindClassConfig
@@ -36,7 +37,7 @@ class FindClassMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            FindClassConfig.parse(buildPropertyMap())
+            FindClassConfig.parse(TaskRegistry.FIND_CLASS.enhanceProperties(buildPropertyMap()))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "Missing required property 'pattern'. Usage: mvn cnav:find-class -Dpattern=<regex>",
