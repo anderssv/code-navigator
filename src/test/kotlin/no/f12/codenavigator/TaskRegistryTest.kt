@@ -9,7 +9,7 @@ class ParamDefTest {
 
     @Test
     fun `stores name, value placeholder, and description`() {
-        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false)
+        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
         assertEquals("pattern", param.name)
         assertEquals("<regex>", param.valuePlaceholder)
@@ -21,24 +21,45 @@ class ParamDefTest {
 
     @Test
     fun `renders as Gradle parameter syntax`() {
-        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false)
+        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
         assertEquals("-Ppattern=<regex>", param.render(BuildTool.GRADLE))
     }
 
     @Test
     fun `renders as Maven parameter syntax`() {
-        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false)
+        val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
         assertEquals("-Dpattern=<regex>", param.render(BuildTool.MAVEN))
     }
 
     @Test
     fun `flag param renders without value`() {
-        val param = ParamDef("no-follow", "", "Disable rename tracking", flag = true, defaultValue = null, enhancePattern = false)
+        val param = ParamDef("no-follow", "", "Disable rename tracking", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
         assertEquals("-Pno-follow", param.render(BuildTool.GRADLE))
         assertEquals("-Dno-follow", param.render(BuildTool.MAVEN))
+    }
+
+    @Test
+    fun `parseList splits comma-separated values and trims whitespace`() {
+        val result = ParamDef.parseList("RestController, Scheduled , Component")
+
+        assertEquals(listOf("RestController", "Scheduled", "Component"), result)
+    }
+
+    @Test
+    fun `parseList returns empty list for null`() {
+        val result = ParamDef.parseList(null)
+
+        assertEquals(emptyList(), result)
+    }
+
+    @Test
+    fun `parseList filters out blank entries`() {
+        val result = ParamDef.parseList("RestController,,, Scheduled")
+
+        assertEquals(listOf("RestController", "Scheduled"), result)
     }
 }
 
@@ -46,7 +67,7 @@ class TaskDefTest {
 
     @Test
     fun `stores goal, description, params, and requiresCompilation`() {
-        val pattern = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false)
+        val pattern = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
         val task = TaskDef(
             goal = "find-class",
             description = "Find classes by regex",
@@ -62,8 +83,8 @@ class TaskDefTest {
 
     @Test
     fun `enhanceProperties applies PatternEnhancer to params marked enhancePattern`() {
-        val enhanced = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = true)
-        val plain = ParamDef("method", "<name>", "Method", flag = false, defaultValue = null, enhancePattern = false)
+        val enhanced = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
+        val plain = ParamDef("method", "<name>", "Method", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
         val task = TaskDef(
             goal = "test",
             description = "Test",
@@ -79,7 +100,7 @@ class TaskDefTest {
 
     @Test
     fun `enhanceProperties leaves null values unchanged`() {
-        val enhanced = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = true)
+        val enhanced = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
         val task = TaskDef(
             goal = "test",
             description = "Test",
@@ -120,16 +141,17 @@ class TaskDefTest {
 class TaskRegistryTest {
 
     @Test
-    fun `contains all 23 goals`() {
+    fun `contains all 24 goals`() {
         val goals = TaskRegistry.ALL_TASKS.map { it.goal }.toSet()
 
-        assertEquals(23, goals.size)
+        assertEquals(24, goals.size)
         assertTrue(goals.contains("find-class"))
         assertTrue(goals.contains("hotspots"))
         assertTrue(goals.contains("complexity"))
         assertTrue(goals.contains("metrics"))
         assertTrue(goals.contains("help"))
         assertTrue(goals.contains("cycles"))
+        assertTrue(goals.contains("find-string-constant"))
     }
 
     @Test
@@ -140,7 +162,7 @@ class TaskRegistryTest {
             val gradleName = task.taskName(BuildTool.GRADLE)
             assertNotNull(gradleName, "Goal '${task.goal}' should resolve to a Gradle task name")
         }
-        assertEquals(23, registryGoals.size)
+        assertEquals(24, registryGoals.size)
     }
 
     @Test

@@ -22,6 +22,7 @@ import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.RankedType
 import no.f12.codenavigator.navigation.DeadCode
+import no.f12.codenavigator.navigation.StringConstantMatch
 import no.f12.codenavigator.navigation.MetricsResult
 import no.f12.codenavigator.navigation.UsageSite
 
@@ -96,7 +97,12 @@ object LlmFormatter {
     fun formatDead(dead: List<DeadCode>): String =
         dead.joinToString("\n") { d ->
             val name = if (d.memberName != null) "${d.className}.${d.memberName}" else d.className.toString()
-            "$name ${d.kind.name} ${d.sourceFile}"
+            "$name ${d.kind.name} ${d.sourceFile} confidence=${d.confidence.name}"
+        }
+
+    fun formatStringConstants(matches: List<StringConstantMatch>): String =
+        matches.joinToString("\n") { m ->
+            "${m.className}.${m.methodName}: \"${m.value}\" ${m.sourceFile}"
         }
 
     fun formatComplexity(results: List<ClassComplexity>): String =

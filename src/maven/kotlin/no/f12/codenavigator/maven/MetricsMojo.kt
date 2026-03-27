@@ -69,7 +69,16 @@ class MetricsMojo : AbstractMojo() {
         val classResult = ClassScanner.scan(classDirectories)
         val packages = PackageDependencyBuilder.build(graph).allPackages()
         val rankedTypes = TypeRanker.rank(graph, projectOnly = true, collapseLambdas = true)
-        val deadCode = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val deadCode = DeadCodeFinder.find(
+            graph = graph,
+            filter = null,
+            exclude = null,
+            classesOnly = false,
+            excludeAnnotated = emptySet(),
+            classAnnotations = emptyMap(),
+            methodAnnotations = emptyMap(),
+            testGraph = null,
+        )
 
         val dsmResult = DsmDependencyExtractor.extract(classDirectories, config.rootPackage)
         val matrix = DsmMatrixBuilder.build(dsmResult.data, config.rootPackage, depth = 2)

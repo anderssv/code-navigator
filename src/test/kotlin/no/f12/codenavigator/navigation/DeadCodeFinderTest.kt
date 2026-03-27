@@ -6,11 +6,31 @@ import kotlin.test.assertTrue
 
 class DeadCodeFinderTest {
 
+    private fun findDead(
+        graph: CallGraph,
+        filter: Regex? = null,
+        exclude: Regex? = null,
+        classesOnly: Boolean = false,
+        excludeAnnotated: Set<String> = emptySet(),
+        classAnnotations: Map<ClassName, Set<String>> = emptyMap(),
+        methodAnnotations: Map<MethodRef, Set<String>> = emptyMap(),
+        testGraph: CallGraph? = null,
+    ): List<DeadCode> = DeadCodeFinder.find(
+        graph = graph,
+        filter = filter,
+        exclude = exclude,
+        classesOnly = classesOnly,
+        excludeAnnotated = excludeAnnotated,
+        classAnnotations = classAnnotations,
+        methodAnnotations = methodAnnotations,
+        testGraph = testGraph,
+    )
+
     @Test
     fun `empty call graph produces empty result`() {
         val graph = testCallGraph()
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
     }
     @Test
     fun `single class with no callers is dead`() {
@@ -19,7 +39,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.Lonely"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }
         assertEquals(1, deadClasses.size)
@@ -32,7 +52,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.Caller", "com.example.Service"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
         assertTrue("com.example.Service" !in deadClassNames, "Service is called by Caller so should not be dead")
@@ -46,7 +66,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.Orphan", "com.example.Service", "com.example.Controller"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
         assertTrue("com.example.Orphan" in deadClassNames)
@@ -60,7 +80,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.Recursive"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
         assertTrue("com.example.Recursive" in deadClassNames, "Self-referencing class with no external callers is dead")
@@ -73,7 +93,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.Repo"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
         val deadMethodNames = deadMethods.map { "${it.className.value}.${it.memberName}" }
@@ -88,7 +108,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.Controller", "com.example.Service"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
         assertTrue(deadMethods.isEmpty(), "Both process() and validate() are called by Controller, no dead methods")
@@ -101,7 +121,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.OrphanService", "com.example.OrphanUtil", "com.example.Repo"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = Regex("Service"), exclude = null, classesOnly = false)
+        val dead = findDead(graph, filter = Regex("Service"))
 
         val deadClassNames = dead.map { it.className.value }
         assertTrue("com.example.OrphanService" in deadClassNames)
@@ -115,7 +135,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.Main", "com.example.TestHelper", "com.example.Service"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = Regex("Main|Test"), classesOnly = false)
+        val dead = findDead(graph, exclude = Regex("Main|Test"))
 
         val deadClassNames = dead.map { it.className.value }
         assertTrue("com.example.Main" !in deadClassNames, "Main excluded by regex")
@@ -131,7 +151,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.Repo", "com.example.Zombie"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val classes = dead.filter { it.kind == DeadCodeKind.CLASS }
         val methods = dead.filter { it.kind == DeadCodeKind.METHOD }
@@ -148,7 +168,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.Controller", "com.example.Service"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
         val deadMethodNames = deadMethods.map { "${it.className.value}.${it.memberName}" }
@@ -173,7 +193,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.Repo"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
         val deadMethodNames = deadMethods.map { it.memberName }
@@ -203,7 +223,7 @@ class DeadCodeFinderTest {
             ),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
         assertTrue("com.example.Service" in deadClasses, "Service has no callers")
@@ -229,7 +249,7 @@ class DeadCodeFinderTest {
             ),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
         val deadMethodEntries = deadMethods.map { "${it.className.value}.${it.memberName}" }
@@ -257,7 +277,7 @@ class DeadCodeFinderTest {
             ),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = false)
+        val dead = findDead(graph)
 
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
         assertTrue(
@@ -274,7 +294,7 @@ class DeadCodeFinderTest {
             projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.Repo"),
         )
 
-        val dead = DeadCodeFinder.find(graph, filter = null, exclude = null, classesOnly = true)
+        val dead = findDead(graph, classesOnly = true)
 
         val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
         val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }
@@ -282,4 +302,182 @@ class DeadCodeFinderTest {
         assertTrue(deadClasses.isNotEmpty(), "classesOnly should still report dead classes")
     }
 
+    // [TEST] Class with excluded annotation is not reported as dead
+    // [TEST] Method with excluded annotation is not reported as dead method
+    // [TEST] Class without excluded annotation is still reported as dead
+    // [TEST] Empty excludeAnnotated set has no effect
+
+    @Test
+    fun `class with excluded annotation is not reported as dead`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.External", "process"),
+            projectClasses = setOf("com.example.Controller"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            excludeAnnotated = setOf("RestController"),
+            classAnnotations = mapOf(ClassName("com.example.Controller") to setOf("RestController")),
+        )
+
+        assertTrue(dead.isEmpty(), "Controller annotated with @RestController should be excluded")
+    }
+
+    @Test
+    fun `method with excluded annotation is not reported as dead method`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.Service", "scheduledTask") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.Repo"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            excludeAnnotated = setOf("Scheduled"),
+            methodAnnotations = mapOf(
+                MethodRef(ClassName("com.example.Service"), "scheduledTask") to setOf("Scheduled"),
+            ),
+        )
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
+        assertTrue(
+            deadMethods.none { it.memberName == "scheduledTask" },
+            "scheduledTask annotated with @Scheduled should be excluded",
+        )
+    }
+
+    @Test
+    fun `class without excluded annotation is still reported as dead`() {
+        val graph = testCallGraph(
+            method("com.example.Service", "process") to method("com.example.External", "call"),
+            method("com.example.Util", "help") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Service", "com.example.Util"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            excludeAnnotated = setOf("RestController"),
+            classAnnotations = mapOf(ClassName("com.example.Service") to setOf("Service")),
+        )
+
+        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        assertTrue("com.example.Service" in deadClassNames, "Service is not annotated with RestController, so still dead")
+        assertTrue("com.example.Util" in deadClassNames, "Util has no annotations, so still dead")
+    }
+
+    // === Confidence scoring tests ===
+
+    @Test
+    fun `unreferenced class with no annotations and no test graph has HIGH confidence`() {
+        val graph = testCallGraph(
+            method("com.example.Orphan", "run") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Orphan"),
+        )
+
+        val dead = findDead(graph)
+
+        assertEquals(1, dead.size)
+        assertEquals(DeadCodeConfidence.HIGH, dead[0].confidence)
+    }
+
+    @Test
+    fun `unreferenced class with annotations has LOW confidence`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Controller"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            classAnnotations = mapOf(ClassName("com.example.Controller") to setOf("RestController")),
+        )
+
+        assertEquals(1, dead.size)
+        assertEquals(DeadCodeConfidence.LOW, dead[0].confidence)
+    }
+
+    @Test
+    fun `unreferenced method with annotations has LOW confidence`() {
+        val graph = testCallGraph(
+            method("com.example.Caller", "main") to method("com.example.Service", "process"),
+            method("com.example.Service", "scheduled") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Caller", "com.example.Service", "com.example.Repo"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            methodAnnotations = mapOf(
+                MethodRef(ClassName("com.example.Service"), "scheduled") to setOf("Scheduled"),
+            ),
+        )
+
+        val scheduledDead = dead.first { it.memberName == "scheduled" }
+        assertEquals(DeadCodeConfidence.LOW, scheduledDead.confidence)
+    }
+
+    @Test
+    fun `unreferenced in prod but referenced in test graph has MEDIUM confidence`() {
+        val prodGraph = testCallGraph(
+            method("com.example.Orphan", "run") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Orphan"),
+        )
+        val testGraph = testCallGraph(
+            method("com.example.OrphanTest", "testRun") to method("com.example.Orphan", "run"),
+        )
+
+        val dead = findDead(graph = prodGraph, testGraph = testGraph)
+
+        assertEquals(1, dead.size)
+        assertEquals(DeadCodeConfidence.MEDIUM, dead[0].confidence)
+    }
+
+    @Test
+    fun `unreferenced method in prod but referenced in test graph has MEDIUM confidence`() {
+        val prodGraph = testCallGraph(
+            method("com.example.Caller", "main") to method("com.example.Service", "process"),
+            method("com.example.Service", "helper") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Caller", "com.example.Service", "com.example.Repo"),
+        )
+        val testGraph = testCallGraph(
+            method("com.example.ServiceTest", "testHelper") to method("com.example.Service", "helper"),
+        )
+
+        val dead = findDead(graph = prodGraph, testGraph = testGraph)
+
+        val helperDead = dead.first { it.memberName == "helper" }
+        assertEquals(DeadCodeConfidence.MEDIUM, helperDead.confidence)
+    }
+
+    @Test
+    fun `annotation LOW takes priority over test graph MEDIUM`() {
+        val prodGraph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Controller"),
+        )
+        val testGraph = testCallGraph(
+            method("com.example.ControllerTest", "test") to method("com.example.Controller", "handle"),
+        )
+
+        val dead = findDead(
+            graph = prodGraph,
+            testGraph = testGraph,
+            classAnnotations = mapOf(ClassName("com.example.Controller") to setOf("RestController")),
+        )
+
+        assertEquals(1, dead.size)
+        assertEquals(DeadCodeConfidence.LOW, dead[0].confidence, "Annotation LOW should take priority over test-referenced MEDIUM")
+    }
+
+    @Test
+    fun `no test graph provided means no MEDIUM confidence possible`() {
+        val graph = testCallGraph(
+            method("com.example.Orphan", "run") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Orphan"),
+        )
+
+        val dead = findDead(graph = graph, testGraph = null)
+
+        assertEquals(1, dead.size)
+        assertEquals(DeadCodeConfidence.HIGH, dead[0].confidence, "Without test graph, confidence should be HIGH not MEDIUM")
+    }
 }

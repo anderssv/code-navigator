@@ -341,6 +341,112 @@ class ClassDetailExtractorTest {
         assertTrue(detail.methods.first().annotations.isEmpty())
     }
 
+    // [TEST] Enum annotation parameter is extracted with simple class and constant name
+    @Test
+    fun `nested annotation parameter is extracted with at-sign prefix and parameters`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/WithNested", "WithNested.kt") {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "handle", "()V", null, null)
+            val av = mv.visitAnnotation("Lio/swagger/v3/oas/annotations/Operation;", true)
+            val nestedAv = av?.visitAnnotation("summary", "Lio/swagger/v3/oas/annotations/responses/ApiResponse;")
+            nestedAv?.visit("responseCode", "200")
+            nestedAv?.visit("description", "OK")
+            nestedAv?.visitEnd()
+            av?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        val annotation = detail.methods.first().annotations.first()
+        assertEquals("Operation", annotation.name)
+        assertEquals(mapOf("summary" to "@ApiResponse(responseCode=200, description=OK)"), annotation.parameters)
+    }
+
+    @Test
+    fun `array annotation parameter with multiple values is extracted as bracket-delimited list`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/WithArray", "WithArray.kt") {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "handle", "()V", null, null)
+            val av = mv.visitAnnotation("Lorg/springframework/web/bind/annotation/RequestMapping;", true)
+            val arrayVisitor = av?.visitArray("value")
+            arrayVisitor?.visit(null, "/api/users")
+            arrayVisitor?.visit(null, "/api/v2/users")
+            arrayVisitor?.visitEnd()
+            av?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        val annotation = detail.methods.first().annotations.first()
+        assertEquals("RequestMapping", annotation.name)
+        assertEquals(mapOf("value" to "[/api/users, /api/v2/users]"), annotation.parameters)
+    }
+
+    @Test
+    fun `array annotation parameter with single value is extracted without brackets`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/WithSingleArray", "WithSingleArray.kt") {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "handle", "()V", null, null)
+            val av = mv.visitAnnotation("Lorg/springframework/web/bind/annotation/RequestMapping;", true)
+            val arrayVisitor = av?.visitArray("value")
+            arrayVisitor?.visit(null, "/api/users")
+            arrayVisitor?.visitEnd()
+            av?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        val annotation = detail.methods.first().annotations.first()
+        assertEquals(mapOf("value" to "/api/users"), annotation.parameters)
+    }
+
+    @Test
+    fun `empty array annotation parameter is extracted as empty brackets`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/WithEmptyArray", "WithEmptyArray.kt") {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "handle", "()V", null, null)
+            val av = mv.visitAnnotation("Lorg/springframework/web/bind/annotation/RequestMapping;", true)
+            val arrayVisitor = av?.visitArray("produces")
+            arrayVisitor?.visitEnd()
+            av?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        val annotation = detail.methods.first().annotations.first()
+        assertEquals(mapOf("produces" to "[]"), annotation.parameters)
+    }
+
+    @Test
+    fun `array of enum values is extracted as bracket-delimited list of enum constants`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/WithEnumArray", "WithEnumArray.kt") {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "handle", "()V", null, null)
+            val av = mv.visitAnnotation("Lorg/springframework/web/bind/annotation/RequestMapping;", true)
+            val arrayVisitor = av?.visitArray("method")
+            arrayVisitor?.visitEnum(null, "Lorg/springframework/web/bind/annotation/RequestMethod;", "GET")
+            arrayVisitor?.visitEnum(null, "Lorg/springframework/web/bind/annotation/RequestMethod;", "POST")
+            arrayVisitor?.visitEnd()
+            av?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        val annotation = detail.methods.first().annotations.first()
+        assertEquals(mapOf("method" to "[RequestMethod.GET, RequestMethod.POST]"), annotation.parameters)
+    }
+
+    @Test
+    fun `enum annotation parameter is extracted with class and constant name`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/WithEnum", "WithEnum.kt") {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "handle", "()V", null, null)
+            val av = mv.visitAnnotation("Lorg/springframework/web/bind/annotation/RequestMapping;", true)
+            av?.visitEnum("method", "Lorg/springframework/web/bind/annotation/RequestMethod;", "GET")
+            av?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        val annotation = detail.methods.first().annotations.first()
+        assertEquals("RequestMapping", annotation.name)
+        assertEquals(mapOf("method" to "RequestMethod.GET"), annotation.parameters)
+    }
+
     @Test
     fun `method with return type using array of primitives`() {
         val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/ArrayMethods", "ArrayMethods.kt") {

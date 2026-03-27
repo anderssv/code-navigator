@@ -160,3 +160,17 @@ Added `enhancePattern: Boolean` to `ParamDef` and `TaskDef.enhanceProperties()` 
 ## ~~65. Show annotations in `cnavClass` output (High value, medium effort)~~ DONE
 
 Added `AnnotationDetail(name, parameters)` data class. Extracts class-level, method-level, and field-level annotations via ASM `visitAnnotation()`. Simple parameter values (`String`, `int`, `boolean`, etc.) captured via `AnnotationVisitor.visit(name, value)`. All three formatters updated (TEXT, LLM, JSON). `AgentHelpText` JSON schema updated to include annotations. Limitation: enum, array, and nested annotation parameters not yet captured (tracked as 65a).
+
+## ~~65a. Annotation parameter completeness (Low value, low effort)~~ DONE
+
+Added `visitEnum()`, `visitArray()`, and `visitAnnotation()` (nested) callbacks to the ASM `AnnotationVisitor` in `ClassDetailExtractor`. Enum parameters format as `EnumSimpleName.CONSTANT`, array parameters as `[val1, val2]` (bare value for single-element, `[]` for empty), nested annotations as `@AnnotationName(param=val)`. Array inner visitor also handles `visitEnum` for arrays of enums. 7 new tests in `ClassDetailExtractorTest`.
+
+## ~~53+54. `cnavDead` improvements — entry points and confidence scoring (Medium value, medium effort)~~ DONE
+
+**Entry point awareness (53):** Added `-Pexclude-annotated=<annotations>` parameter to exclude classes/methods with specific annotations from dead code results. Comma-separated annotation simple names (e.g., `-Pexclude-annotated=Scheduled,EventListener`). `AnnotationExtractor` created as lightweight scanner that collects annotation simple names on classes and methods. `ParamType` enum (`STRING`, `LIST_STRING`) added to `ParamDef` for centralized list parsing. Wired in `DeadCodeTask.kt`, `DeadCodeMojo.kt`, `HelpText.kt`, and `AgentHelpText.kt`.
+
+**Confidence scoring (54):** Added `DeadCodeConfidence` enum (HIGH, MEDIUM, LOW) and `confidence` field to `DeadCode` data class. `DeadCodeFinder.find()` takes optional `testGraph: CallGraph?` parameter — unreferenced everywhere = HIGH, referenced only in test graph = MEDIUM, class/method has annotations = LOW. All formatters updated (TEXT "Confidence" column, JSON `"confidence"` field, LLM `confidence=`). Test graph built from test source set in `DeadCodeTask.kt` and `DeadCodeMojo.kt`.
+
+## ~~66. `cnavFindStringConstant` — search string literals in bytecode (Medium value, medium effort)~~ DONE
+
+New task to search string literals embedded in bytecode via ASM's `visitLdcInsn()`. Three-layer architecture: `StringConstantExtractor` (parsing), `StringConstantScanner` (resolution), `StringConstantFormatter` + `JsonFormatter.formatStringConstants()` + `LlmFormatter.formatStringConstants()` (formatting). Parameters: `-Ppattern=<regex>` (required, plain regex without camelCase enhancement). Registered as `cnavFindStringConstant` (Gradle) / `cnav:find-string-constant` (Maven). Added to `BuildTool.kt` GRADLE_TASK_NAMES map, `TaskRegistry` (24 goals total), `HelpText.kt`, and `AgentHelpText.kt`.

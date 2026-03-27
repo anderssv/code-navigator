@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.navigation.AnnotationExtractor
 import no.f12.codenavigator.navigation.CallGraphCache
 import no.f12.codenavigator.navigation.DeadCodeConfig
 import no.f12.codenavigator.navigation.DeadCodeFinder
@@ -23,7 +24,7 @@ abstract class DeadCodeTask : DefaultTask() {
     fun showDeadCode() {
         val config = DeadCodeConfig.parse(
             project.buildPropertyMap(
-                propertyNames = listOf("filter", "exclude", "classes-only", "format", "llm"),
+                propertyNames = listOf("filter", "exclude", "classes-only", "exclude-annotated", "format", "llm"),
                 flagNames = emptyList(),
             ),
         )
@@ -38,11 +39,33 @@ abstract class DeadCodeTask : DefaultTask() {
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val graph = result.data
 
+        val excludeAnnotated = config.excludeAnnotated.toSet()
+        val (classAnnotations, methodAnnotations) = if (excludeAnnotated.isNotEmpty()) {
+            AnnotationExtractor.scanAll(classDirectories)
+        } else {
+            Pair(emptyMap(), emptyMap())
+        }
+
+        val testSourceSet = sourceSets.findByName("test")
+        val testClassDirectories = testSourceSet?.output?.classesDirs?.files?.filter { it.exists() }?.toList() ?: emptyList()
+        val testGraph = if (testClassDirectories.isNotEmpty()) {
+            CallGraphCache.getOrBuild(
+                File(project.layout.buildDirectory.asFile.get(), "cnav/test-call-graph.cache"),
+                testClassDirectories,
+            ).data
+        } else {
+            null
+        }
+
         val dead = DeadCodeFinder.find(
             graph = graph,
             filter = config.filter,
             exclude = config.exclude,
             classesOnly = config.classesOnly,
+            excludeAnnotated = excludeAnnotated,
+            classAnnotations = classAnnotations,
+            methodAnnotations = methodAnnotations,
+            testGraph = testGraph,
         )
 
         if (dead.isEmpty()) {

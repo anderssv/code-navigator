@@ -20,6 +20,7 @@ import no.f12.codenavigator.navigation.ClassComplexity
 import no.f12.codenavigator.navigation.CycleDetail
 import no.f12.codenavigator.navigation.DeadCode
 import no.f12.codenavigator.navigation.MetricsResult
+import no.f12.codenavigator.navigation.StringConstantMatch
 import no.f12.codenavigator.navigation.UsageSite
 
 @JvmInline
@@ -225,6 +226,17 @@ object JsonFormatter {
                 "memberName" to d.memberName,
                 "kind" to d.kind.name.lowercase(),
                 "sourceFile" to d.sourceFile,
+                "confidence" to d.confidence.name.lowercase(),
+            )
+        }
+
+    fun formatStringConstants(matches: List<StringConstantMatch>): String =
+        jsonArray(matches) { m ->
+            jsonObject(
+                "className" to m.className.toString(),
+                "methodName" to m.methodName,
+                "value" to m.value,
+                "sourceFile" to m.sourceFile,
             )
         }
 

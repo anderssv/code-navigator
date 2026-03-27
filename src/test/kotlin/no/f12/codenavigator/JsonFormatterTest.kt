@@ -25,7 +25,9 @@ import no.f12.codenavigator.navigation.ClassComplexity
 import no.f12.codenavigator.navigation.CycleDetail
 import no.f12.codenavigator.navigation.CycleEdge
 import no.f12.codenavigator.navigation.DeadCode
+import no.f12.codenavigator.navigation.DeadCodeConfidence
 import no.f12.codenavigator.navigation.DeadCodeKind
+import no.f12.codenavigator.navigation.StringConstantMatch
 import no.f12.codenavigator.navigation.MetricsResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -622,8 +624,8 @@ class JsonFormatterTest {
     @Test
     fun `formats dead code as JSON array with all fields`() {
         val dead = listOf(
-            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt"),
-            DeadCode(ClassName("com.example.Service"), "unused", DeadCodeKind.METHOD, "Service.kt"),
+            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt", DeadCodeConfidence.HIGH),
+            DeadCode(ClassName("com.example.Service"), "unused", DeadCodeKind.METHOD, "Service.kt", DeadCodeConfidence.MEDIUM),
         )
 
         val result = JsonFormatter.formatDead(dead)
@@ -631,9 +633,38 @@ class JsonFormatterTest {
         assertTrue(result.contains("\"className\":\"com.example.Orphan\""))
         assertTrue(result.contains("\"kind\":\"class\""))
         assertTrue(result.contains("\"sourceFile\":\"Orphan.kt\""))
+        assertTrue(result.contains("\"confidence\":\"high\""))
         assertTrue(result.contains("\"className\":\"com.example.Service\""))
         assertTrue(result.contains("\"memberName\":\"unused\""))
         assertTrue(result.contains("\"kind\":\"method\""))
+        assertTrue(result.contains("\"confidence\":\"medium\""))
+    }
+
+    // === String constant formatting ===
+
+    @Test
+    fun `empty string constant list produces empty JSON array`() {
+        val result = JsonFormatter.formatStringConstants(emptyList())
+
+        assertEquals("[]", result)
+    }
+
+    @Test
+    fun `formats string constants as JSON array with all fields`() {
+        val matches = listOf(
+            StringConstantMatch(ClassName("com.example.Routes"), "getUsers", "/api/v1/users", "Routes.kt"),
+            StringConstantMatch(ClassName("com.example.Config"), "setup", "application/json", "Config.kt"),
+        )
+
+        val result = JsonFormatter.formatStringConstants(matches)
+
+        assertTrue(result.contains("\"className\":\"com.example.Routes\""))
+        assertTrue(result.contains("\"methodName\":\"getUsers\""))
+        assertTrue(result.contains("\"value\":\"/api/v1/users\""))
+        assertTrue(result.contains("\"sourceFile\":\"Routes.kt\""))
+        assertTrue(result.contains("\"className\":\"com.example.Config\""))
+        assertTrue(result.contains("\"methodName\":\"setup\""))
+        assertTrue(result.contains("\"value\":\"application/json\""))
     }
 
     // === Complexity formatting ===

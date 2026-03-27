@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.32
+
+- **New:** `cnavFindStringConstant` task / `cnav:find-string-constant` goal — search string literals embedded in bytecode via ASM's `visitLdcInsn()`. Parameters: `-Ppattern=<regex>` (required). Finds URL paths, HTTP headers, config keys, SQL fragments, and other compile-time string constants. Supports TEXT, JSON, and LLM output formats.
+- **New:** `cnavDead` confidence scoring — dead code results now include a confidence level: **high** (unreferenced everywhere), **medium** (only referenced in test code), **low** (class/method has framework annotations suggesting reflection/DI usage). Confidence shown in all three output formats.
+- **New:** `cnavDead -Pexclude-annotated=<annotations>` — exclude classes and methods with specific annotations from dead code results. Accepts comma-separated annotation simple names (e.g., `-Pexclude-annotated=Scheduled,EventListener`). More precise than regex-based `-Pexclude` for framework entry points.
+- **New:** Annotation parameter completeness in `cnavClass` — enum parameters (e.g., `@Retention(RUNTIME)`), array parameters (e.g., `@RequestMapping(value=[/api, /v2])`), and nested annotation parameters are now captured and displayed. Previously only simple values (String, int, boolean) were shown.
+- **New:** `ParamType` enum (`STRING`, `LIST_STRING`) on `ParamDef` — centralizes comma-separated list parsing for parameters that accept multiple values.
+
 ## 0.1.31
 
 - **New:** Show annotations in `cnavClass` output — class-level, method-level, and field-level annotations are now extracted from bytecode and displayed in all three output formats (TEXT, LLM, JSON). Annotation parameters with simple values (String, int, boolean, etc.) are included. Spring annotations like `@Service`, `@Transactional`, `@CircuitBreaker` are now visible without reading source files.

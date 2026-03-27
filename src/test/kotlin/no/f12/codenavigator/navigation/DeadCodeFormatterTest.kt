@@ -16,8 +16,8 @@ class DeadCodeFormatterTest {
     @Test
     fun `formats dead classes and methods as columnar table`() {
         val dead = listOf(
-            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt"),
-            DeadCode(ClassName("com.example.Service"), "unused", DeadCodeKind.METHOD, "Service.kt"),
+            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt", DeadCodeConfidence.HIGH),
+            DeadCode(ClassName("com.example.Service"), "unused", DeadCodeKind.METHOD, "Service.kt", DeadCodeConfidence.HIGH),
         )
 
         val output = DeadCodeFormatter.format(dead)
@@ -26,17 +26,19 @@ class DeadCodeFormatterTest {
         assertTrue(output.contains("Member"), "Should contain Member header")
         assertTrue(output.contains("Kind"), "Should contain Kind header")
         assertTrue(output.contains("Source"), "Should contain Source header")
+        assertTrue(output.contains("Confidence"), "Should contain Confidence header")
         assertTrue(output.contains("com.example.Orphan"), "Should contain dead class name")
         assertTrue(output.contains("com.example.Service"), "Should contain method's class name")
         assertTrue(output.contains("unused"), "Should contain dead method name")
         assertTrue(output.contains("CLASS"), "Should contain kind CLASS")
         assertTrue(output.contains("METHOD"), "Should contain kind METHOD")
+        assertTrue(output.contains("HIGH"), "Should contain confidence HIGH")
     }
 
     @Test
     fun `class entries show dash for member column`() {
         val dead = listOf(
-            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt"),
+            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt", DeadCodeConfidence.HIGH),
         )
 
         val output = DeadCodeFormatter.format(dead)

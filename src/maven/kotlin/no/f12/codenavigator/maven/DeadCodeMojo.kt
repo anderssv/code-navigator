@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.navigation.AnnotationExtractor
 import no.f12.codenavigator.navigation.CallGraphBuilder
 import no.f12.codenavigator.navigation.DeadCodeConfig
 import no.f12.codenavigator.navigation.DeadCodeFinder
@@ -39,6 +40,9 @@ class DeadCodeMojo : AbstractMojo() {
     @Parameter(property = "classes-only")
     private var classesOnly: String? = null
 
+    @Parameter(property = "exclude-annotated")
+    private var excludeAnnotated: String? = null
+
     override fun execute() {
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
@@ -53,11 +57,29 @@ class DeadCodeMojo : AbstractMojo() {
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val graph = result.data
 
+        val excludeAnnotatedSet = config.excludeAnnotated.toSet()
+        val (classAnnotations, methodAnnotations) = if (excludeAnnotatedSet.isNotEmpty()) {
+            AnnotationExtractor.scanAll(listOf(classesDir))
+        } else {
+            Pair(emptyMap(), emptyMap())
+        }
+
+        val testClassesDir = File(project.build.testOutputDirectory)
+        val testGraph = if (testClassesDir.exists()) {
+            CallGraphBuilder.build(listOf(testClassesDir)).data
+        } else {
+            null
+        }
+
         val dead = DeadCodeFinder.find(
             graph = graph,
             filter = config.filter,
             exclude = config.exclude,
             classesOnly = config.classesOnly,
+            excludeAnnotated = excludeAnnotatedSet,
+            classAnnotations = classAnnotations,
+            methodAnnotations = methodAnnotations,
+            testGraph = testGraph,
         )
 
         if (dead.isEmpty()) {
@@ -79,5 +101,6 @@ class DeadCodeMojo : AbstractMojo() {
         filter?.let { put("filter", it) }
         exclude?.let { put("exclude", it) }
         classesOnly?.let { put("classes-only", it) }
+        excludeAnnotated?.let { put("exclude-annotated", it) }
     }
 }

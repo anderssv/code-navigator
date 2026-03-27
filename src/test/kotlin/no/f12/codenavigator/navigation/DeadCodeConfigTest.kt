@@ -86,4 +86,25 @@ class DeadCodeConfigTest {
 
         assertFalse(config.classesOnly)
     }
+
+    @Test
+    fun `parses exclude-annotated from comma-separated string`() {
+        val config = DeadCodeConfig.parse(mapOf("exclude-annotated" to "RestController,Scheduled,Component"))
+
+        assertEquals(listOf("RestController", "Scheduled", "Component"), config.excludeAnnotated)
+    }
+
+    @Test
+    fun `defaults exclude-annotated to empty list when absent`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertTrue(config.excludeAnnotated.isEmpty())
+    }
+
+    @Test
+    fun `trims whitespace from exclude-annotated values`() {
+        val config = DeadCodeConfig.parse(mapOf("exclude-annotated" to " RestController , Scheduled "))
+
+        assertEquals(listOf("RestController", "Scheduled"), config.excludeAnnotated)
+    }
 }

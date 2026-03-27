@@ -9,18 +9,19 @@ object DeadCodeFormatter {
         val memberWidth = maxOf("Member".length, dead.maxOf { (it.memberName ?: "-").length })
         val kindWidth = maxOf("Kind".length, dead.maxOf { it.kind.name.length })
         val sourceWidth = maxOf("Source".length, dead.maxOf { it.sourceFile.length })
+        val confWidth = maxOf("Confidence".length, dead.maxOf { it.confidence.name.length })
 
         return buildString {
             appendLine(
-                "%-${classWidth}s  %-${memberWidth}s  %-${kindWidth}s  %-${sourceWidth}s".format(
-                    "Class", "Member", "Kind", "Source",
+                "%-${classWidth}s  %-${memberWidth}s  %-${kindWidth}s  %-${sourceWidth}s  %-${confWidth}s".format(
+                    "Class", "Member", "Kind", "Source", "Confidence",
                 )
             )
             dead.forEachIndexed { index, d ->
                 if (index > 0) appendLine()
                 append(
-                    "%-${classWidth}s  %-${memberWidth}s  %-${kindWidth}s  %-${sourceWidth}s".format(
-                        d.className.toString(), d.memberName ?: "-", d.kind.name, d.sourceFile,
+                    "%-${classWidth}s  %-${memberWidth}s  %-${kindWidth}s  %-${sourceWidth}s  %-${confWidth}s".format(
+                        d.className.toString(), d.memberName ?: "-", d.kind.name, d.sourceFile, d.confidence.name,
                     )
                 )
             }

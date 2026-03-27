@@ -24,7 +24,9 @@ import no.f12.codenavigator.navigation.ClassComplexity
 import no.f12.codenavigator.navigation.CycleDetail
 import no.f12.codenavigator.navigation.CycleEdge
 import no.f12.codenavigator.navigation.DeadCode
+import no.f12.codenavigator.navigation.DeadCodeConfidence
 import no.f12.codenavigator.navigation.DeadCodeKind
+import no.f12.codenavigator.navigation.StringConstantMatch
 import no.f12.codenavigator.navigation.MetricsResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -338,14 +340,36 @@ class LlmFormatterTest {
     @Test
     fun `formats dead code compactly`() {
         val dead = listOf(
-            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt"),
-            DeadCode(ClassName("com.example.Service"), "unused", DeadCodeKind.METHOD, "Service.kt"),
+            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt", DeadCodeConfidence.HIGH),
+            DeadCode(ClassName("com.example.Service"), "unused", DeadCodeKind.METHOD, "Service.kt", DeadCodeConfidence.MEDIUM),
         )
 
         val result = LlmFormatter.formatDead(dead)
 
         assertEquals(
-            "com.example.Orphan CLASS Orphan.kt\ncom.example.Service.unused METHOD Service.kt",
+            "com.example.Orphan CLASS Orphan.kt confidence=HIGH\ncom.example.Service.unused METHOD Service.kt confidence=MEDIUM",
+            result,
+        )
+    }
+
+    // === String constant formatting ===
+
+    @Test
+    fun `empty string constant list returns empty string`() {
+        assertEquals("", LlmFormatter.formatStringConstants(emptyList()))
+    }
+
+    @Test
+    fun `formats string constants compactly`() {
+        val matches = listOf(
+            StringConstantMatch(ClassName("com.example.Routes"), "getUsers", "/api/v1/users", "Routes.kt"),
+            StringConstantMatch(ClassName("com.example.Config"), "setup", "application/json", "Config.kt"),
+        )
+
+        val result = LlmFormatter.formatStringConstants(matches)
+
+        assertEquals(
+            "com.example.Routes.getUsers: \"/api/v1/users\" Routes.kt\ncom.example.Config.setup: \"application/json\" Config.kt",
             result,
         )
     }

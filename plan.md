@@ -16,20 +16,6 @@ Most tasks only scan the project's compiled output directories. When checking wh
 - **Why high value**: AI agents frequently need to check library API signatures to write correct code. Classpath scanning gives ground-truth answers from the actual dependency versions in the project.
 - **Note**: Item 40 (`cnavFindSymbol` external type references) is largely covered by combining classpath scanning with `cnavUsages -Ptype=<class>` for finding project references to external types. May only need documentation pointing users to `cnavUsages` for this use case.
 
-### 53+54. `cnavDead` improvements — entry points and confidence scoring (Medium value, medium effort)
-
-Two related enhancements to dead code detection, both requiring annotation awareness (now available via item 65):
-
-**Entry point awareness (53):** Dead code detection has no built-in concept of "entry points" beyond `-Pexclude` regex. Common patterns like Ktor route handlers, `@Scheduled` methods, or serialization-invoked constructors show up as false positives.
-- Support annotation-based exclusion (`-Pexclude-annotated=Serializable,Route`) — more general and framework-agnostic than named presets.
-- Annotation extraction infrastructure is already in place from item 65.
-
-**Confidence scoring (54):** All dead code results are presented equally. A method called nowhere is more likely dead than one only called by reflection.
-- **high** — truly unreferenced (no callers in entire call graph)
-- **medium** — only referenced in test code (not called from production code)
-- **low** — potentially reflection-invoked (class has framework annotations, or method name matches common reflection patterns)
-- Needs test source set scanning (already supported via `includetest`) and annotation detection (done).
-
 ### 56. `cnavContext` — smart context gathering for AI agents (High value, medium effort)
 
 AI agents typically need 4-5 sequential tool calls to understand a class. Given a class or method, automatically gather "everything an agent needs": class signature, callers (depth 2), callees (depth 2), interface implementations, and source file path.
@@ -119,15 +105,6 @@ Analyze which declared Gradle/Maven dependencies have zero references in bytecod
 - **Caveats**: Runtime-only dependencies (JDBC drivers, logging backends) will show as "unused." Need an exclusion mechanism.
 - **Related**: Reuses classpath enumeration infrastructure from item 38.
 
-### 66. `cnavFindStringConstant` — search string literals in bytecode (Medium value, medium effort)
-
-No way to search for string literals embedded in method bodies — e.g., finding which class sets a specific HTTP header value, URL path, or configuration key.
-
-- **Needs**: ASM's `visitLdcInsn()` to capture `LDC` instructions that push string values
-- **Parameters**: `-Ppattern=<regex>` to filter
-- **Output**: `ClassName.methodName: "matched string value"`
-- **Caveats**: Only finds compile-time string constants. Still covers the majority of URL paths, header names, config keys, SQL fragments, etc.
-
 ### 67. DI-aware `cnavInjectors` — find where a type is injected (Medium value, high effort)
 
 Tracing "what injects `BaseAccountRestAdapter`?" requires manually reading constructors. A DI-aware task uses constructor parameter types + framework annotations to answer this.
@@ -135,16 +112,6 @@ Tracing "what injects `BaseAccountRestAdapter`?" requires manually reading const
 - Scan all constructors for parameters matching the target type. For Spring, also check `@Autowired` fields and `@Bean` methods.
 - Start with constructor injection (framework-agnostic) and `@Autowired`/`@Inject` field injection.
 - **Alternative**: May already be partially solvable with `cnavUsages -Ptype=AccountService` which finds all references including constructor parameters.
-
-### 65a. Annotation parameter completeness (Low value, low effort)
-
-Current limitation: only simple annotation parameter values are captured. Three ASM `AnnotationVisitor` callbacks are not yet handled:
-
-- **`visitEnum(name, descriptor, value)`** — enum parameters like `@Retention(RetentionPolicy.RUNTIME)`, `@RequestMapping(method = RequestMethod.GET)`
-- **`visitArray(name)`** — array parameters like `@RequestMapping(value = {"/api", "/v2"})`
-- **`visitAnnotation(name, descriptor)`** — nested annotation parameters (rare in practice)
-
-Also: only runtime-visible annotations (`@Retention(RUNTIME)`) appear in bytecode.
 
 ### 61. Stable JSON schemas — machine-fetchable schema documentation (Low value, low effort)
 

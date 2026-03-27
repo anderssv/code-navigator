@@ -176,6 +176,61 @@ object ClassDetailExtractor {
                 }
             }
 
+            override fun visitEnum(paramName: String?, descriptor: String, value: String) {
+                if (paramName != null) {
+                    val enumClass = annotationName(descriptor)
+                    parameters[paramName] = "$enumClass.$value"
+                }
+            }
+
+            override fun visitArray(paramName: String?): AnnotationVisitor? {
+                if (paramName == null) return null
+                val elements = mutableListOf<String>()
+                return object : AnnotationVisitor(Opcodes.ASM9) {
+                    override fun visit(name: String?, value: Any?) {
+                        if (value != null) {
+                            elements.add(value.toString())
+                        }
+                    }
+
+                    override fun visitEnum(name: String?, descriptor: String, value: String) {
+                        val enumClass = annotationName(descriptor)
+                        elements.add("$enumClass.$value")
+                    }
+
+                    override fun visitEnd() {
+                        parameters[paramName] = when (elements.size) {
+                            0 -> "[]"
+                            1 -> elements.first()
+                            else -> "[${elements.joinToString(", ")}]"
+                        }
+                    }
+                }
+            }
+
+            override fun visitAnnotation(paramName: String?, descriptor: String): AnnotationVisitor? {
+                if (paramName == null) return null
+                val nestedName = annotationName(descriptor)
+                val nestedParams = mutableMapOf<String, String>()
+                return object : AnnotationVisitor(Opcodes.ASM9) {
+                    override fun visit(name: String?, value: Any?) {
+                        if (name != null && value != null) {
+                            nestedParams[name] = value.toString()
+                        }
+                    }
+
+                    override fun visitEnd() {
+                        val paramStr = if (nestedParams.isEmpty()) {
+                            "@$nestedName"
+                        } else {
+                            val entries = nestedParams.entries.joinToString(", ") { "${it.key}=${it.value}" }
+                            "@$nestedName($entries)"
+                        }
+                        parameters[paramName] = paramStr
+                    }
+                }
+            }
+
             override fun visitEnd() {
                 annotations.add(AnnotationDetail(name, parameters.toMap()))
             }
