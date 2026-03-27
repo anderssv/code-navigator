@@ -266,10 +266,10 @@ class TaskDefTest {
 class TaskRegistryTest {
 
     @Test
-    fun `contains all 24 goals`() {
+    fun `contains all 25 goals`() {
         val goals = TaskRegistry.ALL_TASKS.map { it.goal }.toSet()
 
-        assertEquals(24, goals.size)
+        assertEquals(25, goals.size)
         assertTrue(goals.contains("find-class"))
         assertTrue(goals.contains("hotspots"))
         assertTrue(goals.contains("complexity"))
@@ -277,6 +277,7 @@ class TaskRegistryTest {
         assertTrue(goals.contains("help"))
         assertTrue(goals.contains("cycles"))
         assertTrue(goals.contains("find-string-constant"))
+        assertTrue(goals.contains("type-hierarchy"))
     }
 
     @Test
@@ -287,7 +288,7 @@ class TaskRegistryTest {
             val gradleName = task.taskName(BuildTool.GRADLE)
             assertNotNull(gradleName, "Goal '${task.goal}' should resolve to a Gradle task name")
         }
-        assertEquals(24, registryGoals.size)
+        assertEquals(25, registryGoals.size)
     }
 
     @Test
@@ -295,7 +296,7 @@ class TaskRegistryTest {
         val navigationGoals = listOf(
             "list-classes", "find-class", "find-symbol", "class-detail",
             "find-callers", "find-callees", "find-interfaces", "package-deps",
-            "dsm", "find-usages", "rank", "dead",
+            "dsm", "find-usages", "rank", "dead", "type-hierarchy",
         )
 
         for (goal in navigationGoals) {

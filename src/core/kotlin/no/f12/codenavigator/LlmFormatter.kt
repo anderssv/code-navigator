@@ -23,7 +23,10 @@ import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.RankedType
 import no.f12.codenavigator.navigation.DeadCode
 import no.f12.codenavigator.navigation.StringConstantMatch
+import no.f12.codenavigator.navigation.SupertypeInfo
+import no.f12.codenavigator.navigation.SupertypeKind
 import no.f12.codenavigator.navigation.MetricsResult
+import no.f12.codenavigator.navigation.TypeHierarchyResult
 import no.f12.codenavigator.navigation.UsageSite
 
 object LlmFormatter {
@@ -51,6 +54,20 @@ object LlmFormatter {
         interfaceNames.sorted().joinToString("\n") { name ->
             val impls = registry.implementorsOf(name).sortedBy { it.className }
             "$name: ${impls.joinToString(",") { "${it.className}(${it.sourceFile})" }}"
+        }
+
+    fun formatTypeHierarchy(results: List<TypeHierarchyResult>): String =
+        results.sortedBy { it.className }.joinToString("\n\n") { result ->
+            buildString {
+                append("${result.className} ${result.sourceFile}")
+                if (result.supertypes.isNotEmpty()) {
+                    renderSupertypesLlm(result.supertypes, 1)
+                }
+                if (result.implementors.isNotEmpty()) {
+                    appendLine()
+                    append("  implementors: ${result.implementors.sortedBy { it.className }.joinToString(",") { "${it.className}(${it.sourceFile})" }}")
+                }
+            }
         }
 
     fun renderCallTrees(trees: List<CallTreeNode>, direction: CallDirection): String = buildString {
@@ -223,5 +240,20 @@ object LlmFormatter {
     private fun formatMethodCompact(method: MethodDetail): String {
         val prefix = method.annotations.joinToString("") { "${formatAnnotation(it)}+" }
         return "$prefix${method.name}(${method.parameterTypes.joinToString(",")}):${method.returnType}"
+    }
+
+    private fun StringBuilder.renderSupertypesLlm(supertypes: List<SupertypeInfo>, depth: Int) {
+        val indent = "  ".repeat(depth)
+        for (st in supertypes) {
+            val kindLabel = when (st.kind) {
+                SupertypeKind.CLASS -> "extends"
+                SupertypeKind.INTERFACE -> "implements"
+            }
+            appendLine()
+            append("$indent$kindLabel ${st.className}")
+            if (st.supertypes.isNotEmpty()) {
+                renderSupertypesLlm(st.supertypes, depth + 1)
+            }
+        }
     }
 }

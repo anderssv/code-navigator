@@ -29,6 +29,7 @@ enum class BuildTool(
             "find-callers" to "cnavCallers",
             "find-callees" to "cnavCallees",
             "find-interfaces" to "cnavInterfaces",
+            "type-hierarchy" to "cnavTypeHierarchy",
             "package-deps" to "cnavDeps",
             "dsm" to "cnavDsm",
             "cycles" to "cnavCycles",

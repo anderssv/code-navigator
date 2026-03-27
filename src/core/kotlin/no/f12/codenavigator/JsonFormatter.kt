@@ -21,6 +21,8 @@ import no.f12.codenavigator.navigation.CycleDetail
 import no.f12.codenavigator.navigation.DeadCode
 import no.f12.codenavigator.navigation.MetricsResult
 import no.f12.codenavigator.navigation.StringConstantMatch
+import no.f12.codenavigator.navigation.SupertypeInfo
+import no.f12.codenavigator.navigation.TypeHierarchyResult
 import no.f12.codenavigator.navigation.UsageSite
 
 @JvmInline
@@ -83,6 +85,18 @@ object JsonFormatter {
             jsonObject(
                 "interface" to name.toString(),
                 "implementors" to JsonRaw(jsonArray(implementors.sortedBy { it.className }) { impl ->
+                    jsonObject("className" to impl.className.toString(), "sourceFile" to impl.sourceFile)
+                }),
+            )
+        }
+
+    fun formatTypeHierarchy(results: List<TypeHierarchyResult>): String =
+        jsonArray(results.sortedBy { it.className }) { result ->
+            jsonObject(
+                "className" to result.className.toString(),
+                "sourceFile" to result.sourceFile,
+                "supertypes" to JsonRaw(renderSupertypes(result.supertypes)),
+                "implementors" to JsonRaw(jsonArray(result.implementors.sortedBy { it.className }) { impl ->
                     jsonObject("className" to impl.className.toString(), "sourceFile" to impl.sourceFile)
                 }),
             )
@@ -303,6 +317,15 @@ object JsonFormatter {
             "children" to JsonRaw(children),
         )
     }
+
+    private fun renderSupertypes(supertypes: List<SupertypeInfo>): String =
+        jsonArray(supertypes) { st ->
+            jsonObject(
+                "className" to st.className.toString(),
+                "kind" to st.kind.name.lowercase(),
+                "supertypes" to JsonRaw(renderSupertypes(st.supertypes)),
+            )
+        }
 
     private fun <T> jsonArray(items: List<T>, render: (T) -> String): String {
         if (items.isEmpty()) return "[]"

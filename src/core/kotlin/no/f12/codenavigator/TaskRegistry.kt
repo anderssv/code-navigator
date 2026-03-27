@@ -194,6 +194,13 @@ object TaskRegistry {
         requiresCompilation = true,
     )
 
+    val TYPE_HIERARCHY = TaskDef(
+        goal = "type-hierarchy",
+        description = "Show type hierarchy (supertypes upward, implementors downward)",
+        params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY),
+        requiresCompilation = true,
+    )
+
     val PACKAGE_DEPS = TaskDef(
         goal = "package-deps",
         description = "Show package-level dependencies",
@@ -321,6 +328,7 @@ object TaskRegistry {
         FIND_CALLERS,
         FIND_CALLEES,
         FIND_INTERFACES,
+        TYPE_HIERARCHY,
         PACKAGE_DEPS,
         DSM,
         CYCLE_DETECTION,

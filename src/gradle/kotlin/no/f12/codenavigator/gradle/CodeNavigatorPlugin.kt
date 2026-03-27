@@ -52,6 +52,12 @@ class CodeNavigatorPlugin : Plugin<Project> {
             dependsOn("classes")
         }
 
+        project.tasks.register("cnavTypeHierarchy", TypeHierarchyTask::class.java) {
+            description = "Shows type hierarchy (supertypes upward, implementors downward). Usage: -Ppattern=<regex>"
+            group = "code-navigator"
+            dependsOn("classes")
+        }
+
         project.tasks.register("cnavDeps", PackageDepsTask::class.java) {
             description = "Shows package-level dependencies. Usage: [-Ppackage=<regex>]"
             group = "code-navigator"
