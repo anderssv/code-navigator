@@ -208,9 +208,21 @@ Run all analysis tasks (both bytecode and git history) and produce a consolidate
 
 ## Internal improvements
 
-### S6. Split root package to clarify dependency direction (Medium value, medium effort)
+### S6. Extract ConfidenceScorer from DeadCodeFinder (Medium value, low effort)
 
-The root `codenavigator` package serves as both "shared infrastructure" and "library API." Splitting into `codenavigator.format` (formatters + OutputFormat) and `codenavigator.registry` (TaskRegistry, BuildTool) would make the dependency direction explicit.
+`DeadCodeFinder` currently inlines all confidence-scoring logic (annotation checks, interface checks, method name heuristics, caller count thresholds). Extract a `ConfidenceScorer` class that takes a `DeadCode` candidate and returns its `DeadCodeConfidence` + `DeadCodeReason`. This makes the scoring rules independently testable and easier to extend with new heuristics (e.g., framework-aware scoring from items 73/76).
+
+### S7. Structured cache format replacing tab-separated positional fields (Medium value, medium effort)
+
+`FileCache` subclasses (`CallGraphCache`, `ClassIndexCache`, `SymbolIndexCache`, `InterfaceRegistryCache`) serialize data as tab-separated positional fields. This is fragile — adding a field requires updating both `serialize()` and `deserialize()` and any field order mismatch silently corrupts data. Replace with a structured format (e.g., JSON or a simple key-value scheme) that is self-describing and tolerates field additions without breaking existing caches.
+
+### S8. Gradle incremental task support (Medium value, high effort)
+
+Gradle tasks currently re-scan all class files on every run. For large projects, supporting Gradle's incremental task API (`@InputFiles`, `@OutputFile`, `InputChanges`) would allow skipping unchanged files. Requires careful design — call graph analysis is inherently whole-program (a change in one class affects callers/callees). Incremental support is most beneficial for leaf tasks like `cnavListClasses`, `cnavFindSymbol`, and `cnavFindClass` that can update their index incrementally.
+
+### S9. Split root package to clarify dependency direction (Low value, medium effort)
+
+The root `codenavigator` package serves as both "shared infrastructure" and "library API." Splitting into `codenavigator.format` (formatters + OutputFormat) and `codenavigator.registry` (TaskRegistry, BuildTool) would make the dependency direction explicit. Lower priority now that `navigation/` has been split into sub-packages.
 
 ## Framework awareness
 
