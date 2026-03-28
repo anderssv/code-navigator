@@ -1,4 +1,4 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.symbol
 
 object SymbolFilter {
     fun filter(symbols: List<SymbolInfo>, pattern: String): List<SymbolInfo> {

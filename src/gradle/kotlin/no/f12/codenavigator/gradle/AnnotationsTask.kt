@@ -4,9 +4,9 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
-import no.f12.codenavigator.navigation.AnnotationQueryBuilder
-import no.f12.codenavigator.navigation.AnnotationQueryConfig
-import no.f12.codenavigator.navigation.AnnotationQueryFormatter
+import no.f12.codenavigator.navigation.annotation.AnnotationQueryBuilder
+import no.f12.codenavigator.navigation.annotation.AnnotationQueryConfig
+import no.f12.codenavigator.navigation.annotation.AnnotationQueryFormatter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException

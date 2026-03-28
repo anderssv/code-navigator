@@ -3,7 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
-import no.f12.codenavigator.navigation.AnnotationExtractor
+import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.CallGraphBuilder
 import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.DeadCodeConfig
@@ -11,7 +11,7 @@ import no.f12.codenavigator.navigation.DeadCodeFinder
 import no.f12.codenavigator.navigation.DeadCodeFormatter
 import no.f12.codenavigator.navigation.FieldExtractor
 import no.f12.codenavigator.navigation.InlineMethodDetector
-import no.f12.codenavigator.navigation.InterfaceRegistry
+import no.f12.codenavigator.navigation.interfaces.InterfaceRegistry
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute

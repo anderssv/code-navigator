@@ -1,5 +1,8 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.symbol.SymbolIndexCache
+import no.f12.codenavigator.navigation.symbol.SymbolInfo
+import no.f12.codenavigator.navigation.symbol.SymbolKind
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import org.objectweb.asm.ClassWriter

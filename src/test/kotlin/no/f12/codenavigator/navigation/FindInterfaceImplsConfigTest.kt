@@ -1,4 +1,4 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.interfaces
 
 import no.f12.codenavigator.config.OutputFormat
 import kotlin.test.Test

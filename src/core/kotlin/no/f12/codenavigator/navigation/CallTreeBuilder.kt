@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.annotation.FrameworkPresets
+
 data class AnnotationTag(
     val name: AnnotationName,
     val framework: String? = null,

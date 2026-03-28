@@ -1,4 +1,6 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.annotation
+
+import no.f12.codenavigator.navigation.AnnotationName
 
 object FrameworkPresets {
 

@@ -1,6 +1,10 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.symbol
 
 import no.f12.codenavigator.CacheFreshness
+import no.f12.codenavigator.navigation.ClassName
+import no.f12.codenavigator.navigation.FileCache
+import no.f12.codenavigator.navigation.PackageName
+import no.f12.codenavigator.navigation.ScanResult
 import java.io.File
 
 object SymbolIndexCache : FileCache<List<SymbolInfo>>() {

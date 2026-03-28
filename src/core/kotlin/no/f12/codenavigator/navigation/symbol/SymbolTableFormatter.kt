@@ -1,4 +1,4 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.symbol
 
 object SymbolTableFormatter {
     fun format(symbols: List<SymbolInfo>): String {

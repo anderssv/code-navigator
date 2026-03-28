@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.annotation.FrameworkPresets
 import no.f12.codenavigator.ParamDef
 import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat

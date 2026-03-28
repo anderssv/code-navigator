@@ -4,9 +4,9 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
-import no.f12.codenavigator.navigation.FindInterfaceImplsConfig
-import no.f12.codenavigator.navigation.InterfaceFormatter
-import no.f12.codenavigator.navigation.InterfaceRegistry
+import no.f12.codenavigator.navigation.interfaces.FindInterfaceImplsConfig
+import no.f12.codenavigator.navigation.interfaces.InterfaceFormatter
+import no.f12.codenavigator.navigation.interfaces.InterfaceRegistry
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException

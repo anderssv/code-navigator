@@ -11,10 +11,10 @@ import no.f12.codenavigator.navigation.CallTreeNode
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
 import no.f12.codenavigator.navigation.ClassName
-import no.f12.codenavigator.navigation.InterfaceRegistry
+import no.f12.codenavigator.navigation.interfaces.InterfaceRegistry
 import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.PackageName
-import no.f12.codenavigator.navigation.SymbolInfo
+import no.f12.codenavigator.navigation.symbol.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
@@ -25,7 +25,7 @@ import no.f12.codenavigator.navigation.stringconstant.StringConstantMatch
 import no.f12.codenavigator.navigation.hierarchy.SupertypeInfo
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyResult
 import no.f12.codenavigator.navigation.UsageSite
-import no.f12.codenavigator.navigation.AnnotationMatch
+import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 
 @JvmInline
 private value class JsonRaw(val json: String)

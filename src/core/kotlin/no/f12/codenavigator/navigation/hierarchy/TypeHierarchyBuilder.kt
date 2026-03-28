@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation.hierarchy
 
 import no.f12.codenavigator.navigation.ClassName
-import no.f12.codenavigator.navigation.ImplementorInfo
-import no.f12.codenavigator.navigation.InterfaceRegistry
+import no.f12.codenavigator.navigation.interfaces.ImplementorInfo
+import no.f12.codenavigator.navigation.interfaces.InterfaceRegistry
 import no.f12.codenavigator.navigation.UnsupportedBytecodeVersionException
 import no.f12.codenavigator.navigation.createClassReader
 import org.objectweb.asm.ClassReader

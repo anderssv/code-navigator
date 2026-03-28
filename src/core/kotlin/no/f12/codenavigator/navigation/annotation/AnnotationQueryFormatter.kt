@@ -1,4 +1,4 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.annotation
 
 object AnnotationQueryFormatter {
 

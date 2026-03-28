@@ -4,7 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
-import no.f12.codenavigator.navigation.AnnotationExtractor
+import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.CallGraphCache
 import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.DeadCodeConfig
@@ -12,7 +12,7 @@ import no.f12.codenavigator.navigation.DeadCodeFinder
 import no.f12.codenavigator.navigation.DeadCodeFormatter
 import no.f12.codenavigator.navigation.FieldExtractor
 import no.f12.codenavigator.navigation.InlineMethodDetector
-import no.f12.codenavigator.navigation.InterfaceRegistryCache
+import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
 import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask

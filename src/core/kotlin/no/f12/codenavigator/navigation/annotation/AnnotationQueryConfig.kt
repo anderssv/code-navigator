@@ -1,19 +1,18 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.annotation
 
 import no.f12.codenavigator.ParamDef
-import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 
-data class FindInterfaceImplsConfig(
+data class AnnotationQueryConfig(
     val pattern: String,
-    val includeTest: Boolean,
+    val methods: Boolean,
     val format: OutputFormat,
 ) {
     companion object {
-        fun parse(properties: Map<String, String?>): FindInterfaceImplsConfig = FindInterfaceImplsConfig(
+        fun parse(properties: Map<String, String?>): AnnotationQueryConfig = AnnotationQueryConfig(
             pattern = properties["pattern"]
                 ?: throw IllegalArgumentException("Missing required property 'pattern'"),
-            includeTest = TaskRegistry.INCLUDETEST.parse(properties["include-test"]),
+            methods = properties["methods"]?.toBoolean() ?: false,
             format = ParamDef.parseFormat(properties),
         )
     }

@@ -4,11 +4,11 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
-import no.f12.codenavigator.navigation.FindSymbolConfig
+import no.f12.codenavigator.navigation.symbol.FindSymbolConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
-import no.f12.codenavigator.navigation.SymbolFilter
-import no.f12.codenavigator.navigation.SymbolIndexCache
-import no.f12.codenavigator.navigation.SymbolTableFormatter
+import no.f12.codenavigator.navigation.symbol.SymbolFilter
+import no.f12.codenavigator.navigation.symbol.SymbolIndexCache
+import no.f12.codenavigator.navigation.symbol.SymbolTableFormatter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
