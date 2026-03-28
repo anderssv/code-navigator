@@ -150,7 +150,7 @@ class ConfigHelpTextTest {
     fun `lists find-usages parameters for Gradle`() {
         val text = ConfigHelpText.generate(BuildTool.GRADLE)
 
-        assertTrue(text.contains("-PownerClass="), "Should list ownerClass parameter")
+        assertTrue(text.contains("-Powner-class="), "Should list owner-class parameter")
         assertTrue(text.contains("-Ptype="), "Should list type parameter")
         assertTrue(
             text.contains(TaskRegistry.FIND_USAGES.taskName(BuildTool.GRADLE)),
@@ -162,7 +162,7 @@ class ConfigHelpTextTest {
     fun `lists find-usages parameters for Maven`() {
         val text = ConfigHelpText.generate(BuildTool.MAVEN)
 
-        assertTrue(text.contains("-DownerClass="), "Should list ownerClass parameter for Maven")
+        assertTrue(text.contains("-Downer-class="), "Should list owner-class parameter for Maven")
         assertTrue(text.contains("-Dtype="), "Should list type parameter for Maven")
         assertTrue(
             text.contains(TaskRegistry.FIND_USAGES.taskName(BuildTool.MAVEN)),

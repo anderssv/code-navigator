@@ -31,7 +31,7 @@ class FindUsagesMojo : AbstractMojo() {
     @Parameter(property = "llm")
     private var llm: String? = null
 
-    @Parameter(property = "ownerClass")
+    @Parameter(property = "owner-class")
     private var ownerClass: String? = null
 
     @Parameter(property = "method")
@@ -52,7 +52,7 @@ class FindUsagesMojo : AbstractMojo() {
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "${e.message}\n" +
-                    "Usage: mvn cnav:find-usages -DownerClass=<class> [-Dmethod=<name>] [-Dfield=<name>]\n" +
+                    "Usage: mvn cnav:find-usages -Downer-class=<class> [-Dmethod=<name>] [-Dfield=<name>]\n" +
                     "       mvn cnav:find-usages -Dtype=<class>",
             )
         }
@@ -84,7 +84,7 @@ class FindUsagesMojo : AbstractMojo() {
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
-        ownerClass?.let { put("ownerClass", it) }
+        ownerClass?.let { put("owner-class", it) }
         method?.let { put("method", it) }
         field?.let { put("field", it) }
         type?.let { put("type", it) }

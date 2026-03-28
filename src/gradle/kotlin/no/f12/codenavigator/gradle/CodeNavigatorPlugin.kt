@@ -77,7 +77,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
         }
 
         project.tasks.register("cnavUsages", FindUsagesTask::class.java) {
-            description = "Finds project references to external types/methods. Usage: -PownerClass=<class> [-Pmethod=<name>] or -Ptype=<class>"
+            description = "Finds project references to external types/methods. Usage: -Powner-class=<class> [-Pmethod=<name>] or -Ptype=<class>"
             group = "code-navigator"
             dependsOn("classes")
         }

@@ -13,13 +13,13 @@ data class FindUsagesConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): FindUsagesConfig {
-            val ownerClass = properties["ownerClass"]
+            val ownerClass = properties["owner-class"]
             val type = properties["type"]
             val method = properties["method"]
             val field = properties["field"]
             if (ownerClass == null && type == null) {
                 throw IllegalArgumentException(
-                    "Missing required property. Provide either 'ownerClass' or 'type'.",
+                    "Missing required property. Provide either 'owner-class' or 'type'.",
                 )
             }
             if (field != null && method != null) {
@@ -29,7 +29,7 @@ data class FindUsagesConfig(
             }
             if (field != null && ownerClass == null) {
                 throw IllegalArgumentException(
-                    "The 'field' parameter requires 'ownerClass' to identify which class owns the field.",
+                    "The 'field' parameter requires 'owner-class' to identify which class owns the field.",
                 )
             }
             return FindUsagesConfig(

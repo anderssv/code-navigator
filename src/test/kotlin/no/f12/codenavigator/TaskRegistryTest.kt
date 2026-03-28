@@ -337,10 +337,10 @@ class TaskRegistryTest {
     }
 
     @Test
-    fun `find-usages has ownerClass, method, field, type, and outside-package params`() {
+    fun `find-usages has owner-class, method, field, type, and outside-package params`() {
         val paramNames = TaskRegistry.FIND_USAGES.params.map { it.name }.toSet()
 
-        assertTrue(paramNames.contains("ownerClass"))
+        assertTrue(paramNames.contains("owner-class"))
         assertTrue(paramNames.contains("method"))
         assertTrue(paramNames.contains("field"))
         assertTrue(paramNames.contains("type"))
@@ -468,7 +468,7 @@ class TaskRegistryTest {
             "dsm-html" to ParamType.STRING,
             "cycles" to ParamType.BOOLEAN,
             "cycle" to ParamType.STRING,
-            "ownerClass" to ParamType.STRING,
+            "owner-class" to ParamType.STRING,
             "field" to ParamType.STRING,
             "type" to ParamType.STRING,
             "outside-package" to ParamType.STRING,

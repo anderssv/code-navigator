@@ -11,7 +11,7 @@ class FindUsagesConfigTest {
     @Test
     fun `parses all properties from map`() {
         val props = mapOf(
-            "ownerClass" to "com.example.MyService",
+            "owner-class" to "com.example.MyService",
             "method" to "doStuff",
             "type" to "com.example.MyType",
             "outside-package" to "com.example.other",
@@ -28,22 +28,22 @@ class FindUsagesConfigTest {
     }
 
     @Test
-    fun `throws when both ownerClass and type are absent`() {
+    fun `throws when both owner-class and type are absent`() {
         assertFailsWith<IllegalArgumentException> {
             FindUsagesConfig.parse(emptyMap())
         }
     }
 
     @Test
-    fun `accepts ownerClass without type`() {
-        val config = FindUsagesConfig.parse(mapOf("ownerClass" to "com.example.Foo"))
+    fun `accepts owner-class without type`() {
+        val config = FindUsagesConfig.parse(mapOf("owner-class" to "com.example.Foo"))
 
         assertEquals("com.example.Foo", config.ownerClass)
         assertNull(config.type)
     }
 
     @Test
-    fun `accepts type without ownerClass`() {
+    fun `accepts type without owner-class`() {
         val config = FindUsagesConfig.parse(mapOf("type" to "com.example.Bar"))
 
         assertNull(config.ownerClass)
@@ -52,21 +52,21 @@ class FindUsagesConfigTest {
 
     @Test
     fun `defaults method to null when absent`() {
-        val config = FindUsagesConfig.parse(mapOf("ownerClass" to "com.example.Foo"))
+        val config = FindUsagesConfig.parse(mapOf("owner-class" to "com.example.Foo"))
 
         assertNull(config.method)
     }
 
     @Test
     fun `defaults outsidePackage to null when absent`() {
-        val config = FindUsagesConfig.parse(mapOf("ownerClass" to "com.example.Foo"))
+        val config = FindUsagesConfig.parse(mapOf("owner-class" to "com.example.Foo"))
 
         assertNull(config.outsidePackage)
     }
 
     @Test
     fun `defaults to TEXT format`() {
-        val config = FindUsagesConfig.parse(mapOf("ownerClass" to "com.example.Foo"))
+        val config = FindUsagesConfig.parse(mapOf("owner-class" to "com.example.Foo"))
 
         assertEquals(OutputFormat.TEXT, config.format)
     }
@@ -75,7 +75,7 @@ class FindUsagesConfigTest {
     fun `parses LLM format`() {
         val config = FindUsagesConfig.parse(
             mapOf(
-                "ownerClass" to "com.example.Foo",
+                "owner-class" to "com.example.Foo",
                 "llm" to "true",
             ),
         )
@@ -87,7 +87,7 @@ class FindUsagesConfigTest {
     fun `parses field property`() {
         val config = FindUsagesConfig.parse(
             mapOf(
-                "ownerClass" to "com.example.Foo",
+                "owner-class" to "com.example.Foo",
                 "field" to "accountNumber",
             ),
         )
@@ -101,7 +101,7 @@ class FindUsagesConfigTest {
         assertFailsWith<IllegalArgumentException> {
             FindUsagesConfig.parse(
                 mapOf(
-                    "ownerClass" to "com.example.Foo",
+                    "owner-class" to "com.example.Foo",
                     "field" to "accountNumber",
                     "method" to "doStuff",
                 ),
@@ -110,7 +110,7 @@ class FindUsagesConfigTest {
     }
 
     @Test
-    fun `throws when field is specified without ownerClass`() {
+    fun `throws when field is specified without owner-class`() {
         assertFailsWith<IllegalArgumentException> {
             FindUsagesConfig.parse(
                 mapOf(
@@ -123,7 +123,7 @@ class FindUsagesConfigTest {
 
     @Test
     fun `defaults field to null when absent`() {
-        val config = FindUsagesConfig.parse(mapOf("ownerClass" to "com.example.Foo"))
+        val config = FindUsagesConfig.parse(mapOf("owner-class" to "com.example.Foo"))
 
         assertNull(config.field)
     }

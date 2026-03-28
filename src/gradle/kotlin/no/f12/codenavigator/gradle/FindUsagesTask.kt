@@ -29,7 +29,7 @@ abstract class FindUsagesTask : DefaultTask() {
         } catch (e: IllegalArgumentException) {
             throw GradleException(
                 "${e.message}\n" +
-                    "Usage: ./gradlew cnavUsages -PownerClass=<class> [-Pmethod=<name>] [-Pfield=<name>]\n" +
+                    "Usage: ./gradlew cnavUsages -Powner-class=<class> [-Pmethod=<name>] [-Pfield=<name>]\n" +
                     "       ./gradlew cnavUsages -Ptype=<class>",
             )
         }
