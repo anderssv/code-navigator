@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.CodeAgeBuilder
 import no.f12.codenavigator.analysis.CodeAgeConfig
 import no.f12.codenavigator.analysis.CodeAgeFormatter
@@ -20,10 +21,7 @@ abstract class CodeAgeTask : DefaultTask() {
     @TaskAction
     fun showAge() {
         val config = CodeAgeConfig.parse(
-            project.buildPropertyMap(
-                propertyNames = listOf("after", "top", "format", "llm"),
-                flagNames = listOf("no-follow"),
-            ),
+            project.buildPropertyMap(TaskRegistry.CODE_AGE),
         )
 
         val commits = GitLogRunner.run(project.projectDir, config.after, followRenames = config.followRenames)

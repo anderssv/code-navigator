@@ -5,6 +5,7 @@ import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TableFormatter
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.ClassIndexCache
 import no.f12.codenavigator.navigation.ListClassesConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
@@ -21,10 +22,7 @@ abstract class ListClassesTask : DefaultTask() {
     @TaskAction
     fun listClasses() {
         val config = ListClassesConfig.parse(
-            project.buildPropertyMap(
-                propertyNames = listOf("format", "llm"),
-                flagNames = emptyList(),
-            ),
+            project.buildPropertyMap(TaskRegistry.LIST_CLASSES),
         )
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)

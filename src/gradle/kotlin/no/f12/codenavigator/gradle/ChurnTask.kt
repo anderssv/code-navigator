@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.ChurnBuilder
 import no.f12.codenavigator.analysis.ChurnConfig
 import no.f12.codenavigator.analysis.ChurnFormatter
@@ -19,10 +20,7 @@ abstract class ChurnTask : DefaultTask() {
     @TaskAction
     fun showChurn() {
         val config = ChurnConfig.parse(
-            project.buildPropertyMap(
-                propertyNames = listOf("after", "top", "format", "llm"),
-                flagNames = listOf("no-follow"),
-            ),
+            project.buildPropertyMap(TaskRegistry.CHURN),
         )
 
         val commits = GitLogRunner.run(project.projectDir, config.after, followRenames = config.followRenames)

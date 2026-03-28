@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.AnnotationQueryBuilder
 import no.f12.codenavigator.navigation.AnnotationQueryConfig
 import no.f12.codenavigator.navigation.AnnotationQueryFormatter
@@ -21,10 +22,7 @@ abstract class AnnotationsTask : DefaultTask() {
     fun annotations() {
         val config = try {
             AnnotationQueryConfig.parse(
-                project.buildPropertyMap(
-                    propertyNames = listOf("pattern", "methods", "format", "llm"),
-                    flagNames = emptyList(),
-                ),
+                project.buildPropertyMap(TaskRegistry.ANNOTATIONS),
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(

@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.AnnotationExtractor
 import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallGraphCache
@@ -27,10 +28,7 @@ abstract class FindCallersTask : DefaultTask() {
     fun findCallers() {
         val config = try {
             CallGraphConfig.parse(
-                project.buildPropertyMap(
-                    propertyNames = listOf("method", "maxdepth", "projectonly", "filter-synthetic", "format", "llm"),
-                    flagNames = emptyList(),
-                ),
+                project.buildPropertyMap(TaskRegistry.FIND_CALLERS),
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(

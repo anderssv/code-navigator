@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.DsmConfig
 import no.f12.codenavigator.navigation.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.DsmFormatter
@@ -24,10 +25,7 @@ abstract class DsmTask : DefaultTask() {
         val extension = project.codeNavigatorExtension()
         val resolvedRootPackage = extension.resolveRootPackage(project.findProperty("root-package"))
 
-        val props = project.buildPropertyMap(
-            propertyNames = listOf("dsm-depth", "dsm-html", "cycles", "cycle", "format", "llm"),
-            flagNames = emptyList(),
-        ) + ("root-package" to resolvedRootPackage)
+        val props = project.buildPropertyMap(TaskRegistry.DSM) + ("root-package" to resolvedRootPackage)
 
         val config = DsmConfig.parse(props)
 

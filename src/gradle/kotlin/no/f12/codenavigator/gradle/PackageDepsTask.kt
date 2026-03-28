@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.CallGraphCache
 import no.f12.codenavigator.navigation.MethodRef
 import no.f12.codenavigator.navigation.PackageDependencyBuilder
@@ -23,10 +24,7 @@ abstract class PackageDepsTask : DefaultTask() {
     @TaskAction
     fun showDeps() {
         val config = PackageDepsConfig.parse(
-            project.buildPropertyMap(
-                propertyNames = listOf("package", "projectonly", "reverse", "format", "llm"),
-                flagNames = emptyList(),
-            ),
+            project.buildPropertyMap(TaskRegistry.PACKAGE_DEPS),
         )
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)

@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.analysis.HotspotConfig
@@ -19,10 +20,7 @@ abstract class HotspotTask : DefaultTask() {
     @TaskAction
     fun showHotspots() {
         val config = HotspotConfig.parse(
-            project.buildPropertyMap(
-                propertyNames = listOf("after", "min-revs", "top", "format", "llm"),
-                flagNames = listOf("no-follow"),
-            ),
+            project.buildPropertyMap(TaskRegistry.HOTSPOTS),
         )
 
         val commits = GitLogRunner.run(project.projectDir, config.after, followRenames = config.followRenames)

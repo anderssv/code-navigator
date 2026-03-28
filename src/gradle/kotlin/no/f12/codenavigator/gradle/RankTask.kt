@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.CallGraphCache
 import no.f12.codenavigator.navigation.RankConfig
 import no.f12.codenavigator.navigation.RankFormatter
@@ -22,10 +23,7 @@ abstract class RankTask : DefaultTask() {
     @TaskAction
     fun showRank() {
         val config = RankConfig.parse(
-            project.buildPropertyMap(
-                propertyNames = listOf("top", "projectonly", "collapse-lambdas", "format", "llm"),
-                flagNames = emptyList(),
-            ),
+            project.buildPropertyMap(TaskRegistry.RANK),
         )
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)

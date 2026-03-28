@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.CallGraphCache
 import no.f12.codenavigator.navigation.ClassComplexityAnalyzer
 import no.f12.codenavigator.navigation.ComplexityConfig
@@ -23,10 +24,7 @@ abstract class ComplexityTask : DefaultTask() {
     @TaskAction
     fun showComplexity() {
         val config = ComplexityConfig.parse(
-            project.buildPropertyMap(
-                propertyNames = listOf("classname", "projectonly", "detail", "collapse-lambdas", "top", "format", "llm"),
-                flagNames = emptyList(),
-            ),
+            project.buildPropertyMap(TaskRegistry.COMPLEXITY),
         )
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)

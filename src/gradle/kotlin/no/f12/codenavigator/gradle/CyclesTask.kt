@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.CycleDetector
 import no.f12.codenavigator.navigation.CyclesConfig
 import no.f12.codenavigator.navigation.CyclesFormatter
@@ -24,10 +25,7 @@ abstract class CyclesTask : DefaultTask() {
         val extension = project.codeNavigatorExtension()
         val resolvedRootPackage = extension.resolveRootPackage(project.findProperty("root-package"))
 
-        val props = project.buildPropertyMap(
-            propertyNames = listOf("dsm-depth", "format", "llm"),
-            flagNames = emptyList(),
-        ) + ("root-package" to resolvedRootPackage)
+        val props = project.buildPropertyMap(TaskRegistry.CYCLE_DETECTION) + ("root-package" to resolvedRootPackage)
 
         val config = CyclesConfig.parse(props)
 

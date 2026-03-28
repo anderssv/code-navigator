@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.ChangeCouplingBuilder
 import no.f12.codenavigator.analysis.ChangeCouplingConfig
 import no.f12.codenavigator.analysis.ChangeCouplingFormatter
@@ -19,10 +20,7 @@ abstract class ChangeCouplingTask : DefaultTask() {
     @TaskAction
     fun showCoupling() {
         val config = ChangeCouplingConfig.parse(
-            project.buildPropertyMap(
-                propertyNames = listOf("after", "min-shared-revs", "min-coupling", "max-changeset-size", "top", "format", "llm"),
-                flagNames = listOf("no-follow"),
-            ),
+            project.buildPropertyMap(TaskRegistry.COUPLING),
         )
 
         val commits = GitLogRunner.run(project.projectDir, config.after, followRenames = config.followRenames)

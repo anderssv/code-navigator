@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.navigation.AnnotationExtractor
@@ -35,10 +36,7 @@ abstract class MetricsTask : DefaultTask() {
         val resolvedRootPackage = extension.resolveRootPackage(project.findProperty("root-package"))
 
         val config = MetricsConfig.parse(
-            project.buildPropertyMap(
-                propertyNames = listOf("after", "top", "exclude-annotated", "framework", "format", "llm"),
-                flagNames = listOf("no-follow"),
-            ) + ("root-package" to resolvedRootPackage),
+            project.buildPropertyMap(TaskRegistry.METRICS) + ("root-package" to resolvedRootPackage),
         )
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)

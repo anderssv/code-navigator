@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.AnnotationExtractor
 import no.f12.codenavigator.navigation.CallGraphCache
 import no.f12.codenavigator.navigation.ClassName
@@ -27,10 +28,7 @@ abstract class DeadCodeTask : DefaultTask() {
     @TaskAction
     fun showDeadCode() {
         val config = DeadCodeConfig.parse(
-            project.buildPropertyMap(
-                propertyNames = listOf("filter", "exclude", "classes-only", "exclude-annotated", "prod-only", "framework", "format", "llm"),
-                flagNames = emptyList(),
-            ),
+            project.buildPropertyMap(TaskRegistry.DEAD),
         )
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
