@@ -214,16 +214,6 @@ The root `codenavigator` package serves as both "shared infrastructure" and "lib
 
 ## Framework awareness
 
-### ~~81. Framework annotation support in `cnavMetrics`~~ DONE
-
-`cnavMetrics` internally calls `DeadCodeFinder.find()` to compute dead code counts for the project health snapshot. Previously it hard-coded `excludeAnnotated = emptySet()`, producing inflated dead code numbers for framework-heavy projects. Now supports `-Pframework` and `-Pexclude-annotated` parameters, matching the `cnavDead` behavior.
-
-### ~~80. Annotation tags on call tree nodes~~ DONE
-
-`cnavCallers` and `cnavCallees` now display annotations on each node in the call tree, making framework entry points immediately visible. Method-level annotations take priority; falls back to class-level annotations.
-
-### ~~75. Framework annotation presets for `cnavDead` — eliminate common false positives~~ DONE
-
 ### 76. Meta-annotation traversal for dead code filtering (High value, medium effort)
 
 `@RestController` is meta-annotated with `@Controller` which is meta-annotated with `@Component`. Currently, excluding `Component` does NOT exclude `@RestController` — the tool checks simple annotation names literally, not the annotation hierarchy.
@@ -233,15 +223,6 @@ The root `codenavigator` package serves as both "shared infrastructure" and "lib
 - **Requires**: Reading annotation `.class` files from the classpath (not just project classes). Could reuse infrastructure from item 38 (classpath scanning), or scan only `java.lang.annotation`-retained annotations which are a small set.
 - **Why high value**: Covers custom stereotype annotations automatically. A project defining `@DomainService` (meta-annotated with `@Component`) would be handled without any configuration.
 
-### ~~77. Interface dispatch resolution in `cnavCallers`/`cnavCallees`~~ DONE
-
-In Spring (and DI-heavy code generally), code is written against interfaces: `ownerRepository.findById()` calls `OwnerRepository` (an interface). Searching for callers of the concrete implementation finds nothing, because bytecode records the interface call.
-
-- **Current state**: `DeadCodeFinder` already resolves interface dispatch internally (marks implementing methods as alive when the interface method is called). But `cnavCallers`/`cnavCallees` use the raw `CallGraphBuilder` output without this resolution.
-- **Approach**: Add an optional interface dispatch resolution pass to `CallTreeBuilder`. When tracing callers of `Impl.method()`, also include callers of `Interface.method()` if `Impl` implements `Interface`. When tracing callees from a call to `Interface.method()`, show the concrete implementations that could be dispatched to.
-- **Parameter**: `-Dresolve-interfaces=true` (default: false, to preserve current behavior)
-- **Why high value for Spring**: Nearly all Spring service calls go through interfaces. Without this, caller/callee tracing misses the actual call chains.
-
 ### 78. Spring Data repository awareness in dead code (Medium value, low effort)
 
 Spring Data repositories (e.g., `OwnerRepository extends JpaRepository`) are interfaces with no implementing class in project bytecode — Spring generates proxy implementations at runtime. These are always flagged as dead.
@@ -249,20 +230,6 @@ Spring Data repositories (e.g., `OwnerRepository extends JpaRepository`) are int
 - **Approach**: In `DeadCodeFinder`, if a class is an interface that extends an external interface matching known Spring Data base types (`JpaRepository`, `CrudRepository`, `PagingAndSortingRepository`, `ReactiveCrudRepository`, `MongoRepository`, etc.), treat it as alive (or LOW confidence).
 - **Alternative**: Subsumable by item 76 (meta-annotation traversal) if `@Repository` is on the interface. But many Spring Data repos don't have `@Repository` — the `extends JpaRepository` is sufficient for Spring to pick them up.
 - **Relationship to item 75**: Framework presets would handle `@Repository`-annotated repos, but this item catches the common pattern where `@Repository` is omitted.
-
-### ~~79. `cnavAnnotations` — query by annotation~~ DONE
-
-No task currently answers "find all `@Transactional` methods" or "find all `@GetMapping` endpoints." The annotation extraction infrastructure exists (`AnnotationExtractor`, `ClassDetailExtractor`) but no task exposes it as a query.
-
-```bash
-./gradlew cnavAnnotations -Ppattern=GetMapping
-./gradlew cnavAnnotations -Ppattern=Transactional -Pmethods=true
-```
-
-- **Parameters**: `-Ppattern=<annotation-name-regex>` (required), `-Pmethods=true` (show method-level matches, not just class-level)
-- **Output**: Classes/methods bearing the matching annotation, with annotation parameter values where present.
-- **Implementation**: `AnnotationExtractor.scanAll()` already builds the annotation maps. This task just queries and formats them.
-- **Why useful for Spring**: Endpoint discovery (`@GetMapping`, `@PostMapping`), transaction boundary analysis (`@Transactional`), async method inventory (`@Async`), event handler listing (`@EventListener`), cache configuration (`@Cacheable`).
 
 ## Future ideas (not yet planned)
 

@@ -247,11 +247,13 @@ New task to query classes and methods by annotation pattern. Parameters: `-Ppatt
 - Returns empty if neither exists
 
 **Changes**:
-- `CallTreeNode` — added `annotations: List<String>` field (defaults to `emptyList()`)
-- `CallTreeBuilder.build()`/`buildNode()` — accept `classAnnotations` and `methodAnnotations` maps, call `resolveAnnotations()`
-- `CallTreeFormatter` (TEXT) — renders `[@GetMapping]` after source file reference on each node
-- `LlmFormatter.renderCallTrees()` — same annotation tag rendering in compact LLM format
-- `JsonFormatter.renderCallNode()` — includes `"annotations"` array in JSON output (omitted when empty)
+- `CallTreeNode` — added `annotations: List<AnnotationTag>` field (defaults to `emptyList()`)
+- `AnnotationTag(name: String, framework: String? = null)` — data class for annotations with optional framework origin
+- `CallTreeBuilder.build()`/`buildNode()` — accept `classAnnotations` and `methodAnnotations` maps, call `resolveAnnotations()` which uses `FrameworkPresets.frameworkOf()` to resolve framework
+- `CallTreeFormatter` (TEXT) — renders `[@GetMapping [spring]]` after source file reference on each node; unknown annotations render without tag
+- `LlmFormatter.renderCallTrees()` — same framework tag rendering in compact LLM format
+- `JsonFormatter.renderCallNode()` — annotations as `[{"name":"GetMapping","framework":"spring"}]`; `framework` key omitted for unknown annotations
+- `FrameworkPresets.frameworkOf()` — reverse lookup with specificity ordering (JPA/Jackson checked before Spring)
 - `FindCallersTask`/`FindCalleesTask` (Gradle) — wire `AnnotationExtractor.scanAll()` and pass maps to `CallTreeBuilder.build()`
 - `FindCallersMojo`/`FindCalleesMojo` (Maven) — same wiring
-- 10 new tests across `CallTreeBuilderTest`, `CallerTreeFormatterTest`, `LlmFormatterTest`, `JsonFormatterTest`
+- 16 new tests across `CallTreeBuilderTest`, `CallerTreeFormatterTest`, `LlmFormatterTest`, `JsonFormatterTest`, `FrameworkPresetsTest`
