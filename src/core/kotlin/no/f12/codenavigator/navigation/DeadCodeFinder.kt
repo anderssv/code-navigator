@@ -110,7 +110,7 @@ object DeadCodeFinder {
         val results = mutableListOf<DeadCode>()
 
         for (cls in projectClasses) {
-            if (cls !in calledTypes && !cls.isGenerated()) {
+            if (cls !in calledTypes && !cls.isGenerated() && !cls.isPackageInfo()) {
                 val referencedInTests = cls in testCalledTypes
                 val reason = if (testGraph != null && referencedInTests) DeadCodeReason.TEST_ONLY else DeadCodeReason.NO_REFERENCES
                 results.add(

@@ -10,6 +10,8 @@ value class ClassName(val value: String) : Comparable<ClassName> {
 
     fun isGenerated(): Boolean = '$' in value
 
+    fun isPackageInfo(): Boolean = value.endsWith(".package-info")
+
     fun isSynthetic(): Boolean =
         TRAILING_NUMERIC_SEGMENT.containsMatchIn(value) ||
             LAMBDA_PATTERN.containsMatchIn(value)

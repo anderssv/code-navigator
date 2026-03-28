@@ -59,6 +59,16 @@ class ClassNameTest {
     }
 
     @Test
+    fun `isPackageInfo is true for package-info classes`() {
+        assertTrue(ClassName("com.example.package-info").isPackageInfo())
+    }
+
+    @Test
+    fun `isPackageInfo is false for regular classes`() {
+        assertFalse(ClassName("com.example.MyService").isPackageInfo())
+    }
+
+    @Test
     fun `isSynthetic is true for anonymous classes`() {
         assertTrue(ClassName("com.example.Foo\$1").isSynthetic())
     }

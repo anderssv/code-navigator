@@ -921,4 +921,19 @@ class DeadCodeFinderTest {
         assertTrue("com.example.Util" in deadClassNames, "Util should appear without prodOnly")
         assertTrue("com.example.Service" in deadClassNames, "Service should appear without prodOnly")
     }
+
+    @Test
+    fun `package-info classes are excluded from dead code results`() {
+        val graph = testCallGraph(
+            method("com.example.package-info", "<clinit>") to method("java.lang.Object", "<init>"),
+            method("com.example.Service", "process") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.package-info", "com.example.Service"),
+        )
+
+        val dead = findDead(graph = graph)
+
+        val deadClassNames = dead.map { it.className.value }
+        assertTrue("com.example.package-info" !in deadClassNames, "package-info should be auto-filtered")
+        assertTrue("com.example.Service" in deadClassNames, "Service should still appear")
+    }
 }
