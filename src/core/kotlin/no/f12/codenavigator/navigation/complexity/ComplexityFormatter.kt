@@ -1,4 +1,6 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.complexity
+
+import no.f12.codenavigator.navigation.ClassName
 
 object ComplexityFormatter {
 

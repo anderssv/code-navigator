@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.complexity.ClassComplexity
+
 /**
  * Maps synthetic lambda/anonymous class names back to their enclosing "real" class.
  *

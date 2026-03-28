@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.rank.RankFormatter
+import no.f12.codenavigator.navigation.rank.RankedType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

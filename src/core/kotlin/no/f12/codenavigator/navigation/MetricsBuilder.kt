@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.analysis.Hotspot
+import no.f12.codenavigator.navigation.rank.RankedType
 
 data class MetricsResult(
     val totalClasses: Int,

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.complexity.ClassComplexity
+import no.f12.codenavigator.navigation.complexity.ComplexityFormatter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

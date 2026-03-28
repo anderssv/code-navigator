@@ -4,9 +4,9 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
-import no.f12.codenavigator.navigation.TypeHierarchyBuilder
-import no.f12.codenavigator.navigation.TypeHierarchyConfig
-import no.f12.codenavigator.navigation.TypeHierarchyFormatter
+import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyBuilder
+import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyConfig
+import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyFormatter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Execute

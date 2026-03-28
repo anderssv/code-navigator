@@ -5,10 +5,10 @@ import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.CallGraphCache
-import no.f12.codenavigator.navigation.RankConfig
-import no.f12.codenavigator.navigation.RankFormatter
 import no.f12.codenavigator.navigation.SkippedFileReporter
-import no.f12.codenavigator.navigation.TypeRanker
+import no.f12.codenavigator.navigation.rank.RankConfig
+import no.f12.codenavigator.navigation.rank.RankFormatter
+import no.f12.codenavigator.navigation.rank.TypeRanker
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.SourceSetContainer

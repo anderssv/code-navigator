@@ -5,9 +5,9 @@ import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.SkippedFileReporter
-import no.f12.codenavigator.navigation.TypeHierarchyBuilder
-import no.f12.codenavigator.navigation.TypeHierarchyConfig
-import no.f12.codenavigator.navigation.TypeHierarchyFormatter
+import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyBuilder
+import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyConfig
+import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyFormatter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException

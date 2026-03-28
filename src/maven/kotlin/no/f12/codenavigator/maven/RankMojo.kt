@@ -4,10 +4,10 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.CallGraphBuilder
-import no.f12.codenavigator.navigation.RankConfig
-import no.f12.codenavigator.navigation.RankFormatter
 import no.f12.codenavigator.navigation.SkippedFileReporter
-import no.f12.codenavigator.navigation.TypeRanker
+import no.f12.codenavigator.navigation.rank.RankConfig
+import no.f12.codenavigator.navigation.rank.RankFormatter
+import no.f12.codenavigator.navigation.rank.TypeRanker
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase

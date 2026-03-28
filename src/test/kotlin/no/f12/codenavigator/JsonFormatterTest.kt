@@ -23,8 +23,8 @@ import no.f12.codenavigator.navigation.PackageName
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.SymbolKind
 import no.f12.codenavigator.navigation.DsmMatrix
-import no.f12.codenavigator.navigation.RankedType
-import no.f12.codenavigator.navigation.ClassComplexity
+import no.f12.codenavigator.navigation.rank.RankedType
+import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.CycleDetail
 import no.f12.codenavigator.navigation.CycleEdge
 import no.f12.codenavigator.navigation.DeadCode

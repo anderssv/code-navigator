@@ -18,7 +18,7 @@ import no.f12.codenavigator.navigation.MetricsConfig
 import no.f12.codenavigator.navigation.MetricsFormatter
 import no.f12.codenavigator.navigation.PackageDependencyBuilder
 import no.f12.codenavigator.navigation.SkippedFileReporter
-import no.f12.codenavigator.navigation.TypeRanker
+import no.f12.codenavigator.navigation.rank.TypeRanker
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.SourceSetContainer

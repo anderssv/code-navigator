@@ -1,4 +1,7 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.complexity
+
+import no.f12.codenavigator.navigation.CallGraph
+import no.f12.codenavigator.navigation.ClassName
 
 data class ClassComplexity(
     val className: ClassName,

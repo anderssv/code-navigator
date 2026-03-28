@@ -8,7 +8,7 @@ import no.f12.codenavigator.analysis.ModuleAuthors
 import no.f12.codenavigator.navigation.AnnotationDetail
 import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallTreeNode
-import no.f12.codenavigator.navigation.ClassComplexity
+import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.CycleDetail
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
@@ -20,13 +20,13 @@ import no.f12.codenavigator.navigation.PackageDependencies
 import no.f12.codenavigator.navigation.PackageName
 import no.f12.codenavigator.navigation.SymbolInfo
 import no.f12.codenavigator.navigation.DsmMatrix
-import no.f12.codenavigator.navigation.RankedType
+import no.f12.codenavigator.navigation.rank.RankedType
 import no.f12.codenavigator.navigation.DeadCode
 import no.f12.codenavigator.navigation.stringconstant.StringConstantMatch
-import no.f12.codenavigator.navigation.SupertypeInfo
-import no.f12.codenavigator.navigation.SupertypeKind
+import no.f12.codenavigator.navigation.hierarchy.SupertypeInfo
+import no.f12.codenavigator.navigation.hierarchy.SupertypeKind
 import no.f12.codenavigator.navigation.MetricsResult
-import no.f12.codenavigator.navigation.TypeHierarchyResult
+import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyResult
 import no.f12.codenavigator.navigation.UsageSite
 import no.f12.codenavigator.navigation.AnnotationMatch
 import no.f12.codenavigator.navigation.AnnotationTag

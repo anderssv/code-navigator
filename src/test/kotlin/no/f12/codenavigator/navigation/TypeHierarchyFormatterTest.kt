@@ -1,5 +1,9 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.hierarchy.SupertypeInfo
+import no.f12.codenavigator.navigation.hierarchy.SupertypeKind
+import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyFormatter
+import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
