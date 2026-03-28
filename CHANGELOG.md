@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.39
+
+- **Improved:** Split `navigation/` package into 12 feature sub-packages (`annotation/`, `callgraph/`, `classinfo/`, `complexity/`, `deadcode/`, `dsm/`, `hierarchy/`, `interfaces/`, `metrics/`, `rank/`, `stringconstant/`, `symbol/`) for better code organization. Shared utilities remain at the `navigation/` root.
+- **Improved:** Maven plugin now routes all mojos through `TaskRegistry.enhanceProperties()` for consistency with Gradle tasks and forward-compatibility with pattern enhancement.
+- **Improved:** Maven plugin now uses `FileCache` for call graph, interface registry, class index, and symbol index — matching Gradle's caching behavior for faster repeated runs.
+- **Improved:** `OutputWrapper.formatAndWrap()` — new convenience method combining format dispatch and output wrapping, used by all Gradle tasks and Maven mojos.
+- **Improved:** Added Jakarta Validation and JPA/Jackson framework annotation presets for dead code detection.
+- **Improved:** Annotation handling now uses fully-qualified names internally (`AnnotationExtractor`, `FrameworkPresets`, `ClassDetailExtractor`), with `AnnotationName` inline value class for type safety.
+- **Improved:** Pattern matching documentation added to `cnavHelp` and `cnavAgentHelp` output.
+- **Improved:** README split into `doc/` files (`tasks.md`, `agent-setup.md`, `how-it-works.md`) with task summary table.
+- **Refactoring:** Kebab-case parameter consistency — renamed `projectonly` → `project-only`, `includetest` → `include-test`, `ownerClass` → `owner-class`.
+- **Refactoring:** All Gradle tasks migrated from raw `buildPropertyMap()` to `buildPropertyMap(TaskDef)` for centralized property enhancement.
+- **Refactoring:** Complexity task parameter renamed from `classname` to `pattern` (reuses shared `PATTERN` ParamDef).
+- **Refactoring:** Split `METHOD` ParamDef into `CALL_PATTERN` (callers/callees, with pattern enhancement) and `METHOD` (find-usages only).
+
 ## 0.1.38
 
 - **New:** `cnavAnnotations` task / `cnav:annotations` goal — query classes and methods by annotation pattern. Parameters: `-Ppattern=<annotation-name-regex>` (required), `-Pmethods=true` (show method-level matches). Finds all classes/methods bearing matching annotations with source file locations. Supports TEXT, JSON, and LLM output formats. Useful for endpoint discovery (`@GetMapping`), transaction boundary analysis (`@Transactional`), async method inventory (`@Async`), and more.
