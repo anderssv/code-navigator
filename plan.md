@@ -116,7 +116,7 @@ From user feedback: a project had 19 silently skipped tests because test methods
 The DSM tells you package A depends on package B, but not *why*. To break a cycle you need to know the specific fields, method parameters, return types, and local variable types that create the dependency.
 
 - **Builder**: `DependencyExplainer.explain(callGraph, from, to) -> List<DependencyEdge(sourceClass, targetClass, kind: FIELD|PARAMETER|RETURN_TYPE|LOCAL_VAR|METHOD_CALL, detail: String)>`
-- **Parameters**: `-Pfrom=<class-or-package>` (required), `-Pto=<class-or-package>` (required), `-Pprojectonly=true`
+- **Parameters**: `-Pfrom=<class-or-package>` (required), `-Pto=<class-or-package>` (required), `-Pproject-only=true`
 - **Why useful**: The missing link between "the DSM says there's a dependency" and "here's what to move/extract to break it."
 
 ### 55. `cnavChangedSince` — impact analysis for a branch/commit (Very high value, medium effort)

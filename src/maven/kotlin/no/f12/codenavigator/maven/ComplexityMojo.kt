@@ -29,8 +29,8 @@ class ComplexityMojo : AbstractMojo() {
     @Parameter(property = "pattern")
     private var pattern: String? = null
 
-    @Parameter(property = "projectonly")
-    private var projectonly: String? = null
+    @Parameter(property = "project-only")
+    private var projectOnly: String? = null
 
     @Parameter(property = "detail")
     private var detail: String? = null
@@ -88,7 +88,7 @@ class ComplexityMojo : AbstractMojo() {
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         pattern?.let { put("pattern", it) }
-        projectonly?.let { put("projectonly", it) }
+        projectOnly?.let { put("project-only", it) }
         detail?.let { put("detail", it) }
         top?.let { put("top", it) }
         collapseLambdas?.let { put("collapse-lambdas", it) }

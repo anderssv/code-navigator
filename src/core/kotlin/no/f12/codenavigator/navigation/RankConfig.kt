@@ -13,7 +13,7 @@ data class RankConfig(
     companion object {
         fun parse(properties: Map<String, String?>): RankConfig = RankConfig(
             top = TaskRegistry.TOP.parse(properties["top"]),
-            projectOnly = TaskRegistry.PROJECTONLY_ON.parse(properties["projectonly"]),
+            projectOnly = TaskRegistry.PROJECTONLY_ON.parse(properties["project-only"]),
             collapseLambdas = TaskRegistry.COLLAPSE_LAMBDAS.parse(properties["collapse-lambdas"]),
             format = ParamDef.parseFormat(properties),
         )

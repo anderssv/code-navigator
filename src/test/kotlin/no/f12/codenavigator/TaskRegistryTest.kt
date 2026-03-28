@@ -57,21 +57,21 @@ class ParamDefTest {
 
     @Test
     fun `parse returns default from ParamDef when value is null for BOOLEAN`() {
-        val param = ParamDef("projectonly", "true", "Hide stdlib", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
+        val param = ParamDef("project-only", "true", "Hide stdlib", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
 
         assertEquals(true, param.parse(null))
     }
 
     @Test
     fun `parse returns true when value is true for BOOLEAN`() {
-        val param = ParamDef("projectonly", "true", "Hide stdlib", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
+        val param = ParamDef("project-only", "true", "Hide stdlib", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
 
         assertEquals(true, param.parse("true"))
     }
 
     @Test
     fun `parse returns false when value is false for BOOLEAN`() {
-        val param = ParamDef("projectonly", "true", "Hide stdlib", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
+        val param = ParamDef("project-only", "true", "Hide stdlib", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
 
         assertEquals(false, param.parse("false"))
     }
@@ -454,7 +454,7 @@ class TaskRegistryTest {
             "pattern" to ParamType.STRING,
             "method" to ParamType.STRING,
             "maxdepth" to ParamType.INT,
-            "projectonly" to ParamType.BOOLEAN,
+            "project-only" to ParamType.BOOLEAN,
             "filter-synthetic" to ParamType.BOOLEAN,
             "top" to ParamType.INT,
             "after" to ParamType.DATE,

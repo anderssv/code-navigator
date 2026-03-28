@@ -11,7 +11,7 @@ class TypeHierarchyConfigTest {
     fun `parses all properties from map`() {
         val props = mapOf(
             "pattern" to "MyService",
-            "projectonly" to "true",
+            "project-only" to "true",
             "format" to "json",
             "llm" to "false",
         )

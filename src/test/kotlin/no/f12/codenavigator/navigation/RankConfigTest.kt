@@ -10,7 +10,7 @@ class RankConfigTest {
     fun `parses all properties from map`() {
         val props = mapOf(
             "top" to "10",
-            "projectonly" to "false",
+            "project-only" to "false",
             "format" to "json",
         )
 

@@ -12,7 +12,7 @@ class ComplexityConfigTest {
     fun `parses all properties from map`() {
         val props = mapOf(
             "pattern" to "AdminRoutes",
-            "projectonly" to "false",
+            "project-only" to "false",
             "detail" to "true",
             "format" to "json",
         )

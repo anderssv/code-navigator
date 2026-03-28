@@ -15,7 +15,7 @@ class CallGraphConfigTest {
         val props = mapOf(
             "pattern" to "com.example.MyClass.myMethod",
             "maxdepth" to "5",
-            "projectonly" to "true",
+            "project-only" to "true",
             "format" to "json",
             "llm" to "false",
         )

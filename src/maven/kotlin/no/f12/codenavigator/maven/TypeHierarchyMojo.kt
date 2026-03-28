@@ -33,8 +33,8 @@ class TypeHierarchyMojo : AbstractMojo() {
     @Parameter(property = "pattern", required = true)
     private var pattern: String? = null
 
-    @Parameter(property = "projectonly")
-    private var projectonly: String? = null
+    @Parameter(property = "project-only")
+    private var projectOnly: String? = null
 
     override fun execute() {
         val config = try {
@@ -72,6 +72,6 @@ class TypeHierarchyMojo : AbstractMojo() {
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
-        projectonly?.let { put("projectonly", it) }
+        projectOnly?.let { put("project-only", it) }
     }
 }

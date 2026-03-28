@@ -33,8 +33,8 @@ class RankMojo : AbstractMojo() {
     @Parameter(property = "top")
     private var top: String? = null
 
-    @Parameter(property = "projectonly")
-    private var projectonly: String? = null
+    @Parameter(property = "project-only")
+    private var projectOnly: String? = null
 
     @Parameter(property = "collapse-lambdas")
     private var collapseLambdas: String? = null
@@ -72,7 +72,7 @@ class RankMojo : AbstractMojo() {
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
         top?.let { put("top", it) }
-        projectonly?.let { put("projectonly", it) }
+        projectOnly?.let { put("project-only", it) }
         collapseLambdas?.let { put("collapse-lambdas", it) }
     }
 }

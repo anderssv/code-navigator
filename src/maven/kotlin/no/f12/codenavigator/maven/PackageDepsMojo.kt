@@ -34,8 +34,8 @@ class PackageDepsMojo : AbstractMojo() {
     @Parameter(property = "package")
     private var packagePattern: String? = null
 
-    @Parameter(property = "projectonly")
-    private var projectonly: String? = null
+    @Parameter(property = "project-only")
+    private var projectOnly: String? = null
 
     @Parameter(property = "reverse")
     private var reverse: String? = null
@@ -82,7 +82,7 @@ class PackageDepsMojo : AbstractMojo() {
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
         packagePattern?.let { put("package", it) }
-        projectonly?.let { put("projectonly", it) }
+        projectOnly?.let { put("project-only", it) }
         reverse?.let { put("reverse", it) }
     }
 }

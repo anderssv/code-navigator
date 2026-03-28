@@ -13,7 +13,7 @@ data class TypeHierarchyConfig(
         fun parse(properties: Map<String, String?>): TypeHierarchyConfig = TypeHierarchyConfig(
             pattern = properties["pattern"]
                 ?: throw IllegalArgumentException("Missing required property 'pattern'"),
-            projectOnly = TaskRegistry.PROJECTONLY.parse(properties["projectonly"]),
+            projectOnly = TaskRegistry.PROJECTONLY.parse(properties["project-only"]),
             format = ParamDef.parseFormat(properties),
         )
     }

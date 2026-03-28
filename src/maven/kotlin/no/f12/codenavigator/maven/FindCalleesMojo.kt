@@ -40,8 +40,8 @@ class FindCalleesMojo : AbstractMojo() {
     @Parameter(property = "maxdepth")
     private var maxdepth: String? = null
 
-    @Parameter(property = "projectonly")
-    private var projectonly: String? = null
+    @Parameter(property = "project-only")
+    private var projectOnly: String? = null
 
     @Parameter(property = "filter-synthetic")
     private var filterSynthetic: String? = null
@@ -98,7 +98,7 @@ class FindCalleesMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         maxdepth?.let { put("maxdepth", it) }
-        projectonly?.let { put("projectonly", it) }
+        projectOnly?.let { put("project-only", it) }
         filterSynthetic?.let { put("filter-synthetic", it) }
     }
 }

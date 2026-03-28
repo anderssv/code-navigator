@@ -24,7 +24,7 @@ data class CallGraphConfig(
             method = properties["pattern"]
                 ?: throw IllegalArgumentException("Missing required property 'pattern'"),
             maxDepth = TaskRegistry.MAXDEPTH.parse(properties["maxdepth"]),
-            projectOnly = TaskRegistry.PROJECTONLY.parse(properties["projectonly"]),
+            projectOnly = TaskRegistry.PROJECTONLY.parse(properties["project-only"]),
             filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parse(properties["filter-synthetic"]),
             format = ParamDef.parseFormat(properties),
         )

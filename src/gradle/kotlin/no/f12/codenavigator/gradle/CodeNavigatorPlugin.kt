@@ -29,13 +29,13 @@ class CodeNavigatorPlugin : Plugin<Project> {
         }
 
         project.tasks.register("cnavCallers", FindCallersTask::class.java) {
-            description = "Shows who calls a given method as an indented tree. Usage: -Pmethod=<regex> -Pmaxdepth=N -Pprojectonly=true|false"
+            description = "Shows who calls a given method as an indented tree. Usage: -Ppattern=<regex> -Pmaxdepth=N -Pproject-only=true|false"
             group = "code-navigator"
             dependsOn("classes")
         }
 
         project.tasks.register("cnavCallees", FindCalleesTask::class.java) {
-            description = "Shows what a method calls as an indented tree. Usage: -Pmethod=<regex> -Pmaxdepth=N -Pprojectonly=true|false"
+            description = "Shows what a method calls as an indented tree. Usage: -Ppattern=<regex> -Pmaxdepth=N -Pproject-only=true|false"
             group = "code-navigator"
             dependsOn("classes")
         }
@@ -83,7 +83,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
         }
 
         project.tasks.register("cnavRank", RankTask::class.java) {
-            description = "Ranks types by structural importance using PageRank on the call graph. Usage: [-Ptop=N] [-Pprojectonly=true|false]"
+            description = "Ranks types by structural importance using PageRank on the call graph. Usage: [-Ptop=N] [-Pproject-only=true|false]"
             group = "code-navigator"
             dependsOn("classes")
         }
@@ -107,7 +107,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
         }
 
         project.tasks.register("cnavComplexity", ComplexityTask::class.java) {
-            description = "Shows fan-in/fan-out complexity per class. Usage: -Pclassname=<pattern> [-Pprojectonly=true] [-Pdetail=true]"
+            description = "Shows fan-in/fan-out complexity per class. Usage: -Ppattern=<pattern> [-Pproject-only=true] [-Pdetail=true]"
             group = "code-navigator"
             dependsOn("classes")
         }

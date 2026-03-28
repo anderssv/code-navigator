@@ -11,7 +11,7 @@ class PackageDepsConfigTest {
     fun `parses all properties from map`() {
         val props = mapOf(
             "package" to "com.example.service",
-            "projectonly" to "true",
+            "project-only" to "true",
             "reverse" to "true",
             "format" to "json",
             "llm" to "false",
