@@ -128,4 +128,31 @@ class DeadCodeConfigTest {
 
         assertFalse(config.prodOnly)
     }
+
+    @Test
+    fun `framework=spring adds spring annotations to excludeAnnotated`() {
+        val config = DeadCodeConfig.parse(mapOf("framework" to "spring"))
+
+        assertTrue(config.excludeAnnotated.contains("Controller"))
+        assertTrue(config.excludeAnnotated.contains("Component"))
+        assertTrue(config.excludeAnnotated.contains("Service"))
+    }
+
+    @Test
+    fun `framework merges with explicit exclude-annotated`() {
+        val config = DeadCodeConfig.parse(mapOf(
+            "framework" to "spring",
+            "exclude-annotated" to "MyCustomAnnotation",
+        ))
+
+        assertTrue(config.excludeAnnotated.contains("Controller"))
+        assertTrue(config.excludeAnnotated.contains("MyCustomAnnotation"))
+    }
+
+    @Test
+    fun `framework defaults to empty when absent`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertTrue(config.excludeAnnotated.isEmpty())
+    }
 }

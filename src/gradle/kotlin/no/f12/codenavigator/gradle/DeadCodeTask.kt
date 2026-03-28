@@ -28,7 +28,7 @@ abstract class DeadCodeTask : DefaultTask() {
     fun showDeadCode() {
         val config = DeadCodeConfig.parse(
             project.buildPropertyMap(
-                propertyNames = listOf("filter", "exclude", "classes-only", "exclude-annotated", "prod-only", "format", "llm"),
+                propertyNames = listOf("filter", "exclude", "classes-only", "exclude-annotated", "prod-only", "framework", "format", "llm"),
                 flagNames = emptyList(),
             ),
         )

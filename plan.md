@@ -214,17 +214,7 @@ The root `codenavigator` package serves as both "shared infrastructure" and "lib
 
 ## Framework awareness
 
-### 75. Framework annotation presets for `cnavDead` — eliminate common false positives (High value, low effort)
-
-Tested on Spring Petclinic: 18 of 30 classes flagged as dead, nearly all false positives because Spring discovers them via annotations/reflection. The existing `-Pexclude-annotated` requires manually listing every annotation.
-
-- **Parameter**: `-Dframework=spring` (also: `ktor`, `micronaut`, `quarkus` — start with Spring)
-- **Behavior**: Automatically adds a curated set of framework annotations to the exclude list:
-  - Spring: `Controller`, `RestController`, `Service`, `Component`, `Repository`, `Configuration`, `Bean`, `Scheduled`, `EventListener`, `PostConstruct`, `PreDestroy`, `ExceptionHandler`, `ControllerAdvice`, `Endpoint`
-  - Multiple frameworks can be combined: `-Dframework=spring,jackson`
-- **Implementation**: A `FrameworkPresets` object mapping framework names to annotation sets. Merged with any explicit `-Dexclude-annotated` values before filtering.
-- **Why low effort**: The filtering infrastructure already exists. This is just a lookup table.
-- **Relationship to item 73**: Item 73 proposes a `.cnav-entry-points` config file for project-specific patterns. Framework presets complement that — presets cover common cases, the config file covers project-specific ones.
+### ~~75. Framework annotation presets for `cnavDead` — eliminate common false positives~~ DONE
 
 ### 76. Meta-annotation traversal for dead code filtering (High value, medium effort)
 

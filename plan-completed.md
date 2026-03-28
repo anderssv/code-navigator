@@ -188,3 +188,13 @@ Based on external feedback (60% false positive rate in real-world triage). Three
 **`-Pprod-only=true` filter:** New parameter that filters dead code results to only show items with `reason=NO_REFERENCES`, hiding `TEST_ONLY` items. This directly answers the feedback request to distinguish "only used in tests" from "never referenced anywhere."
 
 **Always scan annotations:** `AnnotationExtractor.scanAll()` now always runs (not just when `-Pexclude-annotated` is set), so confidence scoring always benefits from annotation awareness. Previously, classes with `@JsonCreator` or framework annotations would get `HIGH` confidence unless the user explicitly passed `-Pexclude-annotated`.
+
+## ~~75. Framework annotation presets for `cnavDead`~~ DONE
+
+Added `-Dframework=spring` (also: `jpa`, `jackson`) parameter to `cnavDead` that auto-excludes known framework annotations from dead code results. Eliminates most false positives in framework-heavy projects without requiring manual `-Dexclude-annotated` lists.
+
+**Spring preset** includes: `Controller`, `RestController`, `Service`, `Component`, `Repository`, `Configuration`, `Bean`, `Scheduled`, `EventListener`, `PostConstruct`, `PreDestroy`, `ExceptionHandler`, `ControllerAdvice`, `Endpoint`, `SpringBootApplication`, `EnableAutoConfiguration`, `ComponentScan`, plus JPA annotations (`Entity`, `MappedSuperclass`, `Embeddable`, `Converter`, `EntityListeners`).
+
+**Multiple presets** can be combined: `-Dframework=spring,jackson`. Framework annotations are merged with any explicit `-Dexclude-annotated` values.
+
+**Tested on Spring Petclinic**: reduced dead code results from 22 items (18 false positives) to 8 items (5 `package-info` files + 3 legitimate edge cases). Implementation: `FrameworkPresets.kt` lookup object, wired through `DeadCodeConfig.parse()`, `TaskRegistry.FRAMEWORK` param, Gradle `DeadCodeTask`, and Maven `DeadCodeMojo`.

@@ -483,6 +483,7 @@ class TaskRegistryTest {
             "max-changeset-size" to ParamType.INT,
             "collapse-lambdas" to ParamType.BOOLEAN,
             "section" to ParamType.STRING,
+            "framework" to ParamType.LIST_STRING,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }
