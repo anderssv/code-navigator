@@ -5,6 +5,7 @@ import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.navigation.AnnotationDetail
 import no.f12.codenavigator.navigation.CallDirection
+import no.f12.codenavigator.navigation.AnnotationTag
 import no.f12.codenavigator.navigation.CallTreeNode
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
@@ -630,7 +631,7 @@ class LlmFormatterTest {
                         sourceFile = "Controller.kt",
                         lineNumber = 42,
                         children = emptyList(),
-                        annotations = listOf("GetMapping"),
+                        annotations = listOf(AnnotationTag("GetMapping", "spring")),
                     ),
                 ),
             ),
@@ -639,7 +640,7 @@ class LlmFormatterTest {
         val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
 
         assertEquals(
-            "com.example.Service.doWork Service.kt\n  ← com.example.Controller.getOwner Controller.kt:42 [@GetMapping]",
+            "com.example.Service.doWork Service.kt\n  ← com.example.Controller.getOwner Controller.kt:42 [@GetMapping [spring]]",
             result,
         )
     }
@@ -652,14 +653,14 @@ class LlmFormatterTest {
                 sourceFile = "Controller.kt",
                 lineNumber = null,
                 children = emptyList(),
-                annotations = listOf("GetMapping", "ResponseBody"),
+                annotations = listOf(AnnotationTag("GetMapping", "spring"), AnnotationTag("ResponseBody", "spring")),
             ),
         )
 
         val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
 
         assertEquals(
-            "com.example.Controller.getOwner Controller.kt [@GetMapping, @ResponseBody]",
+            "com.example.Controller.getOwner Controller.kt [@GetMapping [spring], @ResponseBody [spring]]",
             result,
         )
     }
@@ -678,5 +679,25 @@ class LlmFormatterTest {
         val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
 
         assertEquals("com.example.Service.doWork Service.kt", result)
+    }
+
+    @Test
+    fun `renders mixed known and unknown annotations with framework tags`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "doWork"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag("GetMapping", "spring"), AnnotationTag("CustomAnnotation")),
+            ),
+        )
+
+        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            "com.example.Controller.doWork Controller.kt [@GetMapping [spring], @CustomAnnotation]",
+            result,
+        )
     }
 }

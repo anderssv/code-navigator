@@ -104,4 +104,32 @@ class FrameworkPresetsTest {
 
         assertTrue(annotations.isEmpty())
     }
+
+    @Test
+    fun `frameworkOf returns spring for a Spring annotation`() {
+        val framework = FrameworkPresets.frameworkOf("Controller")
+
+        assertEquals("spring", framework)
+    }
+
+    @Test
+    fun `frameworkOf returns jpa for a JPA annotation not spring`() {
+        val framework = FrameworkPresets.frameworkOf("Entity")
+
+        assertEquals("jpa", framework)
+    }
+
+    @Test
+    fun `frameworkOf returns jackson for a Jackson annotation`() {
+        val framework = FrameworkPresets.frameworkOf("JsonCreator")
+
+        assertEquals("jackson", framework)
+    }
+
+    @Test
+    fun `frameworkOf returns null for unknown annotation`() {
+        val framework = FrameworkPresets.frameworkOf("CustomAnnotation")
+
+        assertEquals(null, framework)
+    }
 }

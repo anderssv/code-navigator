@@ -29,6 +29,7 @@ import no.f12.codenavigator.navigation.MetricsResult
 import no.f12.codenavigator.navigation.TypeHierarchyResult
 import no.f12.codenavigator.navigation.UsageSite
 import no.f12.codenavigator.navigation.AnnotationMatch
+import no.f12.codenavigator.navigation.AnnotationTag
 
 object LlmFormatter {
 
@@ -241,8 +242,11 @@ object LlmFormatter {
         }
     }
 
-    private fun formatAnnotationTags(annotations: List<String>): String =
-        if (annotations.isEmpty()) "" else " [${annotations.joinToString(", ") { "@$it" }}]"
+    private fun formatAnnotationTags(annotations: List<AnnotationTag>): String =
+        if (annotations.isEmpty()) "" else " [${annotations.joinToString(", ") { tag ->
+            val suffix = if (tag.framework != null) " [${tag.framework}]" else ""
+            "@${tag.name}$suffix"
+        }}]"
 
     private fun formatAnnotation(annotation: AnnotationDetail): String = buildString {
         append("@${annotation.name}")

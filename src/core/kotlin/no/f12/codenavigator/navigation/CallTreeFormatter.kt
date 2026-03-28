@@ -36,8 +36,11 @@ object CallTreeFormatter {
         }
     }.trimEnd()
 
-    private fun formatAnnotationTags(annotations: List<String>): String =
-        if (annotations.isEmpty()) "" else " [${annotations.joinToString(", ") { "@$it" }}]"
+    private fun formatAnnotationTags(annotations: List<AnnotationTag>): String =
+        if (annotations.isEmpty()) "" else " [${annotations.joinToString(", ") { tag ->
+            val suffix = if (tag.framework != null) " [${tag.framework}]" else ""
+            "@${tag.name}$suffix"
+        }}]"
 
     private fun StringBuilder.renderChildren(
         children: List<CallTreeNode>,

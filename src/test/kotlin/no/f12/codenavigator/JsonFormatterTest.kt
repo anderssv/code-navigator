@@ -7,6 +7,7 @@ import no.f12.codenavigator.navigation.AnnotationDetail
 import no.f12.codenavigator.navigation.CallDirection
 import no.f12.codenavigator.navigation.CallGraph
 import no.f12.codenavigator.navigation.CallTreeBuilder
+import no.f12.codenavigator.navigation.AnnotationTag
 import no.f12.codenavigator.navigation.CallTreeNode
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
@@ -871,13 +872,36 @@ class JsonFormatterTest {
                 sourceFile = "Controller.kt",
                 lineNumber = null,
                 children = emptyList(),
-                annotations = listOf("GetMapping", "ResponseBody"),
+                annotations = listOf(AnnotationTag("GetMapping", "spring"), AnnotationTag("ResponseBody", "spring")),
             ),
         )
 
         val result = JsonFormatter.renderCallTrees(trees)
 
-        assertTrue(result.contains("\"annotations\":[\"GetMapping\",\"ResponseBody\"]"))
+        assertTrue(result.contains("""{"name":"GetMapping","framework":"spring"}"""))
+        assertTrue(result.contains("""{"name":"ResponseBody","framework":"spring"}"""))
+    }
+
+    @Test
+    fun `call tree JSON omits framework key for unknown annotations`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getOwner"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(
+                    AnnotationTag("GetMapping", "spring"),
+                    AnnotationTag("CustomAnnotation"),
+                ),
+            ),
+        )
+
+        val result = JsonFormatter.renderCallTrees(trees)
+
+        assertTrue(result.contains("""{"name":"GetMapping","framework":"spring"}"""))
+        assertTrue(result.contains("""{"name":"CustomAnnotation"}"""))
+        assertTrue(!result.contains("""CustomAnnotation","framework""""), "Unknown annotation should not have framework key")
     }
 
     @Test
@@ -906,7 +930,7 @@ class JsonFormatterTest {
             sourceFile = "Controller.kt",
             lineNumber = 42,
             children = emptyList(),
-            annotations = listOf("GetMapping"),
+            annotations = listOf(AnnotationTag("GetMapping", "spring")),
         )
         val trees = listOf(
             CallTreeNode(
@@ -919,7 +943,7 @@ class JsonFormatterTest {
 
         val result = JsonFormatter.renderCallTrees(trees)
 
-        assertTrue(result.contains("\"annotations\":[\"GetMapping\"]"))
+        assertTrue(result.contains("""{"name":"GetMapping","framework":"spring"}"""))
         // Root node should NOT have annotations key (empty list = omitted)
         val rootPart = result.substringBefore("\"children\":[{")
         assertTrue(!rootPart.contains("\"annotations\""), "Root node without annotations should not have annotations key")

@@ -20,6 +20,35 @@ object FrameworkPresets {
         "SpringBootApplication",
         "EnableAutoConfiguration",
         "ComponentScan",
+        "GetMapping",
+        "PostMapping",
+        "PutMapping",
+        "DeleteMapping",
+        "PatchMapping",
+        "RequestMapping",
+        "ModelAttribute",
+        "InitBinder",
+        "ResponseBody",
+        "RequestBody",
+        "PathVariable",
+        "RequestParam",
+        "Autowired",
+        "Value",
+        "Qualifier",
+        "Primary",
+        "Lazy",
+        "Scope",
+        "Profile",
+        "Conditional",
+        "Import",
+        "ImportResource",
+        "PropertySource",
+        "EnableCaching",
+        "Cacheable",
+        "CacheEvict",
+        "CachePut",
+        "Transactional",
+        "Async",
     )
 
     private val JPA = setOf(
@@ -43,6 +72,17 @@ object FrameworkPresets {
         "jackson" to JACKSON,
     )
 
+    private val ANNOTATION_TO_FRAMEWORK: Map<String, String> by lazy {
+        val result = mutableMapOf<String, String>()
+        val specificity = listOf("jpa" to JPA, "jackson" to JACKSON, "spring" to SPRING)
+        for ((framework, annotations) in specificity) {
+            for (annotation in annotations) {
+                result.putIfAbsent(annotation, framework)
+            }
+        }
+        result
+    }
+
     fun resolve(framework: String): Set<String> =
         PRESETS[framework.lowercase()] ?: emptySet()
 
@@ -50,4 +90,7 @@ object FrameworkPresets {
         frameworks.flatMap { resolve(it) }.toSet()
 
     fun availablePresets(): Set<String> = PRESETS.keys
+
+    fun frameworkOf(annotationName: String): String? =
+        ANNOTATION_TO_FRAMEWORK[annotationName]
 }

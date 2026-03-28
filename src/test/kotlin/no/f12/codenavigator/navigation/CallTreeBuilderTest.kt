@@ -402,7 +402,10 @@ class CallTreeBuilderTest {
             methodAnnotations = methodAnnotations,
         )
 
-        assertEquals(listOf("GetMapping", "ResponseBody"), result[0].annotations.sorted())
+        assertEquals(
+            listOf(AnnotationTag("GetMapping", "spring"), AnnotationTag("ResponseBody", "spring")),
+            result[0].annotations.sortedBy { it.name },
+        )
     }
 
     @Test
@@ -421,7 +424,7 @@ class CallTreeBuilderTest {
             classAnnotations = classAnnotations,
         )
 
-        assertEquals(listOf("RestController"), result[0].annotations)
+        assertEquals(listOf(AnnotationTag("RestController", "spring")), result[0].annotations)
     }
 
     @Test
@@ -431,7 +434,7 @@ class CallTreeBuilderTest {
 
         val result = CallTreeBuilder.build(graph, listOf(target), maxDepth = 3, CallDirection.CALLERS)
 
-        assertEquals(emptyList<String>(), result[0].annotations)
+        assertEquals(emptyList<AnnotationTag>(), result[0].annotations)
     }
 
     @Test
@@ -451,6 +454,47 @@ class CallTreeBuilderTest {
             methodAnnotations = methodAnnotations,
         )
 
-        assertEquals(listOf("GetMapping"), result[0].children[0].annotations)
+        assertEquals(listOf(AnnotationTag("GetMapping", "spring")), result[0].children[0].annotations)
+    }
+
+    @Test
+    fun `annotations without known framework have null framework`() {
+        val target = MethodRef(ClassName("com.example.Controller"), "doWork")
+        val graph = CallGraph(
+            emptyMap(),
+            sourceFiles = mapOf(ClassName("com.example.Controller") to "Controller.kt"),
+        )
+        val methodAnnotations = mapOf(
+            target to setOf("CustomAnnotation"),
+        )
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(target), maxDepth = 3, CallDirection.CALLERS,
+            methodAnnotations = methodAnnotations,
+        )
+
+        assertEquals(listOf(AnnotationTag("CustomAnnotation", null)), result[0].annotations)
+    }
+
+    @Test
+    fun `mixed known and unknown annotations have correct framework tags`() {
+        val target = MethodRef(ClassName("com.example.Controller"), "doWork")
+        val graph = CallGraph(
+            emptyMap(),
+            sourceFiles = mapOf(ClassName("com.example.Controller") to "Controller.kt"),
+        )
+        val methodAnnotations = mapOf(
+            target to setOf("GetMapping", "CustomAnnotation"),
+        )
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(target), maxDepth = 3, CallDirection.CALLERS,
+            methodAnnotations = methodAnnotations,
+        )
+
+        assertEquals(
+            listOf(AnnotationTag("CustomAnnotation", null), AnnotationTag("GetMapping", "spring")),
+            result[0].annotations,
+        )
     }
 }

@@ -1,11 +1,16 @@
 package no.f12.codenavigator.navigation
 
+data class AnnotationTag(
+    val name: String,
+    val framework: String? = null,
+)
+
 data class CallTreeNode(
     val method: MethodRef,
     val sourceFile: String?,
     val lineNumber: Int?,
     val children: List<CallTreeNode>,
-    val annotations: List<String> = emptyList(),
+    val annotations: List<AnnotationTag> = emptyList(),
 )
 
 object CallTreeBuilder {
@@ -63,12 +68,13 @@ object CallTreeBuilder {
         method: MethodRef,
         classAnnotations: Map<ClassName, Set<String>>,
         methodAnnotations: Map<MethodRef, Set<String>>,
-    ): List<String> {
-        val methodAnns = methodAnnotations[method]
-        if (methodAnns != null) return methodAnns.sorted()
-        val classAnns = classAnnotations[method.className]
-        if (classAnns != null) return classAnns.sorted()
-        return emptyList()
+    ): List<AnnotationTag> {
+        val names = methodAnnotations[method]
+            ?: classAnnotations[method.className]
+            ?: return emptyList()
+        return names.sorted().map { name ->
+            AnnotationTag(name, FrameworkPresets.frameworkOf(name))
+        }
     }
 
     private fun resolveInterfaceDispatch(

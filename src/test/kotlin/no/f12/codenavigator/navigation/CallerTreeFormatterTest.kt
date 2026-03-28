@@ -339,7 +339,7 @@ class CallerTreeFormatterTest {
                         sourceFile = "Controller.kt",
                         lineNumber = 42,
                         children = emptyList(),
-                        annotations = listOf("GetMapping"),
+                        annotations = listOf(AnnotationTag("GetMapping", "spring")),
                     ),
                 ),
             ),
@@ -350,7 +350,7 @@ class CallerTreeFormatterTest {
         assertEquals(
             """
             com.example.Service.doWork
-              ← com.example.Controller.getOwner (Controller.kt:42) [@GetMapping]
+              ← com.example.Controller.getOwner (Controller.kt:42) [@GetMapping [spring]]
             """.trimIndent(),
             result,
         )
@@ -364,7 +364,7 @@ class CallerTreeFormatterTest {
                 sourceFile = "Controller.kt",
                 lineNumber = null,
                 children = emptyList(),
-                annotations = listOf("GetMapping", "ResponseBody"),
+                annotations = listOf(AnnotationTag("GetMapping", "spring"), AnnotationTag("ResponseBody", "spring")),
             ),
         )
 
@@ -372,7 +372,7 @@ class CallerTreeFormatterTest {
 
         assertEquals(
             """
-            com.example.Controller.getOwner [@GetMapping, @ResponseBody]
+            com.example.Controller.getOwner [@GetMapping [spring], @ResponseBody [spring]]
               (no callers)
             """.trimIndent(),
             result,
@@ -395,6 +395,29 @@ class CallerTreeFormatterTest {
         assertEquals(
             """
             com.example.Service.doWork
+              (no callers)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `renders unknown annotations without framework tag`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "doWork"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag("GetMapping", "spring"), AnnotationTag("CustomAnnotation")),
+            ),
+        )
+
+        val result = CallTreeFormatter.renderTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            """
+            com.example.Controller.doWork [@GetMapping [spring], @CustomAnnotation]
               (no callers)
             """.trimIndent(),
             result,

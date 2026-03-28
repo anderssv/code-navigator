@@ -6,6 +6,7 @@ import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.analysis.ModuleAuthors
 import no.f12.codenavigator.navigation.AnnotationDetail
+import no.f12.codenavigator.navigation.AnnotationTag
 import no.f12.codenavigator.navigation.CallTreeNode
 import no.f12.codenavigator.navigation.ClassDetail
 import no.f12.codenavigator.navigation.ClassInfo
@@ -331,10 +332,19 @@ object JsonFormatter {
             "method" to node.method.qualifiedName,
             "sourceFile" to node.sourceFile,
             "lineNumber" to node.lineNumber,
-            "annotations" to if (node.annotations.isNotEmpty()) JsonRaw(jsonStringArray(node.annotations)) else null,
+            "annotations" to if (node.annotations.isNotEmpty()) JsonRaw(renderAnnotationTags(node.annotations)) else null,
             "children" to JsonRaw(children),
         )
     }
+
+    private fun renderAnnotationTags(tags: List<AnnotationTag>): String =
+        tags.joinToString(",", "[", "]") { tag ->
+            if (tag.framework != null) {
+                jsonObject("name" to tag.name, "framework" to tag.framework)
+            } else {
+                jsonObject("name" to tag.name)
+            }
+        }
 
     private fun renderSupertypes(supertypes: List<SupertypeInfo>): String =
         jsonArray(supertypes) { st ->
