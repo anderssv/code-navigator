@@ -3,6 +3,7 @@ package no.f12.codenavigator.navigation.annotation
 import no.f12.codenavigator.navigation.AnnotationName
 import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.KotlinMethodFilter
+import no.f12.codenavigator.navigation.annotationParameterVisitor
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import no.f12.codenavigator.navigation.UnsupportedBytecodeVersionException
 import no.f12.codenavigator.navigation.createClassReader
@@ -19,6 +20,15 @@ data class AnnotationScanResult(
     val sourceFile: String?,
     val classAnnotations: Set<AnnotationName>,
     val methodAnnotations: Map<MethodRef, Set<AnnotationName>>,
+    val classAnnotationParameters: Map<AnnotationName, Map<String, String>> = emptyMap(),
+    val methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>> = emptyMap(),
+)
+
+data class AggregatedAnnotations(
+    val classAnnotations: Map<ClassName, Set<AnnotationName>>,
+    val methodAnnotations: Map<MethodRef, Set<AnnotationName>>,
+    val classAnnotationParameters: Map<ClassName, Map<AnnotationName, Map<String, String>>>,
+    val methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>>,
 )
 
 /**
@@ -34,6 +44,8 @@ object AnnotationExtractor {
         var sourceFile: String? = null
         val classAnnotations = mutableSetOf<AnnotationName>()
         val methodAnnotations = mutableMapOf<MethodRef, Set<AnnotationName>>()
+        val classAnnotationParams = mutableMapOf<AnnotationName, Map<String, String>>()
+        val methodAnnotationParams = mutableMapOf<MethodRef, MutableMap<AnnotationName, Map<String, String>>>()
 
         reader.accept(
             object : ClassVisitor(Opcodes.ASM9) {
@@ -53,10 +65,10 @@ object AnnotationExtractor {
                 }
 
                 override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? {
-                    if (descriptor != null) {
-                        classAnnotations.add(annotationFqn(descriptor))
-                    }
-                    return null
+                    if (descriptor == null) return null
+                    val name = annotationFqn(descriptor)
+                    classAnnotations.add(name)
+                    return collectParameters(name, classAnnotationParams)
                 }
 
                 override fun visitMethod(
@@ -71,18 +83,20 @@ object AnnotationExtractor {
                     }
                     val methodRef = MethodRef(className, name)
                     val annotations = mutableSetOf<AnnotationName>()
+                    val paramMap = mutableMapOf<AnnotationName, Map<String, String>>()
 
                     return object : MethodVisitor(Opcodes.ASM9) {
                         override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? {
-                            if (descriptor != null) {
-                                annotations.add(annotationFqn(descriptor))
-                            }
-                            return null
+                            if (descriptor == null) return null
+                            val annName = annotationFqn(descriptor)
+                            annotations.add(annName)
+                            return collectParameters(annName, paramMap)
                         }
 
                         override fun visitEnd() {
                             if (annotations.isNotEmpty()) {
                                 methodAnnotations[methodRef] = annotations
+                                methodAnnotationParams[methodRef] = paramMap
                             }
                         }
                     }
@@ -96,6 +110,8 @@ object AnnotationExtractor {
             sourceFile = sourceFile,
             classAnnotations = classAnnotations,
             methodAnnotations = methodAnnotations,
+            classAnnotationParameters = classAnnotationParams,
+            methodAnnotationParameters = methodAnnotationParams,
         )
     }
 
@@ -104,9 +120,11 @@ object AnnotationExtractor {
      * and method-level annotation maps. Only includes entries that have
      * at least one annotation.
      */
-    fun scanAll(classDirectories: List<File>): Pair<Map<ClassName, Set<AnnotationName>>, Map<MethodRef, Set<AnnotationName>>> {
+    fun scanAll(classDirectories: List<File>): AggregatedAnnotations {
         val classAnnotations = mutableMapOf<ClassName, Set<AnnotationName>>()
         val methodAnnotations = mutableMapOf<MethodRef, Set<AnnotationName>>()
+        val classAnnotationParams = mutableMapOf<ClassName, Map<AnnotationName, Map<String, String>>>()
+        val methodAnnotationParams = mutableMapOf<MethodRef, Map<AnnotationName, Map<String, String>>>()
 
         for (dir in classDirectories) {
             dir.walk()
@@ -116,17 +134,31 @@ object AnnotationExtractor {
                         val result = extract(classFile)
                         if (result.classAnnotations.isNotEmpty()) {
                             classAnnotations[result.className] = result.classAnnotations
+                            classAnnotationParams[result.className] = result.classAnnotationParameters
                         }
                         methodAnnotations.putAll(result.methodAnnotations)
+                        methodAnnotationParams.putAll(result.methodAnnotationParameters)
                     } catch (_: UnsupportedBytecodeVersionException) {
                         // Skip files we can't read
                     }
                 }
         }
 
-        return Pair(classAnnotations, methodAnnotations)
+        return AggregatedAnnotations(
+            classAnnotations = classAnnotations,
+            methodAnnotations = methodAnnotations,
+            classAnnotationParameters = classAnnotationParams,
+            methodAnnotationParameters = methodAnnotationParams,
+        )
     }
 
     private fun annotationFqn(descriptor: String): AnnotationName =
         AnnotationName(Type.getType(descriptor).className)
+
+    private fun collectParameters(
+        name: AnnotationName,
+        target: MutableMap<AnnotationName, Map<String, String>>,
+    ): AnnotationVisitor = annotationParameterVisitor { parameters ->
+        target[name] = parameters
+    }
 }
