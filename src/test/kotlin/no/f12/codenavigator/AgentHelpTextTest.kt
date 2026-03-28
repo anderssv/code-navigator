@@ -571,6 +571,65 @@ class AgentHelpTextTest {
         assertTrue(text.contains("Result Interpretation"), "Should have a Result Interpretation section")
     }
 
+    // --- Pattern Matching section ---
+
+    @Test
+    fun `default output contains Pattern Matching section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "Pattern Matching")
+    }
+
+    @Test
+    fun `Pattern Matching section explains camelCase enhancement`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val patternSection = text.substringAfter("Pattern Matching")
+            .substringBefore("--- Tips")
+
+        assertTrue(patternSection.contains("OwnCont"), "Should show camelCase shorthand example")
+        assertTrue(patternSection.contains("Own.*Cont"), "Should show expanded regex")
+    }
+
+    @Test
+    fun `Pattern Matching section lists enhanced params`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val patternSection = text.substringAfter("Pattern Matching")
+            .substringBefore("--- Tips")
+
+        assertTrue(patternSection.contains("pattern"), "Should list pattern as enhanced")
+        assertTrue(patternSection.contains("owner-class"), "Should list owner-class as enhanced")
+        assertTrue(patternSection.contains("type"), "Should list type as enhanced")
+    }
+
+    @Test
+    fun `Pattern Matching section lists plain regex params`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val patternSection = text.substringAfter("Pattern Matching")
+            .substringBefore("--- Tips")
+
+        assertTrue(patternSection.contains("method"), "Should list method as plain regex")
+        assertTrue(patternSection.contains("field"), "Should list field as plain regex")
+        assertTrue(patternSection.contains("filter"), "Should list filter as plain regex")
+    }
+
+    @Test
+    fun `Pattern Matching section appears between Global Parameters and Tips`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val globalParamsIndex = text.indexOf("--- Global Parameters ---")
+        val patternMatchingIndex = text.indexOf("--- Pattern Matching ---")
+        val tipsIndex = text.indexOf("--- Tips")
+
+        assertTrue(patternMatchingIndex > 0, "Pattern Matching section should exist")
+        assertTrue(
+            patternMatchingIndex > globalParamsIndex,
+            "Pattern Matching should appear after Global Parameters",
+        )
+        assertTrue(
+            patternMatchingIndex < tipsIndex,
+            "Pattern Matching should appear before Tips",
+        )
+    }
+
     // --- Setup section ---
 
     @Test

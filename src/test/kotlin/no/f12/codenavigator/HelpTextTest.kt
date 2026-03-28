@@ -146,6 +146,70 @@ class HelpTextTest {
         )
     }
 
+    // --- Pattern Matching section ---
+
+    @Test
+    fun `help text contains a Pattern Matching section`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(text.contains("Pattern Matching"), "Should have a Pattern Matching section")
+    }
+
+    @Test
+    fun `Pattern Matching section explains camelCase enhancement`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(text.contains("OwnCont"), "Should show camelCase shorthand example input")
+        assertTrue(text.contains("Own.*Cont"), "Should show expanded regex output")
+    }
+
+    @Test
+    fun `Pattern Matching section mentions case-insensitive matching`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val patternSection = text.substringAfter("Pattern Matching")
+            .substringBefore("Available tasks:")
+
+        assertTrue(
+            patternSection.contains("case-insensitive", ignoreCase = true),
+            "Pattern Matching section should mention case-insensitive matching",
+        )
+    }
+
+    @Test
+    fun `Pattern Matching section lists params with camelCase enhancement`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val patternSection = text.substringAfter("Pattern Matching")
+            .substringBefore("Available tasks:")
+
+        assertTrue(patternSection.contains("pattern"), "Should list pattern param")
+        assertTrue(patternSection.contains("owner-class"), "Should list owner-class param")
+        assertTrue(patternSection.contains("type"), "Should list type param")
+    }
+
+    @Test
+    fun `Pattern Matching section lists params without enhancement`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val patternSection = text.substringAfter("Pattern Matching")
+            .substringBefore("Available tasks:")
+
+        assertTrue(patternSection.contains("method"), "Should list method as plain regex")
+        assertTrue(patternSection.contains("field"), "Should list field as plain regex")
+        assertTrue(patternSection.contains("filter"), "Should list filter as plain regex")
+    }
+
+    @Test
+    fun `Pattern Matching section appears before task listings`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val patternMatchingIndex = text.indexOf("Pattern Matching")
+        val availableTasksIndex = text.indexOf("Available tasks:")
+
+        assertTrue(patternMatchingIndex > 0, "Pattern Matching section should exist")
+        assertTrue(
+            patternMatchingIndex < availableTasksIndex,
+            "Pattern Matching section should appear before task listings",
+        )
+    }
+
     @Test
     fun `help text includes agent hint pointing to agent-help`() {
         val gradleText = HelpText.generate(BuildTool.GRADLE)
