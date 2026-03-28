@@ -197,4 +197,77 @@ class InterfaceRegistryTest {
 
         assertEquals(setOf(ClassName("javax.xml.bind.XmlAdapter")), external[ClassName("com.example.Adapter")])
     }
+
+    // === interfacesOf tests ===
+
+    @Test
+    fun `interfacesOf returns interfaces implemented by a class`() {
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/ServiceImpl", "ServiceImpl.kt",
+            interfaces = arrayOf("com/example/Service", "com/example/Auditable"),
+        )
+
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+
+        val interfaces = registry.interfacesOf(ClassName("com.example.ServiceImpl"))
+
+        assertEquals(
+            setOf(ClassName("com.example.Service"), ClassName("com.example.Auditable")),
+            interfaces,
+        )
+    }
+
+    @Test
+    fun `interfacesOf returns empty set for class with no interfaces`() {
+        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Plain", "Plain.kt")
+
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+
+        assertTrue(registry.interfacesOf(ClassName("com.example.Plain")).isEmpty())
+    }
+
+    @Test
+    fun `interfacesOf returns empty set for unknown class`() {
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+
+        assertTrue(registry.interfacesOf(ClassName("com.example.Unknown")).isEmpty())
+    }
+
+    // === implementorMap and classToInterfacesMap tests ===
+
+    @Test
+    fun `implementorMap returns class names only without source file info`() {
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/UserRepo", "UserRepo.kt",
+            interfaces = arrayOf("com/example/Repository"),
+        )
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/OrderRepo", "OrderRepo.kt",
+            interfaces = arrayOf("com/example/Repository"),
+        )
+
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+        val map = registry.implementorMap()
+
+        assertEquals(
+            setOf(ClassName("com.example.OrderRepo"), ClassName("com.example.UserRepo")),
+            map[ClassName("com.example.Repository")],
+        )
+    }
+
+    @Test
+    fun `classToInterfacesMap returns reverse mapping`() {
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/ServiceImpl", "ServiceImpl.kt",
+            interfaces = arrayOf("com/example/Service", "com/example/Auditable"),
+        )
+
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+        val map = registry.classToInterfacesMap()
+
+        assertEquals(
+            setOf(ClassName("com.example.Service"), ClassName("com.example.Auditable")),
+            map[ClassName("com.example.ServiceImpl")],
+        )
+    }
 }

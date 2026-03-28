@@ -198,3 +198,13 @@ Added `-Dframework=spring` (also: `jpa`, `jackson`) parameter to `cnavDead` that
 **Multiple presets** can be combined: `-Dframework=spring,jackson`. Framework annotations are merged with any explicit `-Dexclude-annotated` values.
 
 **Tested on Spring Petclinic**: reduced dead code results from 22 items (18 false positives) to 8 items (5 `package-info` files + 3 legitimate edge cases). Implementation: `FrameworkPresets.kt` lookup object, wired through `DeadCodeConfig.parse()`, `TaskRegistry.FRAMEWORK` param, Gradle `DeadCodeTask`, and Maven `DeadCodeMojo`.
+
+## ~~77. Interface dispatch resolution in `cnavCallers`/`cnavCallees`~~ DONE
+
+Added interface dispatch resolution to `CallTreeBuilder` so that `cnavCallers` and `cnavCallees` follow calls through interfaces. When tracing callers of `Impl.method()`, also finds callers of `Interface.method()` where `Impl` implements `Interface`. When tracing callees from a call to `Interface.method()`, also shows concrete implementor methods.
+
+**Implementation**: `CallTreeBuilder.resolveInterfaceDispatch()` uses two maps from `InterfaceRegistry`: `implementorMap()` (interface → set of implementor class names) and `classToInterfacesMap()` (class → set of interfaces it implements). Always on — no flag needed since results are strictly better with dispatch resolution.
+
+**Wired into**: Gradle `FindCallersTask`, `FindCalleesTask` (via `InterfaceRegistryCache`), Maven `FindCallersMojo`, `FindCalleesMojo` (via `InterfaceRegistry.build()`). Added `implementorMap()` and `classToInterfacesMap()` convenience methods to `InterfaceRegistry`.
+
+**Tested on Spring Petclinic**: `find-callers` for `OwnerRepository.findById` now correctly shows callers from `OwnerController`, `PetController`, and `VisitController`. 5 new tests (3 in `CallTreeBuilderTest`, 2 in `InterfaceRegistryTest`).

@@ -225,7 +225,7 @@ The root `codenavigator` package serves as both "shared infrastructure" and "lib
 - **Requires**: Reading annotation `.class` files from the classpath (not just project classes). Could reuse infrastructure from item 38 (classpath scanning), or scan only `java.lang.annotation`-retained annotations which are a small set.
 - **Why high value**: Covers custom stereotype annotations automatically. A project defining `@DomainService` (meta-annotated with `@Component`) would be handled without any configuration.
 
-### 77. Interface dispatch resolution in `cnavCallers`/`cnavCallees` (High value, medium effort)
+### ~~77. Interface dispatch resolution in `cnavCallers`/`cnavCallees`~~ DONE
 
 In Spring (and DI-heavy code generally), code is written against interfaces: `ownerRepository.findById()` calls `OwnerRepository` (an interface). Searching for callers of the concrete implementation finds nothing, because bytecode records the interface call.
 

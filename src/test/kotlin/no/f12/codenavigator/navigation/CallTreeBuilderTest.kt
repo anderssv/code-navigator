@@ -304,4 +304,83 @@ class CallTreeBuilderTest {
 
         assertEquals(null, result[0].lineNumber)
     }
+
+    // === Interface dispatch resolution tests ===
+
+    @Test
+    fun `callers of impl method includes callers of interface method`() {
+        val controller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val interfaceMethod = MethodRef(ClassName("com.example.Service"), "process")
+        val implMethod = MethodRef(ClassName("com.example.ServiceImpl"), "process")
+        val graph = CallGraph(
+            mapOf(controller to setOf(interfaceMethod)),
+            sourceFiles = mapOf(
+                ClassName("com.example.Controller") to "Controller.kt",
+                ClassName("com.example.Service") to "Service.kt",
+                ClassName("com.example.ServiceImpl") to "ServiceImpl.kt",
+            ),
+        )
+        val interfaceImplementors = mapOf(
+            ClassName("com.example.Service") to setOf(ClassName("com.example.ServiceImpl")),
+        )
+        val classToInterfaces = mapOf(
+            ClassName("com.example.ServiceImpl") to setOf(ClassName("com.example.Service")),
+        )
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(implMethod), maxDepth = 3, CallDirection.CALLERS,
+            interfaceImplementors = interfaceImplementors,
+            classToInterfaces = classToInterfaces,
+        )
+
+        assertEquals(1, result.size)
+        val callers = result[0].children.map { it.method.qualifiedName }
+        assertTrue("com.example.Controller.handle" in callers, "Should find caller via interface dispatch")
+    }
+
+    @Test
+    fun `callees of interface method includes implementor methods`() {
+        val controller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val interfaceMethod = MethodRef(ClassName("com.example.Service"), "process")
+        val graph = CallGraph(
+            mapOf(controller to setOf(interfaceMethod)),
+            sourceFiles = mapOf(
+                ClassName("com.example.Controller") to "Controller.kt",
+                ClassName("com.example.Service") to "Service.kt",
+                ClassName("com.example.ServiceImpl") to "ServiceImpl.kt",
+            ),
+        )
+        val interfaceImplementors = mapOf(
+            ClassName("com.example.Service") to setOf(ClassName("com.example.ServiceImpl")),
+        )
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(controller), maxDepth = 3, CallDirection.CALLEES,
+            interfaceImplementors = interfaceImplementors,
+        )
+
+        assertEquals(1, result.size)
+        val calleeNames = result[0].children.map { it.method.qualifiedName }
+        assertTrue("com.example.Service.process" in calleeNames, "Should still show interface call")
+        assertTrue("com.example.ServiceImpl.process" in calleeNames, "Should also show implementor")
+    }
+
+    @Test
+    fun `interface dispatch is not applied when no registry provided`() {
+        val controller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val interfaceMethod = MethodRef(ClassName("com.example.Service"), "process")
+        val implMethod = MethodRef(ClassName("com.example.ServiceImpl"), "process")
+        val graph = CallGraph(
+            mapOf(controller to setOf(interfaceMethod)),
+            sourceFiles = mapOf(
+                ClassName("com.example.Controller") to "Controller.kt",
+            ),
+        )
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(implMethod), maxDepth = 3, CallDirection.CALLERS,
+        )
+
+        assertTrue(result[0].children.isEmpty(), "Without interface dispatch, impl has no callers")
+    }
 }

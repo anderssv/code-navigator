@@ -13,8 +13,21 @@ data class ImplementorInfo(
 class InterfaceRegistry(
     private val interfaceToImplementors: Map<ClassName, List<ImplementorInfo>>,
 ) {
+    private val classToInterfaces: Map<ClassName, Set<ClassName>> by lazy {
+        val result = mutableMapOf<ClassName, MutableSet<ClassName>>()
+        interfaceToImplementors.forEach { (interfaceName, implementors) ->
+            for (impl in implementors) {
+                result.getOrPut(impl.className) { mutableSetOf() }.add(interfaceName)
+            }
+        }
+        result
+    }
+
     fun implementorsOf(interfaceName: ClassName): List<ImplementorInfo> =
         interfaceToImplementors[interfaceName] ?: emptyList()
+
+    fun interfacesOf(className: ClassName): Set<ClassName> =
+        classToInterfaces[className] ?: emptySet()
 
     fun findInterfaces(pattern: String): List<ClassName> {
         val regex = Regex(pattern, RegexOption.IGNORE_CASE)
@@ -26,6 +39,11 @@ class InterfaceRegistry(
     fun forEachEntry(action: (interfaceName: ClassName, implementors: List<ImplementorInfo>) -> Unit) {
         interfaceToImplementors.forEach { (iface, impls) -> action(iface, impls) }
     }
+
+    fun implementorMap(): Map<ClassName, Set<ClassName>> =
+        interfaceToImplementors.mapValues { (_, impls) -> impls.map { it.className }.toSet() }
+
+    fun classToInterfacesMap(): Map<ClassName, Set<ClassName>> = classToInterfaces
 
     fun externalInterfacesOf(projectClasses: Set<ClassName>): Map<ClassName, Set<ClassName>> {
         val result = mutableMapOf<ClassName, MutableSet<ClassName>>()

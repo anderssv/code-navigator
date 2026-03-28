@@ -9,6 +9,7 @@ import no.f12.codenavigator.navigation.CallGraphCache
 import no.f12.codenavigator.navigation.CallGraphConfig
 import no.f12.codenavigator.navigation.CallTreeBuilder
 import no.f12.codenavigator.navigation.CallTreeFormatter
+import no.f12.codenavigator.navigation.InterfaceRegistryCache
 import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
@@ -52,7 +53,18 @@ abstract class FindCallersTask : DefaultTask() {
             return
         }
 
-        val trees = CallTreeBuilder.build(graph, methods, config.maxDepth, CallDirection.CALLERS, config.buildFilter(graph))
+        val interfaceRegistry = InterfaceRegistryCache.getOrBuild(
+            File(project.layout.buildDirectory.asFile.get(), "cnav/interface-registry.cache"),
+            classDirectories,
+        ).data
+        val interfaceImplementors = interfaceRegistry.implementorMap()
+        val classToInterfaces = interfaceRegistry.classToInterfacesMap()
+
+        val trees = CallTreeBuilder.build(
+            graph, methods, config.maxDepth, CallDirection.CALLERS, config.buildFilter(graph),
+            interfaceImplementors = interfaceImplementors,
+            classToInterfaces = classToInterfaces,
+        )
         val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.renderCallTrees(trees)
             OutputFormat.LLM -> LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)

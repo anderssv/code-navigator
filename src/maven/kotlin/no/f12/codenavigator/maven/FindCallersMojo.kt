@@ -9,6 +9,7 @@ import no.f12.codenavigator.navigation.CallGraphBuilder
 import no.f12.codenavigator.navigation.CallGraphConfig
 import no.f12.codenavigator.navigation.CallTreeBuilder
 import no.f12.codenavigator.navigation.CallTreeFormatter
+import no.f12.codenavigator.navigation.InterfaceRegistry
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
@@ -70,7 +71,15 @@ class FindCallersMojo : AbstractMojo() {
             return
         }
 
-        val trees = CallTreeBuilder.build(graph, methods, config.maxDepth, CallDirection.CALLERS, config.buildFilter(graph))
+        val interfaceRegistry = InterfaceRegistry.build(listOf(classesDir)).data
+        val interfaceImplementors = interfaceRegistry.implementorMap()
+        val classToInterfaces = interfaceRegistry.classToInterfacesMap()
+
+        val trees = CallTreeBuilder.build(
+            graph, methods, config.maxDepth, CallDirection.CALLERS, config.buildFilter(graph),
+            interfaceImplementors = interfaceImplementors,
+            classToInterfaces = classToInterfaces,
+        )
         val output = when (config.format) {
             OutputFormat.JSON -> JsonFormatter.renderCallTrees(trees)
             OutputFormat.LLM -> LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
