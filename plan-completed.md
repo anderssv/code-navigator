@@ -265,3 +265,23 @@ New task to query classes and methods by annotation pattern. Parameters: `-Ppatt
 - `FindCallersTask`/`FindCalleesTask` (Gradle) — wire `AnnotationExtractor.scanAll()` and pass maps to `CallTreeBuilder.build()`
 - `FindCallersMojo`/`FindCalleesMojo` (Maven) — same wiring
 - 16 new tests across `CallTreeBuilderTest`, `CallerTreeFormatterTest`, `LlmFormatterTest`, `JsonFormatterTest`, `FrameworkPresetsTest`
+
+## ~~82. Kebab-case parameter consistency and Maven enhanceProperties coverage~~ DONE
+
+Comprehensive refactoring to make all user-facing parameter names use kebab-case and ensure Maven mojos call `enhanceProperties()` for pattern enhancement. Seven sub-tasks:
+
+**1. Migrate all Gradle tasks to `buildPropertyMap(TaskDef)`:** Replaced raw `buildPropertyMap(propertyNames, flagNames)` calls in all 16 Gradle tasks with `buildPropertyMap(TaskDef)`, which centralizes property extraction and pattern enhancement. Made the raw overload `private`.
+
+**2. Split METHOD ParamDef into CALL_PATTERN and METHOD:** `METHOD` was shared by callers/callees and find-usages despite having different semantics. Split into `CALL_PATTERN` ("Class.method name regex") for callers/callees and `METHOD` ("Method name filter") for find-usages only.
+
+**3. Rename `classname` → `pattern` in complexity task:** Complexity task had its own `classname` parameter while 6 other tasks used `pattern` for the same purpose. Switched to the shared `PATTERN` ParamDef, gaining `enhancePattern=true` support for free.
+
+**4. Rename `projectonly` → `project-only`:** Updated across 22 files — `TaskRegistry`, 6 Config parsers, all affected Gradle tasks and Maven mojos, `HelpText`, `AgentHelpText`, `CodeNavigatorPlugin` descriptions, and all tests.
+
+**5. Rename `includetest` → `include-test`:** Updated across 7 files — `TaskRegistry`, `FindInterfaceImplsConfig`, Gradle task, Maven mojo, `HelpText`, `AgentHelpText`, and tests.
+
+**6. Rename `ownerClass` → `owner-class`:** Updated across 10 files — `TaskRegistry`, `FindUsagesConfig` (including error messages), Gradle task, Maven mojo, `HelpText`, `AgentHelpText`, and tests. Internal Kotlin identifiers (`config.ownerClass`, `UsageScanner.scan(ownerClass=...)`) preserved as-is.
+
+**7. Add `enhanceProperties()` to Maven mojos:** 4 mojos were missing the call — `FindCallersMojo`, `FindCalleesMojo`, `ComplexityMojo`, `AnnotationsMojo`. Without it, camelCase pattern shorthand (e.g., `OwnCont` → `Own.*Cont`) didn't work in Maven. The remaining 12 mojos either already had it or have no `enhancePattern=true` params.
+
+**Verified on Spring Petclinic:** All new parameter names tested and confirmed working with Maven plugin.
