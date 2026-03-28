@@ -133,9 +133,9 @@ class DeadCodeConfigTest {
     fun `framework=spring adds spring annotations to excludeAnnotated`() {
         val config = DeadCodeConfig.parse(mapOf("framework" to "spring"))
 
-        assertTrue(config.excludeAnnotated.contains("Controller"))
-        assertTrue(config.excludeAnnotated.contains("Component"))
-        assertTrue(config.excludeAnnotated.contains("Service"))
+        assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Controller"))
+        assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Component"))
+        assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Service"))
     }
 
     @Test
@@ -145,7 +145,7 @@ class DeadCodeConfigTest {
             "exclude-annotated" to "MyCustomAnnotation",
         ))
 
-        assertTrue(config.excludeAnnotated.contains("Controller"))
+        assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Controller"))
         assertTrue(config.excludeAnnotated.contains("MyCustomAnnotation"))
     }
 

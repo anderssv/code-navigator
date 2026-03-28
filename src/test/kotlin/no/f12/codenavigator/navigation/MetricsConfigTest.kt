@@ -88,8 +88,8 @@ class MetricsConfigTest {
     fun `parses framework and resolves to annotation preset`() {
         val config = MetricsConfig.parse(mapOf("framework" to "jackson"))
 
-        assertTrue(config.excludeAnnotated.contains("JsonCreator"))
-        assertTrue(config.excludeAnnotated.contains("JsonProperty"))
+        assertTrue(config.excludeAnnotated.contains("com.fasterxml.jackson.annotation.JsonCreator"))
+        assertTrue(config.excludeAnnotated.contains("com.fasterxml.jackson.annotation.JsonProperty"))
     }
 
     @Test
@@ -100,7 +100,7 @@ class MetricsConfigTest {
         ))
 
         assertTrue(config.excludeAnnotated.contains("Custom"))
-        assertTrue(config.excludeAnnotated.contains("JsonCreator"))
+        assertTrue(config.excludeAnnotated.contains("com.fasterxml.jackson.annotation.JsonCreator"))
     }
 
     @Test
