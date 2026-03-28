@@ -38,13 +38,21 @@ src/
 **`config/`** — dependency-free leaf package:
 - `OutputFormat.kt` — `OutputFormat` enum (TEXT/JSON/LLM), imported by all `*Config` classes
 
-**`navigation/`** — bytecode-based analysis (requires compiled `classes`):
-- **Scanning**: `ClassScanner`, `ClassInfoExtractor`, `ClassDetailExtractor`, `ClassDetailScanner`, `SymbolScanner`, `SymbolExtractor`, `UsageScanner`
-- **Call graph**: `CallGraphBuilder` (ASM bytecode → `CallGraph`), `CallGraphCache`, `CallTreeBuilder` (→ `CallTreeNode` trees)
-- **Formatters**: `CallTreeFormatter` (callers + callees via `CallDirection`), `ClassDetailFormatter`, `SymbolTableFormatter`, `UsageFormatter`, `InterfaceFormatter`, `ComplexityFormatter`, `DeadCodeFormatter`, `RankFormatter`, `MetricsFormatter`, `DsmFormatter`, `PackageDependencyFormatter`, `CyclesFormatter`
-- **Builders/analyzers**: `InterfaceRegistry` (+cache), `PackageDependencyBuilder`, `DsmMatrixBuilder`, `DsmDependencyExtractor`, `CycleDetector`, `DeadCodeFinder`, `TypeRanker`, `ClassComplexityAnalyzer`, `MetricsBuilder`
-- **Config**: one `*Config.kt` per task (e.g. `CallGraphConfig`, `DeadCodeConfig`, `FindUsagesConfig`)
-- **Shared**: `DomainTypes.kt` (`ClassName`, `MethodRef`), `ClassFilter.kt`, `KotlinMethodFilter.kt`, `LambdaCollapser.kt`, `PatternEnhancer.kt`, `BytecodeReader.kt` (`ScanResult<T>`), `SkippedFileReporter.kt`
+**`navigation/`** — bytecode-based analysis (requires compiled `classes`). Organized into sub-packages by feature:
+
+- **Shared root** (`navigation/`): `BytecodeReader.kt` (`ScanResult<T>`), `DomainTypes.kt` (`ClassName`, `MethodRef`), `FileCache.kt`, `KotlinMethodFilter.kt`, `LambdaCollapser.kt`, `PatternEnhancer.kt`, `SkippedFileReporter.kt`
+- **`annotation/`**: `AnnotationExtractor`, `AnnotationQueryBuilder`, `AnnotationQueryConfig`, `AnnotationQueryFormatter`, `FrameworkPresets`
+- **`callgraph/`**: `CallGraphBuilder` (ASM → `CallGraph`), `CallGraphCache`, `CallGraphConfig`, `CallTreeBuilder` (→ `CallTreeNode`), `CallTreeFormatter`, `FindUsagesConfig`, `UsageFormatter`, `UsageScanner`
+- **`classinfo/`**: `ClassDetailExtractor`, `ClassDetailFormatter`, `ClassDetailScanner`, `ClassFilter`, `ClassIndexCache`, `ClassInfoExtractor`, `ClassScanner`, `FindClassConfig`, `FindClassDetailConfig`, `ListClassesConfig`
+- **`complexity/`**: `ClassComplexityAnalyzer`, `ComplexityConfig`, `ComplexityFormatter`
+- **`deadcode/`**: `DeadCodeConfig`, `DeadCodeFinder`, `DeadCodeFormatter`, `FieldExtractor`, `InlineMethodDetector`
+- **`dsm/`**: `CycleDetector`, `CyclesConfig`, `CyclesFormatter`, `DsmConfig`, `DsmDependencyExtractor`, `DsmFormatter`, `DsmHtmlRenderer`, `DsmMatrixBuilder`, `PackageDependencyBuilder`, `PackageDependencyFormatter`, `PackageDepsConfig`
+- **`hierarchy/`**: `TypeHierarchyBuilder`, `TypeHierarchyConfig`, `TypeHierarchyFormatter`
+- **`interfaces/`**: `FindInterfaceImplsConfig`, `InterfaceFormatter`, `InterfaceRegistry`, `InterfaceRegistryCache`
+- **`metrics/`**: `MetricsBuilder`, `MetricsConfig`, `MetricsFormatter`
+- **`rank/`**: `RankConfig`, `RankFormatter`, `TypeRanker`
+- **`stringconstant/`**: `StringConstantConfig`, `StringConstantExtractor`, `StringConstantFormatter`, `StringConstantScanner`
+- **`symbol/`**: `FindSymbolConfig`, `SymbolExtractor`, `SymbolFilter`, `SymbolIndexCache`, `SymbolScanner`, `SymbolTableFormatter`
 
 **`analysis/`** — git-history-based analysis (no compilation needed):
 - `GitLogRunner` (runs git), `GitLogParser` (parses output)

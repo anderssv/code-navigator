@@ -3,6 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.AuthorAnalysisBuilder
 import no.f12.codenavigator.analysis.AuthorAnalysisConfig
 import no.f12.codenavigator.analysis.AuthorAnalysisFormatter
@@ -37,7 +38,7 @@ class AuthorAnalysisMojo : AbstractMojo() {
     private var noFollow: Boolean = false
 
     override fun execute() {
-        val config = AuthorAnalysisConfig.parse(buildPropertyMap())
+        val config = AuthorAnalysisConfig.parse(TaskRegistry.AUTHORS.enhanceProperties(buildPropertyMap()))
 
         val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
         val modules = AuthorAnalysisBuilder.build(commits, config.minRevs, config.top)

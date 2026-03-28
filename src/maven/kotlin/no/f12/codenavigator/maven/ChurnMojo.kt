@@ -3,6 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.ChurnBuilder
 import no.f12.codenavigator.analysis.ChurnConfig
 import no.f12.codenavigator.analysis.ChurnFormatter
@@ -34,7 +35,7 @@ class ChurnMojo : AbstractMojo() {
     private var noFollow: Boolean = false
 
     override fun execute() {
-        val config = ChurnConfig.parse(buildPropertyMap())
+        val config = ChurnConfig.parse(TaskRegistry.CHURN.enhanceProperties(buildPropertyMap()))
 
         val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
         val churn = ChurnBuilder.build(commits, config.top)

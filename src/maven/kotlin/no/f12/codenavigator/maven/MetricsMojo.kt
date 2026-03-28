@@ -3,6 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
@@ -64,7 +65,7 @@ class MetricsMojo : AbstractMojo() {
             return
         }
 
-        val config = MetricsConfig.parse(buildPropertyMap())
+        val config = MetricsConfig.parse(TaskRegistry.METRICS.enhanceProperties(buildPropertyMap()))
         val classDirectories = listOf(classesDir)
 
         val graphResult = CallGraphCache.getOrBuild(File(project.build.directory, "cnav/call-graph.cache"), classDirectories)

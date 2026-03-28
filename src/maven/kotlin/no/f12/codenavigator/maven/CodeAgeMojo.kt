@@ -3,6 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.CodeAgeBuilder
 import no.f12.codenavigator.analysis.CodeAgeConfig
 import no.f12.codenavigator.analysis.CodeAgeFormatter
@@ -35,7 +36,7 @@ class CodeAgeMojo : AbstractMojo() {
     private var noFollow: Boolean = false
 
     override fun execute() {
-        val config = CodeAgeConfig.parse(buildPropertyMap())
+        val config = CodeAgeConfig.parse(TaskRegistry.CODE_AGE.enhanceProperties(buildPropertyMap()))
 
         val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
         val ages = CodeAgeBuilder.build(commits, LocalDate.now(), config.top)

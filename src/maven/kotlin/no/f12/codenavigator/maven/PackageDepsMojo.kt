@@ -3,6 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
@@ -40,7 +41,7 @@ class PackageDepsMojo : AbstractMojo() {
     private var reverse: String? = null
 
     override fun execute() {
-        val config = PackageDepsConfig.parse(buildPropertyMap())
+        val config = PackageDepsConfig.parse(TaskRegistry.PACKAGE_DEPS.enhanceProperties(buildPropertyMap()))
 
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {

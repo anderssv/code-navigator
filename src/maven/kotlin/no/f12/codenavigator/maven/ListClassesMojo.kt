@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TableFormatter
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.classinfo.ClassIndexCache
 import no.f12.codenavigator.navigation.classinfo.ListClassesConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
@@ -29,7 +30,7 @@ class ListClassesMojo : AbstractMojo() {
     private var llm: String? = null
 
     override fun execute() {
-        val config = ListClassesConfig.parse(buildPropertyMap())
+        val config = ListClassesConfig.parse(TaskRegistry.LIST_CLASSES.enhanceProperties(buildPropertyMap()))
 
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {

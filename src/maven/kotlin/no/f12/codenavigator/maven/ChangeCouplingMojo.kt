@@ -3,6 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.ChangeCouplingBuilder
 import no.f12.codenavigator.analysis.ChangeCouplingConfig
 import no.f12.codenavigator.analysis.ChangeCouplingFormatter
@@ -43,7 +44,7 @@ class ChangeCouplingMojo : AbstractMojo() {
     private var top: String? = null
 
     override fun execute() {
-        val config = ChangeCouplingConfig.parse(buildPropertyMap())
+        val config = ChangeCouplingConfig.parse(TaskRegistry.COUPLING.enhanceProperties(buildPropertyMap()))
 
         val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
         val pairs = ChangeCouplingBuilder.build(commits, config.minSharedRevs, config.minCoupling, config.maxChangesetSize, config.top)

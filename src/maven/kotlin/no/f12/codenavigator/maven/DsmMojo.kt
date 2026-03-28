@@ -3,6 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.DsmConfig
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.DsmFormatter
@@ -46,7 +47,7 @@ class DsmMojo : AbstractMojo() {
     private var cycle: String? = null
 
     override fun execute() {
-        val config = DsmConfig.parse(buildPropertyMap())
+        val config = DsmConfig.parse(TaskRegistry.DSM.enhanceProperties(buildPropertyMap()))
 
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {

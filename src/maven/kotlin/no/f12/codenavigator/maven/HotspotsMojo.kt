@@ -3,6 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.analysis.HotspotConfig
@@ -37,7 +38,7 @@ class HotspotsMojo : AbstractMojo() {
     private var noFollow: Boolean = false
 
     override fun execute() {
-        val config = HotspotConfig.parse(buildPropertyMap())
+        val config = HotspotConfig.parse(TaskRegistry.HOTSPOTS.enhanceProperties(buildPropertyMap()))
 
         val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
         val hotspots = HotspotBuilder.build(commits, config.minRevs, config.top)
