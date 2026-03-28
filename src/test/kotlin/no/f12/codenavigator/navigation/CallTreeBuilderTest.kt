@@ -518,4 +518,91 @@ class CallTreeBuilderTest {
             result[0].annotations,
         )
     }
+
+    @Test
+    fun `node includes method annotation parameters when parameter maps provided`() {
+        val target = MethodRef(ClassName("com.example.Controller"), "getUsers")
+        val graph = CallGraph(
+            emptyMap(),
+            sourceFiles = mapOf(ClassName("com.example.Controller") to "Controller.kt"),
+        )
+        val methodAnnotations = mapOf(
+            target to setOf(AnnotationName("org.springframework.web.bind.annotation.GetMapping")),
+        )
+        val methodAnnotationParameters = mapOf(
+            target to mapOf(
+                AnnotationName("org.springframework.web.bind.annotation.GetMapping") to mapOf("value" to "/users"),
+            ),
+        )
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(target), maxDepth = 3, CallDirection.CALLERS,
+            methodAnnotations = methodAnnotations,
+            methodAnnotationParameters = methodAnnotationParameters,
+        )
+
+        assertEquals(
+            listOf(
+                AnnotationTag(
+                    AnnotationName("org.springframework.web.bind.annotation.GetMapping"),
+                    "spring",
+                    mapOf("value" to "/users"),
+                ),
+            ),
+            result[0].annotations,
+        )
+    }
+
+    @Test
+    fun `node includes class annotation parameters when method has no annotations`() {
+        val target = MethodRef(ClassName("com.example.Controller"), "getUsers")
+        val graph = CallGraph(
+            emptyMap(),
+            sourceFiles = mapOf(ClassName("com.example.Controller") to "Controller.kt"),
+        )
+        val classAnnotations = mapOf(
+            ClassName("com.example.Controller") to setOf(AnnotationName("org.springframework.web.bind.annotation.RequestMapping")),
+        )
+        val classAnnotationParameters = mapOf(
+            ClassName("com.example.Controller") to mapOf(
+                AnnotationName("org.springframework.web.bind.annotation.RequestMapping") to mapOf("value" to "/api"),
+            ),
+        )
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(target), maxDepth = 3, CallDirection.CALLERS,
+            classAnnotations = classAnnotations,
+            classAnnotationParameters = classAnnotationParameters,
+        )
+
+        assertEquals(
+            listOf(
+                AnnotationTag(
+                    AnnotationName("org.springframework.web.bind.annotation.RequestMapping"),
+                    "spring",
+                    mapOf("value" to "/api"),
+                ),
+            ),
+            result[0].annotations,
+        )
+    }
+
+    @Test
+    fun `annotations without parameter maps have empty parameters`() {
+        val target = MethodRef(ClassName("com.example.Controller"), "doWork")
+        val graph = CallGraph(
+            emptyMap(),
+            sourceFiles = mapOf(ClassName("com.example.Controller") to "Controller.kt"),
+        )
+        val methodAnnotations = mapOf(
+            target to setOf(AnnotationName("org.springframework.web.bind.annotation.GetMapping")),
+        )
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(target), maxDepth = 3, CallDirection.CALLERS,
+            methodAnnotations = methodAnnotations,
+        )
+
+        assertEquals(emptyMap<String, String>(), result[0].annotations[0].parameters)
+    }
 }

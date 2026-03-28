@@ -105,6 +105,57 @@ class AnnotationExtractorTest {
     }
 
     @Test
+    fun `extracts class-level annotation parameters`() {
+        val classFile = TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/MyController", "MyController.kt",
+        ) {
+            val av = visitAnnotation("Lorg/springframework/web/bind/annotation/RequestMapping;", true)
+            av.visit("value", "/api")
+            av.visitEnd()
+        }
+
+        val result = AnnotationExtractor.extract(classFile)
+
+        val annotation = AnnotationName("org.springframework.web.bind.annotation.RequestMapping")
+        assertEquals(setOf(annotation), result.classAnnotations)
+        assertEquals(mapOf("value" to "/api"), result.classAnnotationParameters[annotation])
+    }
+
+    @Test
+    fun `extracts method-level annotation parameters`() {
+        val classFile = TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/MyController", "MyController.kt",
+        ) {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "handle", "()V", null, null)
+            val av = mv.visitAnnotation("Lorg/springframework/web/bind/annotation/GetMapping;", true)
+            av.visit("value", "/users")
+            av.visitEnd()
+            mv.visitEnd()
+        }
+
+        val result = AnnotationExtractor.extract(classFile)
+
+        val methodRef = MethodRef(ClassName("com.example.MyController"), "handle")
+        val annotation = AnnotationName("org.springframework.web.bind.annotation.GetMapping")
+        assertEquals(setOf(annotation), result.methodAnnotations[methodRef])
+        assertEquals(mapOf("value" to "/users"), result.methodAnnotationParameters[methodRef]?.get(annotation))
+    }
+
+    @Test
+    fun `annotations without parameters have empty parameter map`() {
+        val classFile = TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/MyController", "MyController.kt",
+        ) {
+            visitAnnotation("Lorg/springframework/web/bind/annotation/RestController;", true)?.visitEnd()
+        }
+
+        val result = AnnotationExtractor.extract(classFile)
+
+        val annotation = AnnotationName("org.springframework.web.bind.annotation.RestController")
+        assertEquals(emptyMap(), result.classAnnotationParameters[annotation])
+    }
+
+    @Test
     fun `scanAll builds class and method annotation maps from directory`() {
         val dir = tempDir.toFile()
 
@@ -119,22 +170,22 @@ class AnnotationExtractorTest {
         }
         TestClassWriter.writeClassFile(dir, "com/example/Plain", "Plain.kt")
 
-        val (classAnnotations, methodAnnotations) = AnnotationExtractor.scanAll(listOf(dir))
+        val result = AnnotationExtractor.scanAll(listOf(dir))
 
         assertEquals(
             setOf(AnnotationName("org.springframework.web.bind.annotation.RestController")),
-            classAnnotations[ClassName("com.example.Controller")],
+            result.classAnnotations[ClassName("com.example.Controller")],
         )
         assertEquals(
             setOf(AnnotationName("org.springframework.stereotype.Service")),
-            classAnnotations[ClassName("com.example.Service")],
+            result.classAnnotations[ClassName("com.example.Service")],
         )
-        assertTrue(ClassName("com.example.Plain") !in classAnnotations)
+        assertTrue(ClassName("com.example.Plain") !in result.classAnnotations)
 
         val handleRef = MethodRef(ClassName("com.example.Controller"), "handle")
         assertEquals(
             setOf(AnnotationName("org.springframework.web.bind.annotation.GetMapping")),
-            methodAnnotations[handleRef],
+            result.methodAnnotations[handleRef],
         )
     }
 }

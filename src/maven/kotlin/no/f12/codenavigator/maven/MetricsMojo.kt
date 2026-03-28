@@ -78,7 +78,7 @@ class MetricsMojo : AbstractMojo() {
         val rankedTypes = TypeRanker.rank(graph, projectOnly = true, collapseLambdas = true)
 
         val excludeAnnotatedSet = config.excludeAnnotated.toSet()
-        val (classAnnotations, methodAnnotations) = AnnotationExtractor.scanAll(classDirectories)
+        val annotations = AnnotationExtractor.scanAll(classDirectories)
 
         val deadCode = DeadCodeFinder.find(
             graph = graph,
@@ -86,8 +86,8 @@ class MetricsMojo : AbstractMojo() {
             exclude = null,
             classesOnly = false,
             excludeAnnotated = excludeAnnotatedSet,
-            classAnnotations = classAnnotations,
-            methodAnnotations = methodAnnotations,
+            classAnnotations = annotations.classAnnotations,
+            methodAnnotations = annotations.methodAnnotations,
             testGraph = null,
         )
 

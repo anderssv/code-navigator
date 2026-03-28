@@ -41,7 +41,7 @@ abstract class DeadCodeTask : DefaultTask() {
         val graph = result.data
 
         val excludeAnnotated = config.excludeAnnotated.toSet()
-        val (classAnnotations, methodAnnotations) = AnnotationExtractor.scanAll(classDirectories)
+        val annotations = AnnotationExtractor.scanAll(classDirectories)
 
         val testSourceSet = sourceSets.findByName("test")
         val testClassDirectories = testSourceSet?.output?.classesDirs?.files?.filter { it.exists() }?.toList() ?: emptyList()
@@ -75,8 +75,8 @@ abstract class DeadCodeTask : DefaultTask() {
             exclude = config.exclude,
             classesOnly = config.classesOnly,
             excludeAnnotated = excludeAnnotated,
-            classAnnotations = classAnnotations,
-            methodAnnotations = methodAnnotations,
+            classAnnotations = annotations.classAnnotations,
+            methodAnnotations = annotations.methodAnnotations,
             testGraph = testGraph,
             interfaceImplementors = interfaceImplementors,
             classFields = classFields,

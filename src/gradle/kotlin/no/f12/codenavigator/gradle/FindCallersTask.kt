@@ -58,14 +58,16 @@ abstract class FindCallersTask : DefaultTask() {
         val interfaceImplementors = interfaceRegistry.implementorMap()
         val classToInterfaces = interfaceRegistry.classToInterfacesMap()
 
-        val (classAnnotations, methodAnnotations) = AnnotationExtractor.scanAll(classDirectories)
+        val annotations = AnnotationExtractor.scanAll(classDirectories)
 
         val trees = CallTreeBuilder.build(
             graph, methods, config.maxDepth, CallDirection.CALLERS, config.buildFilter(graph),
             interfaceImplementors = interfaceImplementors,
             classToInterfaces = classToInterfaces,
-            classAnnotations = classAnnotations,
-            methodAnnotations = methodAnnotations,
+            classAnnotations = annotations.classAnnotations,
+            methodAnnotations = annotations.methodAnnotations,
+            classAnnotationParameters = annotations.classAnnotationParameters,
+            methodAnnotationParameters = annotations.methodAnnotationParameters,
         )
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
             text = { CallTreeFormatter.renderTrees(trees, CallDirection.CALLERS) },

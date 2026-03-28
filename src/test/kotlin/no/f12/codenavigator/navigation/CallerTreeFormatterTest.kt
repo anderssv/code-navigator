@@ -429,4 +429,87 @@ class CallerTreeFormatterTest {
             result,
         )
     }
+
+    @Test
+    fun `renders annotation parameters in text output`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(
+                    AnnotationTag(
+                        AnnotationName("GetMapping"),
+                        "spring",
+                        mapOf("value" to "/users"),
+                    ),
+                ),
+            ),
+        )
+
+        val result = CallTreeFormatter.renderTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            """
+            com.example.Controller.getUsers [@GetMapping(value="/users") [spring]]
+              (no callers)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `renders annotation with multiple parameters`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(
+                    AnnotationTag(
+                        AnnotationName("Cacheable"),
+                        "spring",
+                        mapOf("value" to "users", "key" to "#id"),
+                    ),
+                ),
+            ),
+        )
+
+        val result = CallTreeFormatter.renderTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            """
+            com.example.Controller.getUsers [@Cacheable(value="users", key="#id") [spring]]
+              (no callers)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `renders annotation with empty parameters same as before`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "doWork"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(
+                    AnnotationTag(AnnotationName("GetMapping"), "spring", emptyMap()),
+                ),
+            ),
+        )
+
+        val result = CallTreeFormatter.renderTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            """
+            com.example.Controller.doWork [@GetMapping [spring]]
+              (no callers)
+            """.trimIndent(),
+            result,
+        )
+    }
 }

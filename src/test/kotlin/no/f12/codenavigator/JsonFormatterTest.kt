@@ -949,4 +949,48 @@ class JsonFormatterTest {
         val rootPart = result.substringBefore("\"children\":[{")
         assertTrue(!rootPart.contains("\"annotations\""), "Root node without annotations should not have annotations key")
     }
+
+    @Test
+    fun `call tree JSON includes annotation parameters when present`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(
+                    AnnotationTag(
+                        AnnotationName("GetMapping"),
+                        "spring",
+                        mapOf("value" to "/users"),
+                    ),
+                ),
+            ),
+        )
+
+        val result = JsonFormatter.renderCallTrees(trees)
+
+        assertTrue(result.contains(""""name":"GetMapping""""))
+        assertTrue(result.contains(""""framework":"spring""""))
+        assertTrue(result.contains(""""parameters":{"value":"/users"}"""))
+    }
+
+    @Test
+    fun `call tree JSON omits parameters key when annotation has no parameters`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "doWork"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(
+                    AnnotationTag(AnnotationName("GetMapping"), "spring"),
+                ),
+            ),
+        )
+
+        val result = JsonFormatter.renderCallTrees(trees)
+
+        assertTrue(!result.contains(""""parameters""""), "Annotation without parameters should not have parameters key")
+    }
 }

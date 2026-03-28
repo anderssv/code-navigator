@@ -7,6 +7,7 @@ import no.f12.codenavigator.navigation.annotation.FrameworkPresets
 data class AnnotationTag(
     val name: AnnotationName,
     val framework: String? = null,
+    val parameters: Map<String, String> = emptyMap(),
 )
 
 data class CallTreeNode(
@@ -29,9 +30,11 @@ object CallTreeBuilder {
         classToInterfaces: Map<ClassName, Set<ClassName>> = emptyMap(),
         classAnnotations: Map<ClassName, Set<AnnotationName>> = emptyMap(),
         methodAnnotations: Map<MethodRef, Set<AnnotationName>> = emptyMap(),
+        classAnnotationParameters: Map<ClassName, Map<AnnotationName, Map<String, String>>> = emptyMap(),
+        methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>> = emptyMap(),
     ): List<CallTreeNode> {
         return roots.map { method ->
-            buildNode(graph, method, maxDepth, direction, depth = 0, visited = mutableSetOf(), filter = filter, interfaceImplementors = interfaceImplementors, classToInterfaces = classToInterfaces, classAnnotations = classAnnotations, methodAnnotations = methodAnnotations)
+            buildNode(graph, method, maxDepth, direction, depth = 0, visited = mutableSetOf(), filter = filter, interfaceImplementors = interfaceImplementors, classToInterfaces = classToInterfaces, classAnnotations = classAnnotations, methodAnnotations = methodAnnotations, classAnnotationParameters = classAnnotationParameters, methodAnnotationParameters = methodAnnotationParameters)
         }
     }
 
@@ -47,10 +50,12 @@ object CallTreeBuilder {
         classToInterfaces: Map<ClassName, Set<ClassName>>,
         classAnnotations: Map<ClassName, Set<AnnotationName>>,
         methodAnnotations: Map<MethodRef, Set<AnnotationName>>,
+        classAnnotationParameters: Map<ClassName, Map<AnnotationName, Map<String, String>>>,
+        methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>>,
     ): CallTreeNode {
         val sourceFile = graph.sourceFileOf(method.className)
         val lineNumber = graph.lineNumberOf(method)
-        val annotations = resolveAnnotations(method, classAnnotations, methodAnnotations)
+        val annotations = resolveAnnotations(method, classAnnotations, methodAnnotations, classAnnotationParameters, methodAnnotationParameters)
         val depthCheck = depth < maxDepth
         val visitedCheck = method !in visited
         val children = if (depthCheck && visitedCheck) {
@@ -60,7 +65,7 @@ object CallTreeBuilder {
             val related = (direct + dispatched)
                 .let { refs -> if (filter != null) refs.filter(filter).toSet() else refs }
             related.sortedBy { it.qualifiedName }.map { child ->
-                buildNode(graph, child, maxDepth, direction, depth + 1, visited, filter, interfaceImplementors, classToInterfaces, classAnnotations, methodAnnotations)
+                buildNode(graph, child, maxDepth, direction, depth + 1, visited, filter, interfaceImplementors, classToInterfaces, classAnnotations, methodAnnotations, classAnnotationParameters, methodAnnotationParameters)
             }
         } else {
             emptyList()
@@ -72,12 +77,17 @@ object CallTreeBuilder {
         method: MethodRef,
         classAnnotations: Map<ClassName, Set<AnnotationName>>,
         methodAnnotations: Map<MethodRef, Set<AnnotationName>>,
+        classAnnotationParameters: Map<ClassName, Map<AnnotationName, Map<String, String>>>,
+        methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>>,
     ): List<AnnotationTag> {
         val names = methodAnnotations[method]
             ?: classAnnotations[method.className]
             ?: return emptyList()
+        val paramMap = methodAnnotationParameters[method]
+            ?: classAnnotationParameters[method.className]
+            ?: emptyMap()
         return names.sorted().map { name ->
-            AnnotationTag(name, FrameworkPresets.frameworkOf(name))
+            AnnotationTag(name, FrameworkPresets.frameworkOf(name), paramMap[name] ?: emptyMap())
         }
     }
 

@@ -68,7 +68,7 @@ class DeadCodeMojo : AbstractMojo() {
         val graph = result.data
 
         val excludeAnnotatedSet = config.excludeAnnotated.toSet()
-        val (classAnnotations, methodAnnotations) = AnnotationExtractor.scanAll(listOf(classesDir))
+        val annotations = AnnotationExtractor.scanAll(listOf(classesDir))
 
         val testClassesDir = File(project.build.testOutputDirectory)
         val testGraph = if (testClassesDir.exists()) {
@@ -95,8 +95,8 @@ class DeadCodeMojo : AbstractMojo() {
             exclude = config.exclude,
             classesOnly = config.classesOnly,
             excludeAnnotated = excludeAnnotatedSet,
-            classAnnotations = classAnnotations,
-            methodAnnotations = methodAnnotations,
+            classAnnotations = annotations.classAnnotations,
+            methodAnnotations = annotations.methodAnnotations,
             testGraph = testGraph,
             interfaceImplementors = interfaceImplementors,
             classFields = classFields,

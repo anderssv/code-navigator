@@ -76,14 +76,16 @@ class FindCallersMojo : AbstractMojo() {
         val interfaceImplementors = interfaceRegistry.implementorMap()
         val classToInterfaces = interfaceRegistry.classToInterfacesMap()
 
-        val (classAnnotations, methodAnnotations) = AnnotationExtractor.scanAll(listOf(classesDir))
+        val annotations = AnnotationExtractor.scanAll(listOf(classesDir))
 
         val trees = CallTreeBuilder.build(
             graph, methods, config.maxDepth, CallDirection.CALLERS, config.buildFilter(graph),
             interfaceImplementors = interfaceImplementors,
             classToInterfaces = classToInterfaces,
-            classAnnotations = classAnnotations,
-            methodAnnotations = methodAnnotations,
+            classAnnotations = annotations.classAnnotations,
+            methodAnnotations = annotations.methodAnnotations,
+            classAnnotationParameters = annotations.classAnnotationParameters,
+            methodAnnotationParameters = annotations.methodAnnotationParameters,
         )
         println(OutputWrapper.formatAndWrap(config.format,
             text = { CallTreeFormatter.renderTrees(trees, CallDirection.CALLERS) },

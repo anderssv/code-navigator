@@ -701,4 +701,30 @@ class LlmFormatterTest {
             result,
         )
     }
+
+    @Test
+    fun `renders annotation parameters in LLM call tree output`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(
+                    AnnotationTag(
+                        AnnotationName("GetMapping"),
+                        "spring",
+                        mapOf("value" to "/users"),
+                    ),
+                ),
+            ),
+        )
+
+        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            "com.example.Controller.getUsers Controller.kt [@GetMapping(value=\"/users\") [spring]]",
+            result,
+        )
+    }
 }

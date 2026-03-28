@@ -339,11 +339,16 @@ object JsonFormatter {
 
     private fun renderAnnotationTags(tags: List<AnnotationTag>): String =
         tags.joinToString(",", "[", "]") { tag ->
-            if (tag.framework != null) {
-                jsonObject("name" to tag.name.value, "framework" to tag.framework)
+            val params = if (tag.parameters.isNotEmpty()) {
+                JsonRaw(jsonObject(*tag.parameters.map { (k, v) -> k to v }.toTypedArray()))
             } else {
-                jsonObject("name" to tag.name.value)
+                null
             }
+            jsonObject(
+                "name" to tag.name.value,
+                "framework" to tag.framework,
+                "parameters" to params,
+            )
         }
 
     private fun renderSupertypes(supertypes: List<SupertypeInfo>): String =
