@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.metrics.MetricsConfig
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals

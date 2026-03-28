@@ -1,5 +1,8 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.dsm.CycleDetail
+import no.f12.codenavigator.navigation.dsm.CycleEdge
+import no.f12.codenavigator.navigation.dsm.CyclesFormatter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

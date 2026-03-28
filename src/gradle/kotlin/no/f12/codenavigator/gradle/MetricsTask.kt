@@ -9,14 +9,14 @@ import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.classinfo.ClassScanner
-import no.f12.codenavigator.navigation.CycleDetector
+import no.f12.codenavigator.navigation.dsm.CycleDetector
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFinder
-import no.f12.codenavigator.navigation.DsmDependencyExtractor
-import no.f12.codenavigator.navigation.DsmMatrixBuilder
-import no.f12.codenavigator.navigation.MetricsBuilder
-import no.f12.codenavigator.navigation.MetricsConfig
-import no.f12.codenavigator.navigation.MetricsFormatter
-import no.f12.codenavigator.navigation.PackageDependencyBuilder
+import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
+import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
+import no.f12.codenavigator.navigation.metrics.MetricsBuilder
+import no.f12.codenavigator.navigation.metrics.MetricsConfig
+import no.f12.codenavigator.navigation.metrics.MetricsFormatter
+import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import no.f12.codenavigator.navigation.rank.TypeRanker
 

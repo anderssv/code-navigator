@@ -1,6 +1,8 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.analysis.Hotspot
+import no.f12.codenavigator.navigation.metrics.MetricsFormatter
+import no.f12.codenavigator.navigation.metrics.MetricsResult
 import kotlin.test.Test
 import kotlin.test.assertTrue
 

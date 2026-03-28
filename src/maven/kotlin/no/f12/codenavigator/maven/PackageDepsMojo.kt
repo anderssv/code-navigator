@@ -5,9 +5,9 @@ import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.navigation.callgraph.CallGraphBuilder
 import no.f12.codenavigator.navigation.callgraph.MethodRef
-import no.f12.codenavigator.navigation.PackageDependencyBuilder
-import no.f12.codenavigator.navigation.PackageDependencyFormatter
-import no.f12.codenavigator.navigation.PackageDepsConfig
+import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
+import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
+import no.f12.codenavigator.navigation.dsm.PackageDepsConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute

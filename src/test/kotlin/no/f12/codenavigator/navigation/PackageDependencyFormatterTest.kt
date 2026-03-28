@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.dsm.PackageDependencies
+import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

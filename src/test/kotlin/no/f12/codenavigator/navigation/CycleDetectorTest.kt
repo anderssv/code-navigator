@@ -1,5 +1,10 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.dsm.Cycle
+import no.f12.codenavigator.navigation.dsm.CycleDetector
+import no.f12.codenavigator.navigation.dsm.DsmMatrix
+import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
+import no.f12.codenavigator.navigation.dsm.PackageDependency
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

@@ -3,11 +3,11 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
-import no.f12.codenavigator.navigation.CycleDetector
-import no.f12.codenavigator.navigation.CyclesConfig
-import no.f12.codenavigator.navigation.CyclesFormatter
-import no.f12.codenavigator.navigation.DsmDependencyExtractor
-import no.f12.codenavigator.navigation.DsmMatrixBuilder
+import no.f12.codenavigator.navigation.dsm.CycleDetector
+import no.f12.codenavigator.navigation.dsm.CyclesConfig
+import no.f12.codenavigator.navigation.dsm.CyclesFormatter
+import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
+import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute

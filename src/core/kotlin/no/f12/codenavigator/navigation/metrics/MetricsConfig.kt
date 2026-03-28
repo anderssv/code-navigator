@@ -1,5 +1,6 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.metrics
 
+import no.f12.codenavigator.navigation.PackageName
 import no.f12.codenavigator.navigation.annotation.FrameworkPresets
 import no.f12.codenavigator.ParamDef
 import no.f12.codenavigator.TaskRegistry

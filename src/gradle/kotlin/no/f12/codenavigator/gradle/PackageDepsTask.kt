@@ -6,9 +6,9 @@ import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.callgraph.MethodRef
-import no.f12.codenavigator.navigation.PackageDependencyBuilder
-import no.f12.codenavigator.navigation.PackageDependencyFormatter
-import no.f12.codenavigator.navigation.PackageDepsConfig
+import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
+import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
+import no.f12.codenavigator.navigation.dsm.PackageDepsConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
