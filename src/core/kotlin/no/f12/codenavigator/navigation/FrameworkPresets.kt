@@ -66,15 +66,32 @@ object FrameworkPresets {
         "JsonSerialize",
     )
 
+    private val JUNIT = setOf(
+        "Test",
+        "BeforeEach",
+        "AfterEach",
+        "BeforeAll",
+        "AfterAll",
+        "ParameterizedTest",
+        "RepeatedTest",
+        "TestFactory",
+        "Disabled",
+        "ExtendWith",
+        "Tag",
+        "Nested",
+        "DisplayName",
+    )
+
     private val PRESETS: Map<String, Set<String>> = mapOf(
         "spring" to SPRING + JPA,
         "jpa" to JPA,
         "jackson" to JACKSON,
+        "junit" to JUNIT,
     )
 
     private val ANNOTATION_TO_FRAMEWORK: Map<String, String> by lazy {
         val result = mutableMapOf<String, String>()
-        val specificity = listOf("jpa" to JPA, "jackson" to JACKSON, "spring" to SPRING)
+        val specificity = listOf("jpa" to JPA, "jackson" to JACKSON, "junit" to JUNIT, "spring" to SPRING)
         for ((framework, annotations) in specificity) {
             for (annotation in annotations) {
                 result.putIfAbsent(annotation, framework)

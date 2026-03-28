@@ -26,7 +26,10 @@ class AnnotationQueryBuilderTest {
 
         assertEquals(1, result.size)
         assertEquals("com.example.MyController", result[0].className.value)
-        assertEquals(setOf("RestController"), result[0].classAnnotations)
+        assertEquals(
+            setOf("org.springframework.web.bind.annotation.RestController"),
+            result[0].classAnnotations,
+        )
     }
 
     @Test
@@ -44,7 +47,10 @@ class AnnotationQueryBuilderTest {
         assertEquals("com.example.MyController", result[0].className.value)
         assertEquals(1, result[0].matchedMethods.size)
         assertEquals("handle", result[0].matchedMethods[0].method.methodName)
-        assertEquals(setOf("GetMapping"), result[0].matchedMethods[0].annotations)
+        assertEquals(
+            setOf("org.springframework.web.bind.annotation.GetMapping"),
+            result[0].matchedMethods[0].annotations,
+        )
     }
 
     @Test
@@ -123,7 +129,13 @@ class AnnotationQueryBuilderTest {
 
         val result = AnnotationQueryBuilder.query(listOf(dir), pattern = "RestController", methods = false)
 
-        assertEquals(setOf("RestController", "RequestMapping"), result[0].classAnnotations)
+        assertEquals(
+            setOf(
+                "org.springframework.web.bind.annotation.RestController",
+                "org.springframework.web.bind.annotation.RequestMapping",
+            ),
+            result[0].classAnnotations,
+        )
     }
 
     @Test

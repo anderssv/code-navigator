@@ -132,4 +132,22 @@ class FrameworkPresetsTest {
 
         assertEquals(null, framework)
     }
+
+    @Test
+    fun `junit preset includes Test and BeforeEach`() {
+        val annotations = FrameworkPresets.resolve("junit")
+
+        assertTrue(annotations.contains("Test"))
+        assertTrue(annotations.contains("BeforeEach"))
+        assertTrue(annotations.contains("AfterEach"))
+        assertTrue(annotations.contains("ParameterizedTest"))
+        assertTrue(annotations.contains("Disabled"))
+    }
+
+    @Test
+    fun `frameworkOf returns junit for Test annotation`() {
+        val framework = FrameworkPresets.frameworkOf("Test")
+
+        assertEquals("junit", framework)
+    }
 }

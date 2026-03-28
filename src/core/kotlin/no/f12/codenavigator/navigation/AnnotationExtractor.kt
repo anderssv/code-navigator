@@ -48,7 +48,7 @@ object AnnotationExtractor {
 
                 override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? {
                     if (descriptor != null) {
-                        classAnnotations.add(annotationSimpleName(descriptor))
+                        classAnnotations.add(annotationFqn(descriptor))
                     }
                     return null
                 }
@@ -69,7 +69,7 @@ object AnnotationExtractor {
                     return object : MethodVisitor(Opcodes.ASM9) {
                         override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? {
                             if (descriptor != null) {
-                                annotations.add(annotationSimpleName(descriptor))
+                                annotations.add(annotationFqn(descriptor))
                             }
                             return null
                         }
@@ -121,6 +121,6 @@ object AnnotationExtractor {
         return Pair(classAnnotations, methodAnnotations)
     }
 
-    private fun annotationSimpleName(descriptor: String): String =
-        Type.getType(descriptor).className.substringAfterLast('.')
+    private fun annotationFqn(descriptor: String): String =
+        Type.getType(descriptor).className
 }
