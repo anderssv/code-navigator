@@ -125,6 +125,12 @@ object AgentHelpText {
         appendLine("  \"Where is string X hardcoded?\"")
         appendLine("    → ${u("find-string-constant", p("pattern", "X"))}")
         appendLine()
+        appendLine("  \"Which classes use annotation X?\"")
+        appendLine("    → ${u("annotations", p("pattern", "X"))}")
+        appendLine()
+        appendLine("  \"Which methods have annotation X?\"")
+        appendLine("    → ${u("annotations", p("pattern", "X"), p("methods", "true"))}")
+        appendLine()
         appendLine("--- Task Reference ---")
         appendLine()
         appendTaskReference(tool)
@@ -220,6 +226,11 @@ object AgentHelpText {
         appendLine("   ${u("find-string-constant", p("pattern", "\"http://\""))}      # find URLs")
         appendLine("   ${u("find-string-constant", p("pattern", "\"SELECT.*FROM\""))} # find SQL")
         appendLine("   ${u("find-string-constant", p("pattern", "\"password|secret\""))} # find sensitive strings")
+        appendLine()
+        appendLine("13. ANNOTATIONS: Find classes and methods by annotation")
+        appendLine("   ${u("annotations", p("pattern", "RestController"))}          # find all @RestController classes")
+        appendLine("   ${u("annotations", p("pattern", "Mapping"), p("methods", "true"))}  # find @*Mapping on classes and methods")
+        appendLine("   ${u("annotations", p("pattern", "Scheduled"), p("methods", "true"))} # find all @Scheduled methods")
     }
 
     private fun generateInterpretation(tool: BuildTool): String = buildString {
@@ -332,6 +343,11 @@ object AgentHelpText {
         appendLine()
         appendLine("${t("find-string-constant")}:")
         appendLine("  [{\"className\": \"com.example.Service\", \"methodName\": \"connect\", \"value\": \"http://localhost:8080\", \"sourceFile\": \"Service.kt\"}]")
+        appendLine()
+        appendLine("${t("annotations")}:")
+        appendLine("  [{\"className\": \"com.example.MyController\", \"sourceFile\": \"MyController.kt\",")
+        appendLine("    \"classAnnotations\": [\"RestController\"],")
+        appendLine("    \"methods\": [{\"method\": \"getUsers\", \"annotations\": [\"GetMapping\"]}]}]")
     }
 
     private fun generateExtraction(tool: BuildTool): String = buildString {

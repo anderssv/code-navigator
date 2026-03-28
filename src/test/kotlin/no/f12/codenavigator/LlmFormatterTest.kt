@@ -29,6 +29,8 @@ import no.f12.codenavigator.navigation.DeadCodeKind
 import no.f12.codenavigator.navigation.DeadCodeReason
 import no.f12.codenavigator.navigation.StringConstantMatch
 import no.f12.codenavigator.navigation.MetricsResult
+import no.f12.codenavigator.navigation.AnnotationMatch
+import no.f12.codenavigator.navigation.MethodAnnotationMatch
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -567,5 +569,49 @@ class LlmFormatterTest {
 
         assertTrue(result.contains("CYCLE a,b"))
         assertTrue(result.contains("CYCLE x,y,z"))
+    }
+
+    // === Annotation query formatting ===
+
+    @Test
+    fun `formats annotation matches compactly`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.MyController"),
+                sourceFile = "MyController.kt",
+                classAnnotations = setOf("RestController"),
+                matchedMethods = emptyList(),
+            ),
+        )
+
+        val result = LlmFormatter.formatAnnotations(matches)
+
+        assertEquals("com.example.MyController MyController.kt @RestController", result)
+    }
+
+    @Test
+    fun `formats annotation matches with methods`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.MyController"),
+                sourceFile = "MyController.kt",
+                classAnnotations = setOf("RestController"),
+                matchedMethods = listOf(
+                    MethodAnnotationMatch(
+                        method = MethodRef(ClassName("com.example.MyController"), "getUsers"),
+                        annotations = setOf("GetMapping"),
+                    ),
+                ),
+            ),
+        )
+
+        val result = LlmFormatter.formatAnnotations(matches)
+
+        assertEquals("com.example.MyController MyController.kt @RestController\n  getUsers @GetMapping", result)
+    }
+
+    @Test
+    fun `formats empty annotation matches`() {
+        assertEquals("(no matches)", LlmFormatter.formatAnnotations(emptyList()))
     }
 }

@@ -266,10 +266,10 @@ class TaskDefTest {
 class TaskRegistryTest {
 
     @Test
-    fun `contains all 25 goals`() {
+    fun `contains all 26 goals`() {
         val goals = TaskRegistry.ALL_TASKS.map { it.goal }.toSet()
 
-        assertEquals(25, goals.size)
+        assertEquals(26, goals.size)
         assertTrue(goals.contains("find-class"))
         assertTrue(goals.contains("hotspots"))
         assertTrue(goals.contains("complexity"))
@@ -278,6 +278,7 @@ class TaskRegistryTest {
         assertTrue(goals.contains("cycles"))
         assertTrue(goals.contains("find-string-constant"))
         assertTrue(goals.contains("type-hierarchy"))
+        assertTrue(goals.contains("annotations"))
     }
 
     @Test
@@ -288,7 +289,7 @@ class TaskRegistryTest {
             val gradleName = task.taskName(BuildTool.GRADLE)
             assertNotNull(gradleName, "Goal '${task.goal}' should resolve to a Gradle task name")
         }
-        assertEquals(25, registryGoals.size)
+        assertEquals(26, registryGoals.size)
     }
 
     @Test
@@ -484,6 +485,7 @@ class TaskRegistryTest {
             "collapse-lambdas" to ParamType.BOOLEAN,
             "section" to ParamType.STRING,
             "framework" to ParamType.LIST_STRING,
+            "methods" to ParamType.BOOLEAN,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }

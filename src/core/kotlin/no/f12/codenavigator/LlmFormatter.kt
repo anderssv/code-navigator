@@ -28,6 +28,7 @@ import no.f12.codenavigator.navigation.SupertypeKind
 import no.f12.codenavigator.navigation.MetricsResult
 import no.f12.codenavigator.navigation.TypeHierarchyResult
 import no.f12.codenavigator.navigation.UsageSite
+import no.f12.codenavigator.navigation.AnnotationMatch
 
 object LlmFormatter {
 
@@ -121,6 +122,22 @@ object LlmFormatter {
         matches.joinToString("\n") { m ->
             "${m.className}.${m.methodName}: \"${m.value}\" ${m.sourceFile}"
         }
+
+    fun formatAnnotations(matches: List<AnnotationMatch>): String {
+        if (matches.isEmpty()) return "(no matches)"
+        return matches.joinToString("\n") { match ->
+            buildString {
+                append("${match.className.value} ${match.sourceFile ?: "<unknown>"}")
+                if (match.classAnnotations.isNotEmpty()) {
+                    append(" ${match.classAnnotations.sorted().joinToString(",") { "@$it" }}")
+                }
+                for (method in match.matchedMethods) {
+                    appendLine()
+                    append("  ${method.method.methodName} ${method.annotations.sorted().joinToString(",") { "@$it" }}")
+                }
+            }
+        }
+    }
 
     fun formatComplexity(results: List<ClassComplexity>): String =
         results.joinToString("\n\n") { c ->

@@ -24,6 +24,7 @@ import no.f12.codenavigator.navigation.StringConstantMatch
 import no.f12.codenavigator.navigation.SupertypeInfo
 import no.f12.codenavigator.navigation.TypeHierarchyResult
 import no.f12.codenavigator.navigation.UsageSite
+import no.f12.codenavigator.navigation.AnnotationMatch
 
 @JvmInline
 private value class JsonRaw(val json: String)
@@ -252,6 +253,21 @@ object JsonFormatter {
                 "methodName" to m.methodName,
                 "value" to m.value,
                 "sourceFile" to m.sourceFile,
+            )
+        }
+
+    fun formatAnnotations(matches: List<AnnotationMatch>): String =
+        jsonArray(matches) { match ->
+            jsonObject(
+                "className" to match.className.value,
+                "sourceFile" to match.sourceFile,
+                "classAnnotations" to JsonRaw(jsonStringArray(match.classAnnotations.sorted())),
+                "methods" to JsonRaw(jsonArray(match.matchedMethods) { method ->
+                    jsonObject(
+                        "method" to method.method.methodName,
+                        "annotations" to JsonRaw(jsonStringArray(method.annotations.sorted())),
+                    )
+                }),
             )
         }
 

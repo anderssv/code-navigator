@@ -30,6 +30,8 @@ import no.f12.codenavigator.navigation.DeadCodeKind
 import no.f12.codenavigator.navigation.DeadCodeReason
 import no.f12.codenavigator.navigation.StringConstantMatch
 import no.f12.codenavigator.navigation.MetricsResult
+import no.f12.codenavigator.navigation.AnnotationMatch
+import no.f12.codenavigator.navigation.MethodAnnotationMatch
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -808,5 +810,53 @@ class JsonFormatterTest {
         assertTrue(result.endsWith("}]"))
         assertTrue(result.contains("\"packages\":[\"a\",\"b\"]"))
         assertTrue(result.contains("\"packages\":[\"x\",\"y\",\"z\"]"))
+    }
+
+    // === Annotation query formatting ===
+
+    @Test
+    fun `formats annotation matches as JSON array`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.MyController"),
+                sourceFile = "MyController.kt",
+                classAnnotations = setOf("RestController"),
+                matchedMethods = emptyList(),
+            ),
+        )
+
+        val result = JsonFormatter.formatAnnotations(matches)
+
+        assertTrue(result.contains("\"className\":\"com.example.MyController\""))
+        assertTrue(result.contains("\"sourceFile\":\"MyController.kt\""))
+        assertTrue(result.contains("\"classAnnotations\":[\"RestController\"]"))
+        assertTrue(result.contains("\"methods\":[]"))
+    }
+
+    @Test
+    fun `formats annotation matches with methods as JSON`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.MyController"),
+                sourceFile = "MyController.kt",
+                classAnnotations = setOf("RestController"),
+                matchedMethods = listOf(
+                    MethodAnnotationMatch(
+                        method = MethodRef(ClassName("com.example.MyController"), "getUsers"),
+                        annotations = setOf("GetMapping"),
+                    ),
+                ),
+            ),
+        )
+
+        val result = JsonFormatter.formatAnnotations(matches)
+
+        assertTrue(result.contains("\"method\":\"getUsers\""))
+        assertTrue(result.contains("\"annotations\":[\"GetMapping\"]"))
+    }
+
+    @Test
+    fun `formats empty annotation matches as empty JSON array`() {
+        assertEquals("[]", JsonFormatter.formatAnnotations(emptyList()))
     }
 }

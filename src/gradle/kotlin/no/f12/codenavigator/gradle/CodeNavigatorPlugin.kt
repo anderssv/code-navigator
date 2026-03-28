@@ -100,6 +100,12 @@ class CodeNavigatorPlugin : Plugin<Project> {
             dependsOn("classes")
         }
 
+        project.tasks.register("cnavAnnotations", AnnotationsTask::class.java) {
+            description = "Finds classes and methods by annotation pattern. Usage: -Ppattern=<regex> [-Pmethods=true]"
+            group = "code-navigator"
+            dependsOn("classes")
+        }
+
         project.tasks.register("cnavComplexity", ComplexityTask::class.java) {
             description = "Shows fan-in/fan-out complexity per class. Usage: -Pclassname=<pattern> [-Pprojectonly=true] [-Pdetail=true]"
             group = "code-navigator"

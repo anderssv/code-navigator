@@ -1,0 +1,128 @@
+package no.f12.codenavigator.navigation
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class AnnotationQueryFormatterTest {
+
+    @Test
+    fun `formats single class match with annotations`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.MyController"),
+                sourceFile = "MyController.kt",
+                classAnnotations = setOf("RestController"),
+                matchedMethods = emptyList(),
+            ),
+        )
+
+        val result = AnnotationQueryFormatter.format(matches)
+
+        assertEquals(
+            "com.example.MyController (MyController.kt) [@RestController]",
+            result,
+        )
+    }
+
+    @Test
+    fun `formats class with multiple annotations sorted`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.MyController"),
+                sourceFile = "MyController.kt",
+                classAnnotations = setOf("RestController", "RequestMapping"),
+                matchedMethods = emptyList(),
+            ),
+        )
+
+        val result = AnnotationQueryFormatter.format(matches)
+
+        assertEquals(
+            "com.example.MyController (MyController.kt) [@RequestMapping, @RestController]",
+            result,
+        )
+    }
+
+    @Test
+    fun `formats class with method matches`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.MyController"),
+                sourceFile = "MyController.kt",
+                classAnnotations = setOf("RestController"),
+                matchedMethods = listOf(
+                    MethodAnnotationMatch(
+                        method = MethodRef(ClassName("com.example.MyController"), "getUsers"),
+                        annotations = setOf("GetMapping"),
+                    ),
+                ),
+            ),
+        )
+
+        val result = AnnotationQueryFormatter.format(matches)
+
+        val expected = """
+            com.example.MyController (MyController.kt) [@RestController]
+              getUsers [@GetMapping]
+        """.trimIndent()
+        assertEquals(expected, result)
+    }
+
+    @Test
+    fun `formats multiple classes separated by blank line`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.ControllerA"),
+                sourceFile = "ControllerA.kt",
+                classAnnotations = setOf("RestController"),
+                matchedMethods = emptyList(),
+            ),
+            AnnotationMatch(
+                className = ClassName("com.example.ControllerB"),
+                sourceFile = "ControllerB.kt",
+                classAnnotations = setOf("RestController"),
+                matchedMethods = emptyList(),
+            ),
+        )
+
+        val result = AnnotationQueryFormatter.format(matches)
+
+        val expected = """
+            com.example.ControllerA (ControllerA.kt) [@RestController]
+            com.example.ControllerB (ControllerB.kt) [@RestController]
+        """.trimIndent()
+        assertEquals(expected, result)
+    }
+
+    @Test
+    fun `formats empty results`() {
+        val result = AnnotationQueryFormatter.format(emptyList())
+
+        assertEquals("No matching annotations found.", result)
+    }
+
+    @Test
+    fun `formats class with no class annotations but method matches`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.Plain"),
+                sourceFile = "Plain.kt",
+                classAnnotations = emptySet(),
+                matchedMethods = listOf(
+                    MethodAnnotationMatch(
+                        method = MethodRef(ClassName("com.example.Plain"), "scheduled"),
+                        annotations = setOf("Scheduled"),
+                    ),
+                ),
+            ),
+        )
+
+        val result = AnnotationQueryFormatter.format(matches)
+
+        val expected = """
+            com.example.Plain (Plain.kt)
+              scheduled [@Scheduled]
+        """.trimIndent()
+        assertEquals(expected, result)
+    }
+}

@@ -142,6 +142,7 @@ object TaskRegistry {
     val METRICS_TOP = ParamDef("top", "<N>", "Max results per section", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
     val SECTION = ParamDef("section", "<name>", "Help section: install, workflow, interpretation, schemas, extraction", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val STRING_PATTERN = ParamDef("pattern", "<regex>", "Regex to match against string constant values", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val METHODS = ParamDef("methods", "true", "Also search method-level annotations", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
 
     private val FORMAT_PARAMS = listOf(FORMAT, LLM)
 
@@ -315,6 +316,13 @@ object TaskRegistry {
         requiresCompilation = true,
     )
 
+    val ANNOTATIONS = TaskDef(
+        goal = "annotations",
+        description = "Find classes and methods by annotation pattern",
+        params = FORMAT_PARAMS + listOf(PATTERN, METHODS),
+        requiresCompilation = true,
+    )
+
     val CONFIG_HELP = TaskDef(
         goal = "config-help",
         description = "Show configuration reference for all parameters",
@@ -338,6 +346,7 @@ object TaskRegistry {
         RANK,
         DEAD,
         FIND_STRING_CONSTANT,
+        ANNOTATIONS,
         COMPLEXITY,
         METRICS,
         HOTSPOTS,

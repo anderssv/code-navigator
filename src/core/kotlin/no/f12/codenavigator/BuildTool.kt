@@ -37,6 +37,7 @@ enum class BuildTool(
             "rank" to "cnavRank",
             "dead" to "cnavDead",
             "find-string-constant" to "cnavFindStringConstant",
+            "annotations" to "cnavAnnotations",
             "complexity" to "cnavComplexity",
             "metrics" to "cnavMetrics",
             "hotspots" to "cnavHotspots",

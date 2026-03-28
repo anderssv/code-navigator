@@ -10,6 +10,7 @@ import java.io.File
 
 data class AnnotationScanResult(
     val className: ClassName,
+    val sourceFile: String?,
     val classAnnotations: Set<String>,
     val methodAnnotations: Map<MethodRef, Set<String>>,
 )
@@ -24,6 +25,7 @@ object AnnotationExtractor {
     fun extract(classFile: File): AnnotationScanResult {
         val reader = createClassReader(classFile)
         var className = ClassName("")
+        var sourceFile: String? = null
         val classAnnotations = mutableSetOf<String>()
         val methodAnnotations = mutableMapOf<MethodRef, Set<String>>()
 
@@ -38,6 +40,10 @@ object AnnotationExtractor {
                     interfaces: Array<out String>?,
                 ) {
                     className = ClassName.fromInternal(name)
+                }
+
+                override fun visitSource(source: String?, debug: String?) {
+                    sourceFile = source
                 }
 
                 override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? {
@@ -81,6 +87,7 @@ object AnnotationExtractor {
 
         return AnnotationScanResult(
             className = className,
+            sourceFile = sourceFile,
             classAnnotations = classAnnotations,
             methodAnnotations = methodAnnotations,
         )
