@@ -194,4 +194,27 @@ class DeadCodeConfigTest {
         assertFalse(config.excludeAnnotated.contains("org.springframework.transaction.annotation.Transactional"))
         assertFalse(config.excludeAnnotated.contains("org.springframework.cache.annotation.Cacheable"))
     }
+
+    @Test
+    fun `all frameworks active by default populates supertypeEntryPoints`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertTrue(config.supertypeEntryPoints.any { it.value == "org.springframework.data.jpa.repository.JpaRepository" })
+        assertTrue(config.supertypeEntryPoints.any { it.value == "org.springframework.data.repository.CrudRepository" })
+    }
+
+    @Test
+    fun `exclude-framework=ALL results in empty supertypeEntryPoints`() {
+        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "ALL"))
+
+        assertTrue(config.supertypeEntryPoints.isEmpty())
+    }
+
+    @Test
+    fun `exclude-framework=spring excludes spring supertypes but keeps quarkus`() {
+        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "spring"))
+
+        assertFalse(config.supertypeEntryPoints.any { it.value == "org.springframework.data.jpa.repository.JpaRepository" })
+        assertTrue(config.supertypeEntryPoints.any { it.value == "io.quarkus.hibernate.orm.panache.PanacheRepository" })
+    }
 }

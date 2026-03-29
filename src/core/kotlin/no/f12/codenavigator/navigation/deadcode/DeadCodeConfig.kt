@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation.deadcode
 
 import no.f12.codenavigator.navigation.annotation.FrameworkPresets
+import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.ParamDef
 import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
@@ -11,6 +12,7 @@ data class DeadCodeConfig(
     val classesOnly: Boolean,
     val excludeAnnotated: List<String>,
     val modifierAnnotated: List<String>,
+    val supertypeEntryPoints: Set<ClassName>,
     val prodOnly: Boolean,
     val format: OutputFormat,
 ) {
@@ -20,6 +22,7 @@ data class DeadCodeConfig(
             val excluded = TaskRegistry.EXCLUDE_FRAMEWORK.parse(properties["exclude-framework"])
             val entryPoints = FrameworkPresets.resolveAllEntryPointsExcept(excluded)
             val modifiers = FrameworkPresets.resolveAllModifiersExcept(excluded)
+            val supertypes = FrameworkPresets.resolveAllSupertypeEntryPointsExcept(excluded)
             val mergedExclude = (explicit + entryPoints.map { it.value }).distinct()
             val mergedModifiers = modifiers.map { it.value }.distinct()
 
@@ -29,6 +32,7 @@ data class DeadCodeConfig(
                 classesOnly = TaskRegistry.CLASSES_ONLY.parse(properties["classes-only"]),
                 excludeAnnotated = mergedExclude,
                 modifierAnnotated = mergedModifiers,
+                supertypeEntryPoints = supertypes,
                 prodOnly = TaskRegistry.PROD_ONLY.parse(properties["prod-only"]),
                 format = ParamDef.parseFormat(properties),
             )

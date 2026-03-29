@@ -285,3 +285,16 @@ Comprehensive refactoring to make all user-facing parameter names use kebab-case
 **7. Add `enhanceProperties()` to Maven mojos:** 4 mojos were missing the call — `FindCallersMojo`, `FindCalleesMojo`, `ComplexityMojo`, `AnnotationsMojo`. Without it, camelCase pattern shorthand (e.g., `OwnCont` → `Own.*Cont`) didn't work in Maven. The remaining 12 mojos either already had it or have no `enhancePattern=true` params.
 
 **Verified on Spring Petclinic:** All new parameter names tested and confirmed working with Maven plugin.
+
+## ~~Spring Data repository awareness in dead code (Medium value)~~ DONE
+
+Spring Data repositories (e.g., `OwnerRepository extends JpaRepository`) are interfaces whose implementations are generated at runtime by Spring — they have no implementing class in bytecode. `cnavDead` always flagged them as dead code (false positive).
+
+**Approach**: Extended the `FrameworkPresets` system with a third dimension: `supertypeEntryPoints`. If a project interface extends a known framework supertype (like `JpaRepository`, `CrudRepository`, `PanacheRepository`), it is excluded from dead code results entirely — same as annotation-based entry points.
+
+**Changes**:
+- `FrameworkPresets.kt`: Added `SPRING_DATA_SUPERTYPES` (12 Spring Data repository interfaces) and `PANACHE_SUPERTYPES` (4 Quarkus Panache types). Extended `Preset` data class with `supertypeEntryPoints` field. Added `resolveSupertypeEntryPoints()` and `resolveAllSupertypeEntryPointsExcept()` methods.
+- `DeadCodeFinder.kt`: Added `supertypeEntryPoints` parameter to `find()`. Added `isExcludedBySupertype()` filter that checks if a class's external interfaces overlap with known supertype entry points.
+- `DeadCodeConfig.kt`: Resolves `supertypeEntryPoints` from `FrameworkPresets` using the same `exclude-framework` mechanism as annotations.
+- `DeadCodeTask.kt` / `DeadCodeMojo.kt`: Wired `config.supertypeEntryPoints` through to `DeadCodeFinder.find()`.
+- Tests: 5 new `FrameworkPresetsTest` tests, 3 new `DeadCodeFinderTest` tests, 3 new `DeadCodeConfigTest` tests.

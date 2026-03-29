@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation.annotation
 
 import no.f12.codenavigator.navigation.AnnotationName
+import no.f12.codenavigator.navigation.ClassName
 
 object FrameworkPresets {
 
@@ -236,16 +237,39 @@ object FrameworkPresets {
         "io.quarkus.grpc.RegisterClientInterceptor",
     ).map { AnnotationName(it) }.toSet()
 
+    private val SPRING_DATA_SUPERTYPES = setOf(
+        "org.springframework.data.repository.Repository",
+        "org.springframework.data.repository.CrudRepository",
+        "org.springframework.data.repository.ListCrudRepository",
+        "org.springframework.data.jpa.repository.JpaRepository",
+        "org.springframework.data.repository.PagingAndSortingRepository",
+        "org.springframework.data.repository.ListPagingAndSortingRepository",
+        "org.springframework.data.repository.reactive.ReactiveCrudRepository",
+        "org.springframework.data.repository.reactive.ReactiveSortingRepository",
+        "org.springframework.data.mongodb.repository.MongoRepository",
+        "org.springframework.data.mongodb.repository.ReactiveMongoRepository",
+        "org.springframework.data.elasticsearch.repository.ElasticsearchRepository",
+        "org.springframework.data.redis.repository.RedisRepository",
+    ).map { ClassName(it) }.toSet()
+
+    private val PANACHE_SUPERTYPES = setOf(
+        "io.quarkus.hibernate.orm.panache.PanacheRepository",
+        "io.quarkus.hibernate.orm.panache.PanacheRepositoryBase",
+        "io.quarkus.hibernate.reactive.panache.PanacheRepository",
+        "io.quarkus.hibernate.reactive.panache.PanacheRepositoryBase",
+    ).map { ClassName(it) }.toSet()
+
     private data class Preset(
         val entryPoints: Set<AnnotationName>,
         val modifiers: Set<AnnotationName> = emptySet(),
+        val supertypeEntryPoints: Set<ClassName> = emptySet(),
     ) {
         val all: Set<AnnotationName> get() = entryPoints + modifiers
     }
 
     private val PRESET_MAP: Map<String, Preset> = mapOf(
-        "spring" to Preset(SPRING + JPA + JAKARTA + VALIDATION + GRPC, SPRING_MODIFIERS),
-        "quarkus" to Preset(QUARKUS + JAXRS + CDI + MICROPROFILE + JPA + JAKARTA + VALIDATION + JACKSON + GRPC, MICROPROFILE_MODIFIERS + GRPC_MODIFIERS),
+        "spring" to Preset(SPRING + JPA + JAKARTA + VALIDATION + GRPC, SPRING_MODIFIERS, SPRING_DATA_SUPERTYPES),
+        "quarkus" to Preset(QUARKUS + JAXRS + CDI + MICROPROFILE + JPA + JAKARTA + VALIDATION + JACKSON + GRPC, MICROPROFILE_MODIFIERS + GRPC_MODIFIERS, PANACHE_SUPERTYPES),
         "grpc" to Preset(GRPC, GRPC_MODIFIERS),
         "jaxrs" to Preset(JAXRS),
         "cdi" to Preset(CDI),
@@ -302,6 +326,12 @@ object FrameworkPresets {
 
     fun resolveAllModifiersExcept(excluded: List<String>): Set<AnnotationName> =
         presetsExcept(excluded).flatMap { it.modifiers }.toSet()
+
+    fun resolveSupertypeEntryPoints(framework: String): Set<ClassName> =
+        PRESET_MAP[framework.lowercase()]?.supertypeEntryPoints ?: emptySet()
+
+    fun resolveAllSupertypeEntryPointsExcept(excluded: List<String>): Set<ClassName> =
+        presetsExcept(excluded).flatMap { it.supertypeEntryPoints }.toSet()
 
     private fun presetsExcept(excluded: List<String>): Collection<Preset> {
         if (excluded.any { it.equals("ALL", ignoreCase = true) }) return emptyList()

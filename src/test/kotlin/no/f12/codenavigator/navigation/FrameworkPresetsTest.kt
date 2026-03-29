@@ -526,4 +526,46 @@ class FrameworkPresetsTest {
         assertTrue(entryPoints.contains(AnnotationName("net.devh.boot.grpc.client.inject.GrpcClient")))
     }
 
+    @Test
+    fun `spring preset includes Spring Data supertype entry points`() {
+        val supertypes = FrameworkPresets.resolveSupertypeEntryPoints("spring")
+
+        assertTrue(supertypes.contains(ClassName("org.springframework.data.repository.CrudRepository")))
+        assertTrue(supertypes.contains(ClassName("org.springframework.data.jpa.repository.JpaRepository")))
+        assertTrue(supertypes.contains(ClassName("org.springframework.data.repository.PagingAndSortingRepository")))
+        assertTrue(supertypes.contains(ClassName("org.springframework.data.repository.reactive.ReactiveCrudRepository")))
+        assertTrue(supertypes.contains(ClassName("org.springframework.data.mongodb.repository.MongoRepository")))
+    }
+
+    @Test
+    fun `resolveAllSupertypeEntryPointsExcept returns empty when ALL excluded`() {
+        val supertypes = FrameworkPresets.resolveAllSupertypeEntryPointsExcept(listOf("ALL"))
+
+        assertTrue(supertypes.isEmpty())
+    }
+
+    @Test
+    fun `resolveAllSupertypeEntryPointsExcept excludes specific preset`() {
+        val withSpring = FrameworkPresets.resolveAllSupertypeEntryPointsExcept(emptyList())
+        val withoutSpring = FrameworkPresets.resolveAllSupertypeEntryPointsExcept(listOf("spring"))
+
+        assertTrue(withSpring.contains(ClassName("org.springframework.data.jpa.repository.JpaRepository")))
+        assertFalse(withoutSpring.contains(ClassName("org.springframework.data.jpa.repository.JpaRepository")))
+    }
+
+    @Test
+    fun `preset without supertype entry points returns empty set`() {
+        val supertypes = FrameworkPresets.resolveSupertypeEntryPoints("jackson")
+
+        assertTrue(supertypes.isEmpty())
+    }
+
+    @Test
+    fun `quarkus preset includes Panache supertype entry points`() {
+        val supertypes = FrameworkPresets.resolveSupertypeEntryPoints("quarkus")
+
+        assertTrue(supertypes.contains(ClassName("io.quarkus.hibernate.orm.panache.PanacheRepository")))
+        assertTrue(supertypes.contains(ClassName("io.quarkus.hibernate.orm.panache.PanacheRepositoryBase")))
+    }
+
 }

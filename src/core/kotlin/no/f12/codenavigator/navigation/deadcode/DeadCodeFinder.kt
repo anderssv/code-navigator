@@ -50,6 +50,7 @@ object DeadCodeFinder {
         classExternalInterfaces: Map<ClassName, Set<ClassName>> = emptyMap(),
         prodOnly: Boolean = false,
         modifierAnnotated: Set<String> = emptySet(),
+        supertypeEntryPoints: Set<ClassName> = emptySet(),
     ): List<DeadCode> {
         val projectClasses = graph.projectClasses()
         if (projectClasses.isEmpty()) return emptyList()
@@ -162,6 +163,7 @@ object DeadCodeFinder {
             .filter { item -> filter == null || item.className.matches(filter) }
             .filter { item -> exclude == null || !item.className.matches(exclude) }
             .filter { item -> !isExcludedByAnnotation(item, excludeAnnotated, classAnnotations, methodAnnotations) }
+            .filter { item -> !isExcludedBySupertype(item, classExternalInterfaces, supertypeEntryPoints) }
             .filter { item -> !prodOnly || item.reason == DeadCodeReason.NO_REFERENCES }
             .sortedWith(compareBy({ it.kind }, { it.className }, { it.memberName ?: "" }))
     }
@@ -231,5 +233,15 @@ object DeadCodeFinder {
             if (methodAnns.any { it.value in excludeAnnotated || it.simpleName() in excludeAnnotated }) return true
         }
         return false
+    }
+
+    private fun isExcludedBySupertype(
+        item: DeadCode,
+        classExternalInterfaces: Map<ClassName, Set<ClassName>>,
+        supertypeEntryPoints: Set<ClassName>,
+    ): Boolean {
+        if (supertypeEntryPoints.isEmpty()) return false
+        val externalInterfaces = classExternalInterfaces[item.className] ?: return false
+        return externalInterfaces.any { it in supertypeEntryPoints }
     }
 }

@@ -104,6 +104,7 @@ class DeadCodeMojo : AbstractMojo() {
             classExternalInterfaces = classExternalInterfaces,
             prodOnly = config.prodOnly,
             modifierAnnotated = config.modifierAnnotated.toSet(),
+            supertypeEntryPoints = config.supertypeEntryPoints,
         )
 
         if (dead.isEmpty()) {

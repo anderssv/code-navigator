@@ -28,6 +28,7 @@ class DeadCodeFinderTest {
         classExternalInterfaces: Map<ClassName, Set<ClassName>> = emptyMap(),
         prodOnly: Boolean = false,
         modifierAnnotated: Set<String> = emptySet(),
+        supertypeEntryPoints: Set<ClassName> = emptySet(),
     ): List<DeadCode> = DeadCodeFinder.find(
         graph = graph,
         filter = filter,
@@ -43,6 +44,7 @@ class DeadCodeFinderTest {
         classExternalInterfaces = classExternalInterfaces,
         prodOnly = prodOnly,
         modifierAnnotated = modifierAnnotated,
+        supertypeEntryPoints = supertypeEntryPoints,
     )
 
     @Test
@@ -1010,5 +1012,61 @@ class DeadCodeFinderTest {
 
         assertEquals(1, dead.size)
         assertEquals(DeadCodeConfidence.LOW, dead[0].confidence)
+    }
+
+    @Test
+    fun `class implementing supertype entry point is excluded from dead code`() {
+        val graph = testCallGraph(
+            method("com.example.OwnerRepository", "findAll") to method("org.springframework.data.jpa.repository.JpaRepository", "findAll"),
+            projectClasses = setOf("com.example.OwnerRepository"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            classExternalInterfaces = mapOf(
+                ClassName("com.example.OwnerRepository") to setOf(ClassName("org.springframework.data.jpa.repository.JpaRepository")),
+            ),
+            supertypeEntryPoints = setOf(ClassName("org.springframework.data.jpa.repository.JpaRepository")),
+        )
+
+        assertTrue(dead.isEmpty(), "Spring Data repository should be excluded from dead code")
+    }
+
+    @Test
+    fun `class implementing unknown external interface is not excluded by supertype check`() {
+        val graph = testCallGraph(
+            method("com.example.MyImpl", "doWork") to method("com.external.SomeInterface", "doWork"),
+            projectClasses = setOf("com.example.MyImpl"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            classExternalInterfaces = mapOf(
+                ClassName("com.example.MyImpl") to setOf(ClassName("com.external.SomeInterface")),
+            ),
+            supertypeEntryPoints = setOf(ClassName("org.springframework.data.jpa.repository.JpaRepository")),
+        )
+
+        assertEquals(1, dead.size)
+        assertEquals(DeadCodeConfidence.HIGH, dead[0].confidence, "Unknown external interface does not lower class-level confidence")
+    }
+
+    @Test
+    fun `supertype exclusion is disabled when supertypeEntryPoints is empty`() {
+        val graph = testCallGraph(
+            method("com.example.OwnerRepository", "findAll") to method("org.springframework.data.jpa.repository.JpaRepository", "findAll"),
+            projectClasses = setOf("com.example.OwnerRepository"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            classExternalInterfaces = mapOf(
+                ClassName("com.example.OwnerRepository") to setOf(ClassName("org.springframework.data.jpa.repository.JpaRepository")),
+            ),
+            supertypeEntryPoints = emptySet(),
+        )
+
+        assertEquals(1, dead.size, "Without supertype entry points, repository is reported as dead")
+        assertEquals(DeadCodeConfidence.HIGH, dead[0].confidence, "No supertype entry points means no special handling")
     }
 }
