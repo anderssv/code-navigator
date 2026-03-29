@@ -483,7 +483,7 @@ class TaskRegistryTest {
             "max-changeset-size" to ParamType.INT,
             "collapse-lambdas" to ParamType.BOOLEAN,
             "section" to ParamType.STRING,
-            "framework" to ParamType.LIST_STRING,
+            "exclude-framework" to ParamType.LIST_STRING,
             "methods" to ParamType.BOOLEAN,
         )
 

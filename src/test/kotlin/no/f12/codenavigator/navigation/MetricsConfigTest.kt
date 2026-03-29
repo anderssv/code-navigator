@@ -80,24 +80,26 @@ class MetricsConfigTest {
 
     @Test
     fun `parses exclude-annotated from property map`() {
-        val config = MetricsConfig.parse(mapOf("exclude-annotated" to "Scheduled,EventListener"))
+        val config = MetricsConfig.parse(mapOf(
+            "exclude-annotated" to "Scheduled,EventListener",
+            "exclude-framework" to "ALL",
+        ))
 
         assertEquals(listOf("Scheduled", "EventListener"), config.excludeAnnotated)
     }
 
     @Test
-    fun `parses framework and resolves to annotation preset`() {
-        val config = MetricsConfig.parse(mapOf("framework" to "jackson"))
+    fun `all frameworks active by default includes annotations in excludeAnnotated`() {
+        val config = MetricsConfig.parse(emptyMap())
 
         assertTrue(config.excludeAnnotated.contains("com.fasterxml.jackson.annotation.JsonCreator"))
-        assertTrue(config.excludeAnnotated.contains("com.fasterxml.jackson.annotation.JsonProperty"))
+        assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Controller"))
     }
 
     @Test
-    fun `merges explicit annotations with framework preset`() {
+    fun `merges explicit annotations with default framework presets`() {
         val config = MetricsConfig.parse(mapOf(
             "exclude-annotated" to "Custom",
-            "framework" to "jackson",
         ))
 
         assertTrue(config.excludeAnnotated.contains("Custom"))
@@ -105,8 +107,8 @@ class MetricsConfigTest {
     }
 
     @Test
-    fun `defaults excludeAnnotated to empty list when neither param present`() {
-        val config = MetricsConfig.parse(emptyMap())
+    fun `exclude-framework=ALL results in empty excludeAnnotated`() {
+        val config = MetricsConfig.parse(mapOf("exclude-framework" to "ALL"))
 
         assertEquals(emptyList<String>(), config.excludeAnnotated)
     }

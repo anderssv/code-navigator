@@ -55,8 +55,8 @@ class MetricsMojo : AbstractMojo() {
     @Parameter(property = "exclude-annotated")
     private var excludeAnnotated: String? = null
 
-    @Parameter(property = "framework")
-    private var framework: String? = null
+    @Parameter(property = "exclude-framework")
+    private var excludeFramework: String? = null
 
     override fun execute() {
         val classesDir = File(project.build.outputDirectory)
@@ -121,7 +121,7 @@ class MetricsMojo : AbstractMojo() {
         top?.let { put("top", it) }
         rootPackage?.let { put("root-package", it) }
         excludeAnnotated?.let { put("exclude-annotated", it) }
-        framework?.let { put("framework", it) }
+        excludeFramework?.let { put("exclude-framework", it) }
         if (noFollow) put("no-follow", null)
     }
 }

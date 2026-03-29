@@ -216,6 +216,26 @@ object FrameworkPresets {
         "io.quarkus.runtime.Startup",
     ).map { AnnotationName(it) }.toSet()
 
+    private val GRPC = setOf(
+        "io.quarkus.grpc.GrpcService",
+        "io.quarkus.grpc.GrpcClient",
+        "io.quarkus.grpc.GlobalInterceptor",
+        "net.devh.boot.grpc.server.service.GrpcService",
+        "net.devh.boot.grpc.client.inject.GrpcClient",
+        "net.devh.boot.grpc.client.inject.GrpcClientBean",
+        "net.devh.boot.grpc.server.interceptor.GrpcGlobalServerInterceptor",
+        "net.devh.boot.grpc.client.interceptor.GrpcGlobalClientInterceptor",
+        "io.grpc.stub.annotations.GrpcGenerated",
+    ).map { AnnotationName(it) }.toSet()
+
+    private val GRPC_MODIFIERS = setOf(
+        "io.smallrye.common.annotation.Blocking",
+        "io.smallrye.common.annotation.NonBlocking",
+        "io.smallrye.common.annotation.RunOnVirtualThread",
+        "io.quarkus.grpc.RegisterInterceptor",
+        "io.quarkus.grpc.RegisterClientInterceptor",
+    ).map { AnnotationName(it) }.toSet()
+
     private data class Preset(
         val entryPoints: Set<AnnotationName>,
         val modifiers: Set<AnnotationName> = emptySet(),
@@ -224,8 +244,9 @@ object FrameworkPresets {
     }
 
     private val PRESET_MAP: Map<String, Preset> = mapOf(
-        "spring" to Preset(SPRING + JPA + JAKARTA + VALIDATION, SPRING_MODIFIERS),
-        "quarkus" to Preset(QUARKUS + JAXRS + CDI + MICROPROFILE + JPA + JAKARTA + VALIDATION + JACKSON, MICROPROFILE_MODIFIERS),
+        "spring" to Preset(SPRING + JPA + JAKARTA + VALIDATION + GRPC, SPRING_MODIFIERS),
+        "quarkus" to Preset(QUARKUS + JAXRS + CDI + MICROPROFILE + JPA + JAKARTA + VALIDATION + JACKSON + GRPC, MICROPROFILE_MODIFIERS + GRPC_MODIFIERS),
+        "grpc" to Preset(GRPC, GRPC_MODIFIERS),
         "jaxrs" to Preset(JAXRS),
         "cdi" to Preset(CDI),
         "microprofile" to Preset(MICROPROFILE, MICROPROFILE_MODIFIERS),
@@ -244,6 +265,7 @@ object FrameworkPresets {
         val specificity = listOf(
             "jpa" to JPA, "jackson" to JACKSON, "jaxrs" to JAXRS, "cdi" to CDI,
             "microprofile" to MICROPROFILE, "microprofile" to MICROPROFILE_MODIFIERS,
+            "grpc" to GRPC, "grpc" to GRPC_MODIFIERS,
             "jakarta" to JAKARTA, "validation" to VALIDATION, "junit" to JUNIT,
             "quarkus" to QUARKUS, "spring" to SPRING, "spring" to SPRING_MODIFIERS,
         )
@@ -274,6 +296,18 @@ object FrameworkPresets {
         frameworks.flatMap { resolveModifiers(it) }.toSet()
 
     fun availablePresets(): Set<String> = PRESETS.keys
+
+    fun resolveAllEntryPointsExcept(excluded: List<String>): Set<AnnotationName> =
+        presetsExcept(excluded).flatMap { it.entryPoints }.toSet()
+
+    fun resolveAllModifiersExcept(excluded: List<String>): Set<AnnotationName> =
+        presetsExcept(excluded).flatMap { it.modifiers }.toSet()
+
+    private fun presetsExcept(excluded: List<String>): Collection<Preset> {
+        if (excluded.any { it.equals("ALL", ignoreCase = true) }) return emptyList()
+        val excludedLower = excluded.map { it.lowercase() }.toSet()
+        return PRESET_MAP.filterKeys { it !in excludedLower }.values
+    }
 
     fun frameworkOf(annotation: AnnotationName): String? =
         ANNOTATION_TO_FRAMEWORK[annotation]

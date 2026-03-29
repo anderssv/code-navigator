@@ -17,9 +17,9 @@ data class DeadCodeConfig(
     companion object {
         fun parse(properties: Map<String, String?>): DeadCodeConfig {
             val explicit = TaskRegistry.EXCLUDE_ANNOTATED.parse(properties["exclude-annotated"])
-            val frameworks = TaskRegistry.FRAMEWORK.parse(properties["framework"])
-            val entryPoints = FrameworkPresets.resolveAllEntryPoints(frameworks)
-            val modifiers = FrameworkPresets.resolveAllModifiers(frameworks)
+            val excluded = TaskRegistry.EXCLUDE_FRAMEWORK.parse(properties["exclude-framework"])
+            val entryPoints = FrameworkPresets.resolveAllEntryPointsExcept(excluded)
+            val modifiers = FrameworkPresets.resolveAllModifiersExcept(excluded)
             val mergedExclude = (explicit + entryPoints.map { it.value }).distinct()
             val mergedModifiers = modifiers.map { it.value }.distinct()
 

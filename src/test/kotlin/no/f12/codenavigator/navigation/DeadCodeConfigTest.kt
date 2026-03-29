@@ -90,21 +90,27 @@ class DeadCodeConfigTest {
 
     @Test
     fun `parses exclude-annotated from comma-separated string`() {
-        val config = DeadCodeConfig.parse(mapOf("exclude-annotated" to "RestController,Scheduled,Component"))
+        val config = DeadCodeConfig.parse(mapOf(
+            "exclude-annotated" to "RestController,Scheduled,Component",
+            "exclude-framework" to "ALL",
+        ))
 
         assertEquals(listOf("RestController", "Scheduled", "Component"), config.excludeAnnotated)
     }
 
     @Test
     fun `defaults exclude-annotated to empty list when absent`() {
-        val config = DeadCodeConfig.parse(emptyMap())
+        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "ALL"))
 
         assertTrue(config.excludeAnnotated.isEmpty())
     }
 
     @Test
     fun `trims whitespace from exclude-annotated values`() {
-        val config = DeadCodeConfig.parse(mapOf("exclude-annotated" to " RestController , Scheduled "))
+        val config = DeadCodeConfig.parse(mapOf(
+            "exclude-annotated" to " RestController , Scheduled ",
+            "exclude-framework" to "ALL",
+        ))
 
         assertEquals(listOf("RestController", "Scheduled"), config.excludeAnnotated)
     }
@@ -131,8 +137,8 @@ class DeadCodeConfigTest {
     }
 
     @Test
-    fun `framework=spring adds spring annotations to excludeAnnotated`() {
-        val config = DeadCodeConfig.parse(mapOf("framework" to "spring"))
+    fun `all frameworks active by default includes spring entry-points in excludeAnnotated`() {
+        val config = DeadCodeConfig.parse(emptyMap())
 
         assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Controller"))
         assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Component"))
@@ -140,9 +146,8 @@ class DeadCodeConfigTest {
     }
 
     @Test
-    fun `framework merges with explicit exclude-annotated`() {
+    fun `exclude-framework merges with explicit exclude-annotated`() {
         val config = DeadCodeConfig.parse(mapOf(
-            "framework" to "spring",
             "exclude-annotated" to "MyCustomAnnotation",
         ))
 
@@ -151,41 +156,42 @@ class DeadCodeConfigTest {
     }
 
     @Test
-    fun `framework defaults to empty when absent`() {
-        val config = DeadCodeConfig.parse(emptyMap())
+    fun `exclude-framework=ALL results in empty excludeAnnotated`() {
+        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "ALL"))
 
         assertTrue(config.excludeAnnotated.isEmpty())
     }
 
     @Test
-    fun `defaults modifierAnnotated to empty list when absent`() {
+    fun `all frameworks active by default populates modifierAnnotated`() {
         val config = DeadCodeConfig.parse(emptyMap())
+
+        assertTrue(config.modifierAnnotated.contains("org.springframework.transaction.annotation.Transactional"))
+        assertTrue(config.modifierAnnotated.contains("org.eclipse.microprofile.faulttolerance.CircuitBreaker"))
+    }
+
+    @Test
+    fun `exclude-framework=ALL results in empty modifierAnnotated`() {
+        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "ALL"))
 
         assertTrue(config.modifierAnnotated.isEmpty())
     }
 
     @Test
-    fun `framework=spring populates modifierAnnotated with spring modifier annotations`() {
-        val config = DeadCodeConfig.parse(mapOf("framework" to "spring"))
+    fun `exclude-framework=spring excludes spring but keeps others`() {
+        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "spring"))
 
-        assertTrue(config.modifierAnnotated.contains("org.springframework.transaction.annotation.Transactional"))
-        assertTrue(config.modifierAnnotated.contains("org.springframework.cache.annotation.Cacheable"))
+        assertFalse(config.excludeAnnotated.contains("org.springframework.stereotype.Controller"))
+        assertTrue(config.excludeAnnotated.contains("jakarta.ws.rs.GET"))
+        assertFalse(config.modifierAnnotated.contains("org.springframework.transaction.annotation.Transactional"))
+        assertTrue(config.modifierAnnotated.contains("org.eclipse.microprofile.faulttolerance.CircuitBreaker"))
     }
 
     @Test
-    fun `framework=spring excludeAnnotated does not contain modifier annotations`() {
-        val config = DeadCodeConfig.parse(mapOf("framework" to "spring"))
+    fun `excludeAnnotated does not contain modifier annotations`() {
+        val config = DeadCodeConfig.parse(emptyMap())
 
         assertFalse(config.excludeAnnotated.contains("org.springframework.transaction.annotation.Transactional"))
         assertFalse(config.excludeAnnotated.contains("org.springframework.cache.annotation.Cacheable"))
-    }
-
-    @Test
-    fun `framework=quarkus populates both excludeAnnotated and modifierAnnotated`() {
-        val config = DeadCodeConfig.parse(mapOf("framework" to "quarkus"))
-
-        assertTrue(config.excludeAnnotated.contains("jakarta.ws.rs.GET"), "Entry-point annotation should be in excludeAnnotated")
-        assertTrue(config.modifierAnnotated.contains("org.eclipse.microprofile.faulttolerance.CircuitBreaker"), "Modifier annotation should be in modifierAnnotated")
-        assertFalse(config.excludeAnnotated.contains("org.eclipse.microprofile.faulttolerance.CircuitBreaker"), "Modifier should NOT be in excludeAnnotated")
     }
 }

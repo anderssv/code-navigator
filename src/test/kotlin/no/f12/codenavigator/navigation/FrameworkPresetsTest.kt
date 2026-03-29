@@ -398,4 +398,132 @@ class FrameworkPresetsTest {
         assertTrue(modifiers.contains(AnnotationName("org.eclipse.microprofile.faulttolerance.CircuitBreaker")))
     }
 
+    // --- resolveAllEntryPointsExcept / resolveAllModifiersExcept ---
+
+    @Test
+    fun `resolveAllEntryPointsExcept with empty exclusion returns all entry-points`() {
+        val all = FrameworkPresets.resolveAllEntryPointsExcept(emptyList())
+
+        assertTrue(all.contains(AnnotationName("org.springframework.stereotype.Controller")))
+        assertTrue(all.contains(AnnotationName("jakarta.ws.rs.GET")))
+        assertTrue(all.contains(AnnotationName("io.quarkus.scheduler.Scheduled")))
+        assertTrue(all.contains(AnnotationName("org.junit.jupiter.api.Test")))
+    }
+
+    @Test
+    fun `resolveAllEntryPointsExcept excludes named preset`() {
+        val result = FrameworkPresets.resolveAllEntryPointsExcept(listOf("spring"))
+
+        assertFalse(result.contains(AnnotationName("org.springframework.stereotype.Controller")))
+        assertTrue(result.contains(AnnotationName("jakarta.ws.rs.GET")))
+    }
+
+    @Test
+    fun `resolveAllModifiersExcept with empty exclusion returns all modifiers`() {
+        val all = FrameworkPresets.resolveAllModifiersExcept(emptyList())
+
+        assertTrue(all.contains(AnnotationName("org.springframework.transaction.annotation.Transactional")))
+        assertTrue(all.contains(AnnotationName("org.eclipse.microprofile.faulttolerance.CircuitBreaker")))
+    }
+
+    @Test
+    fun `resolveAllModifiersExcept excludes named preset`() {
+        val result = FrameworkPresets.resolveAllModifiersExcept(listOf("spring"))
+
+        assertFalse(result.contains(AnnotationName("org.springframework.transaction.annotation.Transactional")))
+        assertTrue(result.contains(AnnotationName("org.eclipse.microprofile.faulttolerance.CircuitBreaker")))
+    }
+
+    @Test
+    fun `resolveAllEntryPointsExcept ALL returns empty set`() {
+        val result = FrameworkPresets.resolveAllEntryPointsExcept(listOf("ALL"))
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `resolveAllModifiersExcept ALL returns empty set`() {
+        val result = FrameworkPresets.resolveAllModifiersExcept(listOf("ALL"))
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `resolveAllEntryPointsExcept is case-insensitive`() {
+        val result = FrameworkPresets.resolveAllEntryPointsExcept(listOf("Spring"))
+
+        assertFalse(result.contains(AnnotationName("org.springframework.stereotype.Controller")))
+    }
+
+    // --- gRPC preset ---
+
+    @Test
+    fun `grpc preset is in availablePresets`() {
+        assertTrue(FrameworkPresets.availablePresets().contains("grpc"))
+    }
+
+    @Test
+    fun `grpc preset contains Quarkus GrpcService entry-point`() {
+        val entryPoints = FrameworkPresets.resolveEntryPoints("grpc")
+
+        assertTrue(entryPoints.contains(AnnotationName("io.quarkus.grpc.GrpcService")))
+        assertTrue(entryPoints.contains(AnnotationName("io.quarkus.grpc.GrpcClient")))
+        assertTrue(entryPoints.contains(AnnotationName("io.quarkus.grpc.GlobalInterceptor")))
+    }
+
+    @Test
+    fun `grpc preset contains Spring gRPC entry-points`() {
+        val entryPoints = FrameworkPresets.resolveEntryPoints("grpc")
+
+        assertTrue(entryPoints.contains(AnnotationName("net.devh.boot.grpc.server.service.GrpcService")))
+        assertTrue(entryPoints.contains(AnnotationName("net.devh.boot.grpc.client.inject.GrpcClient")))
+    }
+
+    @Test
+    fun `grpc preset contains GrpcGenerated entry-point`() {
+        val entryPoints = FrameworkPresets.resolveEntryPoints("grpc")
+
+        assertTrue(entryPoints.contains(AnnotationName("io.grpc.stub.annotations.GrpcGenerated")))
+    }
+
+    @Test
+    fun `grpc preset contains SmallRye Blocking modifier`() {
+        val entryPoints = FrameworkPresets.resolveEntryPoints("grpc")
+        val modifiers = FrameworkPresets.resolveModifiers("grpc")
+
+        val blocking = AnnotationName("io.smallrye.common.annotation.Blocking")
+        assertTrue(modifiers.contains(blocking))
+        assertFalse(entryPoints.contains(blocking))
+    }
+
+    @Test
+    fun `grpc preset contains RegisterInterceptor modifier`() {
+        val modifiers = FrameworkPresets.resolveModifiers("grpc")
+
+        assertTrue(modifiers.contains(AnnotationName("io.quarkus.grpc.RegisterInterceptor")))
+    }
+
+    @Test
+    fun `frameworkOf returns grpc for GrpcService annotation`() {
+        val framework = FrameworkPresets.frameworkOf(AnnotationName("io.quarkus.grpc.GrpcService"))
+
+        assertEquals("grpc", framework)
+    }
+
+    @Test
+    fun `quarkus composite preset includes grpc entry-points`() {
+        val entryPoints = FrameworkPresets.resolveEntryPoints("quarkus")
+
+        assertTrue(entryPoints.contains(AnnotationName("io.quarkus.grpc.GrpcService")))
+        assertTrue(entryPoints.contains(AnnotationName("io.quarkus.grpc.GrpcClient")))
+    }
+
+    @Test
+    fun `spring composite preset includes Spring gRPC entry-points`() {
+        val entryPoints = FrameworkPresets.resolveEntryPoints("spring")
+
+        assertTrue(entryPoints.contains(AnnotationName("net.devh.boot.grpc.server.service.GrpcService")))
+        assertTrue(entryPoints.contains(AnnotationName("net.devh.boot.grpc.client.inject.GrpcClient")))
+    }
+
 }

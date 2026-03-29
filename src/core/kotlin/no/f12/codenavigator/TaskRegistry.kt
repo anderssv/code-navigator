@@ -2,6 +2,7 @@ package no.f12.codenavigator
 
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.PatternEnhancer
+import no.f12.codenavigator.navigation.annotation.FrameworkPresets
 import java.time.LocalDate
 
 sealed class ParamType<T>(val parse: (value: String?, defaultValue: String?) -> T) {
@@ -133,7 +134,7 @@ object TaskRegistry {
     val CLASSES_ONLY = ParamDef("classes-only", "true", "Show only unreferenced classes, skip dead methods", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val EXCLUDE_ANNOTATED = ParamDef("exclude-annotated", "<ann1>,<ann2>", "Exclude classes/methods bearing these annotations (simple names, comma-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
     val PROD_ONLY = ParamDef("prod-only", "true", "Show only items unreferenced in both production and test code", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
-    val FRAMEWORK = ParamDef("framework", "<name>", "Framework preset: spring, quarkus, jaxrs, cdi, microprofile, jpa, jakarta, validation, jackson", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
+    val EXCLUDE_FRAMEWORK = ParamDef("exclude-framework", "<name>", "Disable framework preset (all active by default). Available: ${FrameworkPresets.availablePresets().sorted().joinToString(", ")}. Use ALL to disable all.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
     val DETAIL = ParamDef("detail", "true", "Show individual call details", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val COLLAPSE_LAMBDAS = ParamDef("collapse-lambdas", "false", "Set false to show lambda classes separately", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val MIN_SHARED_REVS = ParamDef("min-shared-revs", "<N>", "Min shared commits", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
@@ -242,7 +243,7 @@ object TaskRegistry {
     val DEAD = TaskDef(
         goal = "dead",
         description = "Detect dead code (unreferenced classes and methods)",
-        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, PROD_ONLY, FRAMEWORK),
+        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, PROD_ONLY, EXCLUDE_FRAMEWORK),
         requiresCompilation = true,
     )
 
@@ -291,7 +292,7 @@ object TaskRegistry {
     val METRICS = TaskDef(
         goal = "metrics",
         description = "Quick project health snapshot: classes, packages, fan-in/out, cycles, dead code, hotspots",
-        params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, ROOT_PACKAGE, EXCLUDE_ANNOTATED, FRAMEWORK),
+        params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, ROOT_PACKAGE, EXCLUDE_ANNOTATED, EXCLUDE_FRAMEWORK),
         requiresCompilation = true,
     )
 

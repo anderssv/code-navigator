@@ -2,6 +2,8 @@ package no.f12.codenavigator.navigation.deadcode
 
 object DeadCodeFormatter {
 
+    private val NOTE = "Note: Dead code detection is a hard problem with many edge cases (reflection, serialization, generated code). Use exclude=<regex> to filter out packages or classes you know are not dead."
+
     fun format(dead: List<DeadCode>): String {
         if (dead.isEmpty()) return "No potential dead code found."
 
@@ -26,6 +28,9 @@ object DeadCodeFormatter {
                     )
                 )
             }
+            appendLine()
+            appendLine()
+            append(NOTE)
         }
     }
 }

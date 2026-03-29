@@ -50,8 +50,8 @@ class DeadCodeMojo : AbstractMojo() {
     @Parameter(property = "prod-only")
     private var prodOnly: String? = null
 
-    @Parameter(property = "framework")
-    private var framework: String? = null
+    @Parameter(property = "exclude-framework")
+    private var excludeFramework: String? = null
 
     override fun execute() {
         val classesDir = File(project.build.outputDirectory)
@@ -126,6 +126,6 @@ class DeadCodeMojo : AbstractMojo() {
         classesOnly?.let { put("classes-only", it) }
         excludeAnnotated?.let { put("exclude-annotated", it) }
         prodOnly?.let { put("prod-only", it) }
-        framework?.let { put("framework", it) }
+        excludeFramework?.let { put("exclude-framework", it) }
     }
 }

@@ -113,11 +113,15 @@ object LlmFormatter {
     fun formatRank(ranked: List<RankedType>): String =
         ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }
 
-    fun formatDead(dead: List<DeadCode>): String =
-        dead.joinToString("\n") { d ->
+    private val DEAD_CODE_NOTE = "Note: Dead code detection is a hard problem with many edge cases (reflection, serialization, generated code). Use exclude=<regex> to filter out packages or classes you know are not dead."
+
+    fun formatDead(dead: List<DeadCode>): String {
+        if (dead.isEmpty()) return ""
+        return dead.joinToString("\n") { d ->
             val name = if (d.memberName != null) "${d.className}.${d.memberName}" else d.className.toString()
             "$name ${d.kind.name} ${d.sourceFile} confidence=${d.confidence.name} reason=${d.reason.name}"
-        }
+        } + "\n\n" + DEAD_CODE_NOTE
+    }
 
     fun formatStringConstants(matches: List<StringConstantMatch>): String =
         matches.joinToString("\n") { m ->

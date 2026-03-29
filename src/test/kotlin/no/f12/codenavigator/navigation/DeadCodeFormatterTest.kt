@@ -52,4 +52,22 @@ class DeadCodeFormatterTest {
 
         assertTrue(output.contains("-"), "Class entries show dash for member name")
     }
+
+    @Test
+    fun `includes note about exclude regex at the end`() {
+        val dead = listOf(
+            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt", DeadCodeConfidence.HIGH, DeadCodeReason.NO_REFERENCES),
+        )
+
+        val output = DeadCodeFormatter.format(dead)
+
+        assertTrue(output.contains("exclude=<regex>"), "Should contain hint about exclude parameter")
+    }
+
+    @Test
+    fun `no-results message does not include note`() {
+        val output = DeadCodeFormatter.format(emptyList())
+
+        assertTrue(!output.contains("exclude"), "No-results message should not include the note")
+    }
 }

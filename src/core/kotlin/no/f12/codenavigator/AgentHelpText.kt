@@ -1,5 +1,7 @@
 package no.f12.codenavigator
 
+import no.f12.codenavigator.navigation.annotation.FrameworkPresets
+
 object AgentHelpText {
     private val VALID_SECTIONS = setOf("install", "setup", "workflow", "interpretation", "schemas", "extraction")
 
@@ -218,11 +220,12 @@ object AgentHelpText {
         appendLine("   ${u("dead")}                         # all potential dead code")
         appendLine("   ${u("dead", p("filter", "service"))}             # only show matches")
         appendLine("   ${u("dead", p("exclude", "\"Main|Test\""))}    # exclude entry points")
+        appendLine("   ${u("dead", p("exclude", "\"com\\\\.example\\\\.grpc\""))}  # exclude generated packages")
         appendLine("   ${u("dead", p("classes-only", "true"))}         # only unreferenced classes")
         appendLine("   ${u("dead", p("exclude-annotated", "\"RestController,Scheduled\""))}  # skip framework-annotated")
         appendLine("   ${u("dead", p("prod-only", "true"))}              # only items with zero references (production + test)")
-        appendLine("   ${u("dead", p("framework", "spring"))}           # auto-exclude Spring entry-point annotations")
-        appendLine("   ${u("dead", p("framework", "quarkus"))}          # auto-exclude Quarkus/JAX-RS/CDI/MicroProfile annotations")
+        appendLine("   ${u("dead", p("exclude-framework", "spring"))}      # disable Spring preset (keep others active)")
+        appendLine("   ${u("dead", p("exclude-framework", "ALL"))}         # disable all framework presets")
         appendLine()
         appendLine("10. COMPLEXITY: Measure class coupling (fan-in/fan-out)")
         appendLine("   ${u("complexity")}                        # all classes sorted by fan-out")
@@ -273,12 +276,15 @@ object AgentHelpText {
         appendLine("  NO_REFERENCES = no incoming references at all.")
         appendLine("  TEST_ONLY = referenced only in test code, not production.")
         appendLine("- Use ${p("prod-only", "true")} to hide TEST_ONLY items and focus on truly unreferenced code.")
-        appendLine("- Use ${p("framework", "<preset>")} to handle framework annotations automatically.")
-        appendLine("  Available presets: spring, quarkus, jaxrs, cdi, microprofile, jpa, jakarta, validation, jackson.")
+        appendLine("- All framework presets are active by default — no configuration needed for Spring, Quarkus, or other frameworks.")
+        appendLine("  Use ${p("exclude-framework", "<preset>")} to disable a specific preset.")
+        appendLine("  Available presets: ${FrameworkPresets.availablePresets().sorted().joinToString(", ")}.")
+        appendLine("  Use ${p("exclude-framework", "ALL")} to disable all framework handling.")
         appendLine("  Composite presets: 'quarkus' includes jaxrs + cdi + microprofile + jpa + jakarta + validation + jackson.")
         appendLine("  Entry-point annotations (e.g. @GetMapping, @Scheduled) → excluded from results.")
         appendLine("  Modifier annotations (e.g. @Transactional, @Cacheable) → reported with LOW confidence.")
-        appendLine("- Use -Pexclude-annotated to suppress additional framework entry points not covered by presets.")
+        appendLine("- Use -Pexclude-annotated to suppress additional entry points not covered by presets.")
+        appendLine("- Use ${p("exclude", "<regex>")} to exclude entire packages (e.g. generated protobuf code).")
         appendLine("- Companion object members and data class copy()/componentN() are auto-filtered.")
         appendLine()
         appendLine("Change coupling (${t("coupling")}):")
