@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.42
+
+- **New:** Prod/test source set separation — all bytecode tasks now tag each caller, callee, and usage reference with `[test]` or `[prod]` based on which source set the class came from. Adds `-Pprod-only=true` / `-Ptest-only=true` filtering parameters to `cnavCallers`, `cnavCallees`, `cnavUsages`, `cnavComplexity`, and `cnavRank`.
+- **New:** `SourceSet` enum (`MAIN`/`TEST`) in `DomainTypes.kt` with full propagation through `CallGraph`, `CallTreeNode`, `UsageSite`, and all formatters (TEXT, LLM, JSON).
+- **New:** `CallGraphBuilder.buildTagged()` accepts tagged directories (`List<Pair<File, SourceSet>>`) for source-set-aware call graph construction.
+- **New:** `CallGraphCache` persists source sets in a backward-compatible `[SOURCE_SETS]` section.
+- **New:** `UsageScanner.scanTagged()` tags each `UsageSite` with the directory's source set.
+- **New:** Gradle `Project.taggedClassDirectories()` and Maven `MavenProject.taggedClassDirectories()` helpers for resolving tagged source set directories.
+
 ## 0.1.41
 
 - **Breaking:** Renamed `framework` parameter to `exclude-framework` with inverted semantics. All framework presets are now active by default — no configuration needed for Spring, Quarkus, or other frameworks. Use `exclude-framework=<preset>` to disable a specific preset, or `exclude-framework=ALL` to disable all.

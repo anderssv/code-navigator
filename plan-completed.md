@@ -1,5 +1,11 @@
 # Plan — Completed
 
+## ~~2. Separate prod/test in output (High value)~~ DONE
+
+All bytecode tasks now tag each caller, callee, and usage reference with `[test]` or `[prod]` based on which source set the class came from. Adds `-Pprod-only=true` / `-Ptest-only=true` filtering parameters to `cnavCallers`, `cnavCallees`, `cnavUsages`, `cnavComplexity`, and `cnavRank`.
+
+**Implementation**: `SourceSet` enum (`MAIN`/`TEST`) in `DomainTypes.kt`. `CallGraph` tracks `sourceSets: Map<ClassName, SourceSet>` populated via `CallGraphBuilder.buildTagged()` which accepts `List<Pair<File, SourceSet>>`. `CallGraphCache` persists source sets in a backward-compatible `[SOURCE_SETS]` section. `CallTreeNode` carries `sourceSet` field populated by `CallTreeBuilder`. `UsageSite` carries `sourceSet` field populated by `UsageScanner.scanTagged()`. All formatters (TEXT, LLM, JSON) render `[test]`/`[prod]` tags on child nodes and usage lines. `CallGraphConfig.buildFilter()` and `FindUsagesConfig.filterBySourceSet()` handle prod-only/test-only filtering. Gradle tasks use `Project.taggedClassDirectories()` and Maven mojos use `MavenProject.taggedClassDirectories()` to resolve tagged source set directories.
+
 ## ~~cnavChangedSince — impact analysis for a branch/commit (Very high value)~~ DONE
 
 `cnavChangedSince -Pref=<git-ref>` shows the blast radius of changes since a git ref. Runs `git diff --name-only <ref>...HEAD` to find changed files, maps them to compiled class names via suffix matching against `ClassInfo.reconstructedSourcePath`, then finds all callers of each changed class via `CallGraph.callersOfClass()`. Outputs changed classes sorted by caller count descending, with unresolved files (non-class changes like build.gradle.kts) listed separately. Supports TEXT, JSON, and LLM output formats. Hybrid task: requires both git and compilation (`dependsOn("classes")`).

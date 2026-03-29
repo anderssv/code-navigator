@@ -21,20 +21,7 @@ Given a class or method, automatically gather "everything an agent needs": class
 
 ---
 
-## 2. Separate prod/test in output
-
-**Value: high** | **Effort: medium**
-
-All bytecode tasks mix production and test callers in a single list. For a class with 167 incoming references, it's hard to tell which are prod dependencies and which are test code.
-
-- **Approach**: Tag each caller/reference with `[test]` or `[prod]` based on which source set the class came from. The `ClassScanner` already receives separate class directories for main vs test source sets — propagate this metadata through to the call graph and formatters.
-- **Parameters**: `-Pprod-only=true`, `-Ptest-only=true`. Without either flag, show all with tags.
-- **Applies to**: `cnavCallers`, `cnavCallees`, `cnavUsages`, `cnavComplexity`, `cnavDead`, `cnavRank`
-- **Implementation**: Add `sourceSet: SourceSet` enum field to `ClassInfo` during scanning. Propagate through call graph to formatters.
-
----
-
-## 3. `cnavWhyDepends` — dependency edge explanation
+## 2. `cnavWhyDepends` — dependency edge explanation
 
 **Value: high** | **Effort: medium**
 
