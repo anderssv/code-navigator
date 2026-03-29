@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.43
+
+- **New:** `cnavContext` task / `cnav:context` goal — smart context gathering for AI agents. Given a class pattern, gathers class detail (signature, fields, methods, annotations), callers tree, callees tree, interface implementations, and implemented interfaces in a single invocation. Parameters: `-Ppattern=<class>` (required), `-PmaxDepth=<n>` (default 2), plus standard filtering (`project-only`, `prod-only`, `test-only`) and output format (`format=text|json|llm`). Pure composition of existing features — reduces agent round-trips from 4-5 to 1.
+
 ## 0.1.42
 
 - **New:** Prod/test source set separation — all bytecode tasks now tag each caller, callee, and usage reference with `[test]` or `[prod]` based on which source set the class came from. Adds `-Pprod-only=true` / `-Ptest-only=true` filtering parameters to `cnavCallers`, `cnavCallees`, `cnavUsages`, `cnavComplexity`, and `cnavRank`.
