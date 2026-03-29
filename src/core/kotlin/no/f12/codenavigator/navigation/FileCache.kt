@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.CacheFreshness
+import java.io.BufferedWriter
 import java.io.File
 
 abstract class FileCache<T> {
@@ -28,7 +29,7 @@ abstract class FileCache<T> {
         return result
     }
 
-    protected fun writeLines(cacheFile: File, writeContent: (java.io.BufferedWriter) -> Unit) {
+    protected fun writeLines(cacheFile: File, writeContent: (BufferedWriter) -> Unit) {
         CacheFreshness.atomicWrite(cacheFile) { file ->
             file.bufferedWriter().use(writeContent)
         }
