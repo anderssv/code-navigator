@@ -1,0 +1,81 @@
+package no.f12.codenavigator.gradle
+
+import no.f12.codenavigator.JsonFormatter
+import no.f12.codenavigator.LlmFormatter
+import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.navigation.callgraph.CallGraphCache
+import no.f12.codenavigator.navigation.changedsince.ChangedSinceBuilder
+import no.f12.codenavigator.navigation.changedsince.ChangedSinceConfig
+import no.f12.codenavigator.navigation.changedsince.ChangedSinceFormatter
+import no.f12.codenavigator.navigation.changedsince.GitDiffRunner
+import no.f12.codenavigator.navigation.changedsince.SourceFileResolver
+import no.f12.codenavigator.navigation.classinfo.ClassIndexCache
+import no.f12.codenavigator.navigation.SkippedFileReporter
+import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
+import java.io.File
+
+@DisableCachingByDefault(because = "Produces console output only")
+abstract class ChangedSinceTask : DefaultTask() {
+
+    @TaskAction
+    fun showChangedSince() {
+        val config = ChangedSinceConfig.parse(
+            project.buildPropertyMap(TaskRegistry.CHANGED_SINCE),
+        )
+
+        if (config.ref == null) {
+            logger.error("Required parameter 'ref' not set. Usage: -Pref=<git-ref> (branch, tag, or commit SHA)")
+            return
+        }
+
+        val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
+        val mainSourceSet = sourceSets.getByName("main")
+        val classDirectories = mainSourceSet.output.classesDirs.files.toList()
+
+        val gitPaths = GitDiffRunner.run(project.projectDir, config.ref)
+        if (gitPaths.isEmpty()) {
+            logger.lifecycle("No changed files since ${config.ref}.")
+            return
+        }
+
+        val classIndexFile = File(project.layout.buildDirectory.asFile.get(), "cnav/class-index.cache")
+        val classInfos = ClassIndexCache.getOrBuild(classIndexFile, classDirectories).data
+
+        val resolution = SourceFileResolver.resolve(gitPaths, classInfos)
+
+        if (resolution.resolved.isEmpty()) {
+            if (resolution.unresolved.isNotEmpty()) {
+                logger.lifecycle("${resolution.unresolved.size} changed file(s), none mapped to project classes:")
+                resolution.unresolved.forEach { logger.lifecycle("  $it") }
+            } else {
+                logger.lifecycle("No changed files since ${config.ref}.")
+            }
+            return
+        }
+
+        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/call-graph.cache")
+        val result = CallGraphCache.getOrBuild(cacheFile, classDirectories)
+        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
+        val graph = result.data
+
+        val impacts = ChangedSinceBuilder.build(
+            changedClasses = resolution.resolved.keys,
+            graph = graph,
+            projectOnly = config.projectOnly,
+        )
+
+        logger.lifecycle(
+            OutputWrapper.formatAndWrap(
+                config.format,
+                text = { ChangedSinceFormatter.format(impacts, resolution.unresolved) },
+                json = { JsonFormatter.formatChangedSince(impacts, resolution.unresolved) },
+                llm = { LlmFormatter.formatChangedSince(impacts, resolution.unresolved) },
+            ),
+        )
+    }
+}

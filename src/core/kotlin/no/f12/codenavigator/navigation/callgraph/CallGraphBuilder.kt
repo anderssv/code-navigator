@@ -40,6 +40,13 @@ class CallGraph(
         callerToCallees.keys + callerToCallees.values.flatten()
     }
 
+    fun callersOfClass(className: ClassName): Set<MethodRef> =
+        calleeToCallers
+            .filter { (callee, _) -> callee.className == className }
+            .values
+            .flatten()
+            .toSet()
+
     fun callersOf(className: ClassName, methodName: String): Set<MethodRef> =
         calleeToCallers[MethodRef(className, methodName)] ?: emptySet()
 

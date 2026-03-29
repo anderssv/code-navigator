@@ -160,6 +160,14 @@ class CodeNavigatorPlugin : Plugin<Project> {
             group = "code-navigator"
         }
 
+        // --- Hybrid tasks (git + compilation) ---
+
+        project.tasks.register("cnavChangedSince", ChangedSinceTask::class.java) {
+            description = "Shows blast radius of changes since a git ref. Usage: -Pref=<git-ref> [-Pproject-only=true]"
+            group = "code-navigator"
+            dependsOn("classes")
+        }
+
         // --- Startup indicator for all cnav tasks ---
 
         project.tasks.matching { it.group == "code-navigator" }.configureEach {

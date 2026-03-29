@@ -26,6 +26,7 @@ import no.f12.codenavigator.navigation.hierarchy.SupertypeInfo
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyResult
 import no.f12.codenavigator.navigation.callgraph.UsageSite
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
+import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 
 @JvmInline
 private value class JsonRaw(val json: String)
@@ -256,6 +257,23 @@ object JsonFormatter {
                 "sourceFile" to m.sourceFile,
             )
         }
+
+    fun formatChangedSince(impacts: List<ChangedClassImpact>, unresolved: List<String>): String =
+        jsonObject(
+            "changedClasses" to JsonRaw(jsonArray(impacts) { impact ->
+                jsonObject(
+                    "className" to impact.className.toString(),
+                    "sourceFile" to impact.sourceFile,
+                    "callers" to JsonRaw(jsonArray(impact.callers.sortedBy { "${it.className}.${it.methodName}" }) { caller ->
+                        jsonObject(
+                            "className" to caller.className.toString(),
+                            "method" to caller.methodName,
+                        )
+                    }),
+                )
+            }),
+            "unresolvedFiles" to JsonRaw(jsonStringArray(unresolved)),
+        )
 
     fun formatAnnotations(matches: List<AnnotationMatch>): String =
         jsonArray(matches) { match ->

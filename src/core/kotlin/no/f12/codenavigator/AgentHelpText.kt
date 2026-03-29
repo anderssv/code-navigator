@@ -133,6 +133,9 @@ object AgentHelpText {
         appendLine("  \"Which methods have annotation X?\"")
         appendLine("    → ${u("annotations", p("pattern", "X"), p("methods", "true"))}")
         appendLine()
+        appendLine("  \"What's the blast radius of my changes?\"")
+        appendLine("    → ${u("changed-since", p("ref", "main"))}")
+        appendLine()
         appendLine("--- Task Reference ---")
         appendLine()
         appendTaskReference(tool)
@@ -246,6 +249,12 @@ object AgentHelpText {
         appendLine("   ${u("annotations", p("pattern", "RestController"))}          # find all @RestController classes")
         appendLine("   ${u("annotations", p("pattern", "Mapping"), p("methods", "true"))}  # find @*Mapping on classes and methods")
         appendLine("   ${u("annotations", p("pattern", "Scheduled"), p("methods", "true"))} # find all @Scheduled methods")
+        appendLine()
+        appendLine("14. IMPACT: See what's affected by recent changes")
+        appendLine("   ${u("changed-since", p("ref", "main"))}           # blast radius vs main branch")
+        appendLine("   ${u("changed-since", p("ref", "v1.2.0"))}          # blast radius since a tag")
+        appendLine("   ${u("changed-since", p("ref", "HEAD~5"))}          # blast radius of last 5 commits")
+        appendLine("   # Shows changed classes, their callers, and unresolved files (non-class changes)")
     }
 
     private fun generateInterpretation(tool: BuildTool): String = buildString {
@@ -370,6 +379,11 @@ object AgentHelpText {
         appendLine("  [{\"className\": \"com.example.MyController\", \"sourceFile\": \"MyController.kt\",")
         appendLine("    \"classAnnotations\": [\"RestController\"],")
         appendLine("    \"methods\": [{\"method\": \"getUsers\", \"annotations\": [\"GetMapping\"]}]}]")
+        appendLine()
+        appendLine("${t("changed-since")}:")
+        appendLine("  {\"changedClasses\": [{\"className\": \"com.example.Service\", \"sourceFile\": \"Service.kt\",")
+        appendLine("    \"callers\": [{\"className\": \"com.example.Controller\", \"method\": \"handle\"}]}],")
+        appendLine("   \"unresolvedFiles\": [\"build.gradle.kts\"]}")
     }
 
     private fun generateExtraction(tool: BuildTool): String = buildString {

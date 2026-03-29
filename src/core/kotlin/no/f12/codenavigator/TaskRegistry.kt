@@ -142,6 +142,7 @@ object TaskRegistry {
     val MAX_CHANGESET_SIZE = ParamDef("max-changeset-size", "<N>", "Skip commits touching more files", flag = false, defaultValue = "30", enhancePattern = false, type = ParamType.INT)
     val METRICS_TOP = ParamDef("top", "<N>", "Max results per section", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
     val SECTION = ParamDef("section", "<name>", "Help section: install, workflow, interpretation, schemas, extraction", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val REF = ParamDef("ref", "<git-ref>", "Git ref to compare against (branch, tag, or commit SHA)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val STRING_PATTERN = ParamDef("pattern", "<regex>", "Regex to match against string constant values", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val METHODS = ParamDef("methods", "true", "Also search method-level annotations", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
 
@@ -331,6 +332,13 @@ object TaskRegistry {
         requiresCompilation = false,
     )
 
+    val CHANGED_SINCE = TaskDef(
+        goal = "changed-since",
+        description = "Show blast radius of changes since a git ref (changed classes and their callers)",
+        params = FORMAT_PARAMS + listOf(REF, PROJECTONLY_ON),
+        requiresCompilation = true,
+    )
+
     val ALL_TASKS: List<TaskDef> = listOf(
         LIST_CLASSES,
         FIND_CLASS,
@@ -355,6 +363,7 @@ object TaskRegistry {
         CODE_AGE,
         AUTHORS,
         COUPLING,
+        CHANGED_SINCE,
         HELP,
         AGENT_HELP,
         CONFIG_HELP,

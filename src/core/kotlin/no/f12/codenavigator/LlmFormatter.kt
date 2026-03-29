@@ -30,6 +30,7 @@ import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyResult
 import no.f12.codenavigator.navigation.callgraph.UsageSite
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.callgraph.AnnotationTag
+import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 
 object LlmFormatter {
 
@@ -127,6 +128,25 @@ object LlmFormatter {
         matches.joinToString("\n") { m ->
             "${m.className}.${m.methodName}: \"${m.value}\" ${m.sourceFile}"
         }
+
+    fun formatChangedSince(impacts: List<ChangedClassImpact>, unresolved: List<String>): String = buildString {
+        impacts.forEachIndexed { index, impact ->
+            if (index > 0) appendLine()
+            append("${impact.className} ${impact.sourceFile}")
+            if (impact.callers.isEmpty()) {
+                append(" (no callers)")
+            } else {
+                for (caller in impact.callers.sortedBy { "${it.className}.${it.methodName}" }) {
+                    appendLine()
+                    append("  <- ${caller.className}.${caller.methodName}")
+                }
+            }
+        }
+        if (unresolved.isNotEmpty()) {
+            if (impacts.isNotEmpty()) appendLine()
+            append("UNRESOLVED: ${unresolved.joinToString(",")}")
+        }
+    }
 
     fun formatAnnotations(matches: List<AnnotationMatch>): String {
         if (matches.isEmpty()) return "(no matches)"
