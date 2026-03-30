@@ -23,19 +23,19 @@ data class DsmConfig(
 
     companion object {
         fun parse(properties: Map<String, String?>): DsmConfig {
-            val explicitFilter = properties["package-filter"]
-            val legacyRoot = properties["root-package"]
+            val explicitFilter = TaskRegistry.PACKAGE_FILTER.parseFrom(properties)
+            val legacyRoot = TaskRegistry.ROOT_PACKAGE.parseFrom(properties)
             val resolvedFilter = explicitFilter ?: legacyRoot ?: ""
 
             return DsmConfig(
-                rootPackage = PackageName(properties["root-package"] ?: ""),
+                rootPackage = PackageName(legacyRoot ?: ""),
                 packageFilter = PackageName(resolvedFilter),
-                includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parse(properties["include-external"]),
-                depth = TaskRegistry.DSM_DEPTH.parse(properties["dsm-depth"]),
-                htmlPath = properties["dsm-html"],
+                includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
+                depth = TaskRegistry.DSM_DEPTH.parseFrom(properties),
+                htmlPath = TaskRegistry.DSM_HTML.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
-                cyclesOnly = TaskRegistry.CYCLES.parse(properties["cycles"]),
-                cycleFilter = parseCycleFilter(properties["cycle"]),
+                cyclesOnly = TaskRegistry.CYCLES.parseFrom(properties),
+                cycleFilter = parseCycleFilter(TaskRegistry.CYCLE.parseFrom(properties)),
             )
         }
 

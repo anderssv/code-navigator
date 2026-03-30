@@ -25,23 +25,23 @@ data class MetricsConfig(
 
     companion object {
         fun parse(properties: Map<String, String?>): MetricsConfig {
-            val explicit = TaskRegistry.EXCLUDE_ANNOTATED.parse(properties["exclude-annotated"])
-            val excluded = TaskRegistry.EXCLUDE_FRAMEWORK.parse(properties["exclude-framework"])
+            val explicit = TaskRegistry.EXCLUDE_ANNOTATED.parseFrom(properties)
+            val excluded = TaskRegistry.EXCLUDE_FRAMEWORK.parseFrom(properties)
             val entryPoints = FrameworkPresets.resolveAllEntryPointsExcept(excluded)
             val modifiers = FrameworkPresets.resolveAllModifiersExcept(excluded)
             val merged = (explicit + entryPoints.map { it.value } + modifiers.map { it.value }).distinct()
 
-            val explicitFilter = properties["package-filter"]
-            val legacyRoot = properties["root-package"]
+            val explicitFilter = TaskRegistry.PACKAGE_FILTER.parseFrom(properties)
+            val legacyRoot = TaskRegistry.ROOT_PACKAGE.parseFrom(properties)
             val resolvedFilter = explicitFilter ?: legacyRoot ?: ""
 
             return MetricsConfig(
-                after = TaskRegistry.AFTER.parse(properties["after"]),
-                top = TaskRegistry.METRICS_TOP.parse(properties["top"]),
+                after = TaskRegistry.AFTER.parseFrom(properties),
+                top = TaskRegistry.METRICS_TOP.parseFrom(properties),
                 followRenames = !TaskRegistry.NO_FOLLOW.parseFrom(properties),
-                rootPackage = PackageName(properties["root-package"] ?: ""),
+                rootPackage = PackageName(legacyRoot ?: ""),
                 packageFilter = PackageName(resolvedFilter),
-                includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parse(properties["include-external"]),
+                includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
                 excludeAnnotated = merged,
                 format = ParamDef.parseFormat(properties),
             )
