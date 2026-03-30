@@ -6,6 +6,8 @@ import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
+import no.f12.codenavigator.navigation.RootPackageDetector
+import no.f12.codenavigator.navigation.scanProjectClasses
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.classinfo.ClassScanner
@@ -49,6 +51,12 @@ class MetricsMojo : AbstractMojo() {
     @Parameter(property = "root-package")
     private var rootPackage: String? = null
 
+    @Parameter(property = "package-filter")
+    private var packageFilter: String? = null
+
+    @Parameter(property = "include-external")
+    private var includeExternal: String? = null
+
     @Parameter(property = "no-follow")
     private var noFollow: Boolean = false
 
@@ -66,6 +74,7 @@ class MetricsMojo : AbstractMojo() {
         }
 
         val config = MetricsConfig.parse(TaskRegistry.METRICS.enhanceProperties(buildPropertyMap()))
+        config.deprecations().forEach { log.warn(it) }
         val classDirectories = listOf(classesDir)
 
         val graphResult = CallGraphCache.getOrBuild(File(project.build.directory, "cnav/call-graph.cache"), classDirectories)
@@ -91,8 +100,10 @@ class MetricsMojo : AbstractMojo() {
             testGraph = null,
         )
 
-        val dsmResult = DsmDependencyExtractor.extract(classDirectories, config.rootPackage)
-        val matrix = DsmMatrixBuilder.build(dsmResult.data, config.rootPackage, depth = 2)
+        val projectClasses = scanProjectClasses(classDirectories)
+        val dsmResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal)
+        val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
+        val matrix = DsmMatrixBuilder.build(dsmResult.data, displayPrefix, depth = 2)
         val cyclicPairCount = CycleDetector.findCycles(CycleDetector.adjacencyMapFrom(matrix)).size
 
         val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
@@ -120,6 +131,8 @@ class MetricsMojo : AbstractMojo() {
         after?.let { put("after", it) }
         top?.let { put("top", it) }
         rootPackage?.let { put("root-package", it) }
+        packageFilter?.let { put("package-filter", it) }
+        includeExternal?.let { put("include-external", it) }
         excludeAnnotated?.let { put("exclude-annotated", it) }
         excludeFramework?.let { put("exclude-framework", it) }
         if (noFollow) put("no-follow", null)

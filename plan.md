@@ -17,23 +17,6 @@ The DSM tells you package A depends on package B, but not *why*. To break a cycl
 
 ---
 
-## Auto-detect `rootPackage` for DSM
-
-**Value: high** | **Effort: low**
-
-From user feedback (v0.38): the default DSM with no `rootPackage` produced a 43x43 matrix dominated by `kotlin.*`, `java.*`, `io.ktor.*` with a single `no.bankid` row. That's useless. Users had to discover the `-Proot-package` flag by trial and error.
-
-- **Approach**: Scan all classes in the project's compiled output (`build/classes/kotlin/main`), collect their package names, find the longest common package prefix. Use that as the default `rootPackage`.
-- **Warning**: When using the auto-detected prefix, emit a warning: `"Auto-detected root-package '<prefix>' from compiled classes. Set root-package explicitly in the plugin configuration for faster and more reliable results."` This makes the behavior transparent and nudges users toward the explicit config.
-- **Edge cases**:
-  - Multiple top-level packages with no common prefix → warn: "No common package prefix found across N packages. Set -ProotPackage to focus the DSM."
-  - Single package → common prefix IS the only package, works fine.
-  - Only scan main source set classes, not test classes.
-- **Why this over reading `group` from `build.gradle.kts`**: Works regardless of build system. Reflects what's actually compiled, not what someone declared. No build file parsing.
-- **Scope**: Applies to all tasks that accept `root-package` (DSM, cycles, package-deps, metrics).
-
----
-
 ## Better error messages on task parameter validation
 
 **Value: high** | **Effort: low**

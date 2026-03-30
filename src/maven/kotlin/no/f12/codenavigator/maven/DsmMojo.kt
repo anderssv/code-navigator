@@ -4,6 +4,8 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.navigation.RootPackageDetector
+import no.f12.codenavigator.navigation.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmConfig
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.DsmFormatter
@@ -34,6 +36,12 @@ class DsmMojo : AbstractMojo() {
     @Parameter(property = "root-package")
     private var rootPackage: String? = null
 
+    @Parameter(property = "package-filter")
+    private var packageFilter: String? = null
+
+    @Parameter(property = "include-external")
+    private var includeExternal: String? = null
+
     @Parameter(property = "dsm-depth")
     private var dsmDepth: String? = null
 
@@ -48,6 +56,7 @@ class DsmMojo : AbstractMojo() {
 
     override fun execute() {
         val config = DsmConfig.parse(TaskRegistry.DSM.enhanceProperties(buildPropertyMap()))
+        config.deprecations().forEach { log.warn(it) }
 
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
@@ -55,11 +64,16 @@ class DsmMojo : AbstractMojo() {
             return
         }
 
-        val result = DsmDependencyExtractor.extract(listOf(classesDir), config.rootPackage)
+        val classDirectories = listOf(classesDir)
+        val projectClasses = scanProjectClasses(classDirectories)
+
+        val result = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val dependencies = result.data
-        val matrix = DsmMatrixBuilder.build(dependencies, config.rootPackage, config.depth)
+
+        val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
+        val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)
 
         println(OutputWrapper.formatAndWrap(config.format,
             text = { if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCycles(matrix, config.cycleFilter) else DsmFormatter.format(matrix) },
@@ -79,6 +93,8 @@ class DsmMojo : AbstractMojo() {
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
         rootPackage?.let { put("root-package", it) }
+        packageFilter?.let { put("package-filter", it) }
+        includeExternal?.let { put("include-external", it) }
         dsmDepth?.let { put("dsm-depth", it) }
         dsmHtml?.let { put("dsm-html", it) }
         cycles?.let { put("cycles", it) }

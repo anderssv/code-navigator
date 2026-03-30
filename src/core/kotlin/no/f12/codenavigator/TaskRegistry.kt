@@ -120,7 +120,9 @@ object TaskRegistry {
     val INCLUDETEST = ParamDef("include-test", "true", "Include test source set", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val PACKAGE = ParamDef("package", "<regex>", "Filter packages by regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val REVERSE = ParamDef("reverse", "true", "Show reverse dependencies", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
-    val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Only include packages under this prefix", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING)
+    val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Deprecated: use package-filter instead. Only include packages under this prefix", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING)
+    val PACKAGE_FILTER = ParamDef("package-filter", "<pkg>", "Only include packages under this prefix", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val INCLUDE_EXTERNAL = ParamDef("include-external", "true", "Include dependencies on classes outside the project", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val DSM_DEPTH = ParamDef("dsm-depth", "<N>", "Package grouping depth", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
     val DSM_HTML = ParamDef("dsm-html", "<path>", "Write interactive HTML matrix to file", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val CYCLES = ParamDef("cycles", "true", "Show only cyclic dependencies with class-level edges", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
@@ -218,14 +220,14 @@ object TaskRegistry {
     val DSM = TaskDef(
         goal = "dsm",
         description = "Generate Dependency Structure Matrix",
-        params = FORMAT_PARAMS + listOf(ROOT_PACKAGE, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE),
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE, ROOT_PACKAGE),
         requiresCompilation = true,
     )
 
     val CYCLE_DETECTION = TaskDef(
         goal = "cycles",
         description = "Detect dependency cycles using Tarjan's SCC algorithm",
-        params = FORMAT_PARAMS + listOf(ROOT_PACKAGE, DSM_DEPTH),
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE),
         requiresCompilation = true,
     )
 
@@ -295,7 +297,7 @@ object TaskRegistry {
     val METRICS = TaskDef(
         goal = "metrics",
         description = "Quick project health snapshot: classes, packages, fan-in/out, cycles, dead code, hotspots",
-        params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, ROOT_PACKAGE, EXCLUDE_ANNOTATED, EXCLUDE_FRAMEWORK),
+        params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, PACKAGE_FILTER, INCLUDE_EXTERNAL, EXCLUDE_ANNOTATED, EXCLUDE_FRAMEWORK, ROOT_PACKAGE),
         requiresCompilation = true,
     )
 

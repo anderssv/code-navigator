@@ -314,3 +314,27 @@ Spring Data repositories (e.g., `OwnerRepository extends JpaRepository`) are int
 - `DeadCodeConfig.kt`: Resolves `supertypeEntryPoints` from `FrameworkPresets` using the same `exclude-framework` mechanism as annotations.
 - `DeadCodeTask.kt` / `DeadCodeMojo.kt`: Wired `config.supertypeEntryPoints` through to `DeadCodeFinder.find()`.
 - Tests: 5 new `FrameworkPresetsTest` tests, 3 new `DeadCodeFinderTest` tests, 3 new `DeadCodeConfigTest` tests.
+
+## ~~Auto-detect project classes for DSM / Cycles / Metrics — replace `root-package` with `package-filter`~~ DONE
+
+From user feedback (v0.38): the default DSM with no `rootPackage` produced a 43x43 matrix dominated by `kotlin.*`, `java.*`, `io.ktor.*` — useless. Users had to discover the `-Proot-package` flag by trial and error.
+
+**New design**: Instead of computing a root package prefix, filter DSM/cycles/metrics to project classes only (from compiled `src` directories). No configuration needed for the default case. Three new parameters replace `root-package`:
+
+1. **Default**: Only include project classes (from compiled class directories) — no config needed
+2. **`package-filter`** (`-Ppackage-filter`): Optional prefix filter to narrow scope within project
+3. **`include-external`** (`-Pinclude-external=true`): Expands view to include non-project dependencies (combinable with `package-filter`)
+
+**`root-package` deprecated**: Aliased to `package-filter` with deprecation warning. CLI (`-P`) takes precedence over plugin config.
+
+**Changes**:
+- `ProjectClassScanner` (core) — `scanProjectClasses(classDirectories)` returns `Set<ClassName>` of top-level project classes. Shared by Gradle tasks and Maven mojos.
+- `RootPackageDetector` (core) — `detect(List<PackageName>)` finds longest common prefix for **display truncation** (shortening labels), not for filtering.
+- `DsmDependencyExtractor` — new `extract(classDirectories, projectClasses, packageFilter, includeExternal)` overload that filters source/target classes by project membership + optional package prefix.
+- `DsmConfig`, `CyclesConfig`, `MetricsConfig` — added `packageFilter`, `includeExternal` fields with `root-package` aliasing and precedence logic. Added `deprecations()` method returning warnings when `root-package` is used.
+- `CodeNavigatorExtension` — added `packageFilter`, `includeExternal` config properties. Added `resolveProperties()` for merging extension config with CLI. Removed old `resolveRootPackage()`.
+- `TaskRegistry` — added `PACKAGE_FILTER` and `INCLUDE_EXTERNAL` param definitions; updated DSM, CYCLES, METRICS task defs.
+- `HelpText.kt` — DSM, Cycles, Metrics sections updated with new params; `root-package` documented as deprecated.
+- `AgentHelpText.kt` — workflow step 11 updated to use `package-filter`.
+- All 3 Gradle tasks (`DsmTask`, `CyclesTask`, `MetricsTask`) and 3 Maven mojos (`DsmMojo`, `CyclesMojo`, `MetricsMojo`) updated to use project class scanning, new extract overload, and display prefix auto-detection.
+- Tests: `RootPackageDetectorTest` (11 tests), `DsmDependencyExtractorTest` (4 new), `DsmConfigTest` (10 new), `CyclesConfigTest` (6 new), `MetricsConfigTest` (6 new), `ProjectClassScannerTest` (7 tests), `CodeNavigatorExtensionTest` (10 tests), `TaskRegistryTest` updated.

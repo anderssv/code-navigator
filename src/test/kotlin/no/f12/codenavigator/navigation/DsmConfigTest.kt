@@ -5,6 +5,7 @@ import no.f12.codenavigator.navigation.dsm.DsmConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class DsmConfigTest {
 
@@ -131,5 +132,97 @@ class DsmConfigTest {
         val config = DsmConfig.parse(emptyMap())
 
         assertNull(config.cycleFilter)
+    }
+
+    // === deprecation ===
+
+    @Test
+    fun `deprecations returns warning when root-package is used without package-filter`() {
+        val config = DsmConfig.parse(mapOf("root-package" to "com.example"))
+
+        val warnings = config.deprecations()
+
+        assertEquals(1, warnings.size)
+        assertTrue(warnings[0].contains("root-package"))
+        assertTrue(warnings[0].contains("package-filter"))
+    }
+
+    @Test
+    fun `deprecations returns empty when package-filter is used`() {
+        val config = DsmConfig.parse(mapOf("package-filter" to "com.example"))
+
+        val warnings = config.deprecations()
+
+        assertEquals(emptyList<String>(), warnings)
+    }
+
+    @Test
+    fun `deprecations returns empty when neither root-package nor package-filter is used`() {
+        val config = DsmConfig.parse(emptyMap())
+
+        val warnings = config.deprecations()
+
+        assertEquals(emptyList<String>(), warnings)
+    }
+
+    @Test
+    fun `deprecations returns empty when both root-package and package-filter are used`() {
+        val config = DsmConfig.parse(mapOf(
+            "root-package" to "com.example",
+            "package-filter" to "com.example.api",
+        ))
+
+        val warnings = config.deprecations()
+
+        assertEquals(emptyList<String>(), warnings)
+    }
+
+    // === package-filter ===
+
+    @Test
+    fun `parses package-filter from properties`() {
+        val config = DsmConfig.parse(mapOf("package-filter" to "com.example.api"))
+
+        assertEquals(PackageName("com.example.api"), config.packageFilter)
+    }
+
+    @Test
+    fun `defaults package-filter to empty`() {
+        val config = DsmConfig.parse(emptyMap())
+
+        assertEquals(PackageName(""), config.packageFilter)
+    }
+
+    @Test
+    fun `root-package aliases to package-filter when package-filter is absent`() {
+        val config = DsmConfig.parse(mapOf("root-package" to "com.example"))
+
+        assertEquals(PackageName("com.example"), config.packageFilter)
+    }
+
+    @Test
+    fun `package-filter takes precedence over root-package`() {
+        val config = DsmConfig.parse(mapOf(
+            "root-package" to "com.example",
+            "package-filter" to "com.example.api",
+        ))
+
+        assertEquals(PackageName("com.example.api"), config.packageFilter)
+    }
+
+    // === include-external ===
+
+    @Test
+    fun `parses include-external true`() {
+        val config = DsmConfig.parse(mapOf("include-external" to "true"))
+
+        assertEquals(true, config.includeExternal)
+    }
+
+    @Test
+    fun `defaults include-external to false`() {
+        val config = DsmConfig.parse(emptyMap())
+
+        assertEquals(false, config.includeExternal)
     }
 }

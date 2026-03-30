@@ -39,6 +39,64 @@ object DsmDependencyExtractor {
         )
     }
 
+    fun extract(
+        classDirectories: List<File>,
+        projectClasses: Set<ClassName>,
+        packageFilter: PackageName = PackageName(""),
+        includeExternal: Boolean = false,
+    ): ScanResult<List<PackageDependency>> {
+        val dependencies = mutableSetOf<PackageDependency>()
+        val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
+
+        classDirectories
+            .filter { it.exists() }
+            .forEach { dir ->
+                dir.walkTopDown()
+                    .filter { it.isFile && it.extension == "class" }
+                    .forEach { classFile ->
+                        try {
+                            extractFromClassWithProjectFilter(classFile, projectClasses, packageFilter, includeExternal, dependencies)
+                        } catch (e: UnsupportedBytecodeVersionException) {
+                            skipped.add(e)
+                        }
+                    }
+            }
+
+        return ScanResult(
+            data = dependencies.toList(),
+            skippedFiles = skipped,
+        )
+    }
+
+    private fun extractFromClassWithProjectFilter(
+        classFile: File,
+        projectClasses: Set<ClassName>,
+        packageFilter: PackageName,
+        includeExternal: Boolean,
+        dependencies: MutableSet<PackageDependency>,
+    ) {
+        val reader = createClassReader(classFile)
+        val collector = DependencyCollector(PackageName(""))
+        reader.accept(collector, ClassReader.SKIP_DEBUG or ClassReader.SKIP_FRAMES)
+
+        val sourceClass = ClassName.fromInternal(reader.className).topLevelClass()
+        val sourcePackage = sourceClass.packageName()
+
+        if (sourceClass !in projectClasses) return
+        if (packageFilter.isNotEmpty() && !sourceClass.startsWith(packageFilter)) return
+
+        collector.referencedTypes
+            .filter { it != sourceClass }
+            .filter { includeExternal || it in projectClasses }
+            .filter { packageFilter.isEmpty() || it.startsWith(packageFilter) }
+            .forEach { targetClass ->
+                val targetPackage = targetClass.packageName()
+                if (targetPackage != sourcePackage) {
+                    dependencies += PackageDependency(sourcePackage, targetPackage, sourceClass, targetClass)
+                }
+            }
+    }
+
     private fun extractFromClass(
         classFile: File,
         rootPrefix: PackageName,

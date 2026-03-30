@@ -242,7 +242,7 @@ object AgentHelpText {
         appendLine("11. METRICS: Quick project health snapshot")
         appendLine("   ${u("metrics")}                       # summary: classes, packages, fan-in/out, cycles, dead code, hotspots")
         appendLine("   ${u("metrics", p("top", "10"))}                # top 10 hotspots")
-        appendLine("   ${u("metrics", p("root-package", "com.example"))} # cycle detection scoped to package")
+        appendLine("   ${u("metrics", p("package-filter", "com.example"))} # scope structural analysis to package")
         appendLine()
         appendLine("12. STRING CONSTANTS: Find hardcoded strings in compiled code")
         appendLine("   ${u("find-string-constant", p("pattern", "\"http://\""))}      # find URLs")

@@ -276,6 +276,90 @@ class DsmDependencyExtractorTest {
         assertTrue(packages.contains(PackageName("com.example.domain")), "Expected com.example.domain in dependencies")
     }
 
+    @Test
+    fun `project class filtering excludes external dependencies by default`() {
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            "handle", listOf(Call("com/other/lib/Helper", "help", "()V")),
+        )
+        TestClassWriter.writeClassFile(classesDir, "com/example/api/HelperUser", "HelperUser.kt")
+
+        val projectClasses = setOf(
+            ClassName("com.example.api.Controller"),
+            ClassName("com.example.api.HelperUser"),
+        )
+
+        val deps = DsmDependencyExtractor.extract(classDirectories = listOf(classesDir), projectClasses = projectClasses).data
+
+        assertTrue(deps.isEmpty(), "Dependencies on non-project classes should be excluded")
+    }
+
+    @Test
+    fun `project class filtering includes project-to-project dependencies`() {
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            "handle", listOf(Call("com/example/service/Service", "process", "()V")),
+        )
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
+
+        val projectClasses = setOf(
+            ClassName("com.example.api.Controller"),
+            ClassName("com.example.service.Service"),
+        )
+
+        val deps = DsmDependencyExtractor.extract(classDirectories = listOf(classesDir), projectClasses = projectClasses).data
+
+        val dep = deps.find { it.sourceClass == ClassName("com.example.api.Controller") && it.targetClass == ClassName("com.example.service.Service") }
+        assertTrue(dep != null, "Expected project-to-project dependency")
+    }
+
+    @Test
+    fun `include-external shows dependencies on non-project classes`() {
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            "handle", listOf(Call("com/other/lib/Helper", "help", "()V")),
+        )
+        TestClassWriter.writeClassFile(classesDir, "com/other/lib/Helper", "Helper.kt")
+
+        val projectClasses = setOf(ClassName("com.example.api.Controller"))
+
+        val deps = DsmDependencyExtractor.extract(
+            classDirectories = listOf(classesDir),
+            projectClasses = projectClasses,
+            includeExternal = true,
+        ).data
+
+        val dep = deps.find { it.targetClass == ClassName("com.other.lib.Helper") }
+        assertTrue(dep != null, "External dependencies should be included when include-external is true")
+    }
+
+    @Test
+    fun `package-filter narrows to matching packages only`() {
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            "handle", listOf(Call("com/example/service/Service", "process", "()V")),
+        )
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/other/Other", "Other.kt",
+            "run", listOf(Call("com/example/service/Service", "process", "()V")),
+        )
+
+        val projectClasses = setOf(
+            ClassName("com.example.api.Controller"),
+            ClassName("com.example.service.Service"),
+            ClassName("com.example.other.Other"),
+        )
+
+        val deps = DsmDependencyExtractor.extract(
+            classDirectories = listOf(classesDir),
+            projectClasses = projectClasses,
+            packageFilter = PackageName("com.example.api"),
+        ).data
+
+        assertTrue(deps.all { it.sourcePackage.startsWith(PackageName("com.example.api")) }, "Only sources matching package-filter should be included")
+    }
+
     private fun buildTestProject() {
         val testProjectDir = File("test-project")
         val gradlew = File(testProjectDir.parentFile, "gradlew").absolutePath

@@ -6,6 +6,8 @@ import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
+import no.f12.codenavigator.navigation.RootPackageDetector
+import no.f12.codenavigator.navigation.scanProjectClasses
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.classinfo.ClassScanner
@@ -32,11 +34,11 @@ abstract class MetricsTask : DefaultTask() {
     @TaskAction
     fun showMetrics() {
         val extension = project.codeNavigatorExtension()
-        val resolvedRootPackage = extension.resolveRootPackage(project.findProperty("root-package"))
+        val cliProps = project.buildPropertyMap(TaskRegistry.METRICS)
+        val props = extension.resolveProperties(cliProps)
 
-        val config = MetricsConfig.parse(
-            project.buildPropertyMap(TaskRegistry.METRICS) + ("root-package" to resolvedRootPackage),
-        )
+        val config = MetricsConfig.parse(props)
+        config.deprecations().forEach { logger.warn(it) }
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")
@@ -66,8 +68,10 @@ abstract class MetricsTask : DefaultTask() {
             testGraph = null,
         )
 
-        val dsmResult = DsmDependencyExtractor.extract(classDirectories, config.rootPackage)
-        val matrix = DsmMatrixBuilder.build(dsmResult.data, config.rootPackage, depth = 2)
+        val projectClasses = scanProjectClasses(classDirectories)
+        val dsmResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal)
+        val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
+        val matrix = DsmMatrixBuilder.build(dsmResult.data, displayPrefix, depth = 2)
         val cyclicPairCount = CycleDetector.findCycles(CycleDetector.adjacencyMapFrom(matrix)).size
 
         val commits = GitLogRunner.run(project.projectDir, config.after, followRenames = config.followRenames)
