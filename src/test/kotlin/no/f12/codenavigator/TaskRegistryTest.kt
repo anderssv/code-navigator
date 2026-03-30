@@ -186,6 +186,26 @@ class ParamDefTest {
 
         assertEquals(java.time.LocalDate.now().minusYears(1), param.parse(null))
     }
+
+    @Test
+    fun `deprecated defaults to false`() {
+        val param = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+
+        assertEquals(false, param.deprecated)
+        assertEquals(null, param.deprecatedMessage)
+    }
+
+    @Test
+    fun `deprecated param stores message`() {
+        val param = ParamDef(
+            "root-package", "<pkg>", "Old param", flag = false, defaultValue = null,
+            enhancePattern = false, type = ParamType.STRING,
+            deprecated = true, deprecatedMessage = "Use package-filter instead",
+        )
+
+        assertEquals(true, param.deprecated)
+        assertEquals("Use package-filter instead", param.deprecatedMessage)
+    }
 }
 
 class TaskDefTest {
@@ -316,6 +336,56 @@ class TaskDefTest {
         )
 
         assertEquals("cnavClass", task.legacyGradleTaskName)
+    }
+
+    @Test
+    fun `deprecations returns warning when deprecated param is present in properties`() {
+        val deprecated = ParamDef(
+            "old-param", "<v>", "Old", flag = false, defaultValue = null,
+            enhancePattern = false, type = ParamType.STRING,
+            deprecated = true, deprecatedMessage = "Use new-param instead",
+        )
+        val task = TaskDef(
+            goal = "test-task", description = "Test", params = listOf(deprecated),
+            requiresCompilation = false, category = TaskCategory.NAVIGATION,
+        )
+
+        val warnings = task.deprecations(mapOf("old-param" to "value"))
+
+        assertEquals(listOf("Use new-param instead"), warnings)
+    }
+
+    @Test
+    fun `deprecations returns empty when deprecated param is absent`() {
+        val deprecated = ParamDef(
+            "old-param", "<v>", "Old", flag = false, defaultValue = null,
+            enhancePattern = false, type = ParamType.STRING,
+            deprecated = true, deprecatedMessage = "Use new-param instead",
+        )
+        val task = TaskDef(
+            goal = "test-task", description = "Test", params = listOf(deprecated),
+            requiresCompilation = false, category = TaskCategory.NAVIGATION,
+        )
+
+        val warnings = task.deprecations(emptyMap())
+
+        assertEquals(emptyList<String>(), warnings)
+    }
+
+    @Test
+    fun `deprecations ignores non-deprecated params`() {
+        val normal = ParamDef(
+            "pattern", "<regex>", "Pattern", flag = false, defaultValue = null,
+            enhancePattern = false, type = ParamType.STRING,
+        )
+        val task = TaskDef(
+            goal = "test-task", description = "Test", params = listOf(normal),
+            requiresCompilation = false, category = TaskCategory.NAVIGATION,
+        )
+
+        val warnings = task.deprecations(mapOf("pattern" to "value"))
+
+        assertEquals(emptyList<String>(), warnings)
     }
 }
 

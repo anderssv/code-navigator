@@ -60,6 +60,8 @@ data class ParamDef<T>(
     val defaultValue: String?,
     val enhancePattern: Boolean,
     val type: ParamType<T>,
+    val deprecated: Boolean = false,
+    val deprecatedMessage: String? = null,
 ) {
     fun render(tool: BuildTool): String = when (flag) {
         true -> tool.paramFlag(name)
@@ -100,6 +102,11 @@ data class TaskDef(
     fun paramByName(name: String): ParamDef<*> =
         params.first { it.name == name }
 
+    fun deprecations(properties: Map<String, String?>): List<String> =
+        params
+            .filter { it.deprecated && properties.containsKey(it.name) }
+            .mapNotNull { it.deprecatedMessage }
+
     fun enhanceProperties(properties: Map<String, String?>): Map<String, String?> {
         val enhancedNames = params.filter { it.enhancePattern }.map { it.name }.toSet()
         return properties.mapValues { (key, value) ->
@@ -136,7 +143,7 @@ object TaskRegistry {
     val INCLUDETEST = ParamDef("include-test", "true", "Include test source set", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val PACKAGE = ParamDef("package", "<regex>", "Filter packages by regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val REVERSE = ParamDef("reverse", "true", "Show reverse dependencies", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
-    val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Deprecated: use package-filter instead. Only include packages under this prefix", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING)
+    val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Deprecated: use package-filter instead. Only include packages under this prefix", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'root-package' is deprecated. Results are now automatically limited to classes in the project source sets. Use 'package-filter' to narrow further.")
     val PACKAGE_FILTER = ParamDef("package-filter", "<pkg>", "Only include packages under this prefix", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val INCLUDE_EXTERNAL = ParamDef("include-external", "true", "Include dependencies on classes outside the project", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val DSM_DEPTH = ParamDef("dsm-depth", "<N>", "Package grouping depth", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
