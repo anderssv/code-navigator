@@ -78,6 +78,9 @@ data class ParamDef<T>(
             parse(properties[name])
         }
 
+    fun parseRequiredFrom(properties: Map<String, String?>): T & Any =
+        parseFrom(properties) ?: throw IllegalArgumentException("Missing required property '$name'")
+
     companion object {
         fun parseFormat(properties: Map<String, String?>): OutputFormat =
             OutputFormat.from(

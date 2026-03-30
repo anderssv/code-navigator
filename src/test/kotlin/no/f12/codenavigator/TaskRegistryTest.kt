@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
+import kotlin.test.assertFailsWith
 
 class ParamDefTest {
 
@@ -205,6 +206,35 @@ class ParamDefTest {
 
         assertEquals(true, param.deprecated)
         assertEquals("Use package-filter instead", param.deprecatedMessage)
+    }
+
+    @Test
+    fun `parseRequiredFrom throws when STRING property is missing`() {
+        val param = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+
+        val exception = assertFailsWith<IllegalArgumentException> {
+            param.parseRequiredFrom(emptyMap())
+        }
+
+        assertEquals("Missing required property 'pattern'", exception.message)
+    }
+
+    @Test
+    fun `parseRequiredFrom returns value when STRING property is present`() {
+        val param = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+
+        val result: String = param.parseRequiredFrom(mapOf("pattern" to "MyService"))
+
+        assertEquals("MyService", result)
+    }
+
+    @Test
+    fun `parseRequiredFrom returns default for BOOLEAN when property is absent`() {
+        val param = ParamDef("project-only", "true", "Hide stdlib", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
+
+        val result: Boolean = param.parseRequiredFrom(emptyMap())
+
+        assertEquals(true, result)
     }
 }
 
