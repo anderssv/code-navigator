@@ -21,6 +21,9 @@ class CodeNavigatorPlugin : Plugin<Project> {
                 if (taskDef.requiresCompilation) {
                     dependsOn("classes")
                 }
+                if (taskDef.requiresTestCompilation) {
+                    dependsOn("testClasses")
+                }
             }
         }
 

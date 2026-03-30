@@ -507,6 +507,25 @@ class TaskRegistryTest {
     }
 
     @Test
+    fun `dead code task requires test compilation`() {
+        assertTrue(TaskRegistry.DEAD.requiresTestCompilation, "Dead code task should require test compilation")
+    }
+
+    @Test
+    fun `most tasks do not require test compilation`() {
+        val nonTestGoals = listOf(
+            "list-classes", "find-class", "find-symbol", "class-detail",
+            "find-callers", "find-callees", "find-interfaces", "package-deps",
+            "dsm", "find-usages", "rank", "type-hierarchy",
+        )
+
+        for (goal in nonTestGoals) {
+            val task = TaskRegistry.ALL_TASKS.first { it.goal == goal }
+            assertTrue(!task.requiresTestCompilation, "Task '$goal' should NOT require test compilation")
+        }
+    }
+
+    @Test
     fun `git analysis tasks do not require compilation`() {
         val gitGoals = listOf("hotspots", "churn", "code-age", "authors", "coupling")
 

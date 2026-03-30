@@ -97,6 +97,7 @@ data class TaskDef(
     val requiresCompilation: Boolean,
     val category: TaskCategory,
     val legacyGradleTaskName: String? = null,
+    val requiresTestCompilation: Boolean = false,
 ) {
     val gradleTaskName: String = goalToGradleTaskName(goal)
 
@@ -301,6 +302,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, PROD_ONLY, EXCLUDE_FRAMEWORK),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        requiresTestCompilation = true,
     )
 
     val HOTSPOTS = TaskDef(

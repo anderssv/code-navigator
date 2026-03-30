@@ -23,7 +23,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "dead")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class DeadCodeMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
