@@ -438,6 +438,29 @@ class AnnotationNameTest {
         assertTrue(annotation.matches(Regex("springframework")))
         assertFalse(annotation.matches(Regex("PostMapping")))
     }
+
+    // --- isInternal ---
+
+    @Test
+    fun `isInternal returns true for kotlin Metadata`() {
+        assertTrue(AnnotationName("kotlin.Metadata").isInternal())
+    }
+
+    @Test
+    fun `isInternal returns true for SourceDebugExtension`() {
+        assertTrue(AnnotationName("kotlin.jvm.internal.SourceDebugExtension").isInternal())
+    }
+
+    @Test
+    fun `isInternal returns true for DebugMetadata`() {
+        assertTrue(AnnotationName("kotlin.coroutines.jvm.internal.DebugMetadata").isInternal())
+    }
+
+    @Test
+    fun `isInternal returns false for user annotations`() {
+        assertFalse(AnnotationName("org.springframework.stereotype.Service").isInternal())
+        assertFalse(AnnotationName("kotlin.Deprecated").isInternal())
+    }
 }
 
 class MethodRefTest {

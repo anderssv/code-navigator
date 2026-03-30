@@ -79,9 +79,19 @@ value class AnnotationName(val value: String) : Comparable<AnnotationName> {
 
     fun matches(regex: Regex): Boolean = regex.containsMatchIn(value)
 
+    fun isInternal(): Boolean = value in INTERNAL_ANNOTATIONS
+
     override fun compareTo(other: AnnotationName): Int = value.compareTo(other.value)
 
     override fun toString(): String = value
+
+    companion object {
+        private val INTERNAL_ANNOTATIONS = setOf(
+            "kotlin.Metadata",
+            "kotlin.jvm.internal.SourceDebugExtension",
+            "kotlin.coroutines.jvm.internal.DebugMetadata",
+        )
+    }
 }
 
 @JvmInline

@@ -155,11 +155,15 @@ object AnnotationExtractor {
         descriptor: String,
         annotations: MutableSet<AnnotationName>,
         paramTarget: MutableMap<AnnotationName, Map<String, String>>,
-    ): AnnotationVisitor = unwrappingAnnotationVisitor(descriptor) { resolved ->
-        for (ann in resolved) {
-            val name = annotationFqn(ann.descriptor)
-            annotations.add(name)
-            paramTarget[name] = ann.parameters
+    ): AnnotationVisitor? {
+        val fqn = annotationFqn(descriptor)
+        if (fqn.isInternal()) return null
+        return unwrappingAnnotationVisitor(descriptor) { resolved ->
+            for (ann in resolved) {
+                val name = annotationFqn(ann.descriptor)
+                annotations.add(name)
+                paramTarget[name] = ann.parameters
+            }
         }
     }
 }

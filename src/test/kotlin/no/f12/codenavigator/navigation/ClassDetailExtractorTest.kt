@@ -671,4 +671,49 @@ class ClassDetailExtractorTest {
         assertEquals(1, detail.methods.size)
         assertEquals("int[]", detail.methods.first().returnType)
     }
+
+    @Test
+    fun `filters out Kotlin internal annotations from class-level annotations`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/KotlinClass", "KotlinClass.kt") {
+            visitAnnotation("Lkotlin/Metadata;", true)?.visitEnd()
+            visitAnnotation("Lkotlin/jvm/internal/SourceDebugExtension;", true)?.visitEnd()
+            visitAnnotation("Lorg/springframework/stereotype/Service;", true)?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        assertEquals(1, detail.annotations.size)
+        assertEquals(AnnotationName("org.springframework.stereotype.Service"), detail.annotations.first().name)
+    }
+
+    @Test
+    fun `filters out Kotlin internal annotations from method-level annotations`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Suspending", "Suspending.kt") {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "doWork", "()V", null, null)
+            mv.visitAnnotation("Lkotlin/coroutines/jvm/internal/DebugMetadata;", true)?.visitEnd()
+            mv.visitAnnotation("Lorg/springframework/scheduling/annotation/Scheduled;", true)?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        assertEquals(1, detail.methods.first().annotations.size)
+        assertEquals(
+            AnnotationName("org.springframework.scheduling.annotation.Scheduled"),
+            detail.methods.first().annotations.first().name,
+        )
+    }
+
+    @Test
+    fun `filters out Kotlin internal annotations from field-level annotations`() {
+        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/WithFieldMeta", "WithFieldMeta.kt") {
+            val fv = visitField(Opcodes.ACC_PUBLIC, "name", "Ljava/lang/String;", null, null)
+            fv.visitAnnotation("Lkotlin/Metadata;", true)?.visitEnd()
+            fv.visitAnnotation("Ljakarta/inject/Inject;", true)?.visitEnd()
+        }
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        assertEquals(1, detail.fields.first().annotations.size)
+        assertEquals(AnnotationName("jakarta.inject.Inject"), detail.fields.first().annotations.first().name)
+    }
 }

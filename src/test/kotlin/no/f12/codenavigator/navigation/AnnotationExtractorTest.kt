@@ -243,4 +243,56 @@ class AnnotationExtractorTest {
         // Map can only hold one set of params per name; the last @PropertySource's params win
         assertEquals(mapOf("value" to "classpath:db.properties"), result.classAnnotationParameters[sourceName])
     }
+
+    @Test
+    fun `filters out Kotlin internal annotations from class-level annotations`() {
+        val classFile = TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/KotlinService", "KotlinService.kt",
+        ) {
+            visitAnnotation("Lkotlin/Metadata;", true)?.visitEnd()
+            visitAnnotation("Lkotlin/jvm/internal/SourceDebugExtension;", true)?.visitEnd()
+            visitAnnotation("Lorg/springframework/stereotype/Service;", true)?.visitEnd()
+        }
+
+        val result = AnnotationExtractor.extract(classFile)
+
+        assertEquals(setOf(AnnotationName("org.springframework.stereotype.Service")), result.classAnnotations)
+    }
+
+    @Test
+    fun `filters out Kotlin internal annotations from method-level annotations`() {
+        val classFile = TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/SuspendService", "SuspendService.kt",
+        ) {
+            val mv = visitMethod(Opcodes.ACC_PUBLIC, "doWork", "()V", null, null)
+            mv.visitAnnotation("Lkotlin/coroutines/jvm/internal/DebugMetadata;", true)?.visitEnd()
+            mv.visitAnnotation("Lorg/springframework/scheduling/annotation/Scheduled;", true)?.visitEnd()
+            mv.visitEnd()
+        }
+
+        val result = AnnotationExtractor.extract(classFile)
+
+        val methodRef = MethodRef(ClassName("com.example.SuspendService"), "doWork")
+        assertEquals(
+            setOf(AnnotationName("org.springframework.scheduling.annotation.Scheduled")),
+            result.methodAnnotations[methodRef],
+        )
+    }
+
+    @Test
+    fun `scanAll excludes Kotlin internal annotations from aggregated results`() {
+        val dir = tempDir.toFile()
+
+        TestClassWriter.writeClassFile(dir, "com/example/KotlinClass", "KotlinClass.kt") {
+            visitAnnotation("Lkotlin/Metadata;", true)?.visitEnd()
+            visitAnnotation("Lorg/springframework/stereotype/Component;", true)?.visitEnd()
+        }
+
+        val result = AnnotationExtractor.scanAll(listOf(dir))
+
+        assertEquals(
+            setOf(AnnotationName("org.springframework.stereotype.Component")),
+            result.classAnnotations[ClassName("com.example.KotlinClass")],
+        )
+    }
 }

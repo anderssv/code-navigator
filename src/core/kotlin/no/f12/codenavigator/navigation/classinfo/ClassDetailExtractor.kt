@@ -172,6 +172,8 @@ object ClassDetailExtractor {
         annotations: MutableList<AnnotationDetail>,
     ): AnnotationVisitor? {
         if (descriptor == null) return null
+        val fqn = annotationFqn(descriptor)
+        if (fqn.isInternal()) return null
         return unwrappingAnnotationVisitor(descriptor) { resolved ->
             for (ann in resolved) {
                 annotations.add(AnnotationDetail(annotationFqn(ann.descriptor), ann.parameters))
