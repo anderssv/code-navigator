@@ -338,3 +338,21 @@ From user feedback (v0.38): the default DSM with no `rootPackage` produced a 43x
 - `AgentHelpText.kt` — workflow step 11 updated to use `package-filter`.
 - All 3 Gradle tasks (`DsmTask`, `CyclesTask`, `MetricsTask`) and 3 Maven mojos (`DsmMojo`, `CyclesMojo`, `MetricsMojo`) updated to use project class scanning, new extract overload, and display prefix auto-detection.
 - Tests: `RootPackageDetectorTest` (11 tests), `DsmDependencyExtractorTest` (4 new), `DsmConfigTest` (10 new), `CyclesConfigTest` (6 new), `MetricsConfigTest` (6 new), `ProjectClassScannerTest` (7 tests), `CodeNavigatorExtensionTest` (10 tests), `TaskRegistryTest` updated.
+
+## ~~Centralize command config — auto-generate help text, plugin registration, and validation from TaskRegistry~~ DONE
+
+Comprehensive centralization of task/parameter metadata so that `TaskRegistry` is the single source of truth. Eliminated manual duplication across TaskRegistry, BuildTool, CodeNavigatorPlugin, ConfigHelpText, HelpText, and Maven mojos. Six sub-tasks completed:
+
+**A. Standardize Config.parse() to use parseFrom(properties):** All Config.parse() methods now use `ParamDef.parseFrom(properties)` instead of raw `properties["key"]` lookups. This ensures param name, type parsing, and default values come from a single definition.
+
+**B. Add deprecated/deprecatedMessage to ParamDef:** `ParamDef` gained `deprecated: Boolean` and `deprecatedMessage: String?` fields. Used for `root-package` deprecation warnings.
+
+**C. Auto-generate HelpText param docs from ParamDef.description:** `HelpText.kt` `pd()` calls now use `param.description` as the default, with optional override for task-specific context. ~58 of 91 `pd()` calls switched to use ParamDef descriptions directly; ~33 retain custom descriptions where they add genuine task-specific value.
+
+**D. Add required validation to ParamDef.parseFrom():** Added `parseRequiredFrom(properties)` method that throws `IllegalArgumentException` when a required param is missing. Applied to 9 Config files: `FindClassConfig`, `FindClassDetailConfig`, `FindSymbolConfig`, `AnnotationQueryConfig`, `FindInterfaceImplsConfig`, `TypeHierarchyConfig`, `CallGraphConfig`, `ContextConfig`, `StringConstantConfig`. `FindUsagesConfig` kept custom validation due to complex mutual exclusion rules.
+
+**E. Runtime validation in enhanceProperties:** `TaskDef.enhanceProperties()` now validates that all property map keys are known param names, throwing `IllegalArgumentException` with the task goal name and unknown keys listed. This catches drift between Maven mojo `buildPropertyMap()` and TaskDef at runtime. Gradle side is validated by construction (`GradleSupport.buildPropertyMap(TaskDef)` uses `TaskDef.params` directly).
+
+**F. Maven mojo simplification evaluated — reflection rejected:** User explicitly rejected reflection-based approaches for auto-generating `buildPropertyMap()`. Maven `@Parameter` fields cannot be eliminated (annotation processing requires them). Runtime validation (sub-task E) is the pragmatic solution: some duplication is accepted as long as it's detected at runtime.
+
+Verified on real projects: all Gradle tasks pass on spring-petclinic, all Maven goals pass on realworld-springboot.
