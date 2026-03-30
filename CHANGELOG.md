@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.45
+
+- **Improved:** Filter Kotlin compiler-internal annotations (e.g. `@kotlin.Metadata`, `@kotlin.jvm.internal.*`, `@org.jetbrains.annotations.*`) from `cnavClassDetail` and `cnavAnnotations` output. These synthetic annotations cluttered results without providing useful information.
+- **Fixed:** `cnavDead` now ensures test classes are compiled before analysis. Previously, prod-only dead code detection could miss test usages when test compilation hadn't run yet. Gradle tasks depend on `testClasses`; Maven mojo runs at `TEST_COMPILE` phase.
+- **Improved:** `cnavAnnotations` gained `include-test` parameter to include test source set annotations in results.
+- **Improved:** `cnavFindSymbol` gained `include-test` parameter to include test source set symbols in results.
+- **Improved:** Error messages now auto-generated from `TaskDef` via `usageHint(BuildTool)` instead of hardcoded strings. Fixes 5 tasks that still referenced deprecated pre-rename aliases in their error output.
+
 ## 0.1.44
 
 - **Improved:** Runtime validation of property keys in `enhanceProperties()` — throws `IllegalArgumentException` if a Maven mojo's `buildPropertyMap()` contains keys not matching `TaskDef.params`. Catches drift between Maven mojos and TaskDef at runtime.
