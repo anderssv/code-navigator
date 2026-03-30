@@ -13,8 +13,8 @@ data class CodeAgeConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): CodeAgeConfig = CodeAgeConfig(
-            after = TaskRegistry.AFTER.parse(properties["after"]),
-            top = TaskRegistry.TOP.parse(properties["top"]),
+            after = TaskRegistry.AFTER.parseFrom(properties),
+            top = TaskRegistry.TOP.parseFrom(properties),
             followRenames = !TaskRegistry.NO_FOLLOW.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )

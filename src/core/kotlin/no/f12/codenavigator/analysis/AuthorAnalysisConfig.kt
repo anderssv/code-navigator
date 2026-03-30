@@ -14,9 +14,9 @@ data class AuthorAnalysisConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): AuthorAnalysisConfig = AuthorAnalysisConfig(
-            after = TaskRegistry.AFTER.parse(properties["after"]),
-            minRevs = TaskRegistry.MIN_REVS.parse(properties["min-revs"]),
-            top = TaskRegistry.TOP.parse(properties["top"]),
+            after = TaskRegistry.AFTER.parseFrom(properties),
+            minRevs = TaskRegistry.MIN_REVS.parseFrom(properties),
+            top = TaskRegistry.TOP.parseFrom(properties),
             followRenames = !TaskRegistry.NO_FOLLOW.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )

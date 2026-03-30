@@ -13,7 +13,7 @@ data class AnnotationQueryConfig(
         fun parse(properties: Map<String, String?>): AnnotationQueryConfig = AnnotationQueryConfig(
             pattern = properties["pattern"]
                 ?: throw IllegalArgumentException("Missing required property 'pattern'"),
-            methods = TaskRegistry.METHODS.parse(properties["methods"]),
+            methods = TaskRegistry.METHODS.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )
     }

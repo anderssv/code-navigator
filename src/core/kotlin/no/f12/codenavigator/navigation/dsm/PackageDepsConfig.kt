@@ -12,9 +12,9 @@ data class PackageDepsConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): PackageDepsConfig = PackageDepsConfig(
-            packagePattern = properties["package"],
-            projectOnly = TaskRegistry.PROJECTONLY.parse(properties["project-only"]),
-            reverse = TaskRegistry.REVERSE.parse(properties["reverse"]),
+            packagePattern = TaskRegistry.PACKAGE.parseFrom(properties),
+            projectOnly = TaskRegistry.PROJECTONLY.parseFrom(properties),
+            reverse = TaskRegistry.REVERSE.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )
     }

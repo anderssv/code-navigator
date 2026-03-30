@@ -12,8 +12,8 @@ data class ChangedSinceConfig(
     companion object {
         fun parse(properties: Map<String, String?>): ChangedSinceConfig =
             ChangedSinceConfig(
-                ref = properties["ref"],
-                projectOnly = TaskRegistry.PROJECTONLY_ON.parse(properties["project-only"]),
+                ref = TaskRegistry.REF.parseFrom(properties),
+                projectOnly = TaskRegistry.PROJECTONLY_ON.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
             )
     }

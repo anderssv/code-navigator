@@ -17,12 +17,12 @@ data class ComplexityConfig(
     companion object {
         fun parse(properties: Map<String, String?>): ComplexityConfig = ComplexityConfig(
             classPattern = properties["pattern"] ?: ".*",
-            projectOnly = TaskRegistry.PROJECTONLY_ON.parse(properties["project-only"]),
-            detail = TaskRegistry.DETAIL.parse(properties["detail"]),
-            collapseLambdas = TaskRegistry.COLLAPSE_LAMBDAS.parse(properties["collapse-lambdas"]),
-            top = TaskRegistry.TOP.parse(properties["top"]),
-            prodOnly = TaskRegistry.PROD_ONLY.parse(properties["prod-only"]),
-            testOnly = TaskRegistry.TEST_ONLY.parse(properties["test-only"]),
+            projectOnly = TaskRegistry.PROJECTONLY_ON.parseFrom(properties),
+            detail = TaskRegistry.DETAIL.parseFrom(properties),
+            collapseLambdas = TaskRegistry.COLLAPSE_LAMBDAS.parseFrom(properties),
+            top = TaskRegistry.TOP.parseFrom(properties),
+            prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
+            testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )
     }

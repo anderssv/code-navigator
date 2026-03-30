@@ -16,12 +16,12 @@ data class ChangeCouplingConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): ChangeCouplingConfig = ChangeCouplingConfig(
-            after = TaskRegistry.AFTER.parse(properties["after"]),
-            minSharedRevs = TaskRegistry.MIN_SHARED_REVS.parse(properties["min-shared-revs"]),
-            minCoupling = TaskRegistry.MIN_COUPLING.parse(properties["min-coupling"]),
-            maxChangesetSize = TaskRegistry.MAX_CHANGESET_SIZE.parse(properties["max-changeset-size"]),
+            after = TaskRegistry.AFTER.parseFrom(properties),
+            minSharedRevs = TaskRegistry.MIN_SHARED_REVS.parseFrom(properties),
+            minCoupling = TaskRegistry.MIN_COUPLING.parseFrom(properties),
+            maxChangesetSize = TaskRegistry.MAX_CHANGESET_SIZE.parseFrom(properties),
             followRenames = !TaskRegistry.NO_FOLLOW.parseFrom(properties),
-            top = TaskRegistry.TOP.parse(properties["top"]),
+            top = TaskRegistry.TOP.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )
     }
