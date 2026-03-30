@@ -46,12 +46,13 @@ Task/parameter metadata is spread across 5+ locations that must stay in sync man
 - All Config.parse() methods should use `TaskRegistry.XXX.parseFrom(properties)` instead of `TaskRegistry.XXX.parse(properties["xxx"])`. The `parseFrom` method already exists and uses `ParamDef.name` for the lookup.
 - Required-ness check moves into `parseFrom` when `ParamDef.required = true`.
 
-### Concrete drift bugs to fix immediately (before the refactoring)
+### Concrete drift bugs (fixed)
 
-1. `CodeNavigatorPlugin.kt` — `cnavCycles` description says `-Pdepth=N`, actual param is `-Pdsm-depth=N`.
-2. `CodeNavigatorPlugin.kt` — `cnavDsm` description still references `-Proot-package` without mentioning `package-filter`.
-3. `AnnotationQueryConfig.parse()` — bypasses `TaskRegistry.METHODS.parse()`, hardcodes `false` default.
-4. `DeadCodeConfig` — `DEAD` TaskDef declares `TEST_ONLY` param but Config.parse() never reads it (param is silently ignored).
+All 4 original drift bugs have been fixed:
+1. ~`cnavCycles` description fixed to say `-Pdsm-depth=N`~
+2. ~`cnavDsm` description updated to reference `-Ppackage-filter`~
+3. ~`AnnotationQueryConfig.parse()` now uses `TaskRegistry.METHODS.parse()`~
+4. ~`TEST_ONLY` removed from `DEAD` TaskDef (dead code analysis only targets prod source set)~
 
 ---
 

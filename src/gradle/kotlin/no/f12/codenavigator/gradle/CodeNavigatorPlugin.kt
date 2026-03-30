@@ -65,13 +65,13 @@ class CodeNavigatorPlugin : Plugin<Project> {
         }
 
         project.tasks.register("cnavDsm", DsmTask::class.java) {
-            description = "Shows Dependency Structure Matrix. Usage: [-Proot-package=<pkg>] [-Pdsm-depth=N] [-Pdsm-html=<path>]"
+            description = "Shows Dependency Structure Matrix. Usage: [-Ppackage-filter=<pkg>] [-Pdsm-depth=N] [-Pdsm-html=<path>]"
             group = "code-navigator"
             dependsOn("classes")
         }
 
         project.tasks.register("cnavCycles", CyclesTask::class.java) {
-            description = "Detects dependency cycles using Tarjan's SCC algorithm. Usage: [-Proot-package=<pkg>] [-Pdepth=N]"
+            description = "Detects dependency cycles using Tarjan's SCC algorithm. Usage: [-Ppackage-filter=<pkg>] [-Pdsm-depth=N]"
             group = "code-navigator"
             dependsOn("classes")
         }

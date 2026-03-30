@@ -50,9 +50,6 @@ class DeadCodeMojo : AbstractMojo() {
     @Parameter(property = "prod-only")
     private var prodOnly: String? = null
 
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
-
     @Parameter(property = "exclude-framework")
     private var excludeFramework: String? = null
 
@@ -130,7 +127,6 @@ class DeadCodeMojo : AbstractMojo() {
         classesOnly?.let { put("classes-only", it) }
         excludeAnnotated?.let { put("exclude-annotated", it) }
         prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
         excludeFramework?.let { put("exclude-framework", it) }
     }
 }
