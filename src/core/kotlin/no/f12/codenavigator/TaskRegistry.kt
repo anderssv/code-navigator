@@ -111,6 +111,11 @@ data class TaskDef(
             .mapNotNull { it.deprecatedMessage }
 
     fun enhanceProperties(properties: Map<String, String?>): Map<String, String?> {
+        val knownNames = params.map { it.name }.toSet()
+        val unknown = properties.keys - knownNames
+        require(unknown.isEmpty()) {
+            "Task '$goal' received unknown properties: ${unknown.sorted()}. Known: ${knownNames.sorted()}"
+        }
         val enhancedNames = params.filter { it.enhancePattern }.map { it.name }.toSet()
         return properties.mapValues { (key, value) ->
             if (value != null && key in enhancedNames) PatternEnhancer.enhance(value) else value

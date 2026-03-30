@@ -293,6 +293,25 @@ class TaskDefTest {
     }
 
     @Test
+    fun `enhanceProperties throws on unknown property key`() {
+        val pattern = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
+        val task = TaskDef(
+            goal = "test",
+            description = "Test",
+            params = listOf(pattern),
+            requiresCompilation = false,
+            category = TaskCategory.NAVIGATION,
+        )
+
+        val exception = assertFailsWith<IllegalArgumentException> {
+            task.enhanceProperties(mapOf("pattern" to "Foo", "typo-param" to "bar"))
+        }
+
+        assertTrue(exception.message!!.contains("typo-param"))
+        assertTrue(exception.message!!.contains("test"))
+    }
+
+    @Test
     fun `resolves Gradle task name`() {
         val task = TaskDef(
             goal = "find-class",
