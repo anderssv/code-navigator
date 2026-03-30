@@ -11,8 +11,7 @@ data class AnnotationQueryConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): AnnotationQueryConfig = AnnotationQueryConfig(
-            pattern = properties["pattern"]
-                ?: throw IllegalArgumentException("Missing required property 'pattern'"),
+            pattern = TaskRegistry.PATTERN.parseRequiredFrom(properties),
             methods = TaskRegistry.METHODS.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )

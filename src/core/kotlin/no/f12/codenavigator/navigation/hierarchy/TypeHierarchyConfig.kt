@@ -11,8 +11,7 @@ data class TypeHierarchyConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): TypeHierarchyConfig = TypeHierarchyConfig(
-            pattern = properties["pattern"]
-                ?: throw IllegalArgumentException("Missing required property 'pattern'"),
+            pattern = TaskRegistry.PATTERN.parseRequiredFrom(properties),
             projectOnly = TaskRegistry.PROJECTONLY.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )

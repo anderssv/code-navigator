@@ -11,8 +11,7 @@ data class FindInterfaceImplsConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): FindInterfaceImplsConfig = FindInterfaceImplsConfig(
-            pattern = properties["pattern"]
-                ?: throw IllegalArgumentException("Missing required property 'pattern'"),
+            pattern = TaskRegistry.PATTERN.parseRequiredFrom(properties),
             includeTest = TaskRegistry.INCLUDETEST.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )
