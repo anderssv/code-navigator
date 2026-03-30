@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.TaskRegistry
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -28,25 +29,25 @@ class CodeNavigatorPlugin : Plugin<Project> {
             dependsOn("classes")
         }
 
-        project.tasks.register("cnavCallers", FindCallersTask::class.java) {
+        project.tasks.register("cnavFindCallers", FindCallersTask::class.java) {
             description = "Shows who calls a given method as an indented tree. Usage: -Ppattern=<regex> -Pmaxdepth=N -Pproject-only=true|false"
             group = "code-navigator"
             dependsOn("classes")
         }
 
-        project.tasks.register("cnavCallees", FindCalleesTask::class.java) {
+        project.tasks.register("cnavFindCallees", FindCalleesTask::class.java) {
             description = "Shows what a method calls as an indented tree. Usage: -Ppattern=<regex> -Pmaxdepth=N -Pproject-only=true|false"
             group = "code-navigator"
             dependsOn("classes")
         }
 
-        project.tasks.register("cnavClass", FindClassDetailTask::class.java) {
+        project.tasks.register("cnavClassDetail", FindClassDetailTask::class.java) {
             description = "Shows class signature (fields, methods, interfaces, superclass). Usage: -Ppattern=<regex>"
             group = "code-navigator"
             dependsOn("classes")
         }
 
-        project.tasks.register("cnavInterfaces", FindInterfaceImplsTask::class.java) {
+        project.tasks.register("cnavFindInterfaces", FindInterfaceImplsTask::class.java) {
             description = "Finds implementations of an interface. Usage: -Ppattern=<regex>"
             group = "code-navigator"
             dependsOn("classes")
@@ -58,7 +59,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             dependsOn("classes")
         }
 
-        project.tasks.register("cnavDeps", PackageDepsTask::class.java) {
+        project.tasks.register("cnavPackageDeps", PackageDepsTask::class.java) {
             description = "Shows package-level dependencies. Usage: [-Ppackage=<regex>]"
             group = "code-navigator"
             dependsOn("classes")
@@ -76,7 +77,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             dependsOn("classes")
         }
 
-        project.tasks.register("cnavUsages", FindUsagesTask::class.java) {
+        project.tasks.register("cnavFindUsages", FindUsagesTask::class.java) {
             description = "Finds project references to external types/methods. Usage: -Powner-class=<class> [-Pmethod=<name>] or -Ptype=<class>"
             group = "code-navigator"
             dependsOn("classes")
@@ -134,7 +135,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             group = "code-navigator"
         }
 
-        project.tasks.register("cnavHelpConfig", ConfigHelpTask::class.java) {
+        project.tasks.register("cnavConfigHelp", ConfigHelpTask::class.java) {
             description = "Shows all available configuration parameters (-P properties)"
             group = "code-navigator"
         }
@@ -151,7 +152,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             group = "code-navigator"
         }
 
-        project.tasks.register("cnavAge", CodeAgeTask::class.java) {
+        project.tasks.register("cnavCodeAge", CodeAgeTask::class.java) {
             description = "Shows code age per file (time since last change). Usage: [-Pafter=YYYY-MM-DD] [-Ptop=N]"
             group = "code-navigator"
         }
@@ -174,9 +175,23 @@ class CodeNavigatorPlugin : Plugin<Project> {
             dependsOn("classes")
         }
 
+        // --- Deprecated legacy aliases ---
+
+        for (task in TaskRegistry.ALL_TASKS) {
+            val legacy = task.legacyGradleTaskName ?: continue
+            project.tasks.register(legacy) {
+                dependsOn(task.gradleTaskName)
+                group = "code-navigator (deprecated)"
+                description = "DEPRECATED: Use ${task.gradleTaskName} instead"
+                doFirst {
+                    logger.warn("WARNING: '$legacy' is deprecated. Use '${task.gradleTaskName}' instead.")
+                }
+            }
+        }
+
         // --- Startup indicator for all cnav tasks ---
 
-        project.tasks.matching { it.group == "code-navigator" }.configureEach {
+        project.tasks.matching { it.group?.startsWith("code-navigator") == true }.configureEach {
             doFirst { logger.lifecycle("\uD83E\uDDED code-navigator: $name") }
         }
     }

@@ -10,20 +10,20 @@ class BuildToolTest {
         assertEquals("cnavListClasses", BuildTool.GRADLE.taskName("list-classes"))
         assertEquals("cnavFindClass", BuildTool.GRADLE.taskName("find-class"))
         assertEquals("cnavFindSymbol", BuildTool.GRADLE.taskName("find-symbol"))
-        assertEquals("cnavClass", BuildTool.GRADLE.taskName("class-detail"))
-        assertEquals("cnavCallers", BuildTool.GRADLE.taskName("find-callers"))
-        assertEquals("cnavCallees", BuildTool.GRADLE.taskName("find-callees"))
-        assertEquals("cnavInterfaces", BuildTool.GRADLE.taskName("find-interfaces"))
-        assertEquals("cnavDeps", BuildTool.GRADLE.taskName("package-deps"))
+        assertEquals("cnavClassDetail", BuildTool.GRADLE.taskName("class-detail"))
+        assertEquals("cnavFindCallers", BuildTool.GRADLE.taskName("find-callers"))
+        assertEquals("cnavFindCallees", BuildTool.GRADLE.taskName("find-callees"))
+        assertEquals("cnavFindInterfaces", BuildTool.GRADLE.taskName("find-interfaces"))
+        assertEquals("cnavPackageDeps", BuildTool.GRADLE.taskName("package-deps"))
         assertEquals("cnavDsm", BuildTool.GRADLE.taskName("dsm"))
         assertEquals("cnavHotspots", BuildTool.GRADLE.taskName("hotspots"))
         assertEquals("cnavChurn", BuildTool.GRADLE.taskName("churn"))
-        assertEquals("cnavAge", BuildTool.GRADLE.taskName("code-age"))
+        assertEquals("cnavCodeAge", BuildTool.GRADLE.taskName("code-age"))
         assertEquals("cnavAuthors", BuildTool.GRADLE.taskName("authors"))
         assertEquals("cnavCoupling", BuildTool.GRADLE.taskName("coupling"))
         assertEquals("cnavHelp", BuildTool.GRADLE.taskName("help"))
         assertEquals("cnavAgentHelp", BuildTool.GRADLE.taskName("agent-help"))
-        assertEquals("cnavHelpConfig", BuildTool.GRADLE.taskName("config-help"))
+        assertEquals("cnavConfigHelp", BuildTool.GRADLE.taskName("config-help"))
     }
 
     @Test
@@ -87,12 +87,7 @@ class BuildToolTest {
     }
 
     @Test
-    fun `unknown goal throws for GRADLE`() {
-        try {
-            BuildTool.GRADLE.taskName("nonexistent")
-            error("Should have thrown")
-        } catch (e: IllegalArgumentException) {
-            // expected
-        }
+    fun `GRADLE taskName derives name for any goal string`() {
+        assertEquals("cnavSomethingNew", BuildTool.GRADLE.taskName("something-new"))
     }
 }

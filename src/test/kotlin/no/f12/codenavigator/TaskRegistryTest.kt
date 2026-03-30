@@ -261,6 +261,53 @@ class TaskDefTest {
 
         assertEquals("cnav:find-class", task.taskName(BuildTool.MAVEN))
     }
+
+    @Test
+    fun `goalToGradleTaskName derives cnav-prefixed camelCase from kebab-case goal`() {
+        assertEquals("cnavFindClass", TaskDef.goalToGradleTaskName("find-class"))
+        assertEquals("cnavListClasses", TaskDef.goalToGradleTaskName("list-classes"))
+        assertEquals("cnavDsm", TaskDef.goalToGradleTaskName("dsm"))
+        assertEquals("cnavFindStringConstant", TaskDef.goalToGradleTaskName("find-string-constant"))
+        assertEquals("cnavAgentHelp", TaskDef.goalToGradleTaskName("agent-help"))
+    }
+
+    @Test
+    fun `gradleTaskName property returns derived canonical name`() {
+        val task = TaskDef(
+            goal = "class-detail",
+            description = "Test",
+            params = emptyList(),
+            requiresCompilation = true,
+            legacyGradleTaskName = "cnavClass",
+        )
+
+        assertEquals("cnavClassDetail", task.gradleTaskName)
+    }
+
+    @Test
+    fun `legacyGradleTaskName is null by default`() {
+        val task = TaskDef(
+            goal = "find-class",
+            description = "Test",
+            params = emptyList(),
+            requiresCompilation = true,
+        )
+
+        assertEquals(null, task.legacyGradleTaskName)
+    }
+
+    @Test
+    fun `legacyGradleTaskName stores irregular name when set`() {
+        val task = TaskDef(
+            goal = "class-detail",
+            description = "Test",
+            params = emptyList(),
+            requiresCompilation = true,
+            legacyGradleTaskName = "cnavClass",
+        )
+
+        assertEquals("cnavClass", task.legacyGradleTaskName)
+    }
 }
 
 class TaskRegistryTest {
@@ -291,6 +338,30 @@ class TaskRegistryTest {
             assertNotNull(gradleName, "Goal '${task.goal}' should resolve to a Gradle task name")
         }
         assertEquals(28, registryGoals.size)
+    }
+
+    @Test
+    fun `exactly 8 tasks have legacy Gradle task names`() {
+        val legacyTasks = TaskRegistry.ALL_TASKS.filter { it.legacyGradleTaskName != null }
+
+        assertEquals(8, legacyTasks.size)
+
+        val legacyMap = legacyTasks.associate { it.goal to it.legacyGradleTaskName }
+        assertEquals("cnavClass", legacyMap["class-detail"])
+        assertEquals("cnavCallers", legacyMap["find-callers"])
+        assertEquals("cnavCallees", legacyMap["find-callees"])
+        assertEquals("cnavInterfaces", legacyMap["find-interfaces"])
+        assertEquals("cnavDeps", legacyMap["package-deps"])
+        assertEquals("cnavUsages", legacyMap["find-usages"])
+        assertEquals("cnavAge", legacyMap["code-age"])
+        assertEquals("cnavHelpConfig", legacyMap["config-help"])
+    }
+
+    @Test
+    fun `all gradleTaskName values are unique across tasks`() {
+        val names = TaskRegistry.ALL_TASKS.map { it.gradleTaskName }
+
+        assertEquals(names.size, names.toSet().size, "Duplicate gradleTaskName found")
     }
 
     @Test

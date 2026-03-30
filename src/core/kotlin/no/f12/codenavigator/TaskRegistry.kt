@@ -83,7 +83,10 @@ data class TaskDef(
     val description: String,
     val params: List<ParamDef<*>>,
     val requiresCompilation: Boolean,
+    val legacyGradleTaskName: String? = null,
 ) {
+    val gradleTaskName: String = goalToGradleTaskName(goal)
+
     fun taskName(tool: BuildTool): String = tool.taskName(goal)
 
     fun paramByName(name: String): ParamDef<*> =
@@ -94,6 +97,11 @@ data class TaskDef(
         return properties.mapValues { (key, value) ->
             if (value != null && key in enhancedNames) PatternEnhancer.enhance(value) else value
         }
+    }
+
+    companion object {
+        fun goalToGradleTaskName(goal: String): String =
+            "cnav" + goal.split("-").joinToString("") { it.replaceFirstChar { c -> c.uppercase() } }
     }
 }
 
@@ -180,6 +188,7 @@ object TaskRegistry {
         description = "Show detailed class information (methods, fields, interfaces)",
         params = FORMAT_PARAMS + PATTERN,
         requiresCompilation = true,
+        legacyGradleTaskName = "cnavClass",
     )
 
     val FIND_CALLERS = TaskDef(
@@ -187,6 +196,7 @@ object TaskRegistry {
         description = "Find callers of a method (call tree)",
         params = FORMAT_PARAMS + listOf(CALL_PATTERN, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
+        legacyGradleTaskName = "cnavCallers",
     )
 
     val FIND_CALLEES = TaskDef(
@@ -194,6 +204,7 @@ object TaskRegistry {
         description = "Find methods called by a method (call tree)",
         params = FORMAT_PARAMS + listOf(CALL_PATTERN, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
+        legacyGradleTaskName = "cnavCallees",
     )
 
     val FIND_INTERFACES = TaskDef(
@@ -201,6 +212,7 @@ object TaskRegistry {
         description = "Find implementations of an interface",
         params = FORMAT_PARAMS + listOf(PATTERN, INCLUDETEST),
         requiresCompilation = true,
+        legacyGradleTaskName = "cnavInterfaces",
     )
 
     val TYPE_HIERARCHY = TaskDef(
@@ -215,6 +227,7 @@ object TaskRegistry {
         description = "Show package-level dependencies",
         params = FORMAT_PARAMS + listOf(PACKAGE, PROJECTONLY, REVERSE),
         requiresCompilation = true,
+        legacyGradleTaskName = "cnavDeps",
     )
 
     val DSM = TaskDef(
@@ -236,6 +249,7 @@ object TaskRegistry {
         description = "Find project references to types, methods, and fields/properties",
         params = FORMAT_PARAMS + listOf(OWNER_CLASS, METHOD, FIELD, TYPE, OUTSIDE_PACKAGE, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
+        legacyGradleTaskName = "cnavUsages",
     )
 
     val RANK = TaskDef(
@@ -271,6 +285,7 @@ object TaskRegistry {
         description = "Show time since last modification per file",
         params = FORMAT_PARAMS + listOf(AFTER, TOP, NO_FOLLOW),
         requiresCompilation = false,
+        legacyGradleTaskName = "cnavAge",
     )
 
     val AUTHORS = TaskDef(
@@ -334,6 +349,7 @@ object TaskRegistry {
         description = "Show configuration reference for all parameters",
         params = emptyList(),
         requiresCompilation = false,
+        legacyGradleTaskName = "cnavHelpConfig",
     )
 
     val CHANGED_SINCE = TaskDef(

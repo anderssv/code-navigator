@@ -8,8 +8,7 @@ enum class BuildTool(
     MAVEN("mvn", "-D");
 
     fun taskName(goal: String): String = when (this) {
-        GRADLE -> GRADLE_TASK_NAMES[goal]
-            ?: throw IllegalArgumentException("Unknown goal: $goal")
+        GRADLE -> TaskDef.goalToGradleTaskName(goal)
         MAVEN -> "cnav:$goal"
     }
 
@@ -19,37 +18,4 @@ enum class BuildTool(
 
     fun usage(goal: String, vararg params: String): String =
         (listOf(command, taskName(goal)) + params).joinToString(" ")
-
-    companion object {
-        private val GRADLE_TASK_NAMES = mapOf(
-            "list-classes" to "cnavListClasses",
-            "find-class" to "cnavFindClass",
-            "find-symbol" to "cnavFindSymbol",
-            "class-detail" to "cnavClass",
-            "find-callers" to "cnavCallers",
-            "find-callees" to "cnavCallees",
-            "find-interfaces" to "cnavInterfaces",
-            "type-hierarchy" to "cnavTypeHierarchy",
-            "package-deps" to "cnavDeps",
-            "dsm" to "cnavDsm",
-            "cycles" to "cnavCycles",
-            "find-usages" to "cnavUsages",
-            "rank" to "cnavRank",
-            "dead" to "cnavDead",
-            "find-string-constant" to "cnavFindStringConstant",
-            "annotations" to "cnavAnnotations",
-            "complexity" to "cnavComplexity",
-            "metrics" to "cnavMetrics",
-            "hotspots" to "cnavHotspots",
-            "churn" to "cnavChurn",
-            "code-age" to "cnavAge",
-            "authors" to "cnavAuthors",
-            "coupling" to "cnavCoupling",
-            "changed-since" to "cnavChangedSince",
-            "context" to "cnavContext",
-            "help" to "cnavHelp",
-            "agent-help" to "cnavAgentHelp",
-            "config-help" to "cnavHelpConfig",
-        )
-    }
 }
