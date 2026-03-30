@@ -5,7 +5,7 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
-## 2. `cnavWhyDepends` — dependency edge explanation
+## `cnavWhyDepends` — dependency edge explanation
 
 **Value: high** | **Effort: medium**
 
@@ -17,7 +17,36 @@ The DSM tells you package A depends on package B, but not *why*. To break a cycl
 
 ---
 
-## 4. `cnavTestHealth` — verify all test methods actually ran
+## Auto-detect `rootPackage` for DSM
+
+**Value: high** | **Effort: low**
+
+From user feedback (v0.38): the default DSM with no `rootPackage` produced a 43x43 matrix dominated by `kotlin.*`, `java.*`, `io.ktor.*` with a single `no.bankid` row. That's useless. Users had to discover the `-Proot-package` flag by trial and error.
+
+- **Approach**: Scan all classes in the project's compiled output (`build/classes/kotlin/main`), collect their package names, find the longest common package prefix. Use that as the default `rootPackage`.
+- **Warning**: When using the auto-detected prefix, emit a warning: `"Auto-detected root-package '<prefix>' from compiled classes. Set root-package explicitly in the plugin configuration for faster and more reliable results."` This makes the behavior transparent and nudges users toward the explicit config.
+- **Edge cases**:
+  - Multiple top-level packages with no common prefix → warn: "No common package prefix found across N packages. Set -ProotPackage to focus the DSM."
+  - Single package → common prefix IS the only package, works fine.
+  - Only scan main source set classes, not test classes.
+- **Why this over reading `group` from `build.gradle.kts`**: Works regardless of build system. Reflects what's actually compiled, not what someone declared. No build file parsing.
+- **Scope**: Applies to all tasks that accept `root-package` (DSM, cycles, package-deps, metrics).
+
+---
+
+## Better error messages on task parameter validation
+
+**Value: high** | **Effort: low**
+
+From user feedback (v0.38): `cnavCallers` failed with "Missing required property" without saying which property was missing. The user passed `-Pmethod` and `-Pclass`, but the task expects `-Ppattern` for the class — the error message didn't say so.
+
+- **Approach**: Generate usage hints from `TaskDef.params` instead of hardcoding strings. Each `ParamDef` already has `name`, `valuePlaceholder`, and `defaultValue` (null = required). The error message becomes: `"Missing required parameter 'pattern'. Usage: ./gradlew cnavCallers -Ppattern=<regex> [-Pmaxdepth=3]"` — generated from the task definition, so it can never drift.
+- **Also check**: When an unknown parameter is passed (e.g., `-Pclass`), suggest the closest valid parameter name ("Did you mean `-Ppattern`?")
+- **Scope**: All tasks with required parameters. Centralize in `TaskDef` or `GradleSupport.buildPropertyMap()`.
+
+---
+
+## `cnavTestHealth` — verify all test methods actually ran
 
 **Value: high** | **Effort: medium**
 
@@ -33,7 +62,7 @@ From user feedback: a project had 19 silently skipped tests because test methods
 
 ---
 
-## 5. `cnavJar` — inspect library class signatures
+## `cnavJar` — inspect library class signatures
 
 **Value: high** | **Effort: medium**
 
@@ -47,11 +76,11 @@ Inspect the methods and signatures of classes inside a JAR file, whether or not 
 - **Two modes**: `-Partifact=<group:name>` (resolve from runtime classpath) or `-Pjar=<path>` (arbitrary JAR)
 - **Implementation**: Reuse `ClassDetailExtractor` / `ClassDetailScanner` but feed entries from a `JarFile`. For `-Partifact`, resolve via Gradle's `configurations.runtimeClasspath.resolvedConfiguration` / Maven's `project.runtimeClasspathElements`.
 - **Why**: AI agents frequently need to check library API signatures. Bytecode gives ground-truth for the exact version in the project.
-- **Note**: This builds classpath resolution infrastructure reused by items 7 and 13.
+- **Note**: This builds classpath resolution infrastructure reused by full classpath scanning and meta-annotation traversal.
 
 ---
 
-## 6. `cnavDead` baseline diff — confirm cleanup was complete
+## `cnavDead` baseline diff — confirm cleanup was complete
 
 **Value: medium** | **Effort: low**
 
@@ -62,29 +91,29 @@ After triaging dead code and removing items, re-run `cnavDead` and see what chan
 
 ---
 
-## 7. Cycle fix suggestions in DSM
+## Cycle fix suggestions in DSM
 
 **Value: high** | **Effort: medium**
 
 The DSM tells you which cycles exist, but not how to fix them. When `-Pcycles=true`, also show which specific class-level edges would need to move to break the cycle, and suggest which direction the dependency should flow.
 
-- **Prerequisite**: Benefits from item 3 (`cnavWhyDepends`) infrastructure — same edge-explanation logic.
+- **Prerequisite**: Benefits from `cnavWhyDepends` infrastructure — same edge-explanation logic.
 - **Separate from DSM what-if**: What-if simulation (`-Pwhat-if=<class>:<target-package>`) is a distinct, higher-effort feature. Evaluate need after cycle fix suggestions ship.
 
 ---
 
-## 8. Extract ConfidenceScorer from DeadCodeFinder
+## Extract ConfidenceScorer from DeadCodeFinder
 
 **Value: medium** | **Effort: low**
 
 `DeadCodeFinder` inlines all confidence-scoring logic (annotation checks, interface checks, method name heuristics, caller count thresholds). Extract a `ConfidenceScorer` class that takes a `DeadCode` candidate and returns its `DeadCodeConfidence` + `DeadCodeReason`.
 
 - Makes scoring rules independently testable and easier to extend (e.g., meta-annotation traversal, Spring Data awareness).
-- **Prerequisite for**: Item 14 (meta-annotation traversal) benefits from clean scoring separation.
+- **Prerequisite for**: Meta-annotation traversal benefits from clean scoring separation.
 
 ---
 
-## 9. Split JsonFormatter and LlmFormatter per-feature
+## Split JsonFormatter and LlmFormatter per-feature
 
 **Value: medium** | **Effort: medium**
 
@@ -96,7 +125,7 @@ Self-analysis found `JsonFormatter` (217 outgoing dependencies, 47 referenced ty
 
 ---
 
-## 10. `cnavReport` — consolidated full analysis
+## `cnavReport` — consolidated full analysis
 
 **Value: medium** | **Effort: low**
 
@@ -107,20 +136,20 @@ Run all analysis tasks and produce a single consolidated report. `cnavMetrics` a
 
 ---
 
-## 11. Full classpath scanning option
+## Full classpath scanning option
 
 **Value: high** | **Effort: medium**
 
 Add `-Pclasspath=true` to scan the full runtime classpath (project classes + all dependency JARs).
 
 - **Applies to**: `cnavListClasses`, `cnavFindClass`, `cnavFindSymbol`, `cnavClass`, `cnavInterfaces`, `cnavUsages`
-- **Reuses**: Classpath resolution infrastructure from item 5 (`cnavJar`).
+- **Reuses**: Classpath resolution infrastructure from `cnavJar`.
 - **Considerations**: Significantly slower (thousands of classes). Combine with existing `-Ppattern` / `-Powner` filters to narrow scope. Consider caching scanned JARs by checksum.
 - **Why**: AI agents frequently need to check library API signatures to write correct code.
 
 ---
 
-## 12. `cnavDiff` — structural diff between builds
+## `cnavDiff` — structural diff between builds
 
 **Value: medium** | **Effort: medium**
 
@@ -132,19 +161,19 @@ Compare two compiled states and show structural changes: added/removed/changed c
 
 ---
 
-## 13. Meta-annotation traversal for dead code filtering
+## Meta-annotation traversal for dead code filtering
 
 **Value: high** | **Effort: medium**
 
 `@RestController` is meta-annotated with `@Controller` which is meta-annotated with `@Component`. Currently, excluding `Component` does NOT exclude `@RestController`.
 
 - **Approach**: In `AnnotationExtractor`, also scan annotation `.class` files from classpath JARs and resolve meta-annotations transitively.
-- **Reuses**: Classpath resolution from item 5/11.
+- **Reuses**: Classpath resolution from `cnavJar` / full classpath scanning.
 - **Why**: Covers custom stereotype annotations automatically. A project defining `@DomainService` (meta-annotated with `@Component`) would be handled without configuration.
 
 ---
 
-## 14. `cnavLayerCheck` — architecture conformance
+## `cnavLayerCheck` — architecture conformance
 
 **Value: high** | **Effort: ambitious**
 
@@ -160,22 +189,22 @@ codeNavigator {
 ```
 
 - Output: list of violations with the specific class-level edges that break the rule.
-- **Prerequisite**: Benefits from item 3 (`cnavWhyDepends`) for edge explanation.
+- **Prerequisite**: Benefits from `cnavWhyDepends` for edge explanation.
 
 ---
 
-## 15. `cnavUnused` — unused build dependencies
+## `cnavUnused` — unused build dependencies
 
 **Value: medium** | **Effort: medium**
 
 Find entire libraries that could be removed. For each declared dependency JAR, extract the package list. Scan project bytecode for references. Dependencies with zero references are candidates for removal.
 
 - **Caveats**: Runtime-only dependencies (JDBC drivers, logging backends) will show as "unused." Needs an exclusion mechanism.
-- **Reuses**: Classpath enumeration infrastructure from items 6/13.
+- **Reuses**: Classpath enumeration infrastructure from `cnavJar` / meta-annotation traversal.
 
 ---
 
-## 16. Structured cache format
+## Structured cache format
 
 **Value: medium** | **Effort: medium**
 
@@ -186,7 +215,7 @@ Find entire libraries that could be removed. For each declared dependency JAR, e
 
 ---
 
-## 17. Gradle incremental task support
+## Gradle incremental task support
 
 **Value: medium** | **Effort: high**
 
@@ -194,13 +223,45 @@ Support Gradle's incremental task API (`@InputFiles`, `@OutputFile`, `InputChang
 
 ---
 
-## 18. DSM what-if simulation
+## DSM what-if simulation
 
 **Value: medium** | **Effort: high**
 
 `-Pwhat-if=<class>:<target-package>` — simulate moving a class to a different package and re-evaluate cycles without actually making the change.
 
-- **Prerequisite**: Item 8 (cycle fix suggestions) should ship first.
+- **Prerequisite**: Cycle fix suggestions should ship first.
+
+---
+
+## `cnavRisk` — composite risk analysis
+
+**Value: high** | **Effort: medium**
+
+From user feedback (v0.38): the user had to mentally cross-reference 6 separate task outputs (hotspots, churn, coupling, age, complexity, authors) to identify that RAClient.kt was the riskiest file. A single task should do this automatically.
+
+- **Formula**: `risk = change_frequency * complexity * coupling_degree`. Weight factors configurable. Based on Adam Tornhill's "Your Code as a Crime Scene" approach.
+- **Inputs**: Reuses existing builders — `HotspotBuilder`, `ChurnBuilder`, `ChangeCouplingBuilder`, `CodeAgeBuilder`, `AuthorBuilder`, `ClassComplexityAnalyzer`.
+- **Output**: Ranked list of files/classes by composite risk score, with breakdown showing which factors contributed most. Example:
+  ```
+  #1  RAClient.kt          risk=0.94  (hotspot=51rev, churn=+421, complexity=738loc, coupling=57%, authors=2)
+  #2  SearchService.kt     risk=0.71  (hotspot=34rev, churn=+180, complexity=320loc, coupling=52%, authors=3)
+  ```
+- **Parameters**: `-Ptop=20` (default), `-Pformat=llm|json|text`, `-Psince=<git-ref>` (optional time window)
+- **Hybrid task**: Requires both git history and compiled bytecode (for complexity).
+
+---
+
+## Transitive dead code detection
+
+**Value: medium** | **Effort: high**
+
+From user feedback (v0.38): `cnavDead` found nothing even for `GenericError.from(RAResponseError)` which manual analysis suggested has unused paths. Dead code detection is too conservative — it sees a method called from a companion object and marks it as live, even if the callers of those callers are shrinking or dead.
+
+- **Approach**: After initial dead code pass, trace callers transitively. A method is "transitively dead" if all its callers are themselves dead. Iterate until fixed point.
+- **Extension — shrinking usage**: Track caller count over git history. Methods where caller count is declining over time are "shrinking" — not dead yet, but trending toward dead. Different from dead code detection (point-in-time) — this is trend analysis.
+- **Extension — test-only callers**: A production method whose only callers are in the test source set is effectively dead from a production perspective.
+- **Confidence levels**: `DEAD` (zero callers), `TRANSITIVELY_DEAD` (all callers dead), `TEST_ONLY` (only test callers), `SHRINKING` (declining caller trend).
+- **Prerequisite**: Extract ConfidenceScorer makes this cleaner to implement.
 
 ---
 
@@ -215,7 +276,7 @@ Items below are low-priority or may not be worth building. Revisit if demand eme
 
 ## Future ideas (not yet planned)
 
-- **Dead code: flag methods called only from test scope**: Use source set tagging from item 2 to identify production methods/classes whose only callers are in the test source set. These are candidates for removal since no production code depends on them. Replaces the current separate `testGraph` approach in `DeadCodeFinder` with a unified call graph that has source set metadata.
+- **Dead code: flag methods called only from test scope**: Use source set tagging to identify production methods/classes whose only callers are in the test source set. These are candidates for removal since no production code depends on them. Replaces the current separate `testGraph` approach in `DeadCodeFinder` with a unified call graph that has source set metadata.
 - **Remove cnav disk cache entirely**: Zero measurable difference on ~20k LOC. Reduces complexity. Needs testing on larger projects.
 - **Fail fast on wrong bytecode**: Replace `ScanResult<T>` partial-fail with hard failure + clear error.
 - **Cross-reference hotspots with bytecode**: Combine `cnavHotspots` with `cnavCallers`/`cnavDeps`.

@@ -16,7 +16,7 @@ abstract class FindCallersTask : DefaultTask() {
             logger = logger,
             taskDef = TaskRegistry.FIND_CALLERS,
             direction = CallDirection.CALLERS,
-            usageHint = "Missing required property. Usage: ./gradlew cnavCallers -Pmethod=<regex> -Pmaxdepth=3",
+            usageHint = "Missing required property. Usage: ./gradlew cnavCallers -Ppattern=<regex> -Pmaxdepth=3",
         )
     }
 }
