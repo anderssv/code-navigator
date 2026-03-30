@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation.classinfo
 
 import no.f12.codenavigator.ParamDef
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 
 data class FindClassDetailConfig(
@@ -9,8 +10,7 @@ data class FindClassDetailConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): FindClassDetailConfig = FindClassDetailConfig(
-            pattern = properties["pattern"]
-                ?: throw IllegalArgumentException("Missing required property 'pattern'"),
+            pattern = TaskRegistry.PATTERN.parseRequiredFrom(properties),
             format = ParamDef.parseFormat(properties),
         )
     }
