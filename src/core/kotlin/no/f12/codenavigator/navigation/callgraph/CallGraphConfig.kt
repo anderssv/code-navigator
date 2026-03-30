@@ -26,8 +26,7 @@ data class CallGraphConfig(
 
     companion object {
         fun parse(properties: Map<String, String?>): CallGraphConfig = CallGraphConfig(
-            method = properties["pattern"]
-                ?: throw IllegalArgumentException("Missing required property 'pattern'"),
+            method = TaskRegistry.CALL_PATTERN.parseRequiredFrom(properties),
             maxDepth = TaskRegistry.MAXDEPTH.parseFrom(properties),
             projectOnly = TaskRegistry.PROJECTONLY.parseFrom(properties),
             filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),

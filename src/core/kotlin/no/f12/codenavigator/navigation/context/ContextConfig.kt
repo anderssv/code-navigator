@@ -28,8 +28,7 @@ data class ContextConfig(
 
     companion object {
         fun parse(properties: Map<String, String?>): ContextConfig = ContextConfig(
-            pattern = properties["pattern"]
-                ?: throw IllegalArgumentException("Missing required property 'pattern'"),
+            pattern = TaskRegistry.PATTERN.parseRequiredFrom(properties),
             maxDepth = TaskRegistry.CONTEXT_MAXDEPTH.parseFrom(properties),
             projectOnly = TaskRegistry.PROJECTONLY_ON.parseFrom(properties),
             filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
