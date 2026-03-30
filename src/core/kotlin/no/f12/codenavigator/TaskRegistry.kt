@@ -5,6 +5,13 @@ import no.f12.codenavigator.navigation.PatternEnhancer
 import no.f12.codenavigator.navigation.annotation.FrameworkPresets
 import java.time.LocalDate
 
+enum class TaskCategory {
+    NAVIGATION,
+    GIT_HISTORY,
+    HYBRID,
+    HELP,
+}
+
 sealed class ParamType<T>(val parse: (value: String?, defaultValue: String?) -> T) {
     data object STRING : ParamType<String?>(
         parse = { value, _ -> value },
@@ -83,6 +90,7 @@ data class TaskDef(
     val description: String,
     val params: List<ParamDef<*>>,
     val requiresCompilation: Boolean,
+    val category: TaskCategory,
     val legacyGradleTaskName: String? = null,
 ) {
     val gradleTaskName: String = goalToGradleTaskName(goal)
@@ -167,6 +175,7 @@ object TaskRegistry {
         description = "List all classes in the project",
         params = FORMAT_PARAMS,
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val FIND_CLASS = TaskDef(
@@ -174,6 +183,7 @@ object TaskRegistry {
         description = "Find classes matching a regex pattern",
         params = FORMAT_PARAMS + PATTERN,
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val FIND_SYMBOL = TaskDef(
@@ -181,6 +191,7 @@ object TaskRegistry {
         description = "Find methods and fields matching a regex pattern",
         params = FORMAT_PARAMS + PATTERN,
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val CLASS_DETAIL = TaskDef(
@@ -188,6 +199,7 @@ object TaskRegistry {
         description = "Show detailed class information (methods, fields, interfaces)",
         params = FORMAT_PARAMS + PATTERN,
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavClass",
     )
 
@@ -196,6 +208,7 @@ object TaskRegistry {
         description = "Find callers of a method (call tree)",
         params = FORMAT_PARAMS + listOf(CALL_PATTERN, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallers",
     )
 
@@ -204,6 +217,7 @@ object TaskRegistry {
         description = "Find methods called by a method (call tree)",
         params = FORMAT_PARAMS + listOf(CALL_PATTERN, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallees",
     )
 
@@ -212,6 +226,7 @@ object TaskRegistry {
         description = "Find implementations of an interface",
         params = FORMAT_PARAMS + listOf(PATTERN, INCLUDETEST),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavInterfaces",
     )
 
@@ -220,6 +235,7 @@ object TaskRegistry {
         description = "Show type hierarchy (supertypes upward, implementors downward)",
         params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val PACKAGE_DEPS = TaskDef(
@@ -227,6 +243,7 @@ object TaskRegistry {
         description = "Show package-level dependencies",
         params = FORMAT_PARAMS + listOf(PACKAGE, PROJECTONLY, REVERSE),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavDeps",
     )
 
@@ -235,6 +252,7 @@ object TaskRegistry {
         description = "Generate Dependency Structure Matrix",
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE, ROOT_PACKAGE),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val CYCLE_DETECTION = TaskDef(
@@ -242,6 +260,7 @@ object TaskRegistry {
         description = "Detect dependency cycles using Tarjan's SCC algorithm",
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val FIND_USAGES = TaskDef(
@@ -249,6 +268,7 @@ object TaskRegistry {
         description = "Find project references to types, methods, and fields/properties",
         params = FORMAT_PARAMS + listOf(OWNER_CLASS, METHOD, FIELD, TYPE, OUTSIDE_PACKAGE, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavUsages",
     )
 
@@ -257,6 +277,7 @@ object TaskRegistry {
         description = "Rank types by importance (PageRank on call graph)",
         params = FORMAT_PARAMS + listOf(TOP, PROJECTONLY_ON, COLLAPSE_LAMBDAS, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val DEAD = TaskDef(
@@ -264,6 +285,7 @@ object TaskRegistry {
         description = "Detect dead code (unreferenced classes and methods)",
         params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, PROD_ONLY, EXCLUDE_FRAMEWORK),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val HOTSPOTS = TaskDef(
@@ -271,6 +293,7 @@ object TaskRegistry {
         description = "Rank files by change frequency",
         params = FORMAT_PARAMS + listOf(AFTER, MIN_REVS, TOP, NO_FOLLOW),
         requiresCompilation = false,
+        category = TaskCategory.GIT_HISTORY,
     )
 
     val CHURN = TaskDef(
@@ -278,6 +301,7 @@ object TaskRegistry {
         description = "Show code churn (lines added/deleted per file)",
         params = FORMAT_PARAMS + listOf(AFTER, TOP, NO_FOLLOW),
         requiresCompilation = false,
+        category = TaskCategory.GIT_HISTORY,
     )
 
     val CODE_AGE = TaskDef(
@@ -285,6 +309,7 @@ object TaskRegistry {
         description = "Show time since last modification per file",
         params = FORMAT_PARAMS + listOf(AFTER, TOP, NO_FOLLOW),
         requiresCompilation = false,
+        category = TaskCategory.GIT_HISTORY,
         legacyGradleTaskName = "cnavAge",
     )
 
@@ -293,6 +318,7 @@ object TaskRegistry {
         description = "Show number of distinct contributors per file",
         params = FORMAT_PARAMS + listOf(AFTER, MIN_REVS, TOP, NO_FOLLOW),
         requiresCompilation = false,
+        category = TaskCategory.GIT_HISTORY,
     )
 
     val COUPLING = TaskDef(
@@ -300,6 +326,7 @@ object TaskRegistry {
         description = "Find files that change together (temporal coupling)",
         params = FORMAT_PARAMS + listOf(AFTER, MIN_SHARED_REVS, MIN_COUPLING, MAX_CHANGESET_SIZE, TOP, NO_FOLLOW),
         requiresCompilation = false,
+        category = TaskCategory.GIT_HISTORY,
     )
 
     val COMPLEXITY = TaskDef(
@@ -307,6 +334,7 @@ object TaskRegistry {
         description = "Show fan-in/fan-out complexity per class",
         params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY_ON, DETAIL, COLLAPSE_LAMBDAS, TOP, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val METRICS = TaskDef(
@@ -314,6 +342,7 @@ object TaskRegistry {
         description = "Quick project health snapshot: classes, packages, fan-in/out, cycles, dead code, hotspots",
         params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, PACKAGE_FILTER, INCLUDE_EXTERNAL, EXCLUDE_ANNOTATED, EXCLUDE_FRAMEWORK, ROOT_PACKAGE),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val HELP = TaskDef(
@@ -321,6 +350,7 @@ object TaskRegistry {
         description = "Show help text with available tasks",
         params = emptyList(),
         requiresCompilation = false,
+        category = TaskCategory.HELP,
     )
 
     val AGENT_HELP = TaskDef(
@@ -328,6 +358,7 @@ object TaskRegistry {
         description = "Show workflow guidance for AI coding agents",
         params = listOf(SECTION),
         requiresCompilation = false,
+        category = TaskCategory.HELP,
     )
 
     val FIND_STRING_CONSTANT = TaskDef(
@@ -335,6 +366,7 @@ object TaskRegistry {
         description = "Search string constants in compiled code matching a regex",
         params = FORMAT_PARAMS + STRING_PATTERN,
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val ANNOTATIONS = TaskDef(
@@ -342,6 +374,7 @@ object TaskRegistry {
         description = "Find classes and methods by annotation pattern",
         params = FORMAT_PARAMS + listOf(PATTERN, METHODS),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val CONFIG_HELP = TaskDef(
@@ -349,6 +382,7 @@ object TaskRegistry {
         description = "Show configuration reference for all parameters",
         params = emptyList(),
         requiresCompilation = false,
+        category = TaskCategory.HELP,
         legacyGradleTaskName = "cnavHelpConfig",
     )
 
@@ -357,6 +391,7 @@ object TaskRegistry {
         description = "Show blast radius of changes since a git ref (changed classes and their callers)",
         params = FORMAT_PARAMS + listOf(REF, PROJECTONLY_ON),
         requiresCompilation = true,
+        category = TaskCategory.HYBRID,
     )
 
     val CONTEXT = TaskDef(
@@ -364,6 +399,7 @@ object TaskRegistry {
         description = "Gather full context for a class: detail, callers, callees, interfaces",
         params = FORMAT_PARAMS + listOf(PATTERN, CONTEXT_MAXDEPTH, PROJECTONLY_ON, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
     )
 
     val ALL_TASKS: List<TaskDef> = listOf(

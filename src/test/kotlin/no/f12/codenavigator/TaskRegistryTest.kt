@@ -198,12 +198,14 @@ class TaskDefTest {
             description = "Find classes by regex",
             params = listOf(pattern),
             requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
         )
 
         assertEquals("find-class", task.goal)
         assertEquals("Find classes by regex", task.description)
         assertEquals(listOf(pattern), task.params)
         assertEquals(true, task.requiresCompilation)
+        assertEquals(TaskCategory.NAVIGATION, task.category)
     }
 
     @Test
@@ -215,6 +217,7 @@ class TaskDefTest {
             description = "Test",
             params = listOf(enhanced, plain),
             requiresCompilation = false,
+            category = TaskCategory.NAVIGATION,
         )
 
         val result = task.enhanceProperties(mapOf("pattern" to "MyService", "method" to "doStuff"))
@@ -231,6 +234,7 @@ class TaskDefTest {
             description = "Test",
             params = listOf(enhanced),
             requiresCompilation = false,
+            category = TaskCategory.NAVIGATION,
         )
 
         val result = task.enhanceProperties(mapOf("pattern" to null))
@@ -245,6 +249,7 @@ class TaskDefTest {
             description = "Find classes by regex",
             params = emptyList(),
             requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
         )
 
         assertEquals("cnavFindClass", task.taskName(BuildTool.GRADLE))
@@ -257,6 +262,7 @@ class TaskDefTest {
             description = "Find classes by regex",
             params = emptyList(),
             requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
         )
 
         assertEquals("cnav:find-class", task.taskName(BuildTool.MAVEN))
@@ -278,6 +284,7 @@ class TaskDefTest {
             description = "Test",
             params = emptyList(),
             requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
             legacyGradleTaskName = "cnavClass",
         )
 
@@ -291,6 +298,7 @@ class TaskDefTest {
             description = "Test",
             params = emptyList(),
             requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
         )
 
         assertEquals(null, task.legacyGradleTaskName)
@@ -303,6 +311,7 @@ class TaskDefTest {
             description = "Test",
             params = emptyList(),
             requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
             legacyGradleTaskName = "cnavClass",
         )
 
@@ -395,6 +404,53 @@ class TaskRegistryTest {
         for (goal in helpGoals) {
             val task = TaskRegistry.ALL_TASKS.first { it.goal == goal }
             assertTrue(!task.requiresCompilation, "Help task '$goal' should not require compilation")
+        }
+    }
+
+    @Test
+    fun `navigation tasks have category NAVIGATION`() {
+        val navigationGoals = listOf(
+            "list-classes", "find-class", "find-symbol", "class-detail",
+            "find-callers", "find-callees", "find-interfaces", "package-deps",
+            "dsm", "cycles", "find-usages", "rank", "dead", "type-hierarchy",
+            "find-string-constant", "annotations", "complexity", "metrics", "context",
+        )
+
+        for (goal in navigationGoals) {
+            val task = TaskRegistry.ALL_TASKS.first { it.goal == goal }
+            assertEquals(TaskCategory.NAVIGATION, task.category, "Task '$goal' should have category NAVIGATION")
+        }
+    }
+
+    @Test
+    fun `git history tasks have category GIT_HISTORY`() {
+        val gitGoals = listOf("hotspots", "churn", "code-age", "authors", "coupling")
+
+        for (goal in gitGoals) {
+            val task = TaskRegistry.ALL_TASKS.first { it.goal == goal }
+            assertEquals(TaskCategory.GIT_HISTORY, task.category, "Task '$goal' should have category GIT_HISTORY")
+        }
+    }
+
+    @Test
+    fun `help tasks have category HELP`() {
+        val helpGoals = listOf("help", "agent-help", "config-help")
+
+        for (goal in helpGoals) {
+            val task = TaskRegistry.ALL_TASKS.first { it.goal == goal }
+            assertEquals(TaskCategory.HELP, task.category, "Task '$goal' should have category HELP")
+        }
+    }
+
+    @Test
+    fun `changed-since has category HYBRID`() {
+        assertEquals(TaskCategory.HYBRID, TaskRegistry.CHANGED_SINCE.category)
+    }
+
+    @Test
+    fun `every task has a category`() {
+        for (task in TaskRegistry.ALL_TASKS) {
+            assertNotNull(task.category, "Task '${task.goal}' should have a non-null category")
         }
     }
 
