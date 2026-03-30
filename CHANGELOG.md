@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.44
+
+- **Improved:** Runtime validation of property keys in `enhanceProperties()` — throws `IllegalArgumentException` if a Maven mojo's `buildPropertyMap()` contains keys not matching `TaskDef.params`. Catches drift between Maven mojos and TaskDef at runtime.
+- **Improved:** Required parameter validation centralized via `ParamDef.parseRequiredFrom()`. Applied to 9 Config classes — consistent error messages with task name and expected parameters.
+- **Improved:** HelpText parameter descriptions now default to `ParamDef.description`, eliminating ~58 duplicated description strings. Task-specific context retained where it adds value.
+- **Improved:** `ParamDef` gained `deprecated` and `deprecatedMessage` fields for structured deprecation tracking.
+- **Improved:** All `Config.parse()` methods standardized to use `ParamDef.parseFrom(properties)` instead of raw map lookups, ensuring param name, type parsing, and default values come from a single definition.
+- **Improved:** Replaced `root-package` with `package-filter` for DSM/cycles/metrics. Default now auto-detects project classes — no configuration needed. `-Proot-package` still works but emits deprecation warning.
+- **Improved:** Better error messages for wrong parameter names in callers/callees tasks.
+- **Refactoring:** Gradle task names derived from `TaskDef.goal` — legacy names registered as deprecated aliases with warnings.
+- **Refactoring:** `TaskCategory` enum drives `ConfigHelpText` grouping instead of hardcoded task lists.
+- **Refactoring:** Gradle plugin registration auto-generated from `TaskRegistry.ALL_TASKS` loop.
+
 ## 0.1.43
 
 - **New:** `cnavContext` task / `cnav:context` goal — smart context gathering for AI agents. Given a class pattern, gathers class detail (signature, fields, methods, annotations), callers tree, callees tree, interface implementations, and implemented interfaces in a single invocation. Parameters: `-Ppattern=<class>` (required), `-PmaxDepth=<n>` (default 2), plus standard filtering (`project-only`, `prod-only`, `test-only`) and output format (`format=text|json|llm`). Pure composition of existing features — reduces agent round-trips from 4-5 to 1.
