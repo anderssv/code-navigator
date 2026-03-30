@@ -356,3 +356,23 @@ Comprehensive centralization of task/parameter metadata so that `TaskRegistry` i
 **F. Maven mojo simplification evaluated — reflection rejected:** User explicitly rejected reflection-based approaches for auto-generating `buildPropertyMap()`. Maven `@Parameter` fields cannot be eliminated (annotation processing requires them). Runtime validation (sub-task E) is the pragmatic solution: some duplication is accepted as long as it's detected at runtime.
 
 Verified on real projects: all Gradle tasks pass on spring-petclinic, all Maven goals pass on realworld-springboot.
+
+## ~~Filter Kotlin compiler annotations from output~~ DONE
+
+From v0.1.44 field test: `@Metadata`, `@DebugMetadata`, and `@SourceDebugExtension` annotation content leaked into output. Added `AnnotationName.isInternal()` predicate with a blocklist in `DomainTypes.kt`. Filtering in `ClassDetailExtractor.collectAnnotation()` and `AnnotationExtractor.collectAnnotation()`. `InlineMethodDetector` reads `@Metadata` via its own ASM visitor — not affected.
+
+## ~~Fix `cnavDead -Pprod-only=true` — ensure test classes are compiled~~ DONE
+
+From v0.1.44 field test: `-Pprod-only=true` had no effect. `DeadCodeTask` only built test call graph when test class directories existed, but only depended on `classes` (main). Added `requiresTestCompilation` field to `TaskDef` (default `false`), set `true` for `DEAD`, wired `dependsOn("testClasses")` in `CodeNavigatorPlugin`. Changed Maven `DeadCodeMojo` from `COMPILE` to `TEST_COMPILE` phase.
+
+## ~~Add `include-test` to `cnavAnnotations`~~ DONE
+
+From v0.1.44 field test: `cnavAnnotations -Ppattern=Test` returned empty despite `@Test` annotations existing in test sources. Added `INCLUDETEST` to `ANNOTATIONS.params` in TaskRegistry, `includeTest` field to `AnnotationQueryConfig`, conditional test directory inclusion in both `AnnotationsTask.kt` and `AnnotationsMojo.kt`.
+
+## ~~Add `include-test` to `cnavFindSymbol`~~ DONE
+
+From v0.1.44 field test: `cnavFindSymbol -Ppattern=verify` returned empty for test-only methods. Added `INCLUDETEST` to `FIND_SYMBOL.params` in TaskRegistry, `includeTest` field to `FindSymbolConfig`, conditional test directory inclusion in `FindSymbolTask.kt` and `FindSymbolMojo.kt`. Separate cache file (`symbol-index-all.cache`) when test classes included.
+
+## ~~Generate error messages from TaskDef~~ DONE
+
+Error messages in 10 Gradle tasks hardcoded task names, with 5 referencing deprecated aliases (`cnavClass`, `cnavCallers`, `cnavCallees`, `cnavUsages`, `cnavInterfaces`). Added `TaskDef.usageHint(BuildTool)` method that generates usage strings from task params — excludes format/llm and deprecated params, shows required params without brackets and optional params in brackets. Updated all 10 tasks to use generated hints. Removed `usageHint` parameter from `CallTreeTaskSupport.execute()`. `FindUsagesTask` retains custom hint for its two mutually exclusive modes but generates the task name from `TaskDef`.
