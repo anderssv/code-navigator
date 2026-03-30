@@ -68,19 +68,18 @@ object ConfigHelpText {
     )
 
     private fun buildParamSections(): List<Section> {
-        val globalParamNames = setOf("format", "llm")
+        val globalParamNames = TaskRegistry.FORMAT_PARAMS.map { it.name }.toSet()
 
-        val navigationTasks = listOf(
-            TaskRegistry.FIND_CLASS,
-            TaskRegistry.FIND_SYMBOL,
-            TaskRegistry.CLASS_DETAIL,
-            TaskRegistry.FIND_CALLERS,
-            TaskRegistry.FIND_CALLEES,
-            TaskRegistry.FIND_INTERFACES,
-            TaskRegistry.PACKAGE_DEPS,
-            TaskRegistry.LIST_CLASSES,
-            TaskRegistry.FIND_USAGES,
+        val specialtyTasks = setOf(
+            TaskRegistry.RANK,
+            TaskRegistry.DSM,
+            TaskRegistry.CYCLE_DETECTION,
+            TaskRegistry.DEAD,
+            TaskRegistry.COMPLEXITY,
         )
+
+        val navigationTasks = TaskRegistry.ALL_TASKS
+            .filter { it.category == TaskCategory.NAVIGATION && it !in specialtyTasks }
 
         val navigationParams = collectSharedParams(navigationTasks, globalParamNames)
 
@@ -94,13 +93,8 @@ object ConfigHelpText {
 
         val complexityParams = collectTaskParams(TaskRegistry.COMPLEXITY, globalParamNames)
 
-        val gitTasks = listOf(
-            TaskRegistry.HOTSPOTS,
-            TaskRegistry.CHURN,
-            TaskRegistry.CODE_AGE,
-            TaskRegistry.AUTHORS,
-            TaskRegistry.COUPLING,
-        )
+        val gitTasks = TaskRegistry.ALL_TASKS
+            .filter { it.category == TaskCategory.GIT_HISTORY }
         val gitParams = collectSharedParams(gitTasks, globalParamNames)
 
         return listOf(

@@ -166,7 +166,7 @@ object TaskRegistry {
     val METHODS = ParamDef("methods", "true", "Also search method-level annotations", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val CONTEXT_MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth (default: 2)", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
 
-    private val FORMAT_PARAMS = listOf(FORMAT, LLM)
+    val FORMAT_PARAMS = listOf(FORMAT, LLM)
 
     // --- Task definitions ---
 
