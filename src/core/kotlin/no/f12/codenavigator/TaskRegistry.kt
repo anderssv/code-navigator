@@ -205,7 +205,7 @@ object TaskRegistry {
     val FIND_SYMBOL = TaskDef(
         goal = "find-symbol",
         description = "Find methods and fields matching a regex pattern",
-        params = FORMAT_PARAMS + PATTERN,
+        params = FORMAT_PARAMS + listOf(PATTERN, INCLUDETEST),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )

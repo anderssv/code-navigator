@@ -34,6 +34,9 @@ class FindSymbolMojo : AbstractMojo() {
     @Parameter(property = "pattern", required = true)
     private var pattern: String? = null
 
+    @Parameter(property = "include-test")
+    private var includeTest: String? = null
+
     override fun execute() {
         val config = try {
             FindSymbolConfig.parse(TaskRegistry.FIND_SYMBOL.enhanceProperties(buildPropertyMap()))
@@ -41,13 +44,23 @@ class FindSymbolMojo : AbstractMojo() {
             throw MojoFailureException(e.message)
         }
 
+        val classDirectories = mutableListOf<File>()
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
             log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
             return
         }
+        classDirectories.add(classesDir)
 
-        val result = SymbolIndexCache.getOrBuild(File(project.build.directory, "cnav/symbol-index.cache"), listOf(classesDir))
+        if (config.includeTest) {
+            val testClassesDir = File(project.build.testOutputDirectory)
+            if (testClassesDir.exists()) {
+                classDirectories.add(testClassesDir)
+            }
+        }
+
+        val cacheFileName = if (config.includeTest) "symbol-index-all.cache" else "symbol-index.cache"
+        val result = SymbolIndexCache.getOrBuild(File(project.build.directory, "cnav/$cacheFileName"), classDirectories)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val allSymbols = result.data
@@ -64,5 +77,6 @@ class FindSymbolMojo : AbstractMojo() {
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
+        includeTest?.let { put("include-test", it) }
     }
 }

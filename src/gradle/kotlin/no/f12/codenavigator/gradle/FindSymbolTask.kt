@@ -33,10 +33,19 @@ abstract class FindSymbolTask : DefaultTask() {
         }
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
-        val mainSourceSet = sourceSets.getByName("main")
-        val classDirectories = mainSourceSet.output.classesDirs.files.toList()
+        val classDirectories = mutableListOf<File>()
+        classDirectories.addAll(sourceSets.getByName("main").output.classesDirs.files)
 
-        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/symbol-index.cache")
+        val cacheFileName = if (config.includeTest) {
+            sourceSets.findByName("test")?.let { testSourceSet ->
+                classDirectories.addAll(testSourceSet.output.classesDirs.files)
+            }
+            "symbol-index-all.cache"
+        } else {
+            "symbol-index.cache"
+        }
+
+        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/$cacheFileName")
         val result = SymbolIndexCache.getOrBuild(cacheFile, classDirectories)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }

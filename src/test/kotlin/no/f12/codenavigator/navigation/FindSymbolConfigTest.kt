@@ -44,4 +44,18 @@ class FindSymbolConfigTest {
 
         assertEquals(OutputFormat.LLM, config.format)
     }
+
+    @Test
+    fun `includeTest defaults to false when not specified`() {
+        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod"))
+
+        assertEquals(false, config.includeTest)
+    }
+
+    @Test
+    fun `includeTest is true when include-test is true`() {
+        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod", "include-test" to "true"))
+
+        assertEquals(true, config.includeTest)
+    }
 }
