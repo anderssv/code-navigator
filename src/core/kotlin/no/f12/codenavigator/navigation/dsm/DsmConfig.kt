@@ -17,7 +17,7 @@ data class DsmConfig(
 ) {
     fun deprecations(): List<String> = buildList {
         if (rootPackage.value.isNotEmpty() && packageFilter == rootPackage) {
-            add("'root-package' is deprecated. Use 'package-filter' instead.")
+            add("'root-package' is deprecated. Results are now automatically limited to classes in the project source sets. Use 'package-filter' to narrow further.")
         }
     }
 

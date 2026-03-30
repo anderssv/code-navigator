@@ -173,6 +173,7 @@ class MetricsConfigTest {
         assertEquals(1, warnings.size)
         assertTrue(warnings[0].contains("root-package"))
         assertTrue(warnings[0].contains("package-filter"))
+        assertTrue(warnings[0].contains("source sets"))
     }
 
     @Test
