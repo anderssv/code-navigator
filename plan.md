@@ -5,6 +5,56 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
+## Centralize command config — auto-generate help text, plugin registration, and validation from TaskRegistry
+
+**Value: high** | **Effort: medium**
+
+Task/parameter metadata is spread across 5+ locations that must stay in sync manually. Adding a parameter today requires touching TaskRegistry, Config, HelpText, Gradle task, Maven mojo, and sometimes AgentHelpText. Descriptions drift (e.g., `cnavCycles` plugin description says `-Pdepth=N` but the actual param is `dsm-depth`; `cnavDsm` description still references deprecated `root-package`). Default values are bypassed in some Config.parse() methods. Required-ness validation is ad-hoc.
+
+### Current duplication map
+
+| Data | Authoritative source | Also restated in |
+|---|---|---|
+| Param name (string) | `ParamDef.name` | Config.parse() map keys, Maven `@Parameter`, Maven `buildPropertyMap()` |
+| Param default | `ParamDef.defaultValue` | Some Config.parse() methods hardcode their own defaults |
+| Param required? | Implicit (defaultValue==null && !flag) | Config.parse() ad-hoc `throw` blocks |
+| Param help description | `ParamDef.description` | HelpText.kt `pd()` calls with different wording |
+| Task description | `TaskDef.description` | CodeNavigatorPlugin.kt hand-written per task |
+| Gradle task name | `BuildTool.GRADLE_TASK_NAMES` | CodeNavigatorPlugin.kt task registration strings |
+| Depends on compilation | `TaskDef.requiresCompilation` | CodeNavigatorPlugin.kt `dependsOn("classes")`, Maven `@Execute` |
+| Param list per task | `TaskDef.params` | Maven mojo `@Parameter` fields, Maven `buildPropertyMap()` |
+| Task groupings | Implicit | ConfigHelpText manual task lists |
+
+### Sub-tasks (each independently shippable)
+
+**Enrich TaskDef/ParamDef metadata:**
+- Add `gradleTaskName: String` to `TaskDef` — absorbs `BuildTool.GRADLE_TASK_NAMES`.
+- Add `category: TaskCategory` to `TaskDef` (NAVIGATION, GIT_HISTORY, HELP, HYBRID) — replaces manual grouping in ConfigHelpText.
+- Add `required: Boolean` to `ParamDef` — replaces ad-hoc `throw` blocks in Config.parse(). Centralize validation in `ParamDef.parseFrom(properties)`.
+- Add `deprecated: Boolean` and `deprecatedMessage: String?` to `ParamDef` — for `root-package` and any future deprecations.
+
+**Auto-generate Gradle plugin registration:**
+- `CodeNavigatorPlugin.kt` loops over `TaskRegistry.ALL_TASKS` instead of hand-registering each task. Task class resolved by convention or a map. Description, group, and `dependsOn` derived from `TaskDef`.
+
+**Auto-generate HelpText parameter docs:**
+- `HelpText.kt` `pd()` calls should use `param.description` (or a new `helpDescription` field) instead of restating descriptions. Keep the extended prose as hand-written — that content is genuinely custom.
+
+**Simplify Maven mojos:**
+- Extract a shared `AbstractCnavMojo` base that reads system properties by iterating `TaskDef.params`, building the property map automatically. Individual mojos reduce to just calling `Config.parse()` + task logic. Eliminates per-param `@Parameter` fields and `buildPropertyMap()` boilerplate.
+
+**Standardize Config.parse():**
+- All Config.parse() methods should use `TaskRegistry.XXX.parseFrom(properties)` instead of `TaskRegistry.XXX.parse(properties["xxx"])`. The `parseFrom` method already exists and uses `ParamDef.name` for the lookup.
+- Required-ness check moves into `parseFrom` when `ParamDef.required = true`.
+
+### Concrete drift bugs to fix immediately (before the refactoring)
+
+1. `CodeNavigatorPlugin.kt` — `cnavCycles` description says `-Pdepth=N`, actual param is `-Pdsm-depth=N`.
+2. `CodeNavigatorPlugin.kt` — `cnavDsm` description still references `-Proot-package` without mentioning `package-filter`.
+3. `AnnotationQueryConfig.parse()` — bypasses `TaskRegistry.METHODS.parse()`, hardcodes `false` default.
+4. `DeadCodeConfig` — `DEAD` TaskDef declares `TEST_ONLY` param but Config.parse() never reads it (param is silently ignored).
+
+---
+
 ## `cnavWhyDepends` — dependency edge explanation
 
 **Value: high** | **Effort: medium**
