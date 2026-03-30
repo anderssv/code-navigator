@@ -28,11 +28,11 @@ data class CallGraphConfig(
         fun parse(properties: Map<String, String?>): CallGraphConfig = CallGraphConfig(
             method = properties["pattern"]
                 ?: throw IllegalArgumentException("Missing required property 'pattern'"),
-            maxDepth = TaskRegistry.MAXDEPTH.parse(properties["maxdepth"]),
-            projectOnly = TaskRegistry.PROJECTONLY.parse(properties["project-only"]),
-            filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parse(properties["filter-synthetic"]),
-            prodOnly = TaskRegistry.PROD_ONLY.parse(properties["prod-only"]),
-            testOnly = TaskRegistry.TEST_ONLY.parse(properties["test-only"]),
+            maxDepth = TaskRegistry.MAXDEPTH.parseFrom(properties),
+            projectOnly = TaskRegistry.PROJECTONLY.parseFrom(properties),
+            filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
+            prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
+            testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )
     }

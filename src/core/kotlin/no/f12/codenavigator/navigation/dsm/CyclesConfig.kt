@@ -20,15 +20,15 @@ data class CyclesConfig(
 
     companion object {
         fun parse(properties: Map<String, String?>): CyclesConfig {
-            val explicitFilter = properties["package-filter"]
-            val legacyRoot = properties["root-package"]
+            val explicitFilter = TaskRegistry.PACKAGE_FILTER.parseFrom(properties)
+            val legacyRoot = TaskRegistry.ROOT_PACKAGE.parseFrom(properties)
             val resolvedFilter = explicitFilter ?: legacyRoot ?: ""
 
             return CyclesConfig(
-                rootPackage = PackageName(properties["root-package"] ?: ""),
+                rootPackage = PackageName(legacyRoot ?: ""),
                 packageFilter = PackageName(resolvedFilter),
-                includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parse(properties["include-external"]),
-                depth = TaskRegistry.DSM_DEPTH.parse(properties["dsm-depth"]),
+                includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
+                depth = TaskRegistry.DSM_DEPTH.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
             )
         }

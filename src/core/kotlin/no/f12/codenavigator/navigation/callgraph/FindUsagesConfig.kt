@@ -25,10 +25,10 @@ data class FindUsagesConfig(
 
     companion object {
         fun parse(properties: Map<String, String?>): FindUsagesConfig {
-            val ownerClass = properties["owner-class"]
-            val type = properties["type"]
-            val method = properties["method"]
-            val field = properties["field"]
+            val ownerClass = TaskRegistry.OWNER_CLASS.parseFrom(properties)
+            val type = TaskRegistry.TYPE.parseFrom(properties)
+            val method = TaskRegistry.METHOD.parseFrom(properties)
+            val field = TaskRegistry.FIELD.parseFrom(properties)
             if (ownerClass == null && type == null) {
                 throw IllegalArgumentException(
                     "Missing required property. Provide either 'owner-class' or 'type'.",
@@ -49,9 +49,9 @@ data class FindUsagesConfig(
                 method = method,
                 field = field,
                 type = type,
-                outsidePackage = properties["outside-package"],
-                prodOnly = TaskRegistry.PROD_ONLY.parse(properties["prod-only"]),
-                testOnly = TaskRegistry.TEST_ONLY.parse(properties["test-only"]),
+                outsidePackage = TaskRegistry.OUTSIDE_PACKAGE.parseFrom(properties),
+                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
+                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
             )
         }

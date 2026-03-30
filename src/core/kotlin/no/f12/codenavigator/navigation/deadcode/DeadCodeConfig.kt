@@ -18,8 +18,8 @@ data class DeadCodeConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): DeadCodeConfig {
-            val explicit = TaskRegistry.EXCLUDE_ANNOTATED.parse(properties["exclude-annotated"])
-            val excluded = TaskRegistry.EXCLUDE_FRAMEWORK.parse(properties["exclude-framework"])
+            val explicit = TaskRegistry.EXCLUDE_ANNOTATED.parseFrom(properties)
+            val excluded = TaskRegistry.EXCLUDE_FRAMEWORK.parseFrom(properties)
             val entryPoints = FrameworkPresets.resolveAllEntryPointsExcept(excluded)
             val modifiers = FrameworkPresets.resolveAllModifiersExcept(excluded)
             val supertypes = FrameworkPresets.resolveAllSupertypeEntryPointsExcept(excluded)
@@ -27,13 +27,13 @@ data class DeadCodeConfig(
             val mergedModifiers = modifiers.map { it.value }.distinct()
 
             return DeadCodeConfig(
-                filter = properties["filter"]?.let { Regex(it, RegexOption.IGNORE_CASE) },
-                exclude = properties["exclude"]?.let { Regex(it, RegexOption.IGNORE_CASE) },
-                classesOnly = TaskRegistry.CLASSES_ONLY.parse(properties["classes-only"]),
+                filter = TaskRegistry.FILTER.parseFrom(properties)?.let { Regex(it, RegexOption.IGNORE_CASE) },
+                exclude = TaskRegistry.EXCLUDE.parseFrom(properties)?.let { Regex(it, RegexOption.IGNORE_CASE) },
+                classesOnly = TaskRegistry.CLASSES_ONLY.parseFrom(properties),
                 excludeAnnotated = mergedExclude,
                 modifierAnnotated = mergedModifiers,
                 supertypeEntryPoints = supertypes,
-                prodOnly = TaskRegistry.PROD_ONLY.parse(properties["prod-only"]),
+                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
             )
         }

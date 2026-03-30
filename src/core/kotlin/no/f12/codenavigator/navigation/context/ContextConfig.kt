@@ -30,11 +30,11 @@ data class ContextConfig(
         fun parse(properties: Map<String, String?>): ContextConfig = ContextConfig(
             pattern = properties["pattern"]
                 ?: throw IllegalArgumentException("Missing required property 'pattern'"),
-            maxDepth = TaskRegistry.CONTEXT_MAXDEPTH.parse(properties["maxdepth"]),
-            projectOnly = TaskRegistry.PROJECTONLY_ON.parse(properties["project-only"]),
-            filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parse(properties["filter-synthetic"]),
-            prodOnly = TaskRegistry.PROD_ONLY.parse(properties["prod-only"]),
-            testOnly = TaskRegistry.TEST_ONLY.parse(properties["test-only"]),
+            maxDepth = TaskRegistry.CONTEXT_MAXDEPTH.parseFrom(properties),
+            projectOnly = TaskRegistry.PROJECTONLY_ON.parseFrom(properties),
+            filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
+            prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
+            testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )
     }
