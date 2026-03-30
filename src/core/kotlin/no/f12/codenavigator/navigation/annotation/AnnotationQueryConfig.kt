@@ -7,12 +7,14 @@ import no.f12.codenavigator.config.OutputFormat
 data class AnnotationQueryConfig(
     val pattern: String,
     val methods: Boolean,
+    val includeTest: Boolean,
     val format: OutputFormat,
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): AnnotationQueryConfig = AnnotationQueryConfig(
             pattern = TaskRegistry.PATTERN.parseRequiredFrom(properties),
             methods = TaskRegistry.METHODS.parseFrom(properties),
+            includeTest = TaskRegistry.INCLUDETEST.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )
     }

@@ -389,7 +389,7 @@ object TaskRegistry {
     val ANNOTATIONS = TaskDef(
         goal = "annotations",
         description = "Find classes and methods by annotation pattern",
-        params = FORMAT_PARAMS + listOf(PATTERN, METHODS),
+        params = FORMAT_PARAMS + listOf(PATTERN, METHODS, INCLUDETEST),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )

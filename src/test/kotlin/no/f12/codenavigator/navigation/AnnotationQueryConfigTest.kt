@@ -51,4 +51,18 @@ class AnnotationQueryConfigTest {
 
         assertEquals(OutputFormat.TEXT, config.format)
     }
+
+    @Test
+    fun `includeTest defaults to false`() {
+        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test"))
+
+        assertFalse(config.includeTest)
+    }
+
+    @Test
+    fun `parses includeTest=true`() {
+        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test", "include-test" to "true"))
+
+        assertTrue(config.includeTest)
+    }
 }

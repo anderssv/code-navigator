@@ -30,8 +30,14 @@ abstract class AnnotationsTask : DefaultTask() {
         }
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
-        val mainSourceSet = sourceSets.getByName("main")
-        val classDirectories = mainSourceSet.output.classesDirs.files.toList()
+        val classDirectories = mutableListOf<java.io.File>()
+        classDirectories.addAll(sourceSets.getByName("main").output.classesDirs.files)
+
+        if (config.includeTest) {
+            sourceSets.findByName("test")?.let { testSourceSet ->
+                classDirectories.addAll(testSourceSet.output.classesDirs.files)
+            }
+        }
 
         val matches = AnnotationQueryBuilder.query(classDirectories, config.pattern, config.methods)
 

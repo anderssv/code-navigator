@@ -35,6 +35,9 @@ class AnnotationsMojo : AbstractMojo() {
     @Parameter(property = "methods")
     private var methods: String? = null
 
+    @Parameter(property = "include-test")
+    private var includeTest: String? = null
+
     override fun execute() {
         val config = try {
             AnnotationQueryConfig.parse(TaskRegistry.ANNOTATIONS.enhanceProperties(buildPropertyMap()))
@@ -44,13 +47,22 @@ class AnnotationsMojo : AbstractMojo() {
             )
         }
 
+        val classDirectories = mutableListOf<File>()
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
             log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
             return
         }
+        classDirectories.add(classesDir)
 
-        val matches = AnnotationQueryBuilder.query(listOf(classesDir), config.pattern, config.methods)
+        if (config.includeTest) {
+            val testClassesDir = File(project.build.testOutputDirectory)
+            if (testClassesDir.exists()) {
+                classDirectories.add(testClassesDir)
+            }
+        }
+
+        val matches = AnnotationQueryBuilder.query(classDirectories, config.pattern, config.methods)
 
         println(OutputWrapper.formatAndWrap(config.format,
             text = { AnnotationQueryFormatter.format(matches) },
@@ -64,5 +76,6 @@ class AnnotationsMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         methods?.let { put("methods", it) }
+        includeTest?.let { put("include-test", it) }
     }
 }
