@@ -5,6 +5,42 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
+## Fix `cnavFindSymbol` broad matching — matches packages and source files
+
+**Value: medium** | **Effort: small-medium**
+
+From field test (v0.1.44): searching "Service" returned 272 results because it substring-matched package `selfservice.*`. Searching "Ordre" matched 44 unrelated results via package `no.company.ordre.*`. Root cause: `SymbolFilter.filter()` applies `containsMatchIn` against all four fields (packageName, className FQN, symbolName, sourceFile). v0.1.45 re-test confirmed: still matches package segments, but regex anchors (`^Service`) work as workaround. Downgraded from HIGH.
+
+- **Fix**: Add `-Pscope=name|class|fqn|all` parameter. Default to `name` (symbolName only). When `scope=class`, also match className simpleName. When `scope=fqn`, match full package/class. When `scope=all`, current behavior (backward compat).
+- **Files**: `TaskRegistry.kt` (new ParamDef), `FindSymbolConfig.kt`, `SymbolFilter.kt`, `FindSymbolTask.kt`, `FindSymbolMojo.kt`, tests.
+- **Alternative**: Just change default to symbolName-only (3 lines in `SymbolFilter.kt`). Simpler but less flexible.
+
+---
+
+## Fix `cnavFindClass` broad matching — FQN substring causes false positives
+
+**Value: medium** | **Effort: low**
+
+From field test (v0.1.44): `-Ppattern=main` matched all 58 classes. Real cause: "main" substring-matches "do**main**" in FQN `com.example.domain.*` via `containsMatchIn`. Note: v0.1.45 re-test reported this as "FIXED" despite no code change to `ClassFilter.kt` — likely different test methodology or repo. The underlying `containsMatchIn` on FQN issue remains.
+
+- **Fix**: When pattern contains no `.` or `/`, match against `className.simpleName()` and `sourceFileName` only. When pattern contains `.` or `/`, match against FQN and full reconstructed path. ~10 lines in `ClassFilter.kt`.
+- **Files**: `ClassFilter.kt`, `ClassFilterTest.kt`.
+- **Alternative**: Add a `-Pscope` parameter like FindSymbol. Probably overkill for class search — the heuristic (dots → FQN mode, no dots → simple name mode) should handle most cases.
+
+---
+
+## Filter coroutine continuation classes from caller/callee trees
+
+**Value: medium** | **Effort: low-medium**
+
+From field tests (v0.1.44 and v0.1.45): suspend function caller/callee trees show inner `$1.invokeSuspend` continuation classes with synthetic fields (`L$0`, `L$1`, `I$0`). These are Kotlin compiler artifacts, not meaningful navigation targets. `-Pfilter-synthetic=true` filters data class methods but not coroutine continuations.
+
+- **Fix**: Extend `KotlinMethodFilter` (or `LambdaCollapser`) to detect and collapse coroutine continuation patterns. Continuation classes follow a predictable naming pattern: `ClassName$methodName$1` extending `ContinuationImpl`, with `invokeSuspend` as the only meaningful method.
+- **Approach**: In `CallTreeBuilder` or `CallTreeFormatter`, when a child node is a continuation class of its parent, collapse it (show the parent's method directly, skip the synthetic intermediate).
+- **Files**: `KotlinMethodFilter.kt` or `LambdaCollapser.kt`, `CallTreeBuilder.kt`, tests.
+
+---
+
 ## `cnavWhyDepends` — dependency edge explanation
 
 **Value: high** | **Effort: medium**
@@ -14,18 +50,6 @@ The DSM tells you package A depends on package B, but not *why*. To break a cycl
 - **Builder**: `DependencyExplainer.explain(callGraph, from, to) -> List<DependencyEdge(sourceClass, targetClass, kind: FIELD|PARAMETER|RETURN_TYPE|LOCAL_VAR|METHOD_CALL, detail: String)>`
 - **Parameters**: `-Pfrom=<class-or-package>` (required), `-Pto=<class-or-package>` (required), `-Pproject-only=true`
 - **Why useful**: The missing link between "the DSM says there's a dependency" and "here's what to move/extract to break it."
-
----
-
-## Better error messages on task parameter validation
-
-**Value: high** | **Effort: low**
-
-From user feedback (v0.38): `cnavCallers` failed with "Missing required property" without saying which property was missing. The user passed `-Pmethod` and `-Pclass`, but the task expects `-Ppattern` for the class — the error message didn't say so.
-
-- **Approach**: Generate usage hints from `TaskDef.params` instead of hardcoding strings. Each `ParamDef` already has `name`, `valuePlaceholder`, and `defaultValue` (null = required). The error message becomes: `"Missing required parameter 'pattern'. Usage: ./gradlew cnavCallers -Ppattern=<regex> [-Pmaxdepth=3]"` — generated from the task definition, so it can never drift.
-- **Also check**: When an unknown parameter is passed (e.g., `-Pclass`), suggest the closest valid parameter name ("Did you mean `-Ppattern`?")
-- **Scope**: All tasks with required parameters. Centralize in `TaskDef` or `GradleSupport.buildPropertyMap()`.
 
 ---
 
@@ -259,7 +283,13 @@ Items below are low-priority or may not be worth building. Revisit if demand eme
 
 ## Future ideas (not yet planned)
 
-- **Audit all tasks for `include-test` support**: From v0.1.44 field test, multiple tasks only scan main source set. Systematic audit: which tasks should support `-Pinclude-test`? Candidates: `cnavFindClass`, `cnavListClasses`, `cnavClassDetail`, `cnavContext`, `cnavFindStringConstant`, `cnavTypeHierarchy`, `cnavComplexity`, `cnavRank`. Some already support it (`cnavFindInterfaces`, `cnavCallers`, `cnavCallees`, `cnavDead`).
+- **Audit remaining tasks for `include-test` support**: v0.1.45 added `include-test` to `cnavAnnotations` and `cnavFindSymbol`. Remaining candidates: `cnavFindClass`, `cnavListClasses`, `cnavClassDetail`, `cnavContext`, `cnavFindStringConstant`, `cnavTypeHierarchy`, `cnavComplexity`, `cnavRank`. Tasks that already support it: `cnavFindInterfaces`, `cnavCallers`, `cnavCallees`, `cnavDead`, `cnavAnnotations`, `cnavFindSymbol`.
+- **Improve `cnavAnnotations` discoverability**: Field test (v0.1.44) reported "no inverse annotation search" but the feature exists — `cnavAnnotations -Ppattern=Serializable` finds all classes with that annotation. The task name is ambiguous. Consider a task alias (`cnavFindByAnnotation`), better no-results guidance mentioning retention policy / `include-test` / `methods` flags, or more prominent placement in `cnavAgentHelp`. v0.1.45 re-test clarified: `cnavAnnotations` only finds RUNTIME and CLASS retention annotations present in bytecode. SOURCE retention annotations (e.g. `@Suppress`) are invisible — this is inherent to bytecode analysis, but should be documented in no-results guidance.
+- **`cnavDead -Pprod-only` no-visible-effect guidance**: v0.1.45 re-test showed `-Pprod-only=true` had no effect in 5 of 7 repos. Working as designed — it filters `TEST_ONLY` reason items, but when all dead items have `NO_REFERENCES` (no test callers either), there's nothing to filter. Improvement: when `prod-only` is set and all items already have `NO_REFERENCES`, add a note to output: "All dead items already have NO_REFERENCES reason; -Pprod-only had no additional effect."
+- **Remove `junit` from `FrameworkPresets` or document it's a no-op for `cnavDead`**: v0.1.45 analysis suite reported `-Pexclude-framework=junit` has no observable effect. Root cause: dead code analysis only scans `main` source set, and JUnit annotations (`@Test`, `@BeforeEach`, etc.) only appear on test classes. The junit preset never matches any scanned class. Options: (a) remove `junit` from presets (it's misleading), (b) document in help that `exclude-framework` only applies to production-class annotations, (c) keep for future use if `include-test` is added to dead code scanning.
+- **Clarify `exclude-framework` inverted semantics**: The parameter name is confusing. `-Pexclude-framework=junit` means "remove junit from the active protection list" (stop excluding junit-annotated code from dead code results), not "exclude junit framework from scanning." All presets are active by default. Consider renaming to `-Pdisable-preset=` or adding clearer documentation.
+- **`cnavChangedSince` parameter naming**: v0.1.45 analysis suite noted `-Pref=<git-ref>` is unintuitive — users expect `-Psince=<date>`. Low priority, but a `-Psince` alias or date-to-ref conversion would improve ergonomics.
+- **Kotlin name-mangled method display**: Methods like `validateAndParse-IoAF18A` are Kotlin inline class return types. Low priority but a note in output (e.g. `[inline-class-mangled]`) would reduce confusion.
 - **Dead code: flag methods called only from test scope**: Use source set tagging to identify production methods/classes whose only callers are in the test source set. These are candidates for removal since no production code depends on them. Replaces the current separate `testGraph` approach in `DeadCodeFinder` with a unified call graph that has source set metadata.
 - **Remove cnav disk cache entirely**: Zero measurable difference on ~20k LOC. Reduces complexity. Needs testing on larger projects.
 - **Fail fast on wrong bytecode**: Replace `ScanResult<T>` partial-fail with hard failure + clear error.
