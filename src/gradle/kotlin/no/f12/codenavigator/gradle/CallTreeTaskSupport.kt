@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.BuildTool
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
@@ -26,12 +27,11 @@ object CallTreeTaskSupport {
         logger: Logger,
         taskDef: TaskDef,
         direction: CallDirection,
-        usageHint: String,
     ) {
         val config = try {
             CallGraphConfig.parse(project.buildPropertyMap(taskDef))
         } catch (e: IllegalArgumentException) {
-            throw GradleException(usageHint)
+            throw GradleException("${e.message}\n${taskDef.usageHint(BuildTool.GRADLE)}")
         }
 
         val taggedDirs = project.taggedClassDirectories()

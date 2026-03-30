@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.BuildTool
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
@@ -25,10 +26,11 @@ abstract class FindUsagesTask : DefaultTask() {
                 project.buildPropertyMap(TaskRegistry.FIND_USAGES),
             )
         } catch (e: IllegalArgumentException) {
+            val taskName = TaskRegistry.FIND_USAGES.taskName(BuildTool.GRADLE)
             throw GradleException(
                 "${e.message}\n" +
-                    "Usage: ./gradlew cnavUsages -Powner-class=<class> [-Pmethod=<name>] [-Pfield=<name>]\n" +
-                    "       ./gradlew cnavUsages -Ptype=<class>",
+                    "Usage: ./gradlew $taskName -Powner-class=<class> [-Pmethod=<name>] [-Pfield=<name>]\n" +
+                    "       ./gradlew $taskName -Ptype=<class>",
             )
         }
 

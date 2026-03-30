@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.BuildTool
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
@@ -25,7 +26,7 @@ abstract class AnnotationsTask : DefaultTask() {
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(
-                "Missing required property. Usage: ./gradlew cnavAnnotations -Ppattern=<regex> [-Pmethods=true]",
+                "${e.message}\n${TaskRegistry.ANNOTATIONS.usageHint(BuildTool.GRADLE)}",
             )
         }
 

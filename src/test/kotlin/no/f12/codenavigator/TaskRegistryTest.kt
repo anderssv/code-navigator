@@ -436,6 +436,105 @@ class TaskDefTest {
 
         assertEquals(emptyList<String>(), warnings)
     }
+
+    @Test
+    fun `usageHint shows required params without brackets for Gradle`() {
+        val pattern = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+        val task = TaskDef(
+            goal = "find-class",
+            description = "Find classes",
+            params = listOf(pattern),
+            requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
+        )
+
+        val hint = task.usageHint(BuildTool.GRADLE)
+
+        assertEquals("Usage: ./gradlew cnavFindClass -Ppattern=<regex>", hint)
+    }
+
+    @Test
+    fun `usageHint shows optional params in brackets`() {
+        val pattern = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+        val maxdepth = ParamDef("maxdepth", "<N>", "Max depth", flag = false, defaultValue = "3", enhancePattern = false, type = ParamType.INT)
+        val task = TaskDef(
+            goal = "find-callers",
+            description = "Find callers",
+            params = listOf(pattern, maxdepth),
+            requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
+        )
+
+        val hint = task.usageHint(BuildTool.GRADLE)
+
+        assertEquals("Usage: ./gradlew cnavFindCallers -Ppattern=<regex> [-Pmaxdepth=<N>]", hint)
+    }
+
+    @Test
+    fun `usageHint excludes format and llm params`() {
+        val format = ParamDef("format", "<fmt>", "Output format", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+        val llm = ParamDef("llm", "true", "LLM mode", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
+        val pattern = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+        val task = TaskDef(
+            goal = "find-class",
+            description = "Find classes",
+            params = listOf(format, llm, pattern),
+            requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
+        )
+
+        val hint = task.usageHint(BuildTool.GRADLE)
+
+        assertEquals("Usage: ./gradlew cnavFindClass -Ppattern=<regex>", hint)
+    }
+
+    @Test
+    fun `usageHint excludes deprecated params`() {
+        val pattern = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+        val old = ParamDef("old-param", "<v>", "Old", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, deprecated = true, deprecatedMessage = "Use new instead")
+        val task = TaskDef(
+            goal = "find-class",
+            description = "Find classes",
+            params = listOf(pattern, old),
+            requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
+        )
+
+        val hint = task.usageHint(BuildTool.GRADLE)
+
+        assertEquals("Usage: ./gradlew cnavFindClass -Ppattern=<regex>", hint)
+    }
+
+    @Test
+    fun `usageHint works for Maven`() {
+        val pattern = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+        val task = TaskDef(
+            goal = "find-class",
+            description = "Find classes",
+            params = listOf(pattern),
+            requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
+        )
+
+        val hint = task.usageHint(BuildTool.MAVEN)
+
+        assertEquals("Usage: mvn cnav:find-class -Dpattern=<regex>", hint)
+    }
+
+    @Test
+    fun `usageHint for real FIND_CALLERS task uses canonical name`() {
+        val hint = TaskRegistry.FIND_CALLERS.usageHint(BuildTool.GRADLE)
+
+        assertTrue(hint.contains("cnavFindCallers"), "Should use canonical name, not legacy 'cnavCallers'")
+        assertTrue(hint.contains("-Ppattern="), "Should include required pattern param")
+    }
+
+    @Test
+    fun `usageHint for real CLASS_DETAIL task uses canonical name`() {
+        val hint = TaskRegistry.CLASS_DETAIL.usageHint(BuildTool.GRADLE)
+
+        assertTrue(hint.contains("cnavClassDetail"), "Should use canonical name, not legacy 'cnavClass'")
+    }
 }
 
 class TaskRegistryTest {

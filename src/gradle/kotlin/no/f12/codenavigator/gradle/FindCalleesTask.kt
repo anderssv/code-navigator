@@ -16,7 +16,6 @@ abstract class FindCalleesTask : DefaultTask() {
             logger = logger,
             taskDef = TaskRegistry.FIND_CALLEES,
             direction = CallDirection.CALLEES,
-            usageHint = "Missing required property. Usage: ./gradlew cnavCallees -Ppattern=<regex> -Pmaxdepth=3",
         )
     }
 }

@@ -103,6 +103,15 @@ data class TaskDef(
 
     fun taskName(tool: BuildTool): String = tool.taskName(goal)
 
+    fun usageHint(tool: BuildTool): String {
+        val visibleParams = params.filter { !it.deprecated && it.name != "format" && it.name != "llm" }
+        val parts = visibleParams.map { param ->
+            val rendered = param.render(tool)
+            if (param.defaultValue == null && !param.flag) rendered else "[$rendered]"
+        }
+        return "Usage: ${tool.command} ${taskName(tool)}${if (parts.isEmpty()) "" else " ${parts.joinToString(" ")}"}"
+    }
+
     fun paramByName(name: String): ParamDef<*> =
         params.first { it.name == name }
 

@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.BuildTool
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
@@ -27,7 +28,7 @@ abstract class FindInterfaceImplsTask : DefaultTask() {
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(
-                "Missing required property 'pattern'. Usage: ./gradlew cnavInterfaces -Ppattern=<regex>",
+                "${e.message}\n${TaskRegistry.FIND_INTERFACES.usageHint(BuildTool.GRADLE)}",
             )
         }
 

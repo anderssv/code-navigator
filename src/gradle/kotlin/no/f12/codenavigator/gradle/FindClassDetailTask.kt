@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.BuildTool
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
@@ -27,7 +28,7 @@ abstract class FindClassDetailTask : DefaultTask() {
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(
-                "Missing required property 'pattern'. Usage: ./gradlew cnavClass -Ppattern=<regex>",
+                "${e.message}\n${TaskRegistry.CLASS_DETAIL.usageHint(BuildTool.GRADLE)}",
             )
         }
 
