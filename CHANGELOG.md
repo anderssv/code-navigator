@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.48
+
+- **Fixed:** `cnavMetrics` dead code count now matches `cnavDead`. Previously, `MetricsTask`/`MetricsMojo` called `DeadCodeFinder.find()` without passing delegation methods, bridge methods, interface implementors, class fields, inline methods, external interfaces, or receiver types — producing inflated dead code counts (e.g. 46 vs 7).
+- **New:** DSM and package dependency tasks now show explanatory hints when there are no inter-package dependencies. Single-package projects get a clear message instead of bare "no dependencies found."
+- **New:** Git-history tasks (`cnavChurn`, `cnavHotspots`, `cnavCodeAge`, `cnavAuthors`, `cnavCoupling`) now automatically exclude build output directories (`build/`, `target/`, `bin/`, `.gradle/`, `out/`, `node_modules/`) from analysis results.
+- **Improved:** Deprecated `method` parameter message now specifies it applies to find-callers/find-callees and shows both Gradle and Maven syntax.
+
 ## 0.1.47
 
 - **Fixed:** Polymorphic dispatch resolution now runs inside the BFS alongside intra-class call propagation. Previously, methods discovered via intra-class calls (e.g. abstract method dispatched from `this.singleMatch()`) were never resolved to implementor overrides, causing false positive dead code reports. This was the #1 source of false positives in field testing.

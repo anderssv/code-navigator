@@ -9,12 +9,19 @@ import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.navigation.RootPackageDetector
 import no.f12.codenavigator.navigation.SourceSet
 import no.f12.codenavigator.navigation.scanProjectClasses
+import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.classinfo.ClassScanner
-import no.f12.codenavigator.navigation.dsm.CycleDetector
+import no.f12.codenavigator.navigation.deadcode.BridgeMethodDetector
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFinder
+import no.f12.codenavigator.navigation.deadcode.DelegationMethodDetector
+import no.f12.codenavigator.navigation.deadcode.FieldExtractor
+import no.f12.codenavigator.navigation.deadcode.InlineMethodDetector
+import no.f12.codenavigator.navigation.deadcode.ReceiverTypeExtractor
+import no.f12.codenavigator.navigation.dsm.CycleDetector
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
+import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
 import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
 import no.f12.codenavigator.navigation.metrics.MetricsBuilder
 import no.f12.codenavigator.navigation.metrics.MetricsConfig
@@ -102,6 +109,22 @@ class MetricsMojo : AbstractMojo() {
         val excludeAnnotatedSet = config.excludeAnnotated.toSet()
         val annotations = AnnotationExtractor.scanAll(classDirectories)
 
+        val interfaceRegistry = InterfaceRegistryCache.getOrBuild(
+            File(project.build.directory, "cnav/interface-registry.cache"),
+            classDirectories,
+        ).data
+        val interfaceImplementors = mutableMapOf<ClassName, MutableSet<ClassName>>()
+        interfaceRegistry.forEachEntry { interfaceName, implementors ->
+            interfaceImplementors[interfaceName] = implementors.map { it.className }.toMutableSet()
+        }
+
+        val classFields = FieldExtractor.scanAll(classDirectories)
+        val inlineMethods = InlineMethodDetector.scanAll(classDirectories)
+        val delegationMethods = DelegationMethodDetector.scanAll(classDirectories)
+        val bridgeMethods = BridgeMethodDetector.scanAll(classDirectories)
+        val classExternalInterfaces = interfaceRegistry.externalInterfacesOf(graph.projectClasses())
+        val classReceiverTypes = ReceiverTypeExtractor.scanAll(classDirectories)
+
         val deadCode = DeadCodeFinder.find(
             graph = graph,
             filter = null,
@@ -111,6 +134,13 @@ class MetricsMojo : AbstractMojo() {
             classAnnotations = annotations.classAnnotations,
             methodAnnotations = annotations.methodAnnotations,
             testGraph = null,
+            interfaceImplementors = interfaceImplementors,
+            classFields = classFields,
+            inlineMethods = inlineMethods,
+            classExternalInterfaces = classExternalInterfaces,
+            classReceiverTypes = classReceiverTypes,
+            delegationMethods = delegationMethods,
+            bridgeMethods = bridgeMethods,
         )
 
         val projectClasses = scanProjectClasses(classDirectories)

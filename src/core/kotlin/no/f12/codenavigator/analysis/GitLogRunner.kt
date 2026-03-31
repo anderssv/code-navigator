@@ -19,7 +19,7 @@ object GitLogRunner {
             throw RuntimeException("git log failed (exit code $exitCode): $output")
         }
 
-        return GitLogParser.parse(output)
+        return GitLogParser.filterBuildOutput(GitLogParser.parse(output))
     }
 
     internal fun buildCommand(after: LocalDate, followRenames: Boolean = true): List<String> =

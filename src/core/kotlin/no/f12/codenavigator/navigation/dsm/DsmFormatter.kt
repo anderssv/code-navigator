@@ -4,6 +4,12 @@ import no.f12.codenavigator.navigation.PackageName
 
 object DsmFormatter {
 
+    fun noResultsHints(packageCount: Int): List<String> = buildList {
+        if (packageCount <= 1) {
+            add("All classes are in a single package. The DSM shows inter-package dependencies, so there is nothing to display. Consider splitting classes into multiple packages.")
+        }
+    }
+
     fun format(matrix: DsmMatrix): String {
         val packages = matrix.packages
         if (packages.isEmpty()) return "No inter-package dependencies found."

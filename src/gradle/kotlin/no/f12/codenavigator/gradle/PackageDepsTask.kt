@@ -53,7 +53,14 @@ abstract class PackageDepsTask : DefaultTask() {
             }
             matches
         } else {
-            deps.allPackages()
+            val all = deps.allPackages()
+            if (all.isEmpty()) {
+                val packageCount = graph.projectClasses().map { it.packageName() }.distinct().size
+                val hints = PackageDependencyFormatter.noResultsHints(packageCount)
+                logger.lifecycle(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
+                return
+            }
+            all
         }
 
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,

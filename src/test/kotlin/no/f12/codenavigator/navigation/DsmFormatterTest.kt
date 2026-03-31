@@ -254,4 +254,20 @@ class DsmFormatterTest {
 
         assertEquals("No cyclic dependencies found.", result)
     }
+
+    // === noResultsHints tests ===
+
+    @Test
+    fun `noResultsHints mentions single-package when packageCount is 1`() {
+        val hints = DsmFormatter.noResultsHints(packageCount = 1)
+
+        assertTrue(hints.any { it.contains("single package") }, "Should mention single package: $hints")
+    }
+
+    @Test
+    fun `noResultsHints suggests package-filter when packageCount is greater than 1`() {
+        val hints = DsmFormatter.noResultsHints(packageCount = 3)
+
+        assertTrue(hints.none { it.contains("single package") }, "Should not mention single package for multi-package: $hints")
+    }
 }

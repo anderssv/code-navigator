@@ -48,6 +48,13 @@ abstract class DsmTask : DefaultTask() {
         val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
         val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)
 
+        if (matrix.packages.isEmpty() && config.cycleFilter == null && !config.cyclesOnly) {
+            val packageCount = projectClasses.map { it.packageName() }.distinct().size
+            val hints = DsmFormatter.noResultsHints(packageCount)
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
+            return
+        }
+
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
             text = { if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCycles(matrix, config.cycleFilter) else DsmFormatter.format(matrix) },
             json = { if (config.cyclesOnly || config.cycleFilter != null) JsonFormatter.formatDsmCycles(matrix, config.cycleFilter) else JsonFormatter.formatDsm(matrix) },

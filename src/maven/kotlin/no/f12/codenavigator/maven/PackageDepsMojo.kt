@@ -81,7 +81,14 @@ class PackageDepsMojo : AbstractMojo() {
             }
             matches
         } else {
-            deps.allPackages()
+            val all = deps.allPackages()
+            if (all.isEmpty()) {
+                val packageCount = graph.projectClasses().map { it.packageName() }.distinct().size
+                val hints = PackageDependencyFormatter.noResultsHints(packageCount)
+                println(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
+                return
+            }
+            all
         }
 
         println(OutputWrapper.formatAndWrap(config.format,

@@ -4,6 +4,7 @@ import no.f12.codenavigator.navigation.dsm.PackageDependencies
 import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class PackageDependencyFormatterTest {
 
@@ -76,6 +77,22 @@ class PackageDependencyFormatterTest {
             |  ← com.example.services
         """.trimMargin()
         assertEquals(expected, output)
+    }
+
+    // === noResultsHints tests ===
+
+    @Test
+    fun `noResultsHints mentions single-package when packageCount is 1`() {
+        val hints = PackageDependencyFormatter.noResultsHints(packageCount = 1)
+
+        assertTrue(hints.any { it.contains("single package") }, "Should mention single package: $hints")
+    }
+
+    @Test
+    fun `noResultsHints returns empty for multi-package projects`() {
+        val hints = PackageDependencyFormatter.noResultsHints(packageCount = 3)
+
+        assertTrue(hints.none { it.contains("single package") }, "Should not mention single package for multi-package: $hints")
     }
 
     @Test

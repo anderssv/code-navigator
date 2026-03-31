@@ -183,4 +183,121 @@ class GitLogParserTest {
         assertEquals(1, result.size)
         assertEquals("src/NewName.kt", result[0].files[0].path)
     }
+
+    // === filterBuildOutput tests ===
+
+    @Test
+    fun `filterBuildOutput removes files under build directory`() {
+        val commits = listOf(
+            GitCommit("abc", LocalDate.of(2024, 1, 1), "Author", listOf(
+                FileChange(10, 5, "src/main/Foo.kt"),
+                FileChange(3, 0, "build/classes/Foo.class"),
+            )),
+        )
+
+        val result = GitLogParser.filterBuildOutput(commits)
+
+        assertEquals(1, result.size)
+        assertEquals(1, result[0].files.size)
+        assertEquals("src/main/Foo.kt", result[0].files[0].path)
+    }
+
+    @Test
+    fun `filterBuildOutput removes files under target directory`() {
+        val commits = listOf(
+            GitCommit("abc", LocalDate.of(2024, 1, 1), "Author", listOf(
+                FileChange(10, 5, "src/main/Foo.kt"),
+                FileChange(3, 0, "target/classes/Foo.class"),
+            )),
+        )
+
+        val result = GitLogParser.filterBuildOutput(commits)
+
+        assertEquals(1, result.size)
+        assertEquals(listOf(FileChange(10, 5, "src/main/Foo.kt")), result[0].files)
+    }
+
+    @Test
+    fun `filterBuildOutput removes files under all known build directories`() {
+        val commits = listOf(
+            GitCommit("abc", LocalDate.of(2024, 1, 1), "Author", listOf(
+                FileChange(1, 0, "bin/app"),
+                FileChange(1, 0, ".gradle/cache/data"),
+                FileChange(1, 0, "out/production/Foo.class"),
+                FileChange(1, 0, "node_modules/lodash/index.js"),
+                FileChange(10, 5, "src/main/Foo.kt"),
+            )),
+        )
+
+        val result = GitLogParser.filterBuildOutput(commits)
+
+        assertEquals(1, result.size)
+        assertEquals(1, result[0].files.size)
+        assertEquals("src/main/Foo.kt", result[0].files[0].path)
+    }
+
+    @Test
+    fun `filterBuildOutput preserves commits with only source files`() {
+        val commits = listOf(
+            GitCommit("abc", LocalDate.of(2024, 1, 1), "Author", listOf(
+                FileChange(10, 5, "src/main/Foo.kt"),
+                FileChange(3, 2, "src/test/FooTest.kt"),
+            )),
+        )
+
+        val result = GitLogParser.filterBuildOutput(commits)
+
+        assertEquals(1, result.size)
+        assertEquals(2, result[0].files.size)
+    }
+
+    @Test
+    fun `filterBuildOutput removes commits with no remaining files`() {
+        val commits = listOf(
+            GitCommit("abc", LocalDate.of(2024, 1, 1), "Author", listOf(
+                FileChange(3, 0, "build/classes/Foo.class"),
+            )),
+            GitCommit("def", LocalDate.of(2024, 1, 2), "Author", listOf(
+                FileChange(10, 5, "src/main/Foo.kt"),
+            )),
+        )
+
+        val result = GitLogParser.filterBuildOutput(commits)
+
+        assertEquals(1, result.size)
+        assertEquals("def", result[0].hash)
+    }
+
+    @Test
+    fun `filterBuildOutput does not match partial directory names`() {
+        val commits = listOf(
+            GitCommit("abc", LocalDate.of(2024, 1, 1), "Author", listOf(
+                FileChange(10, 5, "build-tools/setup.sh"),
+                FileChange(3, 0, "targetDir/config.xml"),
+                FileChange(1, 0, "binary/app.exe"),
+            )),
+        )
+
+        val result = GitLogParser.filterBuildOutput(commits)
+
+        assertEquals(1, result.size)
+        assertEquals(3, result[0].files.size)
+    }
+
+    @Test
+    fun `filterBuildOutput handles nested build output paths`() {
+        val commits = listOf(
+            GitCommit("abc", LocalDate.of(2024, 1, 1), "Author", listOf(
+                FileChange(1, 0, "build/reports/tests/index.html"),
+                FileChange(1, 0, "target/surefire-reports/TEST-Foo.xml"),
+                FileChange(10, 5, "src/main/Foo.kt"),
+            )),
+        )
+
+        val result = GitLogParser.filterBuildOutput(commits)
+
+        assertEquals(1, result.size)
+        assertEquals(1, result[0].files.size)
+        assertEquals("src/main/Foo.kt", result[0].files[0].path)
+    }
 }

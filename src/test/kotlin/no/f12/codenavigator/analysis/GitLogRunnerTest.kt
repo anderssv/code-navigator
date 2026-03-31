@@ -116,6 +116,24 @@ class GitLogRunnerTest {
             "Should have separate entries, got: $filePaths")
     }
 
+    @Test
+    fun `run filters out build output files`(@TempDir tempDir: File) {
+        initTestRepo(tempDir)
+
+        File(tempDir, "src").mkdir()
+        File(tempDir, "src/Foo.kt").writeText("class Foo")
+        File(tempDir, "build").mkdir()
+        File(tempDir, "build/output.txt").writeText("generated")
+        commitAll(tempDir, "Add source and build output", "2024-06-01T12:00:00")
+
+        val commits = GitLogRunner.run(tempDir, LocalDate.of(2024, 1, 1))
+
+        assertEquals(1, commits.size)
+        val filePaths = commits[0].files.map { it.path }.toSet()
+        assertTrue("src/Foo.kt" in filePaths, "Should include source file, got: $filePaths")
+        assertTrue("build/output.txt" !in filePaths, "Should exclude build output, got: $filePaths")
+    }
+
     companion object {
         private const val TEST_AUTHOR = "cnav-test-bot"
         private const val TEST_EMAIL = "cnav-test-bot@not-a-real-domain.test"

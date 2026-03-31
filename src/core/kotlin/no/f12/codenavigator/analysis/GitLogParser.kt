@@ -19,6 +19,24 @@ object GitLogParser {
 
     private val COMMIT_HEADER = Regex("^--([^-]+)--([0-9]{4}-[0-9]{2}-[0-9]{2})--(.+)$")
 
+    private val BUILD_OUTPUT_PREFIXES = listOf(
+        "build/",
+        "target/",
+        "bin/",
+        ".gradle/",
+        "out/",
+        "node_modules/",
+    )
+
+    fun filterBuildOutput(commits: List<GitCommit>): List<GitCommit> =
+        commits.mapNotNull { commit ->
+            val filtered = commit.files.filter { file ->
+                BUILD_OUTPUT_PREFIXES.none { prefix -> file.path.startsWith(prefix) }
+            }
+            if (filtered.isEmpty()) null
+            else commit.copy(files = filtered)
+        }
+
     fun parse(input: String): List<GitCommit> {
         if (input.isBlank()) return emptyList()
 
