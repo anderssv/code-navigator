@@ -4,6 +4,8 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.navigation.SourceSet
+import no.f12.codenavigator.navigation.SourceSetResolver
 import no.f12.codenavigator.navigation.symbol.FindSymbolConfig
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import no.f12.codenavigator.navigation.symbol.SymbolFilter
@@ -37,6 +39,12 @@ class FindSymbolMojo : AbstractMojo() {
     @Parameter(property = "include-test")
     private var includeTest: String? = null
 
+    @Parameter(property = "prod-only")
+    private var prodOnly: String? = null
+
+    @Parameter(property = "test-only")
+    private var testOnly: String? = null
+
     override fun execute() {
         val config = try {
             FindSymbolConfig.parse(TaskRegistry.FIND_SYMBOL.enhanceProperties(buildPropertyMap()))
@@ -44,27 +52,20 @@ class FindSymbolMojo : AbstractMojo() {
             throw MojoFailureException(e.message)
         }
 
-        val classDirectories = mutableListOf<File>()
-        val classesDir = File(project.build.outputDirectory)
-        if (!classesDir.exists()) {
-            log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
-            return
-        }
-        classDirectories.add(classesDir)
+        val taggedDirs = project.taggedClassDirectories()
+        val resolver = SourceSetResolver.from(taggedDirs)
 
-        if (config.includeTest) {
-            val testClassesDir = File(project.build.testOutputDirectory)
-            if (testClassesDir.exists()) {
-                classDirectories.add(testClassesDir)
-            }
-        }
-
-        val cacheFileName = if (config.includeTest) "symbol-index-all.cache" else "symbol-index.cache"
-        val result = SymbolIndexCache.getOrBuild(File(project.build.directory, "cnav/$cacheFileName"), classDirectories)
+        val cacheFile = File(project.build.directory, "cnav/symbol-index-all.cache")
+        val result = SymbolIndexCache.getOrBuild(cacheFile, resolver.classDirectories)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val allSymbols = result.data
-        val matches = SymbolFilter.filter(allSymbols, config.pattern)
+        val filtered = when {
+            config.prodOnly -> allSymbols.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
+            config.testOnly -> allSymbols.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
+            else -> allSymbols
+        }
+        val matches = SymbolFilter.filter(filtered, config.pattern)
 
         println(OutputWrapper.formatAndWrap(config.format,
             text = { SymbolTableFormatter.format(matches) },
@@ -78,5 +79,7 @@ class FindSymbolMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         includeTest?.let { put("include-test", it) }
+        prodOnly?.let { put("prod-only", it) }
+        testOnly?.let { put("test-only", it) }
     }
 }

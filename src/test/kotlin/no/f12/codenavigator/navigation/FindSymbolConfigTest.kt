@@ -5,6 +5,8 @@ import no.f12.codenavigator.navigation.symbol.FindSymbolConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class FindSymbolConfigTest {
 
@@ -46,16 +48,30 @@ class FindSymbolConfigTest {
     }
 
     @Test
-    fun `includeTest defaults to false when not specified`() {
+    fun `prodOnly defaults to false`() {
         val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod"))
 
-        assertEquals(false, config.includeTest)
+        assertFalse(config.prodOnly)
     }
 
     @Test
-    fun `includeTest is true when include-test is true`() {
-        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod", "include-test" to "true"))
+    fun `testOnly defaults to false`() {
+        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod"))
 
-        assertEquals(true, config.includeTest)
+        assertFalse(config.testOnly)
+    }
+
+    @Test
+    fun `parses prodOnly=true`() {
+        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod", "prod-only" to "true"))
+
+        assertTrue(config.prodOnly)
+    }
+
+    @Test
+    fun `parses testOnly=true`() {
+        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod", "test-only" to "true"))
+
+        assertTrue(config.testOnly)
     }
 }

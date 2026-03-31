@@ -6,13 +6,15 @@ import no.f12.codenavigator.config.OutputFormat
 
 data class FindSymbolConfig(
     val pattern: String,
-    val includeTest: Boolean,
+    val prodOnly: Boolean,
+    val testOnly: Boolean,
     val format: OutputFormat,
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): FindSymbolConfig = FindSymbolConfig(
             pattern = TaskRegistry.PATTERN.parseRequiredFrom(properties),
-            includeTest = TaskRegistry.INCLUDETEST.parseFrom(properties),
+            prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
+            testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
         )
     }
