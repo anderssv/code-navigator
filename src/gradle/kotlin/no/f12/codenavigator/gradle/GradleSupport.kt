@@ -1,6 +1,7 @@
 package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.TaskDef
+import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.SourceSet
 import org.gradle.api.Project
 import org.gradle.api.tasks.SourceSetContainer
@@ -15,6 +16,12 @@ fun Project.buildPropertyMap(
     val propertyNames = taskDef.params.filter { !it.flag }.map { it.name }
     val flagNames = taskDef.params.filter { it.flag }.map { it.name }
     val raw = buildPropertyMap(propertyNames, flagNames)
+
+    val allCnavParamNames = TaskRegistry.ALL_TASKS.flatMap { it.params }.map { it.name }.toSet()
+    val presentCnavProperties = allCnavParamNames.filter { findProperty(it) != null || hasProperty(it) }.toSet()
+    val warnings = taskDef.warnUnsupportedProperties(presentCnavProperties)
+    require(warnings.isEmpty()) { warnings.joinToString("\n") }
+
     return taskDef.enhanceProperties(raw)
 }
 

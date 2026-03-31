@@ -120,6 +120,17 @@ data class TaskDef(
             .filter { it.deprecated && properties.containsKey(it.name) }
             .mapNotNull { it.deprecatedMessage }
 
+    fun warnUnsupportedProperties(availablePropertyNames: Set<String>): List<String> {
+        val myParamNames = params.map { it.name }.toSet()
+        val allCnavParamNames = TaskRegistry.ALL_TASKS.flatMap { it.params }.map { it.name }.toSet()
+        val unsupported = availablePropertyNames
+            .filter { it in allCnavParamNames && it !in myParamNames }
+            .sorted()
+        return unsupported.map { name ->
+            "Parameter '$name' is not supported by task '$goal'. Supported: ${myParamNames.sorted()}"
+        }
+    }
+
     fun enhanceProperties(properties: Map<String, String?>): Map<String, String?> {
         val knownNames = params.map { it.name }.toSet()
         val unknown = properties.keys - knownNames

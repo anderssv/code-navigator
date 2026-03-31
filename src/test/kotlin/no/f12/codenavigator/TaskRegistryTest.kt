@@ -807,6 +807,44 @@ class TaskRegistryTest {
     }
 
     @Test
+    fun `warnUnsupportedProperties returns warning for known cnav param not in this task`() {
+        val task = TaskRegistry.DEAD
+
+        val warnings = task.warnUnsupportedProperties(setOf("test-only", "filter", "maxdepth"))
+
+        assertEquals(listOf("Parameter 'maxdepth' is not supported by task 'dead'. Supported: [classes-only, exclude, exclude-annotated, filter, format, llm, prod-only, test-only, treat-as-dead]"), warnings)
+    }
+
+    @Test
+    fun `warnUnsupportedProperties returns empty for supported params`() {
+        val task = TaskRegistry.DEAD
+
+        val warnings = task.warnUnsupportedProperties(setOf("test-only", "filter", "prod-only"))
+
+        assertEquals(emptyList<String>(), warnings)
+    }
+
+    @Test
+    fun `warnUnsupportedProperties ignores properties that are not known cnav params`() {
+        val task = TaskRegistry.DEAD
+
+        val warnings = task.warnUnsupportedProperties(setOf("filter", "some-random-gradle-prop"))
+
+        assertEquals(emptyList<String>(), warnings)
+    }
+
+    @Test
+    fun `warnUnsupportedProperties reports multiple unsupported params`() {
+        val task = TaskRegistry.DEAD
+
+        val warnings = task.warnUnsupportedProperties(setOf("maxdepth", "project-only"))
+
+        assertEquals(2, warnings.size)
+        assertTrue(warnings.any { it.contains("maxdepth") })
+        assertTrue(warnings.any { it.contains("project-only") })
+    }
+
+    @Test
     fun `all ParamDef instances have correct ParamType`() {
         val expectedTypes = mapOf(
             "format" to ParamType.STRING,
