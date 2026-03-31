@@ -259,6 +259,14 @@ object FrameworkPresets {
         "io.quarkus.hibernate.reactive.panache.PanacheRepositoryBase",
     ).map { ClassName(it) }.toSet()
 
+    private val KTOR_SUPERTYPES = setOf(
+        "io.ktor.server.auth.AuthenticationProvider",
+        "io.ktor.server.application.BaseApplicationPlugin",
+        "io.ktor.server.application.BaseRouteScopedPlugin",
+        "io.ktor.serialization.ContentConverter",
+        "io.ktor.server.html.Template",
+    ).map { ClassName(it) }.toSet()
+
     private data class Preset(
         val entryPoints: Set<AnnotationName>,
         val modifiers: Set<AnnotationName> = emptySet(),
@@ -279,6 +287,7 @@ object FrameworkPresets {
         "jakarta" to Preset(JAKARTA),
         "validation" to Preset(VALIDATION),
         "junit" to Preset(JUNIT),
+        "ktor" to Preset(emptySet(), emptySet(), KTOR_SUPERTYPES),
     )
 
     private val PRESETS: Map<String, Set<AnnotationName>> =

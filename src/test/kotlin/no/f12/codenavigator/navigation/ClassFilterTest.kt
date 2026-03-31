@@ -71,4 +71,21 @@ class ClassFilterTest {
 
         assertEquals(5, results.size)
     }
+
+    @Test
+    fun `simple pattern does not match package substrings in FQN`() {
+        val results = ClassFilter.filter(classes, "main")
+
+        assertTrue(results.isEmpty(), "Pattern 'main' should not match 'domain' in FQN")
+    }
+
+    @Test
+    fun `simple pattern matches class simple name only`() {
+        val results = ClassFilter.filter(classes, "User")
+
+        assertEquals(2, results.size, "Should match User and UserService via simpleName")
+        val classNames = results.map { it.className.simpleName() }.toSet()
+        assertTrue("User" in classNames)
+        assertTrue("UserService" in classNames)
+    }
 }

@@ -32,8 +32,8 @@ class SymbolFilterTest {
     }
 
     @Test
-    fun `matches against package name`() {
-        val results = SymbolFilter.filter(symbols, "domain")
+    fun `matches against package name with qualified pattern`() {
+        val results = SymbolFilter.filter(symbols, "example.domain")
 
         assertEquals(1, results.size)
         assertEquals("nationalId", results.first().symbolName)
@@ -67,5 +67,37 @@ class SymbolFilterTest {
 
         assertEquals(1, results.size)
         assertEquals("resetPassword", results.first().symbolName)
+    }
+
+    @Test
+    fun `simple pattern does not match package substrings`() {
+        val symbolsWithPackageMatch = listOf(
+            SymbolInfo(PackageName("com.example.selfservice"), ClassName("com.example.selfservice.PaymentHandler"), "processPayment", SymbolKind.METHOD, "PaymentHandler.kt"),
+            SymbolInfo(PackageName("com.example.api"), ClassName("com.example.api.UserService"), "findUser", SymbolKind.METHOD, "UserService.kt"),
+        )
+
+        val results = SymbolFilter.filter(symbolsWithPackageMatch, "Service")
+
+        assertEquals(1, results.size)
+        assertEquals("UserService", results.first().className.simpleName())
+    }
+
+    @Test
+    fun `simple pattern does not match FQN package segment`() {
+        val symbolsWithFqnMatch = listOf(
+            SymbolInfo(PackageName("com.example.selfservice"), ClassName("com.example.selfservice.Handler"), "handle", SymbolKind.METHOD, "Handler.kt"),
+        )
+
+        val results = SymbolFilter.filter(symbolsWithFqnMatch, "service")
+
+        assertTrue(results.isEmpty(), "Should not match 'selfservice' in FQN package segment")
+    }
+
+    @Test
+    fun `qualified pattern matches against full FQN`() {
+        val results = SymbolFilter.filter(symbols, "services.UserService")
+
+        assertEquals(1, results.size)
+        assertEquals("findUser", results.first().symbolName)
     }
 }

@@ -51,6 +51,7 @@ object DeadCodeFinder {
         prodOnly: Boolean = false,
         modifierAnnotated: Set<String> = emptySet(),
         supertypeEntryPoints: Set<ClassName> = emptySet(),
+        testClasses: Set<ClassName> = emptySet(),
     ): List<DeadCode> {
         val projectClasses = graph.projectClasses()
         if (projectClasses.isEmpty()) return emptyList()
@@ -164,7 +165,7 @@ object DeadCodeFinder {
             .filter { item -> exclude == null || !item.className.matches(exclude) }
             .filter { item -> !isExcludedByAnnotation(item, excludeAnnotated, classAnnotations, methodAnnotations) }
             .filter { item -> !isExcludedBySupertype(item, classExternalInterfaces, supertypeEntryPoints) }
-            .filter { item -> !prodOnly || item.reason == DeadCodeReason.NO_REFERENCES }
+            .filter { item -> !prodOnly || (item.reason == DeadCodeReason.NO_REFERENCES && item.className !in testClasses) }
             .sortedWith(compareBy({ it.kind }, { it.className }, { it.memberName ?: "" }))
     }
 

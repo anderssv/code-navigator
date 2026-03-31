@@ -568,4 +568,35 @@ class FrameworkPresetsTest {
         assertTrue(supertypes.contains(ClassName("io.quarkus.hibernate.orm.panache.PanacheRepositoryBase")))
     }
 
+    // --- Ktor preset ---
+
+    @Test
+    fun `ktor preset is in availablePresets`() {
+        assertTrue(FrameworkPresets.availablePresets().contains("ktor"))
+    }
+
+    @Test
+    fun `ktor preset includes supertype entry points for AuthenticationProvider and Plugin`() {
+        val supertypes = FrameworkPresets.resolveSupertypeEntryPoints("ktor")
+
+        assertTrue(supertypes.contains(ClassName("io.ktor.server.auth.AuthenticationProvider")))
+        assertTrue(supertypes.contains(ClassName("io.ktor.server.application.BaseApplicationPlugin")))
+        assertTrue(supertypes.contains(ClassName("io.ktor.server.application.BaseRouteScopedPlugin")))
+    }
+
+    @Test
+    fun `ktor preset includes supertype entry points for ContentConverter and Template`() {
+        val supertypes = FrameworkPresets.resolveSupertypeEntryPoints("ktor")
+
+        assertTrue(supertypes.contains(ClassName("io.ktor.serialization.ContentConverter")))
+        assertTrue(supertypes.contains(ClassName("io.ktor.server.html.Template")))
+    }
+
+    @Test
+    fun `ktor preset has no annotation entry points`() {
+        val entryPoints = FrameworkPresets.resolveEntryPoints("ktor")
+
+        assertTrue(entryPoints.isEmpty(), "Ktor uses DSL not annotations for entry points")
+    }
+
 }

@@ -5,42 +5,6 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
-## Fix `cnavFindSymbol` broad matching — matches packages and source files
-
-**Value: medium** | **Effort: small-medium**
-
-From field test (v0.1.44): searching "Service" returned 272 results because it substring-matched package `selfservice.*`. Searching "Ordre" matched 44 unrelated results via package `no.company.ordre.*`. Root cause: `SymbolFilter.filter()` applies `containsMatchIn` against all four fields (packageName, className FQN, symbolName, sourceFile). v0.1.45 re-test confirmed: still matches package segments, but regex anchors (`^Service`) work as workaround. Downgraded from HIGH.
-
-- **Fix**: Add `-Pscope=name|class|fqn|all` parameter. Default to `name` (symbolName only). When `scope=class`, also match className simpleName. When `scope=fqn`, match full package/class. When `scope=all`, current behavior (backward compat).
-- **Files**: `TaskRegistry.kt` (new ParamDef), `FindSymbolConfig.kt`, `SymbolFilter.kt`, `FindSymbolTask.kt`, `FindSymbolMojo.kt`, tests.
-- **Alternative**: Just change default to symbolName-only (3 lines in `SymbolFilter.kt`). Simpler but less flexible.
-
----
-
-## Fix `cnavFindClass` broad matching — FQN substring causes false positives
-
-**Value: medium** | **Effort: low**
-
-From field test (v0.1.44): `-Ppattern=main` matched all 58 classes. Real cause: "main" substring-matches "do**main**" in FQN `com.example.domain.*` via `containsMatchIn`. Note: v0.1.45 re-test reported this as "FIXED" despite no code change to `ClassFilter.kt` — likely different test methodology or repo. The underlying `containsMatchIn` on FQN issue remains.
-
-- **Fix**: When pattern contains no `.` or `/`, match against `className.simpleName()` and `sourceFileName` only. When pattern contains `.` or `/`, match against FQN and full reconstructed path. ~10 lines in `ClassFilter.kt`.
-- **Files**: `ClassFilter.kt`, `ClassFilterTest.kt`.
-- **Alternative**: Add a `-Pscope` parameter like FindSymbol. Probably overkill for class search — the heuristic (dots → FQN mode, no dots → simple name mode) should handle most cases.
-
----
-
-## Filter coroutine continuation classes from caller/callee trees
-
-**Value: medium** | **Effort: low-medium**
-
-From field tests (v0.1.44 and v0.1.45): suspend function caller/callee trees show inner `$1.invokeSuspend` continuation classes with synthetic fields (`L$0`, `L$1`, `I$0`). These are Kotlin compiler artifacts, not meaningful navigation targets. `-Pfilter-synthetic=true` filters data class methods but not coroutine continuations.
-
-- **Fix**: Extend `KotlinMethodFilter` (or `LambdaCollapser`) to detect and collapse coroutine continuation patterns. Continuation classes follow a predictable naming pattern: `ClassName$methodName$1` extending `ContinuationImpl`, with `invokeSuspend` as the only meaningful method.
-- **Approach**: In `CallTreeBuilder` or `CallTreeFormatter`, when a child node is a continuation class of its parent, collapse it (show the parent's method directly, skip the synthetic intermediate).
-- **Files**: `KotlinMethodFilter.kt` or `LambdaCollapser.kt`, `CallTreeBuilder.kt`, tests.
-
----
-
 ## `cnavDead` baseline diff — confirm cleanup was complete
 
 **Value: medium** | **Effort: low**
@@ -284,8 +248,8 @@ Items below are low-priority or may not be worth building. Revisit if demand eme
 
 ## Future ideas (not yet planned)
 
-- **Improve `cnavAnnotations` discoverability**: Field test (v0.1.44) reported "no inverse annotation search" but the feature exists — `cnavAnnotations -Ppattern=Serializable` finds all classes with that annotation. The task name is ambiguous. Consider a task alias (`cnavFindByAnnotation`), better no-results guidance mentioning retention policy / `methods` flags, or more prominent placement in `cnavAgentHelp`. v0.1.45 re-test clarified: `cnavAnnotations` only finds RUNTIME and CLASS retention annotations present in bytecode. SOURCE retention annotations (e.g. `@Suppress`) are invisible — this is inherent to bytecode analysis, but should be documented in no-results guidance.
-- **`cnavDead -Pprod-only` no-visible-effect guidance**: v0.1.45 re-test showed `-Pprod-only=true` had no effect in 5 of 7 repos. Working as designed — it filters `TEST_ONLY` reason items, but when all dead items have `NO_REFERENCES` (no test callers either), there's nothing to filter. Improvement: when `prod-only` is set and all items already have `NO_REFERENCES`, add a note to output: "All dead items already have NO_REFERENCES reason; -Pprod-only had no additional effect."
+- **Improve `cnavAnnotations` discoverability**: Field test (v0.1.44) reported "no inverse annotation search" but the feature exists — `cnavAnnotations -Ppattern=Serializable` finds all classes with that annotation. The task name is ambiguous. Consider a task alias (`cnavFindByAnnotation`), better no-results guidance mentioning retention policy / `methods` flags, or more prominent placement in `cnavAgentHelp`. v0.1.45 re-test clarified: `cnavAnnotations` only finds RUNTIME and CLASS retention annotations present in bytecode. SOURCE retention annotations (e.g. `@Suppress`) are invisible — this is inherent to bytecode analysis, but should be documented in no-results guidance. v0.1.46: no-results hint now suggests `-Pmethods=true` and retention policy (bug #8 FIXED). Remaining: task alias and retention policy documentation in help text.
+- **`cnavDead -Pprod-only` no-visible-effect guidance**: v0.1.46 field test showed `-Pprod-only=true` had no effect on TAC (146→146) because dead items are test classes tagged `NO_REFERENCES`. This is now tracked as a top-level plan item ("Dead code: test source classes should be tagged TEST_ONLY"). Separate improvement: when `prod-only` is set and filtering has no effect, add a note to output explaining why.
 - **Remove `junit` from `FrameworkPresets` or document it's a no-op for `cnavDead`**: v0.1.45 analysis suite reported `-Ptreat-as-dead=junit` has no observable effect. Root cause: dead code analysis scans both source sets by default now, but JUnit annotations on test classes are typically excluded from dead code results because test classes are considered live (they have callers from the test runner). The junit preset may still be useful for edge cases. Options: (a) remove `junit` from presets (it's misleading), (b) document in help that `treat-as-dead` only applies to production-class annotations, (c) keep as-is.
 - **`cnavChangedSince` parameter naming**: v0.1.45 analysis suite noted `-Pref=<git-ref>` is unintuitive — users expect `-Psince=<date>`. Low priority, but a `-Psince` alias or date-to-ref conversion would improve ergonomics.
 - **Kotlin name-mangled method display**: Methods like `validateAndParse-IoAF18A` are Kotlin inline class return types. Low priority but a note in output (e.g. `[inline-class-mangled]`) would reduce confusion.

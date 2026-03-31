@@ -105,6 +105,7 @@ class DeadCodeMojo : AbstractMojo() {
             prodOnly = config.prodOnly,
             modifierAnnotated = config.modifierAnnotated.toSet(),
             supertypeEntryPoints = config.supertypeEntryPoints,
+            testClasses = testGraph?.projectClasses() ?: emptySet(),
         )
 
         if (dead.isEmpty()) {

@@ -62,4 +62,39 @@ class PatternEnhancerTest {
         assertEquals(true, regex.containsMatchIn("com.example.UserCreationService"))
         assertEquals(false, regex.containsMatchIn("com.example.OrderService"))
     }
+
+    @Test
+    fun `stopword And in camel case becomes optional`() {
+        val enhanced = PatternEnhancer.enhance("TermsAndConditionsService")
+
+        assertEquals("Terms(?:And)?.*Conditions.*Service", enhanced)
+    }
+
+    @Test
+    fun `stopword Or in camel case becomes optional`() {
+        assertEquals("Read(?:Or)?.*Write.*Lock", PatternEnhancer.enhance("ReadOrWriteLock"))
+    }
+
+    @Test
+    fun `stopword Of in camel case becomes optional`() {
+        assertEquals("List(?:Of)?.*Items.*Provider", PatternEnhancer.enhance("ListOfItemsProvider"))
+    }
+
+    @Test
+    fun `enhanced stopword pattern still matches original class name`() {
+        val enhanced = PatternEnhancer.enhance("TermsAndConditionsService")
+        val regex = Regex(enhanced, RegexOption.IGNORE_CASE)
+
+        assertEquals(true, regex.containsMatchIn("TermsAndConditionsService"), "Should match exact name")
+        assertEquals(true, regex.containsMatchIn("TermsConditionsService"), "Should match without stopword")
+        assertEquals(true, regex.containsMatchIn("TermsAndSpecialConditionsService"), "Should match with extra words")
+        assertEquals(false, regex.containsMatchIn("TermsService"), "Should not match without Conditions")
+    }
+
+    @Test
+    fun `multiple consecutive stopwords become optional`() {
+        val enhanced = PatternEnhancer.enhance("ReadAndOrWriteLock")
+
+        assertEquals("Read(?:And)?(?:Or)?.*Write.*Lock", enhanced)
+    }
 }

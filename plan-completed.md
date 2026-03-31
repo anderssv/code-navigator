@@ -403,3 +403,37 @@ The `exclude-framework` parameter name had confusing inverted semantics: `-Pexcl
 When a query returns no results, agents consuming JSON/LLM output previously received just `[]` — losing the actionable hints that TEXT output showed (e.g., "try -Pmethods=true"). Now `OutputWrapper.emptyResult()` accepts an optional `hints: List<String>` parameter and emits `{"results":[],"hints":["..."]}` for JSON/LLM output. TEXT output appends hints as plain text lines after the message.
 
 **Changes**: `OutputWrapper.emptyResult()` — new `hints` parameter with `emptyList()` default. `AnnotationQueryFormatter.noResultsHints()` and `UsageFormatter.noResultsTarget()` + `noResultsHints()` split from the old `noResultsGuidance()` methods. `AnnotationsTask.kt`, `FindUsagesTask.kt` (Gradle), and `FindUsagesMojo.kt` (Maven) updated to pass hints. `AgentHelpText.kt` schemas section documents the hint shape. Tests: 4 new `OutputWrapperTest` tests, updated `AnnotationQueryFormatterTest` and `UsageFormatterTest`.
+
+## ~~Filter coroutine continuation classes from caller/callee trees~~ DONE
+
+From field tests (v0.1.44 and v0.1.45): suspend function caller/callee trees showed inner `$1.invokeSuspend` continuation classes with synthetic fields. `-Pfilter-synthetic=true` filtered data class methods but not coroutine continuations. v0.1.46 field test confirmed fix: 413→348 entries, 12 coroutine lambdas properly filtered by the existing `KotlinMethodFilter` / `LambdaCollapser` infrastructure.
+
+## ~~Dead code: test source classes excluded by `-Pprod-only=true`~~ DONE
+
+From v0.1.46 field test: `-Pprod-only=true` had no visible effect on TAC (146→146 items). Root cause: test classes (e.g. `FooTest`) are tagged `NO_REFERENCES` instead of `TEST_ONLY` because JUnit invokes them reflectively, not via source-level calls. Fix: added `testClasses: Set<ClassName>` parameter to `DeadCodeFinder.find()`. When `prodOnly=true`, items with `NO_REFERENCES` reason whose className is in `testClasses` are filtered out. Both Gradle task and Maven mojo derive `testClasses` from `testGraph?.projectClasses() ?: emptySet()`.
+
+**Changes**: `DeadCodeFinder.kt` — new `testClasses` parameter in `find()`, filter updated. `DeadCodeTask.kt` and `DeadCodeMojo.kt` — wire `testClasses`. `DeadCodeFinderTest.kt` — 3 new tests.
+
+## ~~CamelCase splitting stopword list~~ DONE
+
+From v0.1.46 field test: `cnavFindSymbol -Ppattern=TermsAndConditionsService` produced regex `Terms.*And.*Conditions.*Service` with mandatory stopword segments, causing zero matches when the class name contained "And" only as a word boundary. Fix: rewrote `PatternEnhancer.enhance()` from a one-line regex replace to a segment-based approach. Splits on camelCase boundaries, checks each segment against a stopword set (`And`, `Or`, `Of`, `The`, `For`, `In`, `To`, `By`, `On`, `With`), wraps stopwords in `(?:...)?` making them optional. Non-stopword segments get `.*` prefix as before. Patterns containing regex metacharacters or dots pass through unchanged.
+
+**Changes**: `PatternEnhancer.kt` — rewritten with stopword logic. `PatternEnhancerTest.kt` — 5 new tests.
+
+## ~~Fix `cnavFindSymbol` broad matching~~ DONE
+
+From v0.1.44 field test: searching "Service" returned 272+ results because it substring-matched package `selfservice.*`. Root cause: `SymbolFilter.filter()` applied `containsMatchIn` against all four fields (packageName, className FQN, symbolName, sourceFile). Fix: when pattern contains no dots (simple name search), match only against `symbolName` and `sourceFile`. When pattern contains dots, keep full FQN/package matching.
+
+**Changes**: `SymbolFilter.kt` — `isQualified` heuristic, simpleName-only matching for unqualified patterns. `SymbolFilterTest.kt` — 3 new tests, 1 updated.
+
+## ~~Fix `cnavFindClass` broad matching~~ DONE
+
+From v0.1.44 field test: `-Ppattern=main` matched all 58 classes because "main" substring-matches "domain" in FQN `com.example.domain.*`. Fix: same approach as FindSymbol — when pattern contains no dots, match against `className.simpleName()` and `sourceFileName` only. When pattern contains dots, match against full FQN.
+
+**Changes**: `ClassFilter.kt` — `isQualified` heuristic, simpleName-only matching for unqualified patterns. `ClassFilterTest.kt` — 2 new tests, 1 updated.
+
+## ~~Ktor framework preset for dead code~~ DONE
+
+Added `ktor` framework preset for `cnavDead -Ptreat-as-dead=ktor`. Ktor is DSL/lambda-based (not annotation-based), so the preset only has `supertypeEntryPoints`: `AuthenticationProvider`, `BaseApplicationPlugin`, `BaseRouteScopedPlugin`, `ContentConverter`, `Template`. No annotation entry points.
+
+**Changes**: `FrameworkPresets.kt` — added `KTOR_SUPERTYPES` and `ktor` preset entry. `FrameworkPresetsTest.kt` — 4 new tests.

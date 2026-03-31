@@ -29,6 +29,7 @@ class DeadCodeFinderTest {
         prodOnly: Boolean = false,
         modifierAnnotated: Set<String> = emptySet(),
         supertypeEntryPoints: Set<ClassName> = emptySet(),
+        testClasses: Set<ClassName> = emptySet(),
     ): List<DeadCode> = DeadCodeFinder.find(
         graph = graph,
         filter = filter,
@@ -45,6 +46,7 @@ class DeadCodeFinderTest {
         prodOnly = prodOnly,
         modifierAnnotated = modifierAnnotated,
         supertypeEntryPoints = supertypeEntryPoints,
+        testClasses = testClasses,
     )
 
     @Test
@@ -913,6 +915,68 @@ class DeadCodeFinderTest {
         val deadClassNames = dead.map { it.className.value }
         assertTrue("com.example.Util" in deadClassNames, "Util has NO_REFERENCES and should appear with prodOnly")
         assertTrue("com.example.Service" !in deadClassNames, "Service is TEST_ONLY and should be filtered with prodOnly")
+    }
+
+    @Test
+    fun `prodOnly excludes test source class even when reason is NO_REFERENCES`() {
+        val prodGraph = testCallGraph(
+            method("com.example.Service", "process") to method("com.example.External", "call"),
+            method("com.example.ServiceTest", "testProcess") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Service", "com.example.ServiceTest"),
+        )
+
+        val dead = findDead(
+            graph = prodGraph,
+            testGraph = null,
+            prodOnly = true,
+            testClasses = setOf(ClassName("com.example.ServiceTest")),
+        )
+
+        val deadClassNames = dead.map { it.className.value }
+        assertTrue("com.example.Service" in deadClassNames, "Prod class with NO_REFERENCES should still appear")
+        assertTrue("com.example.ServiceTest" !in deadClassNames, "Test source class should be excluded by prodOnly even with NO_REFERENCES")
+    }
+
+    @Test
+    fun `prodOnly excludes dead method on test source class`() {
+        val prodGraph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            method("com.example.ServiceTest", "testProcess") to method("com.example.External", "call"),
+            method("com.example.ServiceTest", "helper") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.ServiceTest"),
+        )
+
+        val dead = findDead(
+            graph = prodGraph,
+            testGraph = null,
+            prodOnly = true,
+            testClasses = setOf(ClassName("com.example.ServiceTest")),
+        )
+
+        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadMethodClasses = dead.filter { it.kind == DeadCodeKind.METHOD }.map { it.className.value }
+        assertTrue("com.example.ServiceTest" !in deadClassNames, "Test source class should be excluded")
+        assertTrue("com.example.ServiceTest" !in deadMethodClasses, "Dead methods on test source class should be excluded")
+    }
+
+    @Test
+    fun `testClasses has no effect when prodOnly is false`() {
+        val prodGraph = testCallGraph(
+            method("com.example.Service", "process") to method("com.example.External", "call"),
+            method("com.example.ServiceTest", "testProcess") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Service", "com.example.ServiceTest"),
+        )
+
+        val dead = findDead(
+            graph = prodGraph,
+            testGraph = null,
+            prodOnly = false,
+            testClasses = setOf(ClassName("com.example.ServiceTest")),
+        )
+
+        val deadClassNames = dead.map { it.className.value }
+        assertTrue("com.example.ServiceTest" in deadClassNames, "Without prodOnly, test classes should still appear")
+        assertTrue("com.example.Service" in deadClassNames, "Prod class should still appear")
     }
 
     @Test

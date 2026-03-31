@@ -3,11 +3,18 @@ package no.f12.codenavigator.navigation.symbol
 object SymbolFilter {
     fun filter(symbols: List<SymbolInfo>, pattern: String): List<SymbolInfo> {
         val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+        val isQualified = '.' in pattern
         return symbols.filter { symbol ->
-            symbol.packageName.matches(regex) ||
-                symbol.className.matches(regex) ||
+            if (isQualified) {
+                symbol.packageName.matches(regex) ||
+                    symbol.className.matches(regex) ||
+                    regex.containsMatchIn(symbol.symbolName) ||
+                    regex.containsMatchIn(symbol.sourceFile)
+            } else {
                 regex.containsMatchIn(symbol.symbolName) ||
-                regex.containsMatchIn(symbol.sourceFile)
+                    regex.containsMatchIn(symbol.className.simpleName()) ||
+                    regex.containsMatchIn(symbol.sourceFile)
+            }
         }
     }
 }
