@@ -5,6 +5,8 @@ import no.f12.codenavigator.navigation.classinfo.FindClassConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class FindClassConfigTest {
 
@@ -43,5 +45,33 @@ class FindClassConfigTest {
         val config = FindClassConfig.parse(mapOf("pattern" to "MyClass", "llm" to "true"))
 
         assertEquals(OutputFormat.LLM, config.format)
+    }
+
+    @Test
+    fun `prodOnly defaults to false`() {
+        val config = FindClassConfig.parse(mapOf("pattern" to "MyClass"))
+
+        assertFalse(config.prodOnly)
+    }
+
+    @Test
+    fun `testOnly defaults to false`() {
+        val config = FindClassConfig.parse(mapOf("pattern" to "MyClass"))
+
+        assertFalse(config.testOnly)
+    }
+
+    @Test
+    fun `parses prodOnly=true`() {
+        val config = FindClassConfig.parse(mapOf("pattern" to "MyClass", "prod-only" to "true"))
+
+        assertTrue(config.prodOnly)
+    }
+
+    @Test
+    fun `parses testOnly=true`() {
+        val config = FindClassConfig.parse(mapOf("pattern" to "MyClass", "test-only" to "true"))
+
+        assertTrue(config.testOnly)
     }
 }

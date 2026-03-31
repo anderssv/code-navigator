@@ -5,6 +5,8 @@ import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TableFormatter
 import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.navigation.SourceSet
+import no.f12.codenavigator.navigation.SourceSetResolver
 import no.f12.codenavigator.navigation.classinfo.ClassFilter
 import no.f12.codenavigator.navigation.classinfo.ClassIndexCache
 import no.f12.codenavigator.navigation.classinfo.FindClassConfig
@@ -34,6 +36,12 @@ class FindClassMojo : AbstractMojo() {
     @Parameter(property = "pattern")
     private var pattern: String? = null
 
+    @Parameter(property = "prod-only")
+    private var prodOnly: String? = null
+
+    @Parameter(property = "test-only")
+    private var testOnly: String? = null
+
     override fun execute() {
         val config = try {
             FindClassConfig.parse(TaskRegistry.FIND_CLASS.enhanceProperties(buildPropertyMap()))
@@ -43,16 +51,22 @@ class FindClassMojo : AbstractMojo() {
             )
         }
 
-        val classesDir = File(project.build.outputDirectory)
-        if (!classesDir.exists()) {
-            log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
+        val taggedDirs = project.taggedClassDirectories()
+        val resolver = SourceSetResolver.from(taggedDirs)
+
+        if (resolver.classDirectories.isEmpty() || resolver.classDirectories.none { it.exists() }) {
+            log.warn("Classes directory does not exist — run 'mvn compile' first.")
             return
         }
 
-        val result = ClassIndexCache.getOrBuild(File(project.build.directory, "cnav/class-index.cache"), listOf(classesDir))
+        val result = ClassIndexCache.getOrBuild(File(project.build.directory, "cnav/class-index-all.cache"), resolver.classDirectories)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
-        val allClasses = result.data
+        val allClasses = when {
+            config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
+            config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
+            else -> result.data
+        }
         val matches = ClassFilter.filter(allClasses, config.pattern)
 
         println(OutputWrapper.formatAndWrap(config.format,
@@ -66,5 +80,7 @@ class FindClassMojo : AbstractMojo() {
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
+        prodOnly?.let { put("prod-only", it) }
+        testOnly?.let { put("test-only", it) }
     }
 }
