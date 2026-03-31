@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.46
+
+- **Breaking:** Renamed `exclude-framework` parameter to `treat-as-dead` with clearer semantics. Framework presets now explicitly mark matching entry points as dead code candidates rather than excluding them from analysis.
+- **New:** Unified source set model — all bytecode tasks now support `-Pprod-only=true` / `-Ptest-only=true` for filtering by source set. The old `-Pinclude-test` parameter is deprecated. Source set tags (`[prod]`/`[test]`) propagate through all formatters. 26 tasks updated across Gradle and Maven.
+- **New:** `SourceSetResolver` maps class names to source sets from tagged directories, enabling per-class source set awareness without separate compilation passes.
+- **New:** Receiver-type-based entry point detection for Ktor dead code analysis — extension functions on Ktor types (`Route`, `Application`, `Pipeline`, etc.) are recognized as framework entry points.
+- **New:** `testOnly` filter for `cnavDead` — `-Ptest-only=true` shows only dead code items with `reason=TEST_ONLY` (production methods/classes called only from tests).
+- **New:** Nimbus JWT interfaces (`JWSKeySelector`, `JWKSource`, `JWSVerifier`, etc.) added to `KTOR_SUPERTYPES` for entry point detection.
+- **New:** Unsupported parameter validation — Gradle tasks now fail fast with a clear error when a valid cnav parameter is passed to a task that doesn't support it (e.g. `-Ptest-only=true` on a task without that parameter). Prevents silent parameter ignoring.
+- **Fixed:** InterfaceRegistry superclass tracking — classes implementing interfaces via a superclass chain are now correctly discovered (Bug #13).
+- **Fixed:** SymbolFilter source file matching removed — was incorrectly filtering out valid symbols when source file metadata didn't match (Bug #16).
+- **Fixed:** Empty-result output consistency — all tasks now produce consistent output format when no results are found (Bug #15).
+- **Fixed:** Search matching, dead code test filtering, and CamelCase stopword handling improvements.
+- **Improved:** Uniform hint delivery in JSON/LLM output across all tasks.
+- **Improved:** `cnavAgentHelp` updated with no-results hint suggesting `-Pmethods=true` and retention policy for annotation queries.
+
 ## 0.1.45
 
 - **Improved:** Filter Kotlin compiler-internal annotations (e.g. `@kotlin.Metadata`, `@kotlin.jvm.internal.*`, `@org.jetbrains.annotations.*`) from `cnavClassDetail` and `cnavAnnotations` output. These synthetic annotations cluttered results without providing useful information.
