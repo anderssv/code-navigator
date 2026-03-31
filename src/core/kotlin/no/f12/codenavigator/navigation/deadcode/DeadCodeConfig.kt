@@ -13,6 +13,7 @@ data class DeadCodeConfig(
     val excludeAnnotated: List<String>,
     val modifierAnnotated: List<String>,
     val supertypeEntryPoints: Set<ClassName>,
+    val receiverTypeEntryPoints: Set<ClassName>,
     val prodOnly: Boolean,
     val format: OutputFormat,
 ) {
@@ -23,6 +24,7 @@ data class DeadCodeConfig(
             val entryPoints = FrameworkPresets.resolveAllEntryPointsExcept(excluded)
             val modifiers = FrameworkPresets.resolveAllModifiersExcept(excluded)
             val supertypes = FrameworkPresets.resolveAllSupertypeEntryPointsExcept(excluded)
+            val receiverTypes = FrameworkPresets.resolveAllReceiverTypeEntryPointsExcept(excluded)
             val mergedExclude = (explicit + entryPoints.map { it.value }).distinct()
             val mergedModifiers = modifiers.map { it.value }.distinct()
 
@@ -33,6 +35,7 @@ data class DeadCodeConfig(
                 excludeAnnotated = mergedExclude,
                 modifierAnnotated = mergedModifiers,
                 supertypeEntryPoints = supertypes,
+                receiverTypeEntryPoints = receiverTypes,
                 prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
             )

@@ -226,4 +226,26 @@ class DeadCodeConfigTest {
         assertFalse(config.supertypeEntryPoints.any { it.value == "org.springframework.data.jpa.repository.JpaRepository" })
         assertTrue(config.supertypeEntryPoints.any { it.value == "io.quarkus.hibernate.orm.panache.PanacheRepository" })
     }
+
+    @Test
+    fun `all frameworks active by default populates receiverTypeEntryPoints`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertTrue(config.receiverTypeEntryPoints.any { it.value == "io.ktor.server.routing.Route" })
+        assertTrue(config.receiverTypeEntryPoints.any { it.value == "io.ktor.server.application.Application" })
+    }
+
+    @Test
+    fun `treat-as-dead=ALL results in empty receiverTypeEntryPoints`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ALL"))
+
+        assertTrue(config.receiverTypeEntryPoints.isEmpty())
+    }
+
+    @Test
+    fun `treat-as-dead=ktor excludes ktor receiver types but keeps others`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ktor"))
+
+        assertFalse(config.receiverTypeEntryPoints.any { it.value == "io.ktor.server.routing.Route" })
+    }
 }

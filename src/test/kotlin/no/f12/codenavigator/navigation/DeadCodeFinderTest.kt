@@ -30,6 +30,8 @@ class DeadCodeFinderTest {
         modifierAnnotated: Set<String> = emptySet(),
         supertypeEntryPoints: Set<ClassName> = emptySet(),
         testClasses: Set<ClassName> = emptySet(),
+        classReceiverTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
+        receiverTypeEntryPoints: Set<ClassName> = emptySet(),
     ): List<DeadCode> = DeadCodeFinder.find(
         graph = graph,
         filter = filter,
@@ -47,6 +49,8 @@ class DeadCodeFinderTest {
         modifierAnnotated = modifierAnnotated,
         supertypeEntryPoints = supertypeEntryPoints,
         testClasses = testClasses,
+        classReceiverTypes = classReceiverTypes,
+        receiverTypeEntryPoints = receiverTypeEntryPoints,
     )
 
     @Test
@@ -1132,5 +1136,83 @@ class DeadCodeFinderTest {
 
         assertEquals(1, dead.size, "Without supertype entry points, repository is reported as dead")
         assertEquals(DeadCodeConfidence.HIGH, dead[0].confidence, "No supertype entry points means no special handling")
+    }
+
+    // === Receiver type entry point tests ===
+
+    @Test
+    fun `Kt class with matching receiver type is excluded from dead code`() {
+        val graph = testCallGraph(
+            method("com.example.RoutesKt", "registerRoute") to method("com.example.Service", "process"),
+            projectClasses = setOf("com.example.RoutesKt", "com.example.Service"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            classReceiverTypes = mapOf(
+                ClassName("com.example.RoutesKt") to setOf(ClassName("io.ktor.server.routing.Route")),
+            ),
+            receiverTypeEntryPoints = setOf(ClassName("io.ktor.server.routing.Route")),
+        )
+
+        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        assertTrue("com.example.RoutesKt" !in deadClassNames, "Kt class with Route receiver should be excluded as framework entry point")
+    }
+
+    @Test
+    fun `non-Kt class with matching receiver type is not excluded`() {
+        val graph = testCallGraph(
+            method("com.example.Routes", "registerRoute") to method("com.example.Service", "process"),
+            projectClasses = setOf("com.example.Routes", "com.example.Service"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            classReceiverTypes = mapOf(
+                ClassName("com.example.Routes") to setOf(ClassName("io.ktor.server.routing.Route")),
+            ),
+            receiverTypeEntryPoints = setOf(ClassName("io.ktor.server.routing.Route")),
+        )
+
+        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        assertTrue("com.example.Routes" in deadClassNames, "Non-Kt class should NOT be excluded by receiver type check")
+    }
+
+    @Test
+    fun `class with non-matching receiver type is not excluded`() {
+        val graph = testCallGraph(
+            method("com.example.UtilKt", "doSomething") to method("com.example.Service", "process"),
+            projectClasses = setOf("com.example.UtilKt", "com.example.Service"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            classReceiverTypes = mapOf(
+                ClassName("com.example.UtilKt") to setOf(ClassName("java.lang.String")),
+            ),
+            receiverTypeEntryPoints = setOf(ClassName("io.ktor.server.routing.Route")),
+        )
+
+        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        assertTrue("com.example.UtilKt" in deadClassNames, "Kt class with non-matching receiver type should still be dead")
+    }
+
+    @Test
+    fun `receiver type exclusion is disabled when receiverTypeEntryPoints is empty`() {
+        val graph = testCallGraph(
+            method("com.example.RoutesKt", "registerRoute") to method("com.example.Service", "process"),
+            projectClasses = setOf("com.example.RoutesKt", "com.example.Service"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            classReceiverTypes = mapOf(
+                ClassName("com.example.RoutesKt") to setOf(ClassName("io.ktor.server.routing.Route")),
+            ),
+            receiverTypeEntryPoints = emptySet(),
+        )
+
+        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        assertTrue("com.example.RoutesKt" in deadClassNames, "Without receiver type entry points, Kt class should be dead")
     }
 }

@@ -12,6 +12,7 @@ import no.f12.codenavigator.navigation.deadcode.DeadCodeFinder
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
 import no.f12.codenavigator.navigation.deadcode.FieldExtractor
 import no.f12.codenavigator.navigation.deadcode.InlineMethodDetector
+import no.f12.codenavigator.navigation.deadcode.ReceiverTypeExtractor
 import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
@@ -89,6 +90,8 @@ class DeadCodeMojo : AbstractMojo() {
 
         val classExternalInterfaces = interfaceRegistry.externalInterfacesOf(graph.projectClasses())
 
+        val classReceiverTypes = ReceiverTypeExtractor.scanAll(listOf(classesDir))
+
         val dead = DeadCodeFinder.find(
             graph = graph,
             filter = config.filter,
@@ -106,6 +109,8 @@ class DeadCodeMojo : AbstractMojo() {
             modifierAnnotated = config.modifierAnnotated.toSet(),
             supertypeEntryPoints = config.supertypeEntryPoints,
             testClasses = testGraph?.projectClasses() ?: emptySet(),
+            classReceiverTypes = classReceiverTypes,
+            receiverTypeEntryPoints = config.receiverTypeEntryPoints,
         )
 
         if (dead.isEmpty()) {

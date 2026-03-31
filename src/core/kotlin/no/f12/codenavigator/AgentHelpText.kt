@@ -297,6 +297,8 @@ object AgentHelpText {
         appendLine("  Composite presets: 'quarkus' includes jaxrs + cdi + microprofile + jpa + jakarta + validation + jackson.")
         appendLine("  Entry-point annotations (e.g. @GetMapping, @Scheduled) → excluded from results.")
         appendLine("  Modifier annotations (e.g. @Transactional, @Cacheable) → reported with LOW confidence.")
+        appendLine("  Supertype entry points (e.g. JpaRepository, PanacheRepository) → excluded from results.")
+        appendLine("  Receiver type entry points (e.g. Ktor Route/Application extension functions) → excluded from results.")
         appendLine("- Use -Pexclude-annotated to suppress additional entry points not covered by presets.")
         appendLine("- Use ${p("exclude", "<regex>")} to exclude entire packages (e.g. generated protobuf code).")
         appendLine("- Companion object members and data class copy()/componentN() are auto-filtered.")

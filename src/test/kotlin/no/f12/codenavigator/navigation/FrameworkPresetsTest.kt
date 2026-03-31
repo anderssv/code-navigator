@@ -599,4 +599,35 @@ class FrameworkPresetsTest {
         assertTrue(entryPoints.isEmpty(), "Ktor uses DSL not annotations for entry points")
     }
 
+    @Test
+    fun `ktor preset includes receiver type entry points for Route and Application`() {
+        val receiverTypes = FrameworkPresets.resolveReceiverTypeEntryPoints("ktor")
+
+        assertTrue(receiverTypes.contains(ClassName("io.ktor.server.routing.Route")))
+        assertTrue(receiverTypes.contains(ClassName("io.ktor.server.application.Application")))
+    }
+
+    @Test
+    fun `resolveAllReceiverTypeEntryPointsExcept returns empty when ALL excluded`() {
+        val receiverTypes = FrameworkPresets.resolveAllReceiverTypeEntryPointsExcept(listOf("ALL"))
+
+        assertTrue(receiverTypes.isEmpty())
+    }
+
+    @Test
+    fun `resolveAllReceiverTypeEntryPointsExcept excludes specific preset`() {
+        val withKtor = FrameworkPresets.resolveAllReceiverTypeEntryPointsExcept(emptyList())
+        val withoutKtor = FrameworkPresets.resolveAllReceiverTypeEntryPointsExcept(listOf("ktor"))
+
+        assertTrue(withKtor.contains(ClassName("io.ktor.server.routing.Route")))
+        assertFalse(withoutKtor.contains(ClassName("io.ktor.server.routing.Route")))
+    }
+
+    @Test
+    fun `preset without receiver type entry points returns empty set`() {
+        val receiverTypes = FrameworkPresets.resolveReceiverTypeEntryPoints("spring")
+
+        assertTrue(receiverTypes.isEmpty())
+    }
+
 }

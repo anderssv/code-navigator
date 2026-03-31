@@ -267,10 +267,16 @@ object FrameworkPresets {
         "io.ktor.server.html.Template",
     ).map { ClassName(it) }.toSet()
 
+    private val KTOR_RECEIVER_TYPES = setOf(
+        "io.ktor.server.routing.Route",
+        "io.ktor.server.application.Application",
+    ).map { ClassName(it) }.toSet()
+
     private data class Preset(
         val entryPoints: Set<AnnotationName>,
         val modifiers: Set<AnnotationName> = emptySet(),
         val supertypeEntryPoints: Set<ClassName> = emptySet(),
+        val receiverTypeEntryPoints: Set<ClassName> = emptySet(),
     ) {
         val all: Set<AnnotationName> get() = entryPoints + modifiers
     }
@@ -287,7 +293,7 @@ object FrameworkPresets {
         "jakarta" to Preset(JAKARTA),
         "validation" to Preset(VALIDATION),
         "junit" to Preset(JUNIT),
-        "ktor" to Preset(emptySet(), emptySet(), KTOR_SUPERTYPES),
+        "ktor" to Preset(emptySet(), emptySet(), KTOR_SUPERTYPES, KTOR_RECEIVER_TYPES),
     )
 
     private val PRESETS: Map<String, Set<AnnotationName>> =
@@ -341,6 +347,12 @@ object FrameworkPresets {
 
     fun resolveAllSupertypeEntryPointsExcept(excluded: List<String>): Set<ClassName> =
         presetsExcept(excluded).flatMap { it.supertypeEntryPoints }.toSet()
+
+    fun resolveReceiverTypeEntryPoints(framework: String): Set<ClassName> =
+        PRESET_MAP[framework.lowercase()]?.receiverTypeEntryPoints ?: emptySet()
+
+    fun resolveAllReceiverTypeEntryPointsExcept(excluded: List<String>): Set<ClassName> =
+        presetsExcept(excluded).flatMap { it.receiverTypeEntryPoints }.toSet()
 
     private fun presetsExcept(excluded: List<String>): Collection<Preset> {
         if (excluded.any { it.equals("ALL", ignoreCase = true) }) return emptyList()

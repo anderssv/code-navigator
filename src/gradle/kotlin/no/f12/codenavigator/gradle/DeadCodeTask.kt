@@ -12,6 +12,7 @@ import no.f12.codenavigator.navigation.deadcode.DeadCodeFinder
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
 import no.f12.codenavigator.navigation.deadcode.FieldExtractor
 import no.f12.codenavigator.navigation.deadcode.InlineMethodDetector
+import no.f12.codenavigator.navigation.deadcode.ReceiverTypeExtractor
 import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
 import no.f12.codenavigator.navigation.SkippedFileReporter
 
@@ -69,6 +70,8 @@ abstract class DeadCodeTask : DefaultTask() {
 
         val classExternalInterfaces = interfaceRegistry.externalInterfacesOf(graph.projectClasses())
 
+        val classReceiverTypes = ReceiverTypeExtractor.scanAll(classDirectories)
+
         val dead = DeadCodeFinder.find(
             graph = graph,
             filter = config.filter,
@@ -86,6 +89,8 @@ abstract class DeadCodeTask : DefaultTask() {
             modifierAnnotated = config.modifierAnnotated.toSet(),
             supertypeEntryPoints = config.supertypeEntryPoints,
             testClasses = testGraph?.projectClasses() ?: emptySet(),
+            classReceiverTypes = classReceiverTypes,
+            receiverTypeEntryPoints = config.receiverTypeEntryPoints,
         )
 
         if (dead.isEmpty()) {

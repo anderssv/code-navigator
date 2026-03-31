@@ -52,6 +52,8 @@ object DeadCodeFinder {
         modifierAnnotated: Set<String> = emptySet(),
         supertypeEntryPoints: Set<ClassName> = emptySet(),
         testClasses: Set<ClassName> = emptySet(),
+        classReceiverTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
+        receiverTypeEntryPoints: Set<ClassName> = emptySet(),
     ): List<DeadCode> {
         val projectClasses = graph.projectClasses()
         if (projectClasses.isEmpty()) return emptyList()
@@ -165,6 +167,7 @@ object DeadCodeFinder {
             .filter { item -> exclude == null || !item.className.matches(exclude) }
             .filter { item -> !isExcludedByAnnotation(item, excludeAnnotated, classAnnotations, methodAnnotations) }
             .filter { item -> !isExcludedBySupertype(item, classExternalInterfaces, supertypeEntryPoints) }
+            .filter { item -> !isExcludedByReceiverType(item, classReceiverTypes, receiverTypeEntryPoints) }
             .filter { item -> !prodOnly || (item.reason == DeadCodeReason.NO_REFERENCES && item.className !in testClasses) }
             .sortedWith(compareBy({ it.kind }, { it.className }, { it.memberName ?: "" }))
     }
@@ -244,5 +247,16 @@ object DeadCodeFinder {
         if (supertypeEntryPoints.isEmpty()) return false
         val externalInterfaces = classExternalInterfaces[item.className] ?: return false
         return externalInterfaces.any { it in supertypeEntryPoints }
+    }
+
+    private fun isExcludedByReceiverType(
+        item: DeadCode,
+        classReceiverTypes: Map<ClassName, Set<ClassName>>,
+        receiverTypeEntryPoints: Set<ClassName>,
+    ): Boolean {
+        if (receiverTypeEntryPoints.isEmpty()) return false
+        if (!item.className.value.endsWith("Kt")) return false
+        val receiverTypes = classReceiverTypes[item.className] ?: return false
+        return receiverTypes.any { it in receiverTypeEntryPoints }
     }
 }
