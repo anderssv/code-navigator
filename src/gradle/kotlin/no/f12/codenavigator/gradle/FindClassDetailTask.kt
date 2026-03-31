@@ -5,6 +5,8 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.navigation.SourceSet
+import no.f12.codenavigator.navigation.SourceSetResolver
 import no.f12.codenavigator.navigation.classinfo.ClassDetailFormatter
 import no.f12.codenavigator.navigation.classinfo.ClassDetailScanner
 import no.f12.codenavigator.navigation.classinfo.FindClassDetailConfig
@@ -12,7 +14,6 @@ import no.f12.codenavigator.navigation.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
-import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
@@ -32,14 +33,17 @@ abstract class FindClassDetailTask : DefaultTask() {
             )
         }
 
-        val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
-        val mainSourceSet = sourceSets.getByName("main")
-        val classDirectories = mainSourceSet.output.classesDirs.files.toList()
+        val taggedDirs = project.taggedClassDirectories()
+        val resolver = SourceSetResolver.from(taggedDirs)
 
-        val result = ClassDetailScanner.scan(classDirectories, config.pattern)
+        val result = ClassDetailScanner.scan(resolver.classDirectories, config.pattern)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val matchingDetails = result.data
+        val matchingDetails = when {
+            config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
+            config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
+            else -> result.data
+        }
 
         if (matchingDetails.isEmpty()) {
             logger.lifecycle("No classes found matching '${config.pattern}'")
