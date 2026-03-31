@@ -5,6 +5,7 @@ import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.RootPackageDetector
+import no.f12.codenavigator.navigation.SourceSet
 import no.f12.codenavigator.navigation.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmConfig
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
@@ -54,17 +55,29 @@ class DsmMojo : AbstractMojo() {
     @Parameter(property = "cycle")
     private var cycle: String? = null
 
+    @Parameter(property = "prod-only")
+    private var prodOnly: String? = null
+
+    @Parameter(property = "test-only")
+    private var testOnly: String? = null
+
     override fun execute() {
         val config = DsmConfig.parse(TaskRegistry.DSM.enhanceProperties(buildPropertyMap()))
         config.deprecations().forEach { log.warn(it) }
 
-        val classesDir = File(project.build.outputDirectory)
-        if (!classesDir.exists()) {
-            log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
+        val taggedDirs = project.taggedClassDirectories()
+        val filteredDirs = when {
+            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
+            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
+            else -> taggedDirs
+        }
+        val classDirectories = filteredDirs.map { it.first }
+
+        if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
+            log.warn("Classes directory does not exist — run 'mvn compile' first.")
             return
         }
 
-        val classDirectories = listOf(classesDir)
         val projectClasses = scanProjectClasses(classDirectories)
 
         val result = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal)
@@ -99,5 +112,7 @@ class DsmMojo : AbstractMojo() {
         dsmHtml?.let { put("dsm-html", it) }
         cycles?.let { put("cycles", it) }
         cycle?.let { put("cycle", it) }
+        prodOnly?.let { put("prod-only", it) }
+        testOnly?.let { put("test-only", it) }
     }
 }
