@@ -5,17 +5,16 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
-import no.f12.codenavigator.navigation.SkippedFileReporter
+import no.f12.codenavigator.navigation.SourceSet
+import no.f12.codenavigator.navigation.SourceSetResolver
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyBuilder
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyConfig
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyFormatter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
-import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
-import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
 abstract class TypeHierarchyTask : DefaultTask() {
@@ -32,14 +31,19 @@ abstract class TypeHierarchyTask : DefaultTask() {
             )
         }
 
-        val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
-        val classDirectories = sourceSets.getByName("main").output.classesDirs.files.toList()
+        val taggedDirs = project.taggedClassDirectories()
+        val resolver = SourceSetResolver.from(taggedDirs)
 
-        val results = TypeHierarchyBuilder.build(
-            classDirectories,
+        val allResults = TypeHierarchyBuilder.build(
+            resolver.classDirectories,
             config.pattern,
             config.projectOnly,
         )
+        val results = when {
+            config.prodOnly -> allResults.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
+            config.testOnly -> allResults.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
+            else -> allResults
+        }
 
         if (results.isEmpty()) {
             logger.lifecycle("No classes found matching '${config.pattern}'")
