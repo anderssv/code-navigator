@@ -119,6 +119,7 @@ class HelpTextTest {
             .filter { it.goal !in helpGoals }
             .flatMap { it.params }
             .filter { it.name !in globalParamNames }
+            .filter { !it.deprecated }
             .distinctBy { it.name }
 
         val missing = allParams.filter { param ->
