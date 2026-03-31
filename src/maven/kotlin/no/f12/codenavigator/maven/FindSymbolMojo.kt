@@ -67,6 +67,10 @@ class FindSymbolMojo : AbstractMojo() {
         }
         val matches = SymbolFilter.filter(filtered, config.pattern)
 
+        if (matches.isEmpty()) {
+            println(OutputWrapper.emptyResult(config.format, "No symbols matching '${config.pattern}' found."))
+            return
+        }
         println(OutputWrapper.formatAndWrap(config.format,
             text = { SymbolTableFormatter.format(matches) },
             json = { JsonFormatter.formatSymbols(matches) },

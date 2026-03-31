@@ -83,6 +83,10 @@ class CyclesMojo : AbstractMojo() {
         val cycles = CycleDetector.findCycles(adjacency)
         val details = CycleDetector.enrich(cycles, matrix)
 
+        if (details.isEmpty()) {
+            println(OutputWrapper.emptyResult(config.format, "No package cycles detected."))
+            return
+        }
         println(OutputWrapper.formatAndWrap(config.format,
             text = { CyclesFormatter.format(details) },
             json = { JsonFormatter.formatCycles(details) },

@@ -57,6 +57,10 @@ class ListClassesMojo : AbstractMojo() {
             else -> result.data
         }
 
+        if (classes.isEmpty()) {
+            println(OutputWrapper.emptyResult(config.format, "No classes found."))
+            return
+        }
         println(OutputWrapper.formatAndWrap(config.format,
             text = { TableFormatter.format(classes) },
             json = { JsonFormatter.formatClasses(classes) },

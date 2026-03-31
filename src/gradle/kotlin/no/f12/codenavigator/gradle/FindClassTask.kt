@@ -47,6 +47,10 @@ abstract class FindClassTask : DefaultTask() {
             else -> result.data
         }
         val matches = ClassFilter.filter(allClasses, config.pattern)
+        if (matches.isEmpty()) {
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No classes matching '${config.pattern}' found."))
+            return
+        }
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
             text = { TableFormatter.format(matches) },
             json = { JsonFormatter.formatClasses(matches) },

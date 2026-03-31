@@ -105,6 +105,7 @@ class InterfaceRegistry(
             var className = ClassName("")
             var sourceFile = "<unknown>"
             var implementedInterfaces = emptyList<ClassName>()
+            var superClassName: ClassName? = null
 
             reader.accept(
                 object : ClassVisitor(Opcodes.ASM9) {
@@ -120,6 +121,9 @@ class InterfaceRegistry(
                         implementedInterfaces = interfaces
                             ?.map { ClassName.fromInternal(it) }
                             ?: emptyList()
+                        superClassName = superName
+                            ?.takeIf { it != "java/lang/Object" }
+                            ?.let { ClassName.fromInternal(it) }
                     }
 
                     override fun visitSource(source: String?, debug: String?) {
@@ -131,11 +135,17 @@ class InterfaceRegistry(
                 ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES,
             )
 
-            if (className.isSynthetic() || implementedInterfaces.isEmpty()) return
+            if (className.isSynthetic()) return
+
+            val supertypes = buildList {
+                addAll(implementedInterfaces)
+                superClassName?.let { add(it) }
+            }
+            if (supertypes.isEmpty()) return
 
             val info = ImplementorInfo(className, sourceFile)
-            implementedInterfaces.forEach { ifaceName ->
-                map.getOrPut(ifaceName) { mutableListOf() }.add(info)
+            supertypes.forEach { supertypeName ->
+                map.getOrPut(supertypeName) { mutableListOf() }.add(info)
             }
         }
     }

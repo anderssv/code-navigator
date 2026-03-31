@@ -52,6 +52,10 @@ abstract class CyclesTask : DefaultTask() {
         val cycles = CycleDetector.findCycles(adjacency)
         val details = CycleDetector.enrich(cycles, matrix)
 
+        if (details.isEmpty()) {
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No package cycles detected."))
+            return
+        }
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
             text = { CyclesFormatter.format(details) },
             json = { JsonFormatter.formatCycles(details) },

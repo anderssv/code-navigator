@@ -62,11 +62,10 @@ class SymbolFilterTest {
     }
 
     @Test
-    fun `matches against source file`() {
+    fun `does not match against source file`() {
         val results = SymbolFilter.filter(symbols, "ResetService\\.kt")
 
-        assertEquals(1, results.size)
-        assertEquals("resetPassword", results.first().symbolName)
+        assertTrue(results.isEmpty(), "Should not match symbols via source file name")
     }
 
     @Test
@@ -99,5 +98,16 @@ class SymbolFilterTest {
 
         assertEquals(1, results.size)
         assertEquals("findUser", results.first().symbolName)
+    }
+
+    @Test
+    fun `simple pattern does not match source file name`() {
+        val symbolsInServiceFile = listOf(
+            SymbolInfo(PackageName("com.example"), ClassName("com.example.Faktura"), "customerId", SymbolKind.FIELD, "OpplastingService.kt"),
+        )
+
+        val results = SymbolFilter.filter(symbolsInServiceFile, "Service")
+
+        assertTrue(results.isEmpty(), "Should not match symbol via source file name")
     }
 }

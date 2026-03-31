@@ -437,3 +437,33 @@ From v0.1.44 field test: `-Ppattern=main` matched all 58 classes because "main" 
 Added `ktor` framework preset for `cnavDead -Ptreat-as-dead=ktor`. Ktor is DSL/lambda-based (not annotation-based), so the preset only has `supertypeEntryPoints`: `AuthenticationProvider`, `BaseApplicationPlugin`, `BaseRouteScopedPlugin`, `ContentConverter`, `Template`. No annotation entry points.
 
 **Changes**: `FrameworkPresets.kt` — added `KTOR_SUPERTYPES` and `ktor` preset entry. `FrameworkPresetsTest.kt` — 4 new tests.
+
+## ~~Receiver-type-based entry point detection for Ktor dead code~~ DONE
+
+Ktor extension functions on `Route` and `Application` are framework entry points but have no annotations or interface inheritance. Added receiver type detection: `ReceiverTypeExtractor` scans Kotlin `@Metadata` to find the receiver type of top-level extension functions (compiled as `*Kt` classes). `DeadCodeFinder` now has `classReceiverTypes` and `receiverTypeEntryPoints` parameters. `FrameworkPresets` gained `receiverTypeEntryPoints` dimension with Ktor routes/application types. Wired through `DeadCodeConfig`, `DeadCodeTask`, and `DeadCodeMojo`.
+
+## ~~`cnavDead -Ptest-only=true` filter~~ DONE
+
+New `-Ptest-only=true` parameter that filters dead code results to only show items with `reason=TEST_ONLY`. Complementary to `-Pprod-only=true`. Wired through `DeadCodeConfig`, `DeadCodeFinder`, `DeadCodeTask`, and `DeadCodeMojo`. Added to `TaskRegistry` and help text.
+
+## ~~Nimbus JWT interfaces added to Ktor supertype entry points~~ DONE
+
+Added `DefaultJWTClaimsVerifier` and `JWTClaimsSetVerifier` to `KTOR_SUPERTYPES` in `FrameworkPresets`. These are Nimbus JWT types commonly used in Ktor auth projects.
+
+## ~~Bug #13: InterfaceRegistry superclass tracking~~ DONE
+
+`InterfaceRegistry.extractInterfaces()` only captured Java interfaces from ASM's `visit()` callback, completely ignoring the `superName` parameter. This meant `externalInterfacesOf()` never returned abstract class parents like `DefaultJWTClaimsVerifier`, so `DeadCodeFinder.isExcludedBySupertype()` couldn't match against them. Fixed by also capturing `superName` (excluding `java/lang/Object`) and including it in the supertypes list alongside interfaces. Now `externalInterfacesOf()` returns both external interfaces and external superclasses.
+
+**Changes**: `InterfaceRegistry.kt` — `extractInterfaces()` captures `superName`, builds combined supertypes list. `InterfaceRegistryTest.kt` — 4 new tests for superclass tracking. `DeadCodeFinderTest.kt` — 1 new test for abstract superclass entry point exclusion.
+
+## ~~Bug #16: SymbolFilter source file matching removed~~ DONE
+
+`SymbolFilter.filter()` had `regex.containsMatchIn(symbol.sourceFile)` in both the qualified and unqualified matching branches. This caused searching for `Service` to match every symbol in any file named `*Service.kt` (e.g., `Faktura.customerId` in `OpplastingService.kt`). Removed source file matching from both branches.
+
+**Changes**: `SymbolFilter.kt` — removed `regex.containsMatchIn(symbol.sourceFile)` from both branches. `SymbolFilterTest.kt` — existing "matches against source file" test inverted to "does not match against source file", plus 1 new test.
+
+## ~~Bug #15: Empty-result output consistency~~ DONE
+
+`FindSymbolTask`, `FindClassTask`, `ListClassesTask`, and `CyclesTask` (plus their Maven counterparts) called `formatAndWrap()` directly without checking for empty results, producing bare `[]` in JSON/LLM mode instead of `{"results":[],"hints":[]}`. Added `isEmpty()` guards with `OutputWrapper.emptyResult()` calls to all 8 files (4 Gradle tasks + 4 Maven mojos).
+
+**Changes**: `FindSymbolTask.kt`, `FindClassTask.kt`, `ListClassesTask.kt`, `CyclesTask.kt`, `FindSymbolMojo.kt`, `FindClassMojo.kt`, `ListClassesMojo.kt`, `CyclesMojo.kt` — added empty-result guards.

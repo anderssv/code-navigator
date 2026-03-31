@@ -8,12 +8,10 @@ object SymbolFilter {
             if (isQualified) {
                 symbol.packageName.matches(regex) ||
                     symbol.className.matches(regex) ||
-                    regex.containsMatchIn(symbol.symbolName) ||
-                    regex.containsMatchIn(symbol.sourceFile)
+                    regex.containsMatchIn(symbol.symbolName)
             } else {
                 regex.containsMatchIn(symbol.symbolName) ||
-                    regex.containsMatchIn(symbol.className.simpleName()) ||
-                    regex.containsMatchIn(symbol.sourceFile)
+                    regex.containsMatchIn(symbol.className.simpleName())
             }
         }
     }

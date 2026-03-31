@@ -1178,6 +1178,24 @@ class DeadCodeFinderTest {
         assertEquals(DeadCodeConfidence.HIGH, dead[0].confidence, "No supertype entry points means no special handling")
     }
 
+    @Test
+    fun `class extending abstract superclass entry point is excluded from dead code`() {
+        val graph = testCallGraph(
+            method("com.example.DPoPClaimVerifier", "verify") to method("com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier", "verify"),
+            projectClasses = setOf("com.example.DPoPClaimVerifier"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            classExternalInterfaces = mapOf(
+                ClassName("com.example.DPoPClaimVerifier") to setOf(ClassName("com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier")),
+            ),
+            supertypeEntryPoints = setOf(ClassName("com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier")),
+        )
+
+        assertTrue(dead.isEmpty(), "Class extending abstract superclass entry point should be excluded")
+    }
+
     // === Receiver type entry point tests ===
 
     @Test

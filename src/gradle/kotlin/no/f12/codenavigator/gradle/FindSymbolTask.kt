@@ -48,6 +48,10 @@ abstract class FindSymbolTask : DefaultTask() {
             else -> allSymbols
         }
         val matches = SymbolFilter.filter(filtered, config.pattern)
+        if (matches.isEmpty()) {
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No symbols matching '${config.pattern}' found."))
+            return
+        }
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
             text = { SymbolTableFormatter.format(matches) },
             json = { JsonFormatter.formatSymbols(matches) },

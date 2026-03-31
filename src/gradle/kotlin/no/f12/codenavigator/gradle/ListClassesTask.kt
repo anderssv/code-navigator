@@ -37,6 +37,10 @@ abstract class ListClassesTask : DefaultTask() {
             config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
             else -> result.data
         }
+        if (classes.isEmpty()) {
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No classes found."))
+            return
+        }
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
             text = { TableFormatter.format(classes) },
             json = { JsonFormatter.formatClasses(classes) },

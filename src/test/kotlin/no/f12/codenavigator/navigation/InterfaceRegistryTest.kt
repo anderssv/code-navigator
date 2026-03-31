@@ -273,4 +273,90 @@ class InterfaceRegistryTest {
             map[ClassName("com.example.ServiceImpl")],
         )
     }
+
+    // === Superclass tracking tests ===
+
+    // [TEST] Class extending an external superclass includes that superclass in externalInterfacesOf
+    // [TEST] Class extending a project superclass does not include it in externalInterfacesOf
+    // [TEST] Class extending external superclass AND implementing external interface returns both
+    // [TEST] interfacesOf returns superclass along with interfaces for a class
+
+    @Test
+    fun `externalInterfacesOf includes external superclass`() {
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/MyVerifier", "MyVerifier.kt",
+            superName = "com/nimbusds/jwt/proc/DefaultJWTClaimsVerifier",
+        )
+
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+        val projectClasses = setOf(ClassName("com.example.MyVerifier"))
+
+        val external = registry.externalInterfacesOf(projectClasses)
+
+        assertEquals(
+            setOf(ClassName("com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier")),
+            external[ClassName("com.example.MyVerifier")],
+        )
+    }
+
+    @Test
+    fun `externalInterfacesOf excludes project superclass`() {
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/BaseService", "BaseService.kt",
+        )
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/UserService", "UserService.kt",
+            superName = "com/example/BaseService",
+        )
+
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+        val projectClasses = setOf(ClassName("com.example.BaseService"), ClassName("com.example.UserService"))
+
+        val external = registry.externalInterfacesOf(projectClasses)
+
+        assertTrue(external.isEmpty(), "In-scope superclass should not appear in externalInterfacesOf")
+    }
+
+    @Test
+    fun `externalInterfacesOf includes both external superclass and external interface`() {
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/MyVerifier", "MyVerifier.kt",
+            superName = "com/nimbusds/jwt/proc/DefaultJWTClaimsVerifier",
+            interfaces = arrayOf("com/nimbusds/jwt/proc/JWTClaimsSetVerifier"),
+        )
+
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+        val projectClasses = setOf(ClassName("com.example.MyVerifier"))
+
+        val external = registry.externalInterfacesOf(projectClasses)
+
+        assertEquals(
+            setOf(
+                ClassName("com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier"),
+                ClassName("com.nimbusds.jwt.proc.JWTClaimsSetVerifier"),
+            ),
+            external[ClassName("com.example.MyVerifier")],
+        )
+    }
+
+    @Test
+    fun `interfacesOf returns superclass along with interfaces`() {
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/MyVerifier", "MyVerifier.kt",
+            superName = "com/nimbusds/jwt/proc/DefaultJWTClaimsVerifier",
+            interfaces = arrayOf("com/nimbusds/jwt/proc/JWTClaimsSetVerifier"),
+        )
+
+        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+
+        val supertypes = registry.interfacesOf(ClassName("com.example.MyVerifier"))
+
+        assertEquals(
+            setOf(
+                ClassName("com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier"),
+                ClassName("com.nimbusds.jwt.proc.JWTClaimsSetVerifier"),
+            ),
+            supertypes,
+        )
+    }
 }

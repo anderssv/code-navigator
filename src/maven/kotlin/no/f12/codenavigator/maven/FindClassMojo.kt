@@ -69,6 +69,10 @@ class FindClassMojo : AbstractMojo() {
         }
         val matches = ClassFilter.filter(allClasses, config.pattern)
 
+        if (matches.isEmpty()) {
+            println(OutputWrapper.emptyResult(config.format, "No classes matching '${config.pattern}' found."))
+            return
+        }
         println(OutputWrapper.formatAndWrap(config.format,
             text = { TableFormatter.format(matches) },
             json = { JsonFormatter.formatClasses(matches) },
