@@ -26,7 +26,7 @@ abstract class HotspotTask : DefaultTask() {
         val hotspots = HotspotBuilder.build(commits, config.minRevs, config.top)
 
         if (hotspots.isEmpty()) {
-            logger.lifecycle("No hotspots found.")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No hotspots found."))
             return
         }
 

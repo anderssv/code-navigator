@@ -41,7 +41,7 @@ abstract class RankTask : DefaultTask() {
         }
 
         if (filtered.isEmpty()) {
-            logger.lifecycle("No ranked types found.")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No ranked types found."))
             return
         }
 

@@ -6,6 +6,7 @@ import no.f12.codenavigator.navigation.annotation.AnnotationQueryFormatter
 import no.f12.codenavigator.navigation.annotation.MethodAnnotationMatch
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class AnnotationQueryFormatterTest {
 
@@ -128,5 +129,23 @@ class AnnotationQueryFormatterTest {
               scheduled [@Scheduled]
         """.trimIndent()
         assertEquals(expected, result)
+    }
+
+    @Test
+    fun `noResultsGuidance hints about methods flag when methods is false`() {
+        val result = AnnotationQueryFormatter.noResultsGuidance("Test", methods = false)
+
+        assertTrue(result.contains("No annotations matching 'Test' found."))
+        assertTrue(result.contains("-Pmethods=true"))
+        assertTrue(result.contains("SOURCE retention"))
+    }
+
+    @Test
+    fun `noResultsGuidance omits methods hint when methods is true`() {
+        val result = AnnotationQueryFormatter.noResultsGuidance("Test", methods = true)
+
+        assertTrue(result.contains("No annotations matching 'Test' found."))
+        assertTrue(!result.contains("-Pmethods=true"))
+        assertTrue(result.contains("SOURCE retention"))
     }
 }

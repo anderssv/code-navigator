@@ -48,7 +48,7 @@ abstract class ComplexityTask : DefaultTask() {
         val truncated = filtered.take(config.top)
 
         if (truncated.isEmpty()) {
-            logger.lifecycle("No matching classes found.")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No matching classes found."))
             return
         }
 

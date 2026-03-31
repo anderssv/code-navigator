@@ -26,7 +26,7 @@ abstract class AuthorAnalysisTask : DefaultTask() {
         val modules = AuthorAnalysisBuilder.build(commits, config.minRevs, config.top)
 
         if (modules.isEmpty()) {
-            logger.lifecycle("No files found.")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No files found."))
             return
         }
 

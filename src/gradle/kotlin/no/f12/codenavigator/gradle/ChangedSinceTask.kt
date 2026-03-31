@@ -38,7 +38,7 @@ abstract class ChangedSinceTask : DefaultTask() {
 
         val gitPaths = GitDiffRunner.run(project.projectDir, config.ref)
         if (gitPaths.isEmpty()) {
-            logger.lifecycle("No changed files since ${config.ref}.")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No changed files since ${config.ref}."))
             return
         }
 
@@ -49,10 +49,10 @@ abstract class ChangedSinceTask : DefaultTask() {
 
         if (resolution.resolved.isEmpty()) {
             if (resolution.unresolved.isNotEmpty()) {
-                logger.lifecycle("${resolution.unresolved.size} changed file(s), none mapped to project classes:")
-                resolution.unresolved.forEach { logger.lifecycle("  $it") }
+                val msg = "${resolution.unresolved.size} changed file(s), none mapped to project classes:\n${resolution.unresolved.joinToString("\n") { "  $it" }}"
+                logger.lifecycle(OutputWrapper.emptyResult(config.format, msg))
             } else {
-                logger.lifecycle("No changed files since ${config.ref}.")
+                logger.lifecycle(OutputWrapper.emptyResult(config.format, "No changed files since ${config.ref}."))
             }
             return
         }

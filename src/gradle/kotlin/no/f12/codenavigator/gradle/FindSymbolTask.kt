@@ -24,10 +24,10 @@ abstract class FindSymbolTask : DefaultTask() {
 
     @TaskAction
     fun findSymbol() {
+        val properties = project.buildPropertyMap(TaskRegistry.FIND_SYMBOL)
+        TaskRegistry.FIND_SYMBOL.deprecations(properties).forEach { logger.warn(it) }
         val config = try {
-            FindSymbolConfig.parse(
-                project.buildPropertyMap(TaskRegistry.FIND_SYMBOL),
-            )
+            FindSymbolConfig.parse(properties)
         } catch (e: IllegalArgumentException) {
             throw GradleException(
                 "${e.message}\n${TaskRegistry.FIND_SYMBOL.usageHint(BuildTool.GRADLE)}",

@@ -23,10 +23,10 @@ abstract class FindInterfaceImplsTask : DefaultTask() {
 
     @TaskAction
     fun findImplementors() {
+        val properties = project.buildPropertyMap(TaskRegistry.FIND_INTERFACES)
+        TaskRegistry.FIND_INTERFACES.deprecations(properties).forEach { logger.warn(it) }
         val config = try {
-            FindInterfaceImplsConfig.parse(
-                project.buildPropertyMap(TaskRegistry.FIND_INTERFACES),
-            )
+            FindInterfaceImplsConfig.parse(properties)
         } catch (e: IllegalArgumentException) {
             throw GradleException(
                 "${e.message}\n${TaskRegistry.FIND_INTERFACES.usageHint(BuildTool.GRADLE)}",
@@ -49,7 +49,7 @@ abstract class FindInterfaceImplsTask : DefaultTask() {
         val matchingInterfaces = registry.findInterfaces(config.pattern)
 
         if (matchingInterfaces.isEmpty()) {
-            logger.lifecycle("No interfaces found matching '${config.pattern}'")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No interfaces found matching '${config.pattern}'"))
             return
         }
 

@@ -9,6 +9,12 @@ object OutputWrapper {
             OutputFormat.JSON, OutputFormat.LLM -> "---CNAV_BEGIN---\n$output\n---CNAV_END---"
         }
 
+    fun emptyResult(format: OutputFormat, textMessage: String): String =
+        when (format) {
+            OutputFormat.TEXT -> textMessage
+            OutputFormat.JSON, OutputFormat.LLM -> wrap("[]", format)
+        }
+
     fun formatAndWrap(
         format: OutputFormat,
         text: () -> String,

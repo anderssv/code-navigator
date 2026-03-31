@@ -38,7 +38,7 @@ abstract class StringConstantTask : DefaultTask() {
         }
 
         if (matches.isEmpty()) {
-            logger.lifecycle("No string constants matching '${config.pattern.pattern}' found.")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No string constants matching '${config.pattern.pattern}' found."))
             return
         }
 

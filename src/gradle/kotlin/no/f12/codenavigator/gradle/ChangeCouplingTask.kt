@@ -26,7 +26,7 @@ abstract class ChangeCouplingTask : DefaultTask() {
         val pairs = ChangeCouplingBuilder.build(commits, config.minSharedRevs, config.minCoupling, config.maxChangesetSize, config.top)
 
         if (pairs.isEmpty()) {
-            logger.lifecycle("No coupling found.")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No coupling found."))
             return
         }
 

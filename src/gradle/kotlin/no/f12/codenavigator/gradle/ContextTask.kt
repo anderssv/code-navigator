@@ -45,7 +45,7 @@ abstract class ContextTask : DefaultTask() {
         val matchingDetails = classResult.data
 
         if (matchingDetails.isEmpty()) {
-            logger.lifecycle("No classes found matching '${config.pattern}'")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No classes found matching '${config.pattern}'"))
             return
         }
 

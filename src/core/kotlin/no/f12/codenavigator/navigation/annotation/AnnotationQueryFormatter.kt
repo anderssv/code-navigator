@@ -23,4 +23,12 @@ object AnnotationQueryFormatter {
             }
         }
     }
+
+    fun noResultsGuidance(pattern: String, methods: Boolean): String = buildString {
+        append("No annotations matching '$pattern' found.")
+        if (!methods) {
+            append("\nHint: Only class-level annotations are searched by default. Use -Pmethods=true to also search method-level annotations (e.g. @Test, @Override).")
+        }
+        append("\nHint: Only RUNTIME and CLASS retention annotations are visible in bytecode. SOURCE retention annotations (e.g. @Suppress) cannot be found.")
+    }
 }

@@ -146,6 +146,7 @@ object TaskRegistry {
     val LLM = ParamDef("llm", "true", "Output in compact, token-efficient LLM format", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val PATTERN = ParamDef("pattern", "<regex>", "Class/symbol name regex (camelCase-aware: MyService matches com.example.MyService)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
     val CALL_PATTERN = ParamDef("pattern", "<regex>", "Class.method name regex (camelCase-aware: MyService.doWork matches com.example.MyService.doWork)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
+    val LEGACY_METHOD = ParamDef("method", "<regex>", "Deprecated: use pattern instead", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'method' is deprecated. Use 'pattern' instead (e.g., -Ppattern=MyClass.myMethod).")
     val METHOD = ParamDef("method", "<regex>", "Method name regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth", flag = false, defaultValue = "3", enhancePattern = false, type = ParamType.INT)
     val PROJECTONLY = ParamDef("project-only", "false", "Hide JDK/stdlib/library classes (default: on)", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
@@ -231,7 +232,7 @@ object TaskRegistry {
     val FIND_CALLERS = TaskDef(
         goal = "find-callers",
         description = "Find callers of a method (call tree)",
-        params = FORMAT_PARAMS + listOf(CALL_PATTERN, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallers",
@@ -240,7 +241,7 @@ object TaskRegistry {
     val FIND_CALLEES = TaskDef(
         goal = "find-callees",
         description = "Find methods called by a method (call tree)",
-        params = FORMAT_PARAMS + listOf(CALL_PATTERN, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallees",

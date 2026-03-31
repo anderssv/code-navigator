@@ -43,7 +43,7 @@ abstract class FindUsagesTask : DefaultTask() {
         val usages = config.filterBySourceSet(afterPackageFilter)
 
         if (usages.isEmpty()) {
-            logger.lifecycle(UsageFormatter.noResultsGuidance(config.ownerClass, config.method, config.field, config.type))
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, UsageFormatter.noResultsGuidance(config.ownerClass, config.method, config.field, config.type)))
             return
         }
 

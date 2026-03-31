@@ -27,7 +27,7 @@ abstract class CodeAgeTask : DefaultTask() {
         val ages = CodeAgeBuilder.build(commits, LocalDate.now(), config.top)
 
         if (ages.isEmpty()) {
-            logger.lifecycle("No files found.")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No files found."))
             return
         }
 

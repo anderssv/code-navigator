@@ -48,7 +48,7 @@ abstract class PackageDepsTask : DefaultTask() {
         val packages = if (config.packagePattern != null) {
             val matches = deps.findPackages(config.packagePattern)
             if (matches.isEmpty()) {
-                logger.lifecycle("No packages found matching '${config.packagePattern}'")
+                logger.lifecycle(OutputWrapper.emptyResult(config.format, "No packages found matching '${config.packagePattern}'"))
                 return
             }
             matches

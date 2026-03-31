@@ -62,4 +62,25 @@ class OutputWrapperTest {
     fun `OutputFormat returns LLM when format string is llm`() {
         assertEquals(OutputFormat.LLM, OutputFormat.from(format = "llm", llm = null))
     }
+
+    @Test
+    fun `emptyResult returns text message for TEXT format`() {
+        val result = OutputWrapper.emptyResult(OutputFormat.TEXT, "No results found.")
+
+        assertEquals("No results found.", result)
+    }
+
+    @Test
+    fun `emptyResult returns wrapped empty JSON array for JSON format`() {
+        val result = OutputWrapper.emptyResult(OutputFormat.JSON, "No results found.")
+
+        assertEquals("---CNAV_BEGIN---\n[]\n---CNAV_END---", result)
+    }
+
+    @Test
+    fun `emptyResult returns wrapped empty JSON array for LLM format`() {
+        val result = OutputWrapper.emptyResult(OutputFormat.LLM, "No results found.")
+
+        assertEquals("---CNAV_BEGIN---\n[]\n---CNAV_END---", result)
+    }
 }

@@ -21,10 +21,10 @@ abstract class AnnotationsTask : DefaultTask() {
 
     @TaskAction
     fun annotations() {
+        val properties = project.buildPropertyMap(TaskRegistry.ANNOTATIONS)
+        TaskRegistry.ANNOTATIONS.deprecations(properties).forEach { logger.warn(it) }
         val config = try {
-            AnnotationQueryConfig.parse(
-                project.buildPropertyMap(TaskRegistry.ANNOTATIONS),
-            )
+            AnnotationQueryConfig.parse(properties)
         } catch (e: IllegalArgumentException) {
             throw GradleException(
                 "${e.message}\n${TaskRegistry.ANNOTATIONS.usageHint(BuildTool.GRADLE)}",
@@ -39,6 +39,11 @@ abstract class AnnotationsTask : DefaultTask() {
             config.prodOnly -> allMatches.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
             config.testOnly -> allMatches.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
             else -> allMatches
+        }
+
+        if (matches.isEmpty()) {
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, AnnotationQueryFormatter.noResultsGuidance(config.pattern, config.methods)))
+            return
         }
 
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,

@@ -26,7 +26,7 @@ abstract class ChurnTask : DefaultTask() {
         val churn = ChurnBuilder.build(commits, config.top)
 
         if (churn.isEmpty()) {
-            logger.lifecycle("No churn data found.")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No churn data found."))
             return
         }
 

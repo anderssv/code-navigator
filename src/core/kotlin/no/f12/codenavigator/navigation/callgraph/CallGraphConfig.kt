@@ -25,14 +25,21 @@ data class CallGraphConfig(
     }
 
     companion object {
-        fun parse(properties: Map<String, String?>): CallGraphConfig = CallGraphConfig(
-            method = TaskRegistry.CALL_PATTERN.parseRequiredFrom(properties),
-            maxDepth = TaskRegistry.MAXDEPTH.parseFrom(properties),
-            projectOnly = TaskRegistry.PROJECTONLY.parseFrom(properties),
-            filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
-            prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
-            testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
-            format = ParamDef.parseFormat(properties),
-        )
+        private const val LEGACY_METHOD_KEY = "method"
+
+        fun parse(properties: Map<String, String?>): CallGraphConfig {
+            val pattern = properties[TaskRegistry.CALL_PATTERN.name]
+                ?: properties[LEGACY_METHOD_KEY]
+            return CallGraphConfig(
+                method = pattern
+                    ?: throw IllegalArgumentException("Missing required property '${TaskRegistry.CALL_PATTERN.name}'"),
+                maxDepth = TaskRegistry.MAXDEPTH.parseFrom(properties),
+                projectOnly = TaskRegistry.PROJECTONLY.parseFrom(properties),
+                filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
+                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
+                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
+                format = ParamDef.parseFormat(properties),
+            )
+        }
     }
 }

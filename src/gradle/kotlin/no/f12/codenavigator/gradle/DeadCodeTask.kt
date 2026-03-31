@@ -88,7 +88,7 @@ abstract class DeadCodeTask : DefaultTask() {
         )
 
         if (dead.isEmpty()) {
-            logger.lifecycle("No potential dead code found.")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No potential dead code found."))
             return
         }
 

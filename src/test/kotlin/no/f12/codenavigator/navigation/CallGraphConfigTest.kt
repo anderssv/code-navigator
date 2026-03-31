@@ -42,6 +42,24 @@ class CallGraphConfigTest {
     }
 
     @Test
+    fun `falls back to method property when pattern is absent`() {
+        val config = CallGraphConfig.parse(
+            mapOf("method" to "com.example.MyClass.myMethod"),
+        )
+
+        assertEquals("com.example.MyClass.myMethod", config.method)
+    }
+
+    @Test
+    fun `pattern takes precedence over method when both present`() {
+        val config = CallGraphConfig.parse(
+            mapOf("pattern" to "MyClass.fromPattern", "method" to "MyClass.fromMethod"),
+        )
+
+        assertEquals("MyClass.fromPattern", config.method)
+    }
+
+    @Test
     fun `defaults maxdepth to 3 when not provided`() {
         val config = CallGraphConfig.parse(
             mapOf("pattern" to "com.example.MyClass.myMethod"),

@@ -28,8 +28,10 @@ object CallTreeTaskSupport {
         taskDef: TaskDef,
         direction: CallDirection,
     ) {
+        val properties = project.buildPropertyMap(taskDef)
+        taskDef.deprecations(properties).forEach { logger.warn(it) }
         val config = try {
-            CallGraphConfig.parse(project.buildPropertyMap(taskDef))
+            CallGraphConfig.parse(properties)
         } catch (e: IllegalArgumentException) {
             throw GradleException("${e.message}\n${taskDef.usageHint(BuildTool.GRADLE)}")
         }
@@ -45,7 +47,7 @@ object CallTreeTaskSupport {
         val methods = graph.findMethods(config.method)
 
         if (methods.isEmpty()) {
-            logger.lifecycle("No methods found matching '${config.method}'")
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No methods found matching '${config.method}'"))
             return
         }
 
