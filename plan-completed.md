@@ -376,3 +376,18 @@ From v0.1.44 field test: `cnavFindSymbol -Ppattern=verify` returned empty for te
 ## ~~Generate error messages from TaskDef~~ DONE
 
 Error messages in 10 Gradle tasks hardcoded task names, with 5 referencing deprecated aliases (`cnavClass`, `cnavCallers`, `cnavCallees`, `cnavUsages`, `cnavInterfaces`). Added `TaskDef.usageHint(BuildTool)` method that generates usage strings from task params — excludes format/llm and deprecated params, shows required params without brackets and optional params in brackets. Updated all 10 tasks to use generated hints. Removed `usageHint` parameter from `CallTreeTaskSupport.execute()`. `FindUsagesTask` retains custom hint for its two mutually exclusive modes but generates the task name from `TaskDef`.
+
+## ~~Unified source set model — all tasks scan main+test by default~~ DONE
+
+Large cross-cutting refactoring to make filtering/exclusion consistent across all commands. Previously three different strategies existed: Strategy A (10 tasks, main-only), Strategy B (3 tasks, optional `include-test`), Strategy C (6 tasks, always tagged with `prod-only`/`test-only`). Now all bytecode tasks follow Strategy C: scan both main and test source sets by default, tag each class with `SourceSet.MAIN`/`SourceSet.TEST`, support `prod-only`/`test-only` filtering.
+
+**Key design decisions:**
+- `SourceSetResolver` utility maps `ClassName → SourceSet` by walking tagged directories (file path math, no bytecode reading). Tasks pass flat `List<File>` to existing scanners unchanged, then use `SourceSetResolver` to filter results.
+- Two conversion patterns: Pattern 1 (class-level tasks) filters after scanning via `resolver.sourceSetOf()`. Pattern 2 (package-level tasks like DSM, Cycles, Metrics) filters at the input directory level before aggregation.
+- `PROJECTONLY` default changed from `false` to `true`, eliminating the `PROJECTONLY_ON` variant.
+- `include-test` deprecated (test is now always included). `SOURCE_SET_PARAMS` (`prod-only`, `test-only`) added to all bytecode TaskDefs.
+
+**Converted tasks (Strategy A → C):** ListClasses, FindClass, FindClassDetail, StringConstant, TypeHierarchy, ChangedSince, PackageDeps, DSM, Cycles, Metrics.
+**Converted tasks (Strategy B → C):** FindSymbol, FindInterfaces, Annotations.
+**Updated help text:** HelpText.kt and AgentHelpText.kt updated to reflect new model. Deprecated `include-test` references replaced with `prod-only`/`test-only`.
+**Test coverage:** Config tests for all converted tasks verify `prodOnly`/`testOnly` parsing and defaults. HelpTextTest updated to exclude deprecated params.
