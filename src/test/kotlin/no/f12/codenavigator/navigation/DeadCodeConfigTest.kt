@@ -116,12 +116,17 @@ class DeadCodeConfigTest {
     }
 
     @Test
-    fun `does not support testOnly — dead code is always analyzed from prod source set`() {
+    fun `parses testOnly as true`() {
         val config = DeadCodeConfig.parse(mapOf("test-only" to "true"))
 
-        // test-only is deliberately not read by DeadCodeConfig;
-        // dead code analysis only targets prod classes (test graph is a reference input)
-        assertFalse(config.prodOnly)
+        assertTrue(config.testOnly)
+    }
+
+    @Test
+    fun `defaults testOnly to false when absent`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertFalse(config.testOnly)
     }
 
     @Test

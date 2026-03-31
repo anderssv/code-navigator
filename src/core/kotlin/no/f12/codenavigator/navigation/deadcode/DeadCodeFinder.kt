@@ -54,6 +54,7 @@ object DeadCodeFinder {
         testClasses: Set<ClassName> = emptySet(),
         classReceiverTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
         receiverTypeEntryPoints: Set<ClassName> = emptySet(),
+        testOnly: Boolean = false,
     ): List<DeadCode> {
         val projectClasses = graph.projectClasses()
         if (projectClasses.isEmpty()) return emptyList()
@@ -169,6 +170,7 @@ object DeadCodeFinder {
             .filter { item -> !isExcludedBySupertype(item, classExternalInterfaces, supertypeEntryPoints) }
             .filter { item -> !isExcludedByReceiverType(item, classReceiverTypes, receiverTypeEntryPoints) }
             .filter { item -> !prodOnly || (item.reason == DeadCodeReason.NO_REFERENCES && item.className !in testClasses) }
+            .filter { item -> !testOnly || item.reason == DeadCodeReason.TEST_ONLY }
             .sortedWith(compareBy({ it.kind }, { it.className }, { it.memberName ?: "" }))
     }
 

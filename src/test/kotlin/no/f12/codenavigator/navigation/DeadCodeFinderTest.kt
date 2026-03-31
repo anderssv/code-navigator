@@ -27,6 +27,7 @@ class DeadCodeFinderTest {
         inlineMethods: Set<MethodRef> = emptySet(),
         classExternalInterfaces: Map<ClassName, Set<ClassName>> = emptyMap(),
         prodOnly: Boolean = false,
+        testOnly: Boolean = false,
         modifierAnnotated: Set<String> = emptySet(),
         supertypeEntryPoints: Set<ClassName> = emptySet(),
         testClasses: Set<ClassName> = emptySet(),
@@ -46,6 +47,7 @@ class DeadCodeFinderTest {
         inlineMethods = inlineMethods,
         classExternalInterfaces = classExternalInterfaces,
         prodOnly = prodOnly,
+        testOnly = testOnly,
         modifierAnnotated = modifierAnnotated,
         supertypeEntryPoints = supertypeEntryPoints,
         testClasses = testClasses,
@@ -999,6 +1001,44 @@ class DeadCodeFinderTest {
         val deadClassNames = dead.map { it.className.value }
         assertTrue("com.example.Util" in deadClassNames, "Util should appear without prodOnly")
         assertTrue("com.example.Service" in deadClassNames, "Service should appear without prodOnly")
+    }
+
+    // === testOnly flag tests ===
+
+    @Test
+    fun `testOnly filters to only TEST_ONLY items`() {
+        val prodGraph = testCallGraph(
+            method("com.example.Service", "process") to method("com.example.External", "call"),
+            method("com.example.Util", "help") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Service", "com.example.Util"),
+        )
+        val testGraph = testCallGraph(
+            method("com.example.ServiceTest", "test") to method("com.example.Service", "process"),
+        )
+
+        val dead = findDead(graph = prodGraph, testGraph = testGraph, testOnly = true)
+
+        val deadClassNames = dead.map { it.className.value }
+        assertTrue("com.example.Service" in deadClassNames, "Service is TEST_ONLY and should appear with testOnly")
+        assertTrue("com.example.Util" !in deadClassNames, "Util is NO_REFERENCES and should be filtered with testOnly")
+    }
+
+    @Test
+    fun `testOnly false shows both NO_REFERENCES and TEST_ONLY items`() {
+        val prodGraph = testCallGraph(
+            method("com.example.Service", "process") to method("com.example.External", "call"),
+            method("com.example.Util", "help") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Service", "com.example.Util"),
+        )
+        val testGraph = testCallGraph(
+            method("com.example.ServiceTest", "test") to method("com.example.Service", "process"),
+        )
+
+        val dead = findDead(graph = prodGraph, testGraph = testGraph, testOnly = false)
+
+        val deadClassNames = dead.map { it.className.value }
+        assertTrue("com.example.Util" in deadClassNames, "Util should appear without testOnly")
+        assertTrue("com.example.Service" in deadClassNames, "Service should appear without testOnly")
     }
 
     @Test

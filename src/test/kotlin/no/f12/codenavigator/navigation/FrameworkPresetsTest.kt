@@ -630,4 +630,12 @@ class FrameworkPresetsTest {
         assertTrue(receiverTypes.isEmpty())
     }
 
+    @Test
+    fun `ktor preset includes Nimbus JWT interfaces as supertype entry points`() {
+        val supertypes = FrameworkPresets.resolveSupertypeEntryPoints("ktor")
+
+        assertTrue(supertypes.contains(ClassName("com.nimbusds.jwt.proc.JWTClaimsSetVerifier")))
+        assertTrue(supertypes.contains(ClassName("com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier")))
+    }
+
 }

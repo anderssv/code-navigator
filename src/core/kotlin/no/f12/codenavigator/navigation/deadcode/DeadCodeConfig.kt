@@ -15,6 +15,7 @@ data class DeadCodeConfig(
     val supertypeEntryPoints: Set<ClassName>,
     val receiverTypeEntryPoints: Set<ClassName>,
     val prodOnly: Boolean,
+    val testOnly: Boolean,
     val format: OutputFormat,
 ) {
     companion object {
@@ -37,6 +38,7 @@ data class DeadCodeConfig(
                 supertypeEntryPoints = supertypes,
                 receiverTypeEntryPoints = receiverTypes,
                 prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
+                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
             )
         }

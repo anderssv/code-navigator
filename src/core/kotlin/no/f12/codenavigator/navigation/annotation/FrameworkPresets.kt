@@ -265,6 +265,8 @@ object FrameworkPresets {
         "io.ktor.server.application.BaseRouteScopedPlugin",
         "io.ktor.serialization.ContentConverter",
         "io.ktor.server.html.Template",
+        "com.nimbusds.jwt.proc.JWTClaimsSetVerifier",
+        "com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier",
     ).map { ClassName(it) }.toSet()
 
     private val KTOR_RECEIVER_TYPES = setOf(

@@ -91,6 +91,7 @@ abstract class DeadCodeTask : DefaultTask() {
             testClasses = testGraph?.projectClasses() ?: emptySet(),
             classReceiverTypes = classReceiverTypes,
             receiverTypeEntryPoints = config.receiverTypeEntryPoints,
+            testOnly = config.testOnly,
         )
 
         if (dead.isEmpty()) {

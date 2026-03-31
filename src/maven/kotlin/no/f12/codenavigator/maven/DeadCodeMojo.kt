@@ -54,6 +54,9 @@ class DeadCodeMojo : AbstractMojo() {
     @Parameter(property = "treat-as-dead")
     private var treatAsDead: String? = null
 
+    @Parameter(property = "test-only")
+    private var testOnly: String? = null
+
     override fun execute() {
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
@@ -111,6 +114,7 @@ class DeadCodeMojo : AbstractMojo() {
             testClasses = testGraph?.projectClasses() ?: emptySet(),
             classReceiverTypes = classReceiverTypes,
             receiverTypeEntryPoints = config.receiverTypeEntryPoints,
+            testOnly = config.testOnly,
         )
 
         if (dead.isEmpty()) {
@@ -134,5 +138,6 @@ class DeadCodeMojo : AbstractMojo() {
         excludeAnnotated?.let { put("exclude-annotated", it) }
         prodOnly?.let { put("prod-only", it) }
         treatAsDead?.let { put("treat-as-dead", it) }
+        testOnly?.let { put("test-only", it) }
     }
 }

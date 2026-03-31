@@ -309,7 +309,7 @@ object TaskRegistry {
     val DEAD = TaskDef(
         goal = "dead",
         description = "Detect dead code (unreferenced classes and methods)",
-        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, PROD_ONLY, TREAT_AS_DEAD),
+        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, PROD_ONLY, TEST_ONLY, TREAT_AS_DEAD),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         requiresTestCompilation = true,
