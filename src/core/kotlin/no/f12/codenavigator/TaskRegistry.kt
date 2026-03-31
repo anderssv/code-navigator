@@ -157,7 +157,7 @@ object TaskRegistry {
 
     // --- Task-specific parameter definitions ---
 
-    val INCLUDETEST = ParamDef("include-test", "true", "Include test source set", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
+    val INCLUDETEST = ParamDef("include-test", "true", "Deprecated: test sources are now included by default. Use prod-only to see only production code.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'include-test' is deprecated. Test sources are now included by default. Use 'prod-only=true' to see only production code.")
     val PACKAGE = ParamDef("package", "<regex>", "Filter packages by regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val REVERSE = ParamDef("reverse", "true", "Show reverse dependencies", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Deprecated: use package-filter instead. Only include packages under this prefix", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'root-package' is deprecated. Results are now automatically limited to classes in the project source sets. Use 'package-filter' to narrow further.")
@@ -191,13 +191,14 @@ object TaskRegistry {
     val CONTEXT_MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth (default: 2)", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
 
     val FORMAT_PARAMS = listOf(FORMAT, LLM)
+    val SOURCE_SET_PARAMS = listOf(PROD_ONLY, TEST_ONLY)
 
     // --- Task definitions ---
 
     val LIST_CLASSES = TaskDef(
         goal = "list-classes",
         description = "List all classes in the project",
-        params = FORMAT_PARAMS,
+        params = FORMAT_PARAMS + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -205,7 +206,7 @@ object TaskRegistry {
     val FIND_CLASS = TaskDef(
         goal = "find-class",
         description = "Find classes matching a regex pattern",
-        params = FORMAT_PARAMS + PATTERN,
+        params = FORMAT_PARAMS + PATTERN + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -213,7 +214,7 @@ object TaskRegistry {
     val FIND_SYMBOL = TaskDef(
         goal = "find-symbol",
         description = "Find methods and fields matching a regex pattern",
-        params = FORMAT_PARAMS + listOf(PATTERN, INCLUDETEST),
+        params = FORMAT_PARAMS + listOf(PATTERN) + SOURCE_SET_PARAMS + listOf(INCLUDETEST),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -221,7 +222,7 @@ object TaskRegistry {
     val CLASS_DETAIL = TaskDef(
         goal = "class-detail",
         description = "Show detailed class information (methods, fields, interfaces)",
-        params = FORMAT_PARAMS + PATTERN,
+        params = FORMAT_PARAMS + PATTERN + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavClass",
@@ -248,7 +249,7 @@ object TaskRegistry {
     val FIND_INTERFACES = TaskDef(
         goal = "find-interfaces",
         description = "Find implementations of an interface",
-        params = FORMAT_PARAMS + listOf(PATTERN, INCLUDETEST),
+        params = FORMAT_PARAMS + listOf(PATTERN) + SOURCE_SET_PARAMS + listOf(INCLUDETEST),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavInterfaces",
@@ -257,7 +258,7 @@ object TaskRegistry {
     val TYPE_HIERARCHY = TaskDef(
         goal = "type-hierarchy",
         description = "Show type hierarchy (supertypes upward, implementors downward)",
-        params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY),
+        params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -265,7 +266,7 @@ object TaskRegistry {
     val PACKAGE_DEPS = TaskDef(
         goal = "package-deps",
         description = "Show package-level dependencies",
-        params = FORMAT_PARAMS + listOf(PACKAGE, PROJECTONLY, REVERSE),
+        params = FORMAT_PARAMS + listOf(PACKAGE, PROJECTONLY, REVERSE) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavDeps",
@@ -274,7 +275,7 @@ object TaskRegistry {
     val DSM = TaskDef(
         goal = "dsm",
         description = "Generate Dependency Structure Matrix",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE, ROOT_PACKAGE),
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE, ROOT_PACKAGE) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -282,7 +283,7 @@ object TaskRegistry {
     val CYCLE_DETECTION = TaskDef(
         goal = "cycles",
         description = "Detect dependency cycles using Tarjan's SCC algorithm",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE),
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -389,7 +390,7 @@ object TaskRegistry {
     val FIND_STRING_CONSTANT = TaskDef(
         goal = "find-string-constant",
         description = "Search string constants in compiled code matching a regex",
-        params = FORMAT_PARAMS + STRING_PATTERN,
+        params = FORMAT_PARAMS + STRING_PATTERN + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -397,7 +398,7 @@ object TaskRegistry {
     val ANNOTATIONS = TaskDef(
         goal = "annotations",
         description = "Find classes and methods by annotation pattern",
-        params = FORMAT_PARAMS + listOf(PATTERN, METHODS, INCLUDETEST),
+        params = FORMAT_PARAMS + listOf(PATTERN, METHODS) + SOURCE_SET_PARAMS + listOf(INCLUDETEST),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -414,7 +415,7 @@ object TaskRegistry {
     val CHANGED_SINCE = TaskDef(
         goal = "changed-since",
         description = "Show blast radius of changes since a git ref (changed classes and their callers)",
-        params = FORMAT_PARAMS + listOf(REF, PROJECTONLY),
+        params = FORMAT_PARAMS + listOf(REF, PROJECTONLY) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.HYBRID,
     )
