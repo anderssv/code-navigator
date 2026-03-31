@@ -5,6 +5,7 @@ import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.RootPackageDetector
+import no.f12.codenavigator.navigation.SourceSet
 import no.f12.codenavigator.navigation.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.CycleDetector
 import no.f12.codenavigator.navigation.dsm.CyclesConfig
@@ -45,17 +46,29 @@ class CyclesMojo : AbstractMojo() {
     @Parameter(property = "dsm-depth")
     private var depth: String? = null
 
+    @Parameter(property = "prod-only")
+    private var prodOnly: String? = null
+
+    @Parameter(property = "test-only")
+    private var testOnly: String? = null
+
     override fun execute() {
         val config = CyclesConfig.parse(TaskRegistry.CYCLE_DETECTION.enhanceProperties(buildPropertyMap()))
         config.deprecations().forEach { log.warn(it) }
 
-        val classesDir = File(project.build.outputDirectory)
-        if (!classesDir.exists()) {
-            log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
+        val taggedDirs = project.taggedClassDirectories()
+        val filteredDirs = when {
+            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
+            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
+            else -> taggedDirs
+        }
+        val classDirectories = filteredDirs.map { it.first }
+
+        if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
+            log.warn("Classes directory does not exist — run 'mvn compile' first.")
             return
         }
 
-        val classDirectories = listOf(classesDir)
         val projectClasses = scanProjectClasses(classDirectories)
 
         val result = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal)
@@ -84,5 +97,7 @@ class CyclesMojo : AbstractMojo() {
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
         depth?.let { put("dsm-depth", it) }
+        prodOnly?.let { put("prod-only", it) }
+        testOnly?.let { put("test-only", it) }
     }
 }

@@ -10,6 +10,8 @@ data class CyclesConfig(
     val packageFilter: PackageName,
     val includeExternal: Boolean,
     val depth: Int,
+    val prodOnly: Boolean,
+    val testOnly: Boolean,
     val format: OutputFormat,
 ) {
     fun deprecations(): List<String> = buildList {
@@ -29,6 +31,8 @@ data class CyclesConfig(
                 packageFilter = PackageName(resolvedFilter),
                 includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
                 depth = TaskRegistry.DSM_DEPTH.parseFrom(properties),
+                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
+                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
             )
         }
