@@ -4,6 +4,7 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.navigation.SourceSet
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
@@ -40,16 +41,29 @@ class PackageDepsMojo : AbstractMojo() {
     @Parameter(property = "reverse")
     private var reverse: String? = null
 
+    @Parameter(property = "prod-only")
+    private var prodOnly: String? = null
+
+    @Parameter(property = "test-only")
+    private var testOnly: String? = null
+
     override fun execute() {
         val config = PackageDepsConfig.parse(TaskRegistry.PACKAGE_DEPS.enhanceProperties(buildPropertyMap()))
 
-        val classesDir = File(project.build.outputDirectory)
-        if (!classesDir.exists()) {
-            log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
+        val taggedDirs = project.taggedClassDirectories()
+        val filteredDirs = when {
+            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
+            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
+            else -> taggedDirs
+        }
+        val classDirectories = filteredDirs.map { it.first }
+
+        if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
+            log.warn("Classes directory does not exist — run 'mvn compile' first.")
             return
         }
 
-        val result = CallGraphCache.getOrBuild(File(project.build.directory, "cnav/call-graph.cache"), listOf(classesDir))
+        val result = CallGraphCache.getOrBuild(File(project.build.directory, "cnav/call-graph.cache"), classDirectories)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val graph = result.data
@@ -83,5 +97,7 @@ class PackageDepsMojo : AbstractMojo() {
         packagePattern?.let { put("package", it) }
         projectOnly?.let { put("project-only", it) }
         reverse?.let { put("reverse", it) }
+        prodOnly?.let { put("prod-only", it) }
+        testOnly?.let { put("test-only", it) }
     }
 }

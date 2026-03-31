@@ -4,7 +4,9 @@ import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.dsm.PackageDepsConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class PackageDepsConfigTest {
 
@@ -59,5 +61,33 @@ class PackageDepsConfigTest {
         val config = PackageDepsConfig.parse(mapOf("llm" to "true"))
 
         assertEquals(OutputFormat.LLM, config.format)
+    }
+
+    @Test
+    fun `prodOnly defaults to false`() {
+        val config = PackageDepsConfig.parse(emptyMap())
+
+        assertFalse(config.prodOnly)
+    }
+
+    @Test
+    fun `testOnly defaults to false`() {
+        val config = PackageDepsConfig.parse(emptyMap())
+
+        assertFalse(config.testOnly)
+    }
+
+    @Test
+    fun `parses prodOnly=true`() {
+        val config = PackageDepsConfig.parse(mapOf("prod-only" to "true"))
+
+        assertTrue(config.prodOnly)
+    }
+
+    @Test
+    fun `parses testOnly=true`() {
+        val config = PackageDepsConfig.parse(mapOf("test-only" to "true"))
+
+        assertTrue(config.testOnly)
     }
 }
