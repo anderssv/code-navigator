@@ -34,10 +34,10 @@ class TypeHierarchyConfigTest {
     }
 
     @Test
-    fun `defaults projectOnly to false`() {
+    fun `defaults projectOnly to true`() {
         val config = TypeHierarchyConfig.parse(mapOf("pattern" to "MyService"))
 
-        assertEquals(false, config.projectOnly)
+        assertEquals(true, config.projectOnly)
     }
 
     @Test

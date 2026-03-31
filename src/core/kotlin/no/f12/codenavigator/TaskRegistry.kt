@@ -148,8 +148,7 @@ object TaskRegistry {
     val CALL_PATTERN = ParamDef("pattern", "<regex>", "Class.method name regex (camelCase-aware: MyService.doWork matches com.example.MyService.doWork)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
     val METHOD = ParamDef("method", "<regex>", "Method name regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth", flag = false, defaultValue = "3", enhancePattern = false, type = ParamType.INT)
-    val PROJECTONLY = ParamDef("project-only", "true", "Hide JDK/stdlib/library classes", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
-    val PROJECTONLY_ON = ParamDef("project-only", "true", "Hide JDK/stdlib/library classes (default: on)", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
+    val PROJECTONLY = ParamDef("project-only", "false", "Hide JDK/stdlib/library classes (default: on)", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val FILTER_SYNTHETIC = ParamDef("filter-synthetic", "false", "Set false to include synthetic methods (equals, hashCode, copy, componentN, etc.)", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val TOP = ParamDef("top", "<N>", "Max results", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
     val AFTER = ParamDef("after", "YYYY-MM-DD", "Only consider commits after this date", flag = false, defaultValue = "1 year ago", enhancePattern = false, type = ParamType.DATE)
@@ -300,7 +299,7 @@ object TaskRegistry {
     val RANK = TaskDef(
         goal = "rank",
         description = "Rank types by importance (PageRank on call graph)",
-        params = FORMAT_PARAMS + listOf(TOP, PROJECTONLY_ON, COLLAPSE_LAMBDAS, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(TOP, PROJECTONLY, COLLAPSE_LAMBDAS, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -358,7 +357,7 @@ object TaskRegistry {
     val COMPLEXITY = TaskDef(
         goal = "complexity",
         description = "Show fan-in/fan-out complexity per class",
-        params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY_ON, DETAIL, COLLAPSE_LAMBDAS, TOP, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY, DETAIL, COLLAPSE_LAMBDAS, TOP, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -415,7 +414,7 @@ object TaskRegistry {
     val CHANGED_SINCE = TaskDef(
         goal = "changed-since",
         description = "Show blast radius of changes since a git ref (changed classes and their callers)",
-        params = FORMAT_PARAMS + listOf(REF, PROJECTONLY_ON),
+        params = FORMAT_PARAMS + listOf(REF, PROJECTONLY),
         requiresCompilation = true,
         category = TaskCategory.HYBRID,
     )
@@ -423,7 +422,7 @@ object TaskRegistry {
     val CONTEXT = TaskDef(
         goal = "context",
         description = "Gather full context for a class: detail, callers, callees, interfaces",
-        params = FORMAT_PARAMS + listOf(PATTERN, CONTEXT_MAXDEPTH, PROJECTONLY_ON, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(PATTERN, CONTEXT_MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )

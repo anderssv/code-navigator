@@ -34,10 +34,10 @@ class PackageDepsConfigTest {
     }
 
     @Test
-    fun `defaults projectOnly to false`() {
+    fun `defaults projectOnly to true`() {
         val config = PackageDepsConfig.parse(emptyMap())
 
-        assertEquals(false, config.projectOnly)
+        assertEquals(true, config.projectOnly)
     }
 
     @Test

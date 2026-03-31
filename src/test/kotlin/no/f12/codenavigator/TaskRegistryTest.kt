@@ -759,13 +759,8 @@ class TaskRegistryTest {
     }
 
     @Test
-    fun `PROJECTONLY param defaults to false`() {
-        assertEquals("false", TaskRegistry.PROJECTONLY.defaultValue)
-    }
-
-    @Test
-    fun `PROJECTONLY_ON param defaults to true`() {
-        assertEquals("true", TaskRegistry.PROJECTONLY_ON.defaultValue)
+    fun `PROJECTONLY param defaults to true`() {
+        assertEquals("true", TaskRegistry.PROJECTONLY.defaultValue)
     }
 
     @Test

@@ -30,7 +30,7 @@ data class ContextConfig(
         fun parse(properties: Map<String, String?>): ContextConfig = ContextConfig(
             pattern = TaskRegistry.PATTERN.parseRequiredFrom(properties),
             maxDepth = TaskRegistry.CONTEXT_MAXDEPTH.parseFrom(properties),
-            projectOnly = TaskRegistry.PROJECTONLY_ON.parseFrom(properties),
+            projectOnly = TaskRegistry.PROJECTONLY.parseFrom(properties),
             filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
             prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
             testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),

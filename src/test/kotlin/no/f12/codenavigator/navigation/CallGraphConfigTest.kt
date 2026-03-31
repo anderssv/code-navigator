@@ -51,12 +51,12 @@ class CallGraphConfigTest {
     }
 
     @Test
-    fun `defaults projectOnly to false`() {
+    fun `defaults projectOnly to true`() {
         val config = CallGraphConfig.parse(
             mapOf("pattern" to "com.example.MyClass.myMethod", "maxdepth" to "3")
         )
 
-        assertEquals(false, config.projectOnly)
+        assertEquals(true, config.projectOnly)
     }
 
     @Test
