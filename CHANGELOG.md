@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.47
+
+- **Fixed:** Polymorphic dispatch resolution now runs inside the BFS alongside intra-class call propagation. Previously, methods discovered via intra-class calls (e.g. abstract method dispatched from `this.singleMatch()`) were never resolved to implementor overrides, causing false positive dead code reports. This was the #1 source of false positives in field testing.
+- **Fixed:** Inner class usage now propagates liveness to enclosing classes. `TokenError$ExitException` being used no longer leaves `TokenError` flagged as dead.
+- **New:** `DelegationMethodDetector` filters Kotlin delegation-generated methods from dead code results. Compares bytecode methods against Kotlin metadata to identify compiler-generated forwarding methods (e.g. `clear`, `put`, `remove` on a class delegating `Map`).
+- **New:** `BridgeMethodDetector` filters JVM bridge methods (`ACC_BRIDGE`) from dead code results. Bridge methods are generated for type erasure and covariant return types and are never meaningful dead code candidates.
+
 ## 0.1.46
 
 - **Breaking:** Renamed `exclude-framework` parameter to `treat-as-dead` with clearer semantics. Framework presets now explicitly mark matching entry points as dead code candidates rather than excluding them from analysis.

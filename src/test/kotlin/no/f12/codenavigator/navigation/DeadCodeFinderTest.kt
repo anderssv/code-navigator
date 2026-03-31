@@ -33,6 +33,8 @@ class DeadCodeFinderTest {
         testClasses: Set<ClassName> = emptySet(),
         classReceiverTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
         receiverTypeEntryPoints: Set<ClassName> = emptySet(),
+        delegationMethods: Set<MethodRef> = emptySet(),
+        bridgeMethods: Set<MethodRef> = emptySet(),
     ): List<DeadCode> = DeadCodeFinder.find(
         graph = graph,
         filter = filter,
@@ -53,6 +55,8 @@ class DeadCodeFinderTest {
         testClasses = testClasses,
         classReceiverTypes = classReceiverTypes,
         receiverTypeEntryPoints = receiverTypeEntryPoints,
+        delegationMethods = delegationMethods,
+        bridgeMethods = bridgeMethods,
     )
 
     @Test
@@ -736,6 +740,47 @@ class DeadCodeFinderTest {
         assertTrue("com.example.Orphan" in deadClasses, "Inline filtering only affects methods, not class-level dead code detection")
     }
 
+    // === Kotlin delegation method filtering tests ===
+
+    @Test
+    fun `delegation method is filtered from dead method results`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.DocoptResult", "get"),
+            method("com.example.DocoptResult", "clear") to method("java.util.Map", "clear"),
+            method("com.example.DocoptResult", "put") to method("java.util.Map", "put"),
+            projectClasses = setOf("com.example.Controller", "com.example.DocoptResult"),
+        )
+        val delegationMethods = setOf(
+            MethodRef(ClassName("com.example.DocoptResult"), "clear"),
+            MethodRef(ClassName("com.example.DocoptResult"), "put"),
+        )
+
+        val dead = findDead(graph, delegationMethods = delegationMethods)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.DocoptResult.clear" !in deadMethods, "clear() is a delegation method and should be filtered")
+        assertTrue("com.example.DocoptResult.put" !in deadMethods, "put() is a delegation method and should be filtered")
+    }
+
+    @Test
+    fun `non-delegation method is still reported as dead alongside delegation filtering`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.DocoptResult", "get"),
+            method("com.example.DocoptResult", "clear") to method("java.util.Map", "clear"),
+            method("com.example.DocoptResult", "reallyUnused") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Controller", "com.example.DocoptResult"),
+        )
+        val delegationMethods = setOf(
+            MethodRef(ClassName("com.example.DocoptResult"), "clear"),
+        )
+
+        val dead = findDead(graph, delegationMethods = delegationMethods)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.DocoptResult.reallyUnused" in deadMethods, "reallyUnused() is not a delegation method and should still be dead")
+        assertTrue("com.example.DocoptResult.clear" !in deadMethods, "clear() is a delegation method and should be filtered")
+    }
+
     // === External interface implementation flagging tests ===
 
     @Test
@@ -1253,6 +1298,157 @@ class DeadCodeFinderTest {
 
         val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
         assertTrue("com.example.UtilKt" in deadClassNames, "Kt class with non-matching receiver type should still be dead")
+    }
+
+    // === Inner class liveness propagation tests ===
+
+    @Test
+    fun `inner class used directly makes outer class alive`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.TokenError\$ExitException", "getMessage"),
+            method("com.example.TokenError", "parse") to method("com.example.External", "call"),
+            method("com.example.TokenError\$ExitException", "getMessage") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Controller", "com.example.TokenError", "com.example.TokenError\$ExitException"),
+        )
+
+        val dead = findDead(graph)
+
+        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        assertTrue("com.example.TokenError" !in deadClasses, "TokenError should be alive — its inner class ExitException is used")
+        assertTrue("com.example.TokenError\$ExitException" !in deadClasses, "ExitException is directly called so should not be dead")
+    }
+
+    @Test
+    fun `deeply nested inner class makes all ancestor classes alive`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Outer\$Middle\$Inner", "run"),
+            method("com.example.Outer", "doWork") to method("com.example.External", "call"),
+            method("com.example.Outer\$Middle", "doWork") to method("com.example.External", "call"),
+            method("com.example.Outer\$Middle\$Inner", "run") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Controller", "com.example.Outer", "com.example.Outer\$Middle", "com.example.Outer\$Middle\$Inner"),
+        )
+
+        val dead = findDead(graph)
+
+        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        assertTrue("com.example.Outer" !in deadClasses, "Outer should be alive — deeply nested inner class is used")
+        assertTrue("com.example.Outer\$Middle" !in deadClasses, "Middle should be alive — its inner class Inner is used")
+        assertTrue("com.example.Outer\$Middle\$Inner" !in deadClasses, "Inner is directly called")
+    }
+
+    // === Interface dispatch via intra-class call tests ===
+
+    @Test
+    fun `method called via intra-class dispatch then interface resolution is not dead`() {
+        // Pattern: LeafPattern.match() calls this.singleMatch() (intra-class call),
+        // and singleMatch has overrides in Argument, Command, Option.
+        // singleMatch on subclasses should NOT be dead.
+        val graph = testCallGraph(
+            method("com.example.Docopt", "doParse") to method("com.example.LeafPattern", "match"),
+            method("com.example.LeafPattern", "match") to method("com.example.LeafPattern", "singleMatch"),
+            method("com.example.Argument", "singleMatch") to method("com.example.External", "call"),
+            method("com.example.Command", "singleMatch") to method("com.example.External", "call"),
+            method("com.example.Option", "singleMatch") to method("com.example.External", "call"),
+            projectClasses = setOf(
+                "com.example.Docopt",
+                "com.example.LeafPattern",
+                "com.example.Argument",
+                "com.example.Command",
+                "com.example.Option",
+            ),
+        )
+        val interfaceImplementors = mapOf(
+            ClassName("com.example.LeafPattern") to setOf(
+                ClassName("com.example.Argument"),
+                ClassName("com.example.Command"),
+                ClassName("com.example.Option"),
+            ),
+        )
+
+        val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.Argument.singleMatch" !in deadMethods, "Argument.singleMatch should be alive via dispatch from LeafPattern.singleMatch")
+        assertTrue("com.example.Command.singleMatch" !in deadMethods, "Command.singleMatch should be alive via dispatch from LeafPattern.singleMatch")
+        assertTrue("com.example.Option.singleMatch" !in deadMethods, "Option.singleMatch should be alive via dispatch from LeafPattern.singleMatch")
+    }
+
+    @Test
+    fun `dispatch resolution propagates through multi-level hierarchy`() {
+        // Docopt.doParse -> Pattern.fix (cross-class call)
+        // Pattern -> BranchPattern -> Either/Required (two-level hierarchy)
+        // Pattern.fix has overrides in BranchPattern, which has overrides in Either/Required
+        val graph = testCallGraph(
+            method("com.example.Docopt", "doParse") to method("com.example.Pattern", "fix"),
+            method("com.example.BranchPattern", "fix") to method("com.example.External", "call"),
+            method("com.example.Either", "fix") to method("com.example.External", "call"),
+            method("com.example.Required", "fix") to method("com.example.External", "call"),
+            projectClasses = setOf(
+                "com.example.Docopt",
+                "com.example.Pattern",
+                "com.example.BranchPattern",
+                "com.example.Either",
+                "com.example.Required",
+            ),
+        )
+        val interfaceImplementors = mapOf(
+            ClassName("com.example.Pattern") to setOf(ClassName("com.example.BranchPattern")),
+            ClassName("com.example.BranchPattern") to setOf(
+                ClassName("com.example.Either"),
+                ClassName("com.example.Required"),
+            ),
+        )
+
+        val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.BranchPattern.fix" !in deadMethods, "BranchPattern.fix should be alive via dispatch from Pattern.fix")
+        assertTrue("com.example.Either.fix" !in deadMethods, "Either.fix should be alive via dispatch from BranchPattern.fix")
+        assertTrue("com.example.Required.fix" !in deadMethods, "Required.fix should be alive via dispatch from BranchPattern.fix")
+    }
+
+    // === Bridge method filtering tests ===
+
+    @Test
+    fun `bridge method is filtered from dead method results`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.DocoptResult", "get"),
+            method("com.example.DocoptResult", "entrySet") to method("java.util.Map", "entrySet"),
+            method("com.example.DocoptResult", "keySet") to method("java.util.Map", "keySet"),
+            method("com.example.DocoptResult", "size") to method("java.util.Map", "size"),
+            projectClasses = setOf("com.example.Controller", "com.example.DocoptResult"),
+        )
+        val bridgeMethods = setOf(
+            MethodRef(ClassName("com.example.DocoptResult"), "entrySet"),
+            MethodRef(ClassName("com.example.DocoptResult"), "keySet"),
+            MethodRef(ClassName("com.example.DocoptResult"), "size"),
+        )
+
+        val dead = findDead(graph, bridgeMethods = bridgeMethods)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.DocoptResult.entrySet" !in deadMethods, "entrySet() is a bridge method and should be filtered")
+        assertTrue("com.example.DocoptResult.keySet" !in deadMethods, "keySet() is a bridge method and should be filtered")
+        assertTrue("com.example.DocoptResult.size" !in deadMethods, "size() is a bridge method and should be filtered")
+    }
+
+    @Test
+    fun `non-bridge method is still reported as dead alongside bridge filtering`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.DocoptResult", "get"),
+            method("com.example.DocoptResult", "entrySet") to method("java.util.Map", "entrySet"),
+            method("com.example.DocoptResult", "reallyUnused") to method("com.example.External", "call"),
+            projectClasses = setOf("com.example.Controller", "com.example.DocoptResult"),
+        )
+        val bridgeMethods = setOf(
+            MethodRef(ClassName("com.example.DocoptResult"), "entrySet"),
+        )
+
+        val dead = findDead(graph, bridgeMethods = bridgeMethods)
+
+        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        assertTrue("com.example.DocoptResult.reallyUnused" in deadMethods, "reallyUnused() is not a bridge method and should still be dead")
+        assertTrue("com.example.DocoptResult.entrySet" !in deadMethods, "entrySet() is a bridge method and should be filtered")
     }
 
     @Test

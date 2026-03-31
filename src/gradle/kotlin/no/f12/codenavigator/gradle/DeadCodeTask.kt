@@ -7,9 +7,11 @@ import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.ClassName
+import no.f12.codenavigator.navigation.deadcode.BridgeMethodDetector
 import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFinder
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
+import no.f12.codenavigator.navigation.deadcode.DelegationMethodDetector
 import no.f12.codenavigator.navigation.deadcode.FieldExtractor
 import no.f12.codenavigator.navigation.deadcode.InlineMethodDetector
 import no.f12.codenavigator.navigation.deadcode.ReceiverTypeExtractor
@@ -68,6 +70,10 @@ abstract class DeadCodeTask : DefaultTask() {
 
         val inlineMethods = InlineMethodDetector.scanAll(classDirectories)
 
+        val delegationMethods = DelegationMethodDetector.scanAll(classDirectories)
+
+        val bridgeMethods = BridgeMethodDetector.scanAll(classDirectories)
+
         val classExternalInterfaces = interfaceRegistry.externalInterfacesOf(graph.projectClasses())
 
         val classReceiverTypes = ReceiverTypeExtractor.scanAll(classDirectories)
@@ -92,6 +98,8 @@ abstract class DeadCodeTask : DefaultTask() {
             classReceiverTypes = classReceiverTypes,
             receiverTypeEntryPoints = config.receiverTypeEntryPoints,
             testOnly = config.testOnly,
+            delegationMethods = delegationMethods,
+            bridgeMethods = bridgeMethods,
         )
 
         if (dead.isEmpty()) {

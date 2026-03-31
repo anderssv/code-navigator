@@ -1,5 +1,17 @@
 # Plan — Completed
 
+## ~~Dead code: polymorphic dispatch via intra-class calls~~ DONE
+
+Interface/abstract dispatch resolution now runs inside the same BFS as intra-class call propagation. Previously, dispatch resolution ran once before intra-class BFS, so methods discovered via intra-class edges (e.g. `LeafPattern.match` → `this.singleMatch`) were never dispatched to implementors. The unified BFS handles both: when a method becomes alive, it dispatches to all implementors AND follows intra-class call edges. Covers multi-level hierarchies (Pattern → BranchPattern → Either/Required). This was the #1 source of false positives in the v0.1.46 docopt-kotlin field test.
+
+## ~~Dead code: inner class liveness propagation~~ DONE
+
+After building `calledTypes`, walks `ClassName.outerClass()` for every alive class and adds ancestors. Fixes `TokenError` flagged dead even though `TokenError$ExitException` was actively used. ~10 lines in `DeadCodeFinder.find()`.
+
+## ~~Dead code: Kotlin delegation-generated methods~~ DONE
+
+`DelegationMethodDetector` compares bytecode methods against Kotlin metadata functions. Methods present in bytecode but absent from metadata (excluding bridge/synthetic/constructors) are delegation methods. Passed to `DeadCodeFinder` as `delegationMethods` parameter for filtering. `BridgeMethodDetector` separately scans for `ACC_BRIDGE` methods (JVM bridge methods for type erasure), passed as `bridgeMethods` parameter. Both wired into Gradle `DeadCodeTask` and Maven `DeadCodeMojo`.
+
 ## ~~1. `cnavContext` — smart context gathering for AI agents (High value)~~ DONE
 
 Given a class pattern, gathers everything an AI agent needs in a single invocation: class detail (signature, fields, methods, annotations), callers tree (depth-configurable), callees tree (depth-configurable), interface implementations, and implemented interfaces. Pure composition of existing features — no new analysis code. Reduces agent round-trips from 4-5 to 1.

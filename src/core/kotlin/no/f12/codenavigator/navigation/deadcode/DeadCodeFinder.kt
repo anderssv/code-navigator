@@ -55,6 +55,8 @@ object DeadCodeFinder {
         classReceiverTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
         receiverTypeEntryPoints: Set<ClassName> = emptySet(),
         testOnly: Boolean = false,
+        delegationMethods: Set<MethodRef> = emptySet(),
+        bridgeMethods: Set<MethodRef> = emptySet(),
     ): List<DeadCode> {
         val projectClasses = graph.projectClasses()
         if (projectClasses.isEmpty()) return emptyList()
@@ -81,24 +83,43 @@ object DeadCodeFinder {
             }
         }
 
-        // Resolve interface dispatch: when Interface.method() is called,
-        // mark the same method on all implementing classes as called too
-        for (calledMethod in calledMethods.toList()) {
-            val implementors = interfaceImplementors[calledMethod.className] ?: continue
-            for (implClass in implementors) {
-                if (implClass in projectClasses) {
-                    calledTypes.add(implClass)
-                    calledMethods.add(MethodRef(implClass, calledMethod.methodName))
-                }
+        // Propagate outer class liveness: if an inner class is alive,
+        // its enclosing classes should be too (e.g. TokenError$ExitException → TokenError)
+        for (cls in calledTypes.toList()) {
+            var outer = cls.outerClass()
+            while (outer != cls && outer.value.isNotEmpty() && outer in projectClasses) {
+                calledTypes.add(outer)
+                val next = outer.outerClass()
+                if (next == outer) break
+                outer = next
             }
         }
 
-        // Propagate liveness through intra-class calls: if a method is alive
-        // (called from outside the class) and it calls another method in the
-        // same class, that callee becomes alive too (transitive closure).
+        // Unified propagation: resolve interface dispatch AND intra-class calls
+        // in a single BFS. When a method becomes alive, we:
+        //   1. Dispatch it to all implementors (interface/abstract resolution)
+        //   2. Follow intra-class call edges to transitively mark callees alive
+        // This handles the case where an intra-class call discovers a method
+        // that needs dispatch (e.g. LeafPattern.match -> this.singleMatch ->
+        // Argument.singleMatch / Command.singleMatch / Option.singleMatch).
         val queue = ArrayDeque(calledMethods.filter { it in projectMethods })
         while (queue.isNotEmpty()) {
             val method = queue.removeFirst()
+
+            val implementors = interfaceImplementors[method.className]
+            if (implementors != null) {
+                for (implClass in implementors) {
+                    if (implClass in projectClasses) {
+                        calledTypes.add(implClass)
+                        val dispatched = MethodRef(implClass, method.methodName)
+                        if (dispatched !in calledMethods) {
+                            calledMethods.add(dispatched)
+                            queue.add(dispatched)
+                        }
+                    }
+                }
+            }
+
             val intraCallees = intraClassEdges[method] ?: continue
             for (callee in intraCallees) {
                 if (callee !in calledMethods) {
@@ -145,7 +166,9 @@ object DeadCodeFinder {
                     !method.className.isGenerated() &&
                     !method.isGenerated() &&
                     !isPropertyAccessor(method, classFields) &&
-                    method !in inlineMethods
+                    method !in inlineMethods &&
+                    method !in delegationMethods &&
+                    method !in bridgeMethods
                 ) {
                     val referencedInTests = method in testCalledMethods
                     val reason = if (testGraph != null && referencedInTests) DeadCodeReason.TEST_ONLY else DeadCodeReason.NO_REFERENCES
