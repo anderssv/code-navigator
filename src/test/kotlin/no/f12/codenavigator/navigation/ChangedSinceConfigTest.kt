@@ -4,6 +4,7 @@ import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.changedsince.ChangedSinceConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -56,5 +57,33 @@ class ChangedSinceConfigTest {
         val config = ChangedSinceConfig.parse(mapOf("format" to "json"))
 
         assertEquals(OutputFormat.JSON, config.format)
+    }
+
+    @Test
+    fun `prodOnly defaults to false`() {
+        val config = ChangedSinceConfig.parse(emptyMap())
+
+        assertFalse(config.prodOnly)
+    }
+
+    @Test
+    fun `testOnly defaults to false`() {
+        val config = ChangedSinceConfig.parse(emptyMap())
+
+        assertFalse(config.testOnly)
+    }
+
+    @Test
+    fun `parses prodOnly=true`() {
+        val config = ChangedSinceConfig.parse(mapOf("prod-only" to "true"))
+
+        assertTrue(config.prodOnly)
+    }
+
+    @Test
+    fun `parses testOnly=true`() {
+        val config = ChangedSinceConfig.parse(mapOf("test-only" to "true"))
+
+        assertTrue(config.testOnly)
     }
 }

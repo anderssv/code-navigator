@@ -4,6 +4,8 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.navigation.SourceSet
+import no.f12.codenavigator.navigation.SourceSetResolver
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.changedsince.ChangedSinceBuilder
 import no.f12.codenavigator.navigation.changedsince.ChangedSinceConfig
@@ -39,17 +41,25 @@ class ChangedSinceMojo : AbstractMojo() {
     @Parameter(property = "project-only")
     private var projectOnly: String? = null
 
-    override fun execute() {
-        val classesDir = File(project.build.outputDirectory)
-        if (!classesDir.exists()) {
-            log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
-            return
-        }
+    @Parameter(property = "prod-only")
+    private var prodOnly: String? = null
 
+    @Parameter(property = "test-only")
+    private var testOnly: String? = null
+
+    override fun execute() {
         val config = ChangedSinceConfig.parse(TaskRegistry.CHANGED_SINCE.enhanceProperties(buildPropertyMap()))
 
         if (config.ref == null) {
             log.error("Required parameter 'ref' not set. Usage: -Dref=<git-ref> (branch, tag, or commit SHA)")
+            return
+        }
+
+        val taggedDirs = project.taggedClassDirectories()
+        val resolver = SourceSetResolver.from(taggedDirs)
+
+        if (resolver.classDirectories.isEmpty() || resolver.classDirectories.none { it.exists() }) {
+            log.warn("Classes directory does not exist — run 'mvn compile' first.")
             return
         }
 
@@ -61,7 +71,7 @@ class ChangedSinceMojo : AbstractMojo() {
 
         val classInfos = ClassIndexCache.getOrBuild(
             File(project.build.directory, "cnav/class-index.cache"),
-            listOf(classesDir),
+            resolver.classDirectories,
         ).data
 
         val resolution = SourceFileResolver.resolve(gitPaths, classInfos)
@@ -76,16 +86,21 @@ class ChangedSinceMojo : AbstractMojo() {
             return
         }
 
-        val result = CallGraphCache.getOrBuild(File(project.build.directory, "cnav/call-graph.cache"), listOf(classesDir))
+        val result = CallGraphCache.getOrBuild(File(project.build.directory, "cnav/call-graph.cache"), resolver.classDirectories)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val graph = result.data
 
-        val impacts = ChangedSinceBuilder.build(
+        val allImpacts = ChangedSinceBuilder.build(
             changedClasses = resolution.resolved.keys,
             graph = graph,
             projectOnly = config.projectOnly,
         )
+        val impacts = when {
+            config.prodOnly -> allImpacts.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
+            config.testOnly -> allImpacts.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
+            else -> allImpacts
+        }
 
         println(
             OutputWrapper.formatAndWrap(
@@ -102,5 +117,7 @@ class ChangedSinceMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         ref?.let { put("ref", it) }
         projectOnly?.let { put("project-only", it) }
+        prodOnly?.let { put("prod-only", it) }
+        testOnly?.let { put("test-only", it) }
     }
 }

@@ -7,6 +7,8 @@ import no.f12.codenavigator.config.OutputFormat
 data class ChangedSinceConfig(
     val ref: String?,
     val projectOnly: Boolean,
+    val prodOnly: Boolean,
+    val testOnly: Boolean,
     val format: OutputFormat,
 ) {
     companion object {
@@ -14,6 +16,8 @@ data class ChangedSinceConfig(
             ChangedSinceConfig(
                 ref = TaskRegistry.REF.parseFrom(properties),
                 projectOnly = TaskRegistry.PROJECTONLY.parseFrom(properties),
+                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
+                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
             )
     }
