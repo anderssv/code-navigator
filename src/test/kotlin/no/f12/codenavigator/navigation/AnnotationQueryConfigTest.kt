@@ -53,16 +53,30 @@ class AnnotationQueryConfigTest {
     }
 
     @Test
-    fun `includeTest defaults to false`() {
+    fun `prodOnly defaults to false`() {
         val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test"))
 
-        assertFalse(config.includeTest)
+        assertFalse(config.prodOnly)
     }
 
     @Test
-    fun `parses includeTest=true`() {
-        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test", "include-test" to "true"))
+    fun `testOnly defaults to false`() {
+        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test"))
 
-        assertTrue(config.includeTest)
+        assertFalse(config.testOnly)
+    }
+
+    @Test
+    fun `parses prodOnly=true`() {
+        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test", "prod-only" to "true"))
+
+        assertTrue(config.prodOnly)
+    }
+
+    @Test
+    fun `parses testOnly=true`() {
+        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test", "test-only" to "true"))
+
+        assertTrue(config.testOnly)
     }
 }

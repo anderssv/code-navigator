@@ -4,6 +4,8 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.navigation.SourceSet
+import no.f12.codenavigator.navigation.SourceSetResolver
 import no.f12.codenavigator.navigation.annotation.AnnotationQueryBuilder
 import no.f12.codenavigator.navigation.annotation.AnnotationQueryConfig
 import no.f12.codenavigator.navigation.annotation.AnnotationQueryFormatter
@@ -38,6 +40,12 @@ class AnnotationsMojo : AbstractMojo() {
     @Parameter(property = "include-test")
     private var includeTest: String? = null
 
+    @Parameter(property = "prod-only")
+    private var prodOnly: String? = null
+
+    @Parameter(property = "test-only")
+    private var testOnly: String? = null
+
     override fun execute() {
         val config = try {
             AnnotationQueryConfig.parse(TaskRegistry.ANNOTATIONS.enhanceProperties(buildPropertyMap()))
@@ -47,22 +55,20 @@ class AnnotationsMojo : AbstractMojo() {
             )
         }
 
-        val classDirectories = mutableListOf<File>()
-        val classesDir = File(project.build.outputDirectory)
-        if (!classesDir.exists()) {
-            log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
+        val taggedDirs = project.taggedClassDirectories()
+        val resolver = SourceSetResolver.from(taggedDirs)
+
+        if (resolver.classDirectories.isEmpty() || resolver.classDirectories.none { it.exists() }) {
+            log.warn("Classes directory does not exist — run 'mvn compile' first.")
             return
         }
-        classDirectories.add(classesDir)
 
-        if (config.includeTest) {
-            val testClassesDir = File(project.build.testOutputDirectory)
-            if (testClassesDir.exists()) {
-                classDirectories.add(testClassesDir)
-            }
+        val allMatches = AnnotationQueryBuilder.query(resolver.classDirectories, config.pattern, config.methods)
+        val matches = when {
+            config.prodOnly -> allMatches.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
+            config.testOnly -> allMatches.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
+            else -> allMatches
         }
-
-        val matches = AnnotationQueryBuilder.query(classDirectories, config.pattern, config.methods)
 
         println(OutputWrapper.formatAndWrap(config.format,
             text = { AnnotationQueryFormatter.format(matches) },
@@ -77,5 +83,7 @@ class AnnotationsMojo : AbstractMojo() {
         pattern?.let { put("pattern", it) }
         methods?.let { put("methods", it) }
         includeTest?.let { put("include-test", it) }
+        prodOnly?.let { put("prod-only", it) }
+        testOnly?.let { put("test-only", it) }
     }
 }
