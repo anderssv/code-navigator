@@ -45,6 +45,13 @@ class InterfaceRegistry(
         interfaceToImplementors.forEach { (iface, impls) -> action(iface, impls) }
     }
 
+    fun filteredByImplementor(predicate: (ClassName) -> Boolean): InterfaceRegistry {
+        val filteredMap = interfaceToImplementors.mapValues { (_, impls) ->
+            impls.filter { predicate(it.className) }
+        }.filterValues { it.isNotEmpty() }
+        return InterfaceRegistry(filteredMap)
+    }
+
     fun implementorMap(): Map<ClassName, Set<ClassName>> =
         interfaceToImplementors.mapValues { (_, impls) -> impls.map { it.className }.toSet() }
 

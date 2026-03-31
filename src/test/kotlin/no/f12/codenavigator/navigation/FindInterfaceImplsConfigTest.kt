@@ -4,6 +4,8 @@ import no.f12.codenavigator.config.OutputFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class FindInterfaceImplsConfigTest {
 
@@ -11,7 +13,7 @@ class FindInterfaceImplsConfigTest {
     fun `parses all properties from map`() {
         val props = mapOf(
             "pattern" to "MyInterface",
-            "include-test" to "true",
+            "prod-only" to "true",
             "format" to "json",
             "llm" to "false",
         )
@@ -19,7 +21,7 @@ class FindInterfaceImplsConfigTest {
         val config = FindInterfaceImplsConfig.parse(props)
 
         assertEquals("MyInterface", config.pattern)
-        assertEquals(true, config.includeTest)
+        assertTrue(config.prodOnly)
         assertEquals(OutputFormat.JSON, config.format)
     }
 
@@ -33,10 +35,31 @@ class FindInterfaceImplsConfigTest {
     }
 
     @Test
-    fun `defaults includeTest to false`() {
+    fun `prodOnly defaults to false`() {
         val config = FindInterfaceImplsConfig.parse(mapOf("pattern" to "MyInterface"))
 
-        assertEquals(false, config.includeTest)
+        assertFalse(config.prodOnly)
+    }
+
+    @Test
+    fun `testOnly defaults to false`() {
+        val config = FindInterfaceImplsConfig.parse(mapOf("pattern" to "MyInterface"))
+
+        assertFalse(config.testOnly)
+    }
+
+    @Test
+    fun `parses prodOnly=true`() {
+        val config = FindInterfaceImplsConfig.parse(mapOf("pattern" to "MyInterface", "prod-only" to "true"))
+
+        assertTrue(config.prodOnly)
+    }
+
+    @Test
+    fun `parses testOnly=true`() {
+        val config = FindInterfaceImplsConfig.parse(mapOf("pattern" to "MyInterface", "test-only" to "true"))
+
+        assertTrue(config.testOnly)
     }
 
     @Test

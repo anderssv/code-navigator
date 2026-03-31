@@ -4,6 +4,8 @@ import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
 import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.navigation.SourceSet
+import no.f12.codenavigator.navigation.SourceSetResolver
 import no.f12.codenavigator.navigation.interfaces.FindInterfaceImplsConfig
 import no.f12.codenavigator.navigation.interfaces.InterfaceFormatter
 import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
@@ -36,6 +38,12 @@ class FindInterfaceImplsMojo : AbstractMojo() {
     @Parameter(property = "include-test")
     private var includeTest: String? = null
 
+    @Parameter(property = "prod-only")
+    private var prodOnly: String? = null
+
+    @Parameter(property = "test-only")
+    private var testOnly: String? = null
+
     override fun execute() {
         val config = try {
             FindInterfaceImplsConfig.parse(TaskRegistry.FIND_INTERFACES.enhanceProperties(buildPropertyMap()))
@@ -43,26 +51,24 @@ class FindInterfaceImplsMojo : AbstractMojo() {
             throw MojoFailureException(e.message)
         }
 
-        val classDirectories = mutableListOf<File>()
-        val classesDir = File(project.build.outputDirectory)
-        if (!classesDir.exists()) {
-            log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
+        val taggedDirs = project.taggedClassDirectories()
+        val resolver = SourceSetResolver.from(taggedDirs)
+
+        if (resolver.classDirectories.isEmpty() || resolver.classDirectories.none { it.exists() }) {
+            log.warn("Classes directory does not exist — run 'mvn compile' first.")
             return
         }
-        classDirectories.add(classesDir)
 
-        if (config.includeTest) {
-            val testClassesDir = File(project.build.testOutputDirectory)
-            if (testClassesDir.exists()) {
-                classDirectories.add(testClassesDir)
-            }
-        }
-
-        val cacheFileName = if (config.includeTest) "interface-registry-all.cache" else "interface-registry.cache"
-        val result = InterfaceRegistryCache.getOrBuild(File(project.build.directory, "cnav/$cacheFileName"), classDirectories)
+        val cacheFile = File(project.build.directory, "cnav/interface-registry-all.cache")
+        val result = InterfaceRegistryCache.getOrBuild(cacheFile, resolver.classDirectories)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
-        val registry = result.data
+
+        val registry = when {
+            config.prodOnly -> result.data.filteredByImplementor { resolver.sourceSetOf(it) == SourceSet.MAIN }
+            config.testOnly -> result.data.filteredByImplementor { resolver.sourceSetOf(it) == SourceSet.TEST }
+            else -> result.data
+        }
         val matchingInterfaces = registry.findInterfaces(config.pattern)
 
         if (matchingInterfaces.isEmpty()) {
@@ -82,5 +88,7 @@ class FindInterfaceImplsMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         includeTest?.let { put("include-test", it) }
+        prodOnly?.let { put("prod-only", it) }
+        testOnly?.let { put("test-only", it) }
     }
 }
