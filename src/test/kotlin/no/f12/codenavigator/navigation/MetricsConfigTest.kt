@@ -5,6 +5,7 @@ import no.f12.codenavigator.navigation.metrics.MetricsConfig
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MetricsConfigTest {
@@ -181,5 +182,35 @@ class MetricsConfigTest {
         val config = MetricsConfig.parse(mapOf("package-filter" to "com.example"))
 
         assertEquals(emptyList<String>(), config.deprecations())
+    }
+
+    // === prodOnly / testOnly ===
+
+    @Test
+    fun `prodOnly defaults to false`() {
+        val config = MetricsConfig.parse(emptyMap())
+
+        assertFalse(config.prodOnly)
+    }
+
+    @Test
+    fun `testOnly defaults to false`() {
+        val config = MetricsConfig.parse(emptyMap())
+
+        assertFalse(config.testOnly)
+    }
+
+    @Test
+    fun `parses prodOnly=true`() {
+        val config = MetricsConfig.parse(mapOf("prod-only" to "true"))
+
+        assertTrue(config.prodOnly)
+    }
+
+    @Test
+    fun `parses testOnly=true`() {
+        val config = MetricsConfig.parse(mapOf("test-only" to "true"))
+
+        assertTrue(config.testOnly)
     }
 }

@@ -7,6 +7,7 @@ import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.navigation.RootPackageDetector
+import no.f12.codenavigator.navigation.SourceSet
 import no.f12.codenavigator.navigation.scanProjectClasses
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
@@ -66,16 +67,28 @@ class MetricsMojo : AbstractMojo() {
     @Parameter(property = "exclude-framework")
     private var excludeFramework: String? = null
 
-    override fun execute() {
-        val classesDir = File(project.build.outputDirectory)
-        if (!classesDir.exists()) {
-            log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")
-            return
-        }
+    @Parameter(property = "prod-only")
+    private var prodOnly: String? = null
 
+    @Parameter(property = "test-only")
+    private var testOnly: String? = null
+
+    override fun execute() {
         val config = MetricsConfig.parse(TaskRegistry.METRICS.enhanceProperties(buildPropertyMap()))
         config.deprecations().forEach { log.warn(it) }
-        val classDirectories = listOf(classesDir)
+
+        val taggedDirs = project.taggedClassDirectories()
+        val filteredDirs = when {
+            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
+            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
+            else -> taggedDirs
+        }
+        val classDirectories = filteredDirs.map { it.first }
+
+        if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
+            log.warn("Classes directory does not exist — run 'mvn compile' first.")
+            return
+        }
 
         val graphResult = CallGraphCache.getOrBuild(File(project.build.directory, "cnav/call-graph.cache"), classDirectories)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
@@ -136,5 +149,7 @@ class MetricsMojo : AbstractMojo() {
         excludeAnnotated?.let { put("exclude-annotated", it) }
         excludeFramework?.let { put("exclude-framework", it) }
         if (noFollow) put("no-follow", null)
+        prodOnly?.let { put("prod-only", it) }
+        testOnly?.let { put("test-only", it) }
     }
 }

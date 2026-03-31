@@ -7,6 +7,7 @@ import no.f12.codenavigator.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.navigation.RootPackageDetector
+import no.f12.codenavigator.navigation.SourceSet
 import no.f12.codenavigator.navigation.scanProjectClasses
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
@@ -23,7 +24,6 @@ import no.f12.codenavigator.navigation.SkippedFileReporter
 import no.f12.codenavigator.navigation.rank.TypeRanker
 
 import org.gradle.api.DefaultTask
-import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
@@ -40,9 +40,13 @@ abstract class MetricsTask : DefaultTask() {
         val config = MetricsConfig.parse(props)
         config.deprecations().forEach { logger.warn(it) }
 
-        val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
-        val mainSourceSet = sourceSets.getByName("main")
-        val classDirectories = mainSourceSet.output.classesDirs.files.toList()
+        val taggedDirs = project.taggedClassDirectories()
+        val filteredDirs = when {
+            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
+            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
+            else -> taggedDirs
+        }
+        val classDirectories = filteredDirs.map { it.first }
 
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/call-graph.cache")
         val graphResult = CallGraphCache.getOrBuild(cacheFile, classDirectories)

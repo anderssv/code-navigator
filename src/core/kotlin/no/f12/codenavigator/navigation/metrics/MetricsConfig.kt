@@ -16,6 +16,8 @@ data class MetricsConfig(
     val includeExternal: Boolean,
     val excludeAnnotated: List<String>,
     val format: OutputFormat,
+    val prodOnly: Boolean,
+    val testOnly: Boolean,
 ) {
     fun deprecations(): List<String> = buildList {
         if (rootPackage.value.isNotEmpty() && packageFilter == rootPackage) {
@@ -44,6 +46,8 @@ data class MetricsConfig(
                 includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
                 excludeAnnotated = merged,
                 format = ParamDef.parseFormat(properties),
+                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
+                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
             )
         }
     }
