@@ -83,7 +83,7 @@ class MetricsConfigTest {
     fun `parses exclude-annotated from property map`() {
         val config = MetricsConfig.parse(mapOf(
             "exclude-annotated" to "Scheduled,EventListener",
-            "exclude-framework" to "ALL",
+            "treat-as-dead" to "ALL",
         ))
 
         assertEquals(listOf("Scheduled", "EventListener"), config.excludeAnnotated)
@@ -108,8 +108,8 @@ class MetricsConfigTest {
     }
 
     @Test
-    fun `exclude-framework=ALL results in empty excludeAnnotated`() {
-        val config = MetricsConfig.parse(mapOf("exclude-framework" to "ALL"))
+    fun `treat-as-dead=ALL results in empty excludeAnnotated`() {
+        val config = MetricsConfig.parse(mapOf("treat-as-dead" to "ALL"))
 
         assertEquals(emptyList<String>(), config.excludeAnnotated)
     }

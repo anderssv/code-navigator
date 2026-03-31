@@ -42,7 +42,7 @@ abstract class AnnotationsTask : DefaultTask() {
         }
 
         if (matches.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, AnnotationQueryFormatter.noResultsGuidance(config.pattern, config.methods)))
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No annotations matching '${config.pattern}' found.", AnnotationQueryFormatter.noResultsHints(config.pattern, config.methods)))
             return
         }
 

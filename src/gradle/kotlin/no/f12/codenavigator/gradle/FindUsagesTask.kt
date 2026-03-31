@@ -43,7 +43,9 @@ abstract class FindUsagesTask : DefaultTask() {
         val usages = config.filterBySourceSet(afterPackageFilter)
 
         if (usages.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, UsageFormatter.noResultsGuidance(config.ownerClass, config.method, config.field, config.type)))
+            val target = UsageFormatter.noResultsTarget(config.ownerClass, config.method, config.field, config.type)
+            val hints = UsageFormatter.noResultsHints(config.ownerClass, config.method, config.field, config.type)
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No usages found for '$target'.", hints))
             return
         }
 

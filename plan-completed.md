@@ -391,3 +391,15 @@ Large cross-cutting refactoring to make filtering/exclusion consistent across al
 **Converted tasks (Strategy B → C):** FindSymbol, FindInterfaces, Annotations.
 **Updated help text:** HelpText.kt and AgentHelpText.kt updated to reflect new model. Deprecated `include-test` references replaced with `prod-only`/`test-only`.
 **Test coverage:** Config tests for all converted tasks verify `prodOnly`/`testOnly` parsing and defaults. HelpTextTest updated to exclude deprecated params.
+
+## ~~Rename `exclude-framework` to `treat-as-dead`~~ DONE
+
+The `exclude-framework` parameter name had confusing inverted semantics: `-Pexclude-framework=spring` meant "remove Spring from the protection list" (treat Spring-annotated code as potentially dead), not "exclude Spring from scanning." Renamed to `treat-as-dead` which reads naturally: `-Ptreat-as-dead=spring` means "treat Spring-annotated code as potentially dead."
+
+**Changes**: `TaskRegistry.kt` (`EXCLUDE_FRAMEWORK` → `TREAT_AS_DEAD`, param name `"exclude-framework"` → `"treat-as-dead"`), `DeadCodeConfig.kt`, `MetricsConfig.kt`, `DeadCodeMojo.kt`, `MetricsMojo.kt` (`@Parameter(property = "treat-as-dead")`), `HelpText.kt`, `AgentHelpText.kt`, plus all corresponding tests (`DeadCodeConfigTest`, `MetricsConfigTest`, `TaskRegistryTest`).
+
+## ~~Uniform hint delivery with JSON/LLM output~~ DONE
+
+When a query returns no results, agents consuming JSON/LLM output previously received just `[]` — losing the actionable hints that TEXT output showed (e.g., "try -Pmethods=true"). Now `OutputWrapper.emptyResult()` accepts an optional `hints: List<String>` parameter and emits `{"results":[],"hints":["..."]}` for JSON/LLM output. TEXT output appends hints as plain text lines after the message.
+
+**Changes**: `OutputWrapper.emptyResult()` — new `hints` parameter with `emptyList()` default. `AnnotationQueryFormatter.noResultsHints()` and `UsageFormatter.noResultsTarget()` + `noResultsHints()` split from the old `noResultsGuidance()` methods. `AnnotationsTask.kt`, `FindUsagesTask.kt` (Gradle), and `FindUsagesMojo.kt` (Maven) updated to pass hints. `AgentHelpText.kt` schemas section documents the hint shape. Tests: 4 new `OutputWrapperTest` tests, updated `AnnotationQueryFormatterTest` and `UsageFormatterTest`.

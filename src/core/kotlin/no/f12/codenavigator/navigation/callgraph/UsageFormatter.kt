@@ -12,26 +12,24 @@ object UsageFormatter {
             }
     }
 
-    fun noResultsGuidance(ownerClass: String?, method: String?, field: String?, type: String?): String {
-        val target = buildString {
-            if (ownerClass != null) {
-                append(ownerClass)
-                if (method != null) append(".$method")
-                if (field != null) append(".$field")
-            } else {
-                append(type)
-            }
+    fun noResultsTarget(ownerClass: String?, method: String?, field: String?, type: String?): String = buildString {
+        if (ownerClass != null) {
+            append(ownerClass)
+            if (method != null) append(".$method")
+            if (field != null) append(".$field")
+        } else {
+            append(type)
         }
-        return buildString {
-            appendLine("No usages found for '$target'.")
-            appendLine("Hint: Short names and camelCase patterns are supported (e.g., MyService matches com.example.MyService).")
-            appendLine("Hint: For exact matching, use a fully-qualified class name (e.g., com.example.MyClass).")
-            if (ownerClass != null && method != null && field == null) {
-                appendLine("Hint: Try -Pfield=$method to also find getter/setter calls for Kotlin properties.")
-            }
-            if (ownerClass != null) {
-                appendLine("Hint: Try -Ptype=$ownerClass to also search type references, casts, and signatures.")
-            }
-        }.trimEnd()
+    }
+
+    fun noResultsHints(ownerClass: String?, method: String?, field: String?, type: String?): List<String> = buildList {
+        add("Short names and camelCase patterns are supported (e.g., MyService matches com.example.MyService).")
+        add("For exact matching, use a fully-qualified class name (e.g., com.example.MyClass).")
+        if (ownerClass != null && method != null && field == null) {
+            add("Try -Pfield=$method to also find getter/setter calls for Kotlin properties.")
+        }
+        if (ownerClass != null) {
+            add("Try -Ptype=$ownerClass to also search type references, casts, and signatures.")
+        }
     }
 }

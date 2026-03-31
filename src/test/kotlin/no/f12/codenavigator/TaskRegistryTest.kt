@@ -845,7 +845,7 @@ class TaskRegistryTest {
             "collapse-lambdas" to ParamType.BOOLEAN,
             "section" to ParamType.STRING,
             "ref" to ParamType.STRING,
-            "exclude-framework" to ParamType.LIST_STRING,
+            "treat-as-dead" to ParamType.LIST_STRING,
             "methods" to ParamType.BOOLEAN,
             "package-filter" to ParamType.STRING,
             "include-external" to ParamType.BOOLEAN,

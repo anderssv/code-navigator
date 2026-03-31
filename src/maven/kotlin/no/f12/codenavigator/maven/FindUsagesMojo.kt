@@ -75,7 +75,9 @@ class FindUsagesMojo : AbstractMojo() {
         val usages = config.filterBySourceSet(afterPackageFilter)
 
         if (usages.isEmpty()) {
-            println(UsageFormatter.noResultsGuidance(config.ownerClass, config.method, config.field, config.type))
+            val target = UsageFormatter.noResultsTarget(config.ownerClass, config.method, config.field, config.type)
+            val hints = UsageFormatter.noResultsHints(config.ownerClass, config.method, config.field, config.type)
+            println(OutputWrapper.emptyResult(config.format, "No usages found for '$target'.", hints))
             return
         }
 

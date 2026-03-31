@@ -9,10 +9,13 @@ object OutputWrapper {
             OutputFormat.JSON, OutputFormat.LLM -> "---CNAV_BEGIN---\n$output\n---CNAV_END---"
         }
 
-    fun emptyResult(format: OutputFormat, textMessage: String): String =
+    fun emptyResult(format: OutputFormat, textMessage: String, hints: List<String> = emptyList()): String =
         when (format) {
-            OutputFormat.TEXT -> textMessage
-            OutputFormat.JSON, OutputFormat.LLM -> wrap("[]", format)
+            OutputFormat.TEXT -> if (hints.isEmpty()) textMessage else textMessage + "\n" + hints.joinToString("\n")
+            OutputFormat.JSON, OutputFormat.LLM -> {
+                val hintsJson = hints.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" }
+                wrap("{\"results\":[],\"hints\":[$hintsJson]}", format)
+            }
         }
 
     fun formatAndWrap(

@@ -71,16 +71,69 @@ class OutputWrapperTest {
     }
 
     @Test
-    fun `emptyResult returns wrapped empty JSON array for JSON format`() {
+    fun `emptyResult returns wrapped JSON object with empty hints for JSON format`() {
         val result = OutputWrapper.emptyResult(OutputFormat.JSON, "No results found.")
 
-        assertEquals("---CNAV_BEGIN---\n[]\n---CNAV_END---", result)
+        assertEquals("---CNAV_BEGIN---\n{\"results\":[],\"hints\":[]}\n---CNAV_END---", result)
     }
 
     @Test
-    fun `emptyResult returns wrapped empty JSON array for LLM format`() {
+    fun `emptyResult returns wrapped JSON object with empty hints for LLM format`() {
         val result = OutputWrapper.emptyResult(OutputFormat.LLM, "No results found.")
 
-        assertEquals("---CNAV_BEGIN---\n[]\n---CNAV_END---", result)
+        assertEquals("---CNAV_BEGIN---\n{\"results\":[],\"hints\":[]}\n---CNAV_END---", result)
+    }
+
+    @Test
+    fun `emptyResult with hints returns JSON object with results and hints for JSON format`() {
+        val result = OutputWrapper.emptyResult(
+            OutputFormat.JSON,
+            "No annotations found.",
+            hints = listOf("Use -Pmethods=true to search method-level annotations."),
+        )
+
+        assertEquals(
+            "---CNAV_BEGIN---\n{\"results\":[],\"hints\":[\"Use -Pmethods=true to search method-level annotations.\"]}\n---CNAV_END---",
+            result,
+        )
+    }
+
+    @Test
+    fun `emptyResult with hints returns JSON object with results and hints for LLM format`() {
+        val result = OutputWrapper.emptyResult(
+            OutputFormat.LLM,
+            "No annotations found.",
+            hints = listOf("Hint one.", "Hint two."),
+        )
+
+        assertEquals(
+            "---CNAV_BEGIN---\n{\"results\":[],\"hints\":[\"Hint one.\",\"Hint two.\"]}\n---CNAV_END---",
+            result,
+        )
+    }
+
+    @Test
+    fun `emptyResult with hints appends hints to text message for TEXT format`() {
+        val result = OutputWrapper.emptyResult(
+            OutputFormat.TEXT,
+            "No annotations found.",
+            hints = listOf("Use -Pmethods=true to search method-level annotations."),
+        )
+
+        assertEquals(
+            "No annotations found.\nUse -Pmethods=true to search method-level annotations.",
+            result,
+        )
+    }
+
+    @Test
+    fun `emptyResult with multiple hints joins them with newlines for TEXT format`() {
+        val result = OutputWrapper.emptyResult(
+            OutputFormat.TEXT,
+            "No results.",
+            hints = listOf("Hint one.", "Hint two."),
+        )
+
+        assertEquals("No results.\nHint one.\nHint two.", result)
     }
 }

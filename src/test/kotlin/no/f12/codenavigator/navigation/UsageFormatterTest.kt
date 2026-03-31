@@ -121,45 +121,43 @@ class UsageFormatterTest {
         assertTrue(aIndex < zIndex, "Expected A before Z in sorted output")
     }
 
-    // [TEST] noResultsGuidance with ownerClass param suggests trying type
-    // [TEST] noResultsGuidance with type param suggests checking FQN
-    // [TEST] noResultsGuidance includes ownerClass.method in the message
+    // [TEST] noResultsHints with ownerClass param suggests trying type
+    // [TEST] noResultsHints with type param suggests checking FQN
+    // [TEST] noResultsTarget includes ownerClass.method
 
     @Test
-    fun `noResultsGuidance includes ownerClass and method in target`() {
-        val guidance = UsageFormatter.noResultsGuidance(ownerClass = "com.example.Target", method = "process", field = null, type = null)
+    fun `noResultsTarget includes ownerClass and method`() {
+        val target = UsageFormatter.noResultsTarget(ownerClass = "com.example.Target", method = "process", field = null, type = null)
 
-        assertTrue(guidance.contains("com.example.Target.process"), "Should include owner.method")
+        assertTrue(target.contains("com.example.Target.process"), "Should include owner.method")
     }
 
     @Test
-    fun `noResultsGuidance with type suggests checking FQN`() {
-        val guidance = UsageFormatter.noResultsGuidance(ownerClass = null, method = null, field = null, type = "ContextKt")
+    fun `noResultsHints with type suggests checking FQN`() {
+        val hints = UsageFormatter.noResultsHints(ownerClass = null, method = null, field = null, type = "ContextKt")
 
-        assertTrue(guidance.contains("ContextKt"), "Should include the target")
-        assertTrue(guidance.contains("fully-qualified"), "Should suggest checking FQN")
+        assertTrue(hints.any { it.contains("fully-qualified") }, "Should suggest checking FQN")
     }
 
     @Test
-    fun `noResultsGuidance with ownerClass suggests trying type`() {
-        val guidance = UsageFormatter.noResultsGuidance(ownerClass = "com.example.Target", method = null, field = null, type = null)
+    fun `noResultsHints with ownerClass suggests trying type`() {
+        val hints = UsageFormatter.noResultsHints(ownerClass = "com.example.Target", method = null, field = null, type = null)
 
-        assertTrue(guidance.contains("com.example.Target"), "Should include the target")
-        assertTrue(guidance.contains("type"), "Should suggest trying -Ptype")
+        assertTrue(hints.any { it.contains("type") }, "Should suggest trying -Ptype")
     }
 
     @Test
-    fun `noResultsGuidance with method suggests trying field`() {
-        val guidance = UsageFormatter.noResultsGuidance(ownerClass = "com.example.Target", method = "accountNumber", field = null, type = null)
+    fun `noResultsHints with method suggests trying field`() {
+        val hints = UsageFormatter.noResultsHints(ownerClass = "com.example.Target", method = "accountNumber", field = null, type = null)
 
-        assertTrue(guidance.contains("-Pfield=accountNumber"), "Should suggest trying -Pfield")
+        assertTrue(hints.any { it.contains("-Pfield=accountNumber") }, "Should suggest trying -Pfield")
     }
 
     @Test
-    fun `noResultsGuidance with field includes field in target`() {
-        val guidance = UsageFormatter.noResultsGuidance(ownerClass = "com.example.Target", method = null, field = "accountNumber", type = null)
+    fun `noResultsTarget with field includes field in target`() {
+        val target = UsageFormatter.noResultsTarget(ownerClass = "com.example.Target", method = null, field = "accountNumber", type = null)
 
-        assertTrue(guidance.contains("com.example.Target.accountNumber"), "Should include owner.field")
+        assertTrue(target.contains("com.example.Target.accountNumber"), "Should include owner.field")
     }
 
     @Test

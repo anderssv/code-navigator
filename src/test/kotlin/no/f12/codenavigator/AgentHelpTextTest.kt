@@ -660,4 +660,15 @@ class AgentHelpTextTest {
 
         assertContains(text, "section=setup")
     }
+
+    // --- Empty result / hint shape documentation ---
+
+    @Test
+    fun `schemas section documents empty result hint shape`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "schemas")
+
+        assertTrue(text.contains("\"results\""), "Should document the results field")
+        assertTrue(text.contains("\"hints\""), "Should document the hints field")
+        assertTrue(text.contains("Empty Results"), "Should have an Empty Results heading")
+    }
 }

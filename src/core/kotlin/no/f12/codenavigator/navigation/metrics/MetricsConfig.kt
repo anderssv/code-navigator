@@ -28,7 +28,7 @@ data class MetricsConfig(
     companion object {
         fun parse(properties: Map<String, String?>): MetricsConfig {
             val explicit = TaskRegistry.EXCLUDE_ANNOTATED.parseFrom(properties)
-            val excluded = TaskRegistry.EXCLUDE_FRAMEWORK.parseFrom(properties)
+            val excluded = TaskRegistry.TREAT_AS_DEAD.parseFrom(properties)
             val entryPoints = FrameworkPresets.resolveAllEntryPointsExcept(excluded)
             val modifiers = FrameworkPresets.resolveAllModifiersExcept(excluded)
             val merged = (explicit + entryPoints.map { it.value } + modifiers.map { it.value }).distinct()

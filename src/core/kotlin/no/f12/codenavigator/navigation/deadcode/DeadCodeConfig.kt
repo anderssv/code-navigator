@@ -19,7 +19,7 @@ data class DeadCodeConfig(
     companion object {
         fun parse(properties: Map<String, String?>): DeadCodeConfig {
             val explicit = TaskRegistry.EXCLUDE_ANNOTATED.parseFrom(properties)
-            val excluded = TaskRegistry.EXCLUDE_FRAMEWORK.parseFrom(properties)
+            val excluded = TaskRegistry.TREAT_AS_DEAD.parseFrom(properties)
             val entryPoints = FrameworkPresets.resolveAllEntryPointsExcept(excluded)
             val modifiers = FrameworkPresets.resolveAllModifiersExcept(excluded)
             val supertypes = FrameworkPresets.resolveAllSupertypeEntryPointsExcept(excluded)

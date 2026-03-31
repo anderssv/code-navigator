@@ -132,20 +132,18 @@ class AnnotationQueryFormatterTest {
     }
 
     @Test
-    fun `noResultsGuidance hints about methods flag when methods is false`() {
-        val result = AnnotationQueryFormatter.noResultsGuidance("Test", methods = false)
+    fun `noResultsGuidance includes methods hint when methods is false`() {
+        val hints = AnnotationQueryFormatter.noResultsHints("Test", methods = false)
 
-        assertTrue(result.contains("No annotations matching 'Test' found."))
-        assertTrue(result.contains("-Pmethods=true"))
-        assertTrue(result.contains("SOURCE retention"))
+        assertTrue(hints.any { it.contains("-Pmethods=true") })
+        assertTrue(hints.any { it.contains("SOURCE retention") })
     }
 
     @Test
     fun `noResultsGuidance omits methods hint when methods is true`() {
-        val result = AnnotationQueryFormatter.noResultsGuidance("Test", methods = true)
+        val hints = AnnotationQueryFormatter.noResultsHints("Test", methods = true)
 
-        assertTrue(result.contains("No annotations matching 'Test' found."))
-        assertTrue(!result.contains("-Pmethods=true"))
-        assertTrue(result.contains("SOURCE retention"))
+        assertTrue(hints.none { it.contains("-Pmethods=true") })
+        assertTrue(hints.any { it.contains("SOURCE retention") })
     }
 }

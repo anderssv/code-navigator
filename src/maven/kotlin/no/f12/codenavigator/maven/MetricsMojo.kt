@@ -64,8 +64,8 @@ class MetricsMojo : AbstractMojo() {
     @Parameter(property = "exclude-annotated")
     private var excludeAnnotated: String? = null
 
-    @Parameter(property = "exclude-framework")
-    private var excludeFramework: String? = null
+    @Parameter(property = "treat-as-dead")
+    private var treatAsDead: String? = null
 
     @Parameter(property = "prod-only")
     private var prodOnly: String? = null
@@ -147,7 +147,7 @@ class MetricsMojo : AbstractMojo() {
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
         excludeAnnotated?.let { put("exclude-annotated", it) }
-        excludeFramework?.let { put("exclude-framework", it) }
+        treatAsDead?.let { put("treat-as-dead", it) }
         if (noFollow) put("no-follow", null)
         prodOnly?.let { put("prod-only", it) }
         testOnly?.let { put("test-only", it) }

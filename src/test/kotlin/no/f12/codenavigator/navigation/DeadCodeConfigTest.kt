@@ -92,7 +92,7 @@ class DeadCodeConfigTest {
     fun `parses exclude-annotated from comma-separated string`() {
         val config = DeadCodeConfig.parse(mapOf(
             "exclude-annotated" to "RestController,Scheduled,Component",
-            "exclude-framework" to "ALL",
+            "treat-as-dead" to "ALL",
         ))
 
         assertEquals(listOf("RestController", "Scheduled", "Component"), config.excludeAnnotated)
@@ -100,7 +100,7 @@ class DeadCodeConfigTest {
 
     @Test
     fun `defaults exclude-annotated to empty list when absent`() {
-        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "ALL"))
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ALL"))
 
         assertTrue(config.excludeAnnotated.isEmpty())
     }
@@ -109,7 +109,7 @@ class DeadCodeConfigTest {
     fun `trims whitespace from exclude-annotated values`() {
         val config = DeadCodeConfig.parse(mapOf(
             "exclude-annotated" to " RestController , Scheduled ",
-            "exclude-framework" to "ALL",
+            "treat-as-dead" to "ALL",
         ))
 
         assertEquals(listOf("RestController", "Scheduled"), config.excludeAnnotated)
@@ -155,7 +155,7 @@ class DeadCodeConfigTest {
     }
 
     @Test
-    fun `exclude-framework merges with explicit exclude-annotated`() {
+    fun `treat-as-dead merges with explicit exclude-annotated`() {
         val config = DeadCodeConfig.parse(mapOf(
             "exclude-annotated" to "MyCustomAnnotation",
         ))
@@ -165,8 +165,8 @@ class DeadCodeConfigTest {
     }
 
     @Test
-    fun `exclude-framework=ALL results in empty excludeAnnotated`() {
-        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "ALL"))
+    fun `treat-as-dead=ALL results in empty excludeAnnotated`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ALL"))
 
         assertTrue(config.excludeAnnotated.isEmpty())
     }
@@ -180,15 +180,15 @@ class DeadCodeConfigTest {
     }
 
     @Test
-    fun `exclude-framework=ALL results in empty modifierAnnotated`() {
-        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "ALL"))
+    fun `treat-as-dead=ALL results in empty modifierAnnotated`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ALL"))
 
         assertTrue(config.modifierAnnotated.isEmpty())
     }
 
     @Test
-    fun `exclude-framework=spring excludes spring but keeps others`() {
-        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "spring"))
+    fun `treat-as-dead=spring excludes spring but keeps others`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "spring"))
 
         assertFalse(config.excludeAnnotated.contains("org.springframework.stereotype.Controller"))
         assertTrue(config.excludeAnnotated.contains("jakarta.ws.rs.GET"))
@@ -213,15 +213,15 @@ class DeadCodeConfigTest {
     }
 
     @Test
-    fun `exclude-framework=ALL results in empty supertypeEntryPoints`() {
-        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "ALL"))
+    fun `treat-as-dead=ALL results in empty supertypeEntryPoints`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ALL"))
 
         assertTrue(config.supertypeEntryPoints.isEmpty())
     }
 
     @Test
-    fun `exclude-framework=spring excludes spring supertypes but keeps quarkus`() {
-        val config = DeadCodeConfig.parse(mapOf("exclude-framework" to "spring"))
+    fun `treat-as-dead=spring excludes spring supertypes but keeps quarkus`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "spring"))
 
         assertFalse(config.supertypeEntryPoints.any { it.value == "org.springframework.data.jpa.repository.JpaRepository" })
         assertTrue(config.supertypeEntryPoints.any { it.value == "io.quarkus.hibernate.orm.panache.PanacheRepository" })
