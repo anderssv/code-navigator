@@ -571,6 +571,55 @@ class AgentHelpTextTest {
         assertTrue(text.contains("Result Interpretation"), "Should have a Result Interpretation section")
     }
 
+    @Test
+    fun `interpretation section contains DSM heuristics`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "interpretation")
+
+        assertContains(text, "DSM")
+        assertContains(text, "diagonal")
+        assertContains(text, "cycl")
+    }
+
+    @Test
+    fun `interpretation section contains distance heuristics`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "interpretation")
+
+        assertContains(text, "Distance")
+        assertContains(text, "distance=1")
+    }
+
+    @Test
+    fun `interpretation section contains cycles heuristics`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "interpretation")
+
+        assertContains(text, "Cycles")
+        assertContains(text, "Tarjan")
+    }
+
+    @Test
+    fun `interpretation section contains rank heuristics`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "interpretation")
+
+        assertContains(text, "Rank")
+        assertContains(text, "PageRank")
+    }
+
+    @Test
+    fun `interpretation section contains code-age and churn heuristics`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "interpretation")
+
+        assertContains(text, "Code age")
+        assertContains(text, "Churn")
+    }
+
+    @Test
+    fun `interpretation section contains metrics heuristics`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "interpretation")
+
+        assertContains(text, "Metrics")
+        assertContains(text, "snapshot")
+    }
+
     // --- Pattern Matching section ---
 
     @Test
