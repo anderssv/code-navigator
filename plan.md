@@ -237,6 +237,97 @@ Support Gradle's incremental task API (`@InputFiles`, `@OutputFile`, `InputChang
 
 ---
 
+## Abstractness per package — `[Balanced Coupling]`
+
+**Value: medium** | **Effort: low**
+
+Capture `ACC_ABSTRACT` and `ACC_INTERFACE` flags from bytecode during scanning. Compute per-package abstractness ratio: `A = (abstract classes + interfaces) / total classes`.
+
+- **Where**: Extend `DsmDependencyExtractor` (or `ClassInfoExtractor`) to record whether each class is abstract/interface.
+- **Output**: Per-package abstractness as a value between 0.0 (all concrete) and 1.0 (all abstract/interface).
+- **Why**: Abstractness is a prerequisite for integration strength classification and the balanced coupling heuristic. Also independently useful for Robert C. Martin package metrics (instability/abstractness).
+
+---
+
+## Integration strength classification — `[Balanced Coupling]`
+
+**Value: high** | **Effort: medium**
+
+Classify each inter-package dependency edge by the type of knowledge shared. Balanced Coupling defines four levels (from weakest to strongest):
+
+1. **Contract coupling**: dependency is against an interface or abstract type only.
+2. **Model coupling**: dependency is against a shared domain model (concrete type, but stable).
+3. **Functional coupling**: dependency involves calling behavior/logic, not just referencing types.
+4. **Intrusive coupling**: dependency accesses internal/private implementation details.
+
+- **Where**: Extend `DsmDependencyExtractor` to tag each `PackageDependency` with a strength level. ASM provides access flags (`ACC_INTERFACE`, `ACC_ABSTRACT`, `ACC_PUBLIC`) and the dependency kind (field type vs. method call vs. type cast) to approximate this classification.
+- **Heuristic**: Target is interface/abstract → contract. Target is concrete type used as field/parameter/return → model. Target is concrete type with method calls → functional. Target accessed via reflection or non-public members → intrusive.
+- **Prerequisite**: Abstractness per package (for detecting interface/abstract targets).
+
+---
+
+## Volatility per package — `[Balanced Coupling]`
+
+**Value: high** | **Effort: low-medium**
+
+Aggregate file-level git metrics (change frequency, churn) to the package level. Produces a per-package volatility score.
+
+- **Where**: New `PackageVolatilityBuilder` that maps file paths from `HotspotBuilder`/`ChurnBuilder` output to package names (using source set root + directory structure).
+- **Output**: `PackageVolatility(packageName, revisions, totalChurn, fileCount, avgRevisionsPerFile)` sorted by descending volatility.
+- **Parameters**: `-Psince=<git-ref>` (time window), `-Ptop=N`.
+- **Why**: Volatility is one of the three dimensions of Balanced Coupling. High-volatility packages require loose coupling; low-volatility packages can tolerate tight coupling without harm.
+
+---
+
+## Structural distance between packages — `[Balanced Coupling]`
+
+**Value: medium** | **Effort: low**
+
+Compute the distance between coupled packages. Distance represents how far knowledge must travel and how much coordination is needed to implement a change.
+
+- **Structural distance**: Package hierarchy hops between two coupled packages (e.g., `com.app.order` → `com.app.order.validation` = 1 hop, `com.app.order` → `com.app.infra.db` = 3 hops). Computable directly from package names.
+- **Module distance** (stretch goal): Whether packages live in the same Gradle subproject / Maven module or different ones. Requires multi-module project awareness.
+- **Where**: Utility function on top of `DsmMatrix` package pairs.
+- **Output**: Distance value per package-pair dependency edge.
+
+---
+
+## `cnavBalance` — balanced coupling analysis — `[Balanced Coupling]`
+
+**Value: high** | **Effort: medium**
+
+The composite Balanced Coupling heuristic. For each package pair, evaluate the three dimensions and flag imbalances:
+
+```
+modularity = strength XOR distance
+balance    = modularity OR NOT volatility
+```
+
+- **High strength + high distance + high volatility** → danger zone: tightly coupled across boundaries in fast-changing code. Suggest reducing distance (co-locate) or reducing strength (introduce contract/interface).
+- **Low strength + low distance + low volatility** → over-engineering: unnecessary indirection in stable, loosely coupled code. Suggest simplifying or merging.
+- **Balanced combinations** → no action needed.
+
+- **Inputs**: Integration strength (from classification), distance (from structural distance), volatility (from package volatility).
+- **Output**: Ranked list of package pairs by imbalance severity, with per-pair breakdown of all three dimensions and actionable suggestions.
+- **Parameters**: `-PpackageFilter=<prefix>`, `-Pformat=llm|json|text`, `-Ptop=N`.
+- **Prerequisites**: Integration strength classification, structural distance, volatility per package.
+
+---
+
+## Per-package health dashboard — `[Balanced Coupling]`
+
+**Value: medium** | **Effort: medium**
+
+Aggregate all per-package metrics into a single view: abstractness, volatility, coupling strength breakdown, distance profile, cycle involvement, and balance assessment.
+
+- **Where**: New builder that combines outputs from `DsmMatrixBuilder`, abstractness, volatility, and the balance heuristic.
+- **Output**: One row per package with columns for each metric dimension. Highlight packages that are imbalanced.
+- **Why**: Currently `MetricsBuilder` only produces project-level aggregates. Per-package breakdown is needed to act on Balanced Coupling findings.
+- **Could be**: A mode of `cnavMetrics` (`-Pby-package=true`) or a separate `cnavPackageHealth` task.
+- **Prerequisites**: Abstractness per package, volatility per package, `cnavBalance`.
+
+---
+
 ## Parked
 
 Items below are low-priority or may not be worth building. Revisit if demand emerges.
