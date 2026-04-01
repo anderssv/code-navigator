@@ -35,6 +35,8 @@ import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.annotation.MethodAnnotationMatch
 import no.f12.codenavigator.navigation.SourceSet
 import no.f12.codenavigator.navigation.context.ContextResult
+import no.f12.codenavigator.navigation.dsm.PackageDistanceEntry
+import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -897,6 +899,32 @@ class LlmFormatterTest {
         assertTrue(!result.contains("callees:"), "Should not have callees when empty")
         assertTrue(!result.contains("implementors:"), "Should not have implementors when empty")
         assertTrue(!result.contains("implements:"), "Should not have implements when empty")
+    }
+
+    // === Distance formatting ===
+
+    @Test
+    fun `formatDistance with empty result produces empty string`() {
+        val result = PackageDistanceResult(emptyList())
+
+        assertEquals("", LlmFormatter.formatDistance(result))
+    }
+
+    @Test
+    fun `formatDistance produces compact LLM lines`() {
+        val result = PackageDistanceResult(
+            listOf(
+                PackageDistanceEntry(PackageName("com.example.api"), PackageName("org.other.service"), 6, 3),
+                PackageDistanceEntry(PackageName("com.example.api"), PackageName("com.example.model"), 2, 5),
+            ),
+        )
+
+        val output = LlmFormatter.formatDistance(result)
+
+        assertEquals(
+            "com.example.api->org.other.service distance=6 deps=3\ncom.example.api->com.example.model distance=2 deps=5",
+            output,
+        )
     }
 
     private fun aContextResult(

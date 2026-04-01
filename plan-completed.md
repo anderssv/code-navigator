@@ -479,3 +479,19 @@ Added `DefaultJWTClaimsVerifier` and `JWTClaimsSetVerifier` to `KTOR_SUPERTYPES`
 `FindSymbolTask`, `FindClassTask`, `ListClassesTask`, and `CyclesTask` (plus their Maven counterparts) called `formatAndWrap()` directly without checking for empty results, producing bare `[]` in JSON/LLM mode instead of `{"results":[],"hints":[]}`. Added `isEmpty()` guards with `OutputWrapper.emptyResult()` calls to all 8 files (4 Gradle tasks + 4 Maven mojos).
 
 **Changes**: `FindSymbolTask.kt`, `FindClassTask.kt`, `ListClassesTask.kt`, `CyclesTask.kt`, `FindSymbolMojo.kt`, `FindClassMojo.kt`, `ListClassesMojo.kt`, `CyclesMojo.kt` — added empty-result guards.
+
+## ~~Structural distance between packages~~ DONE — `[Balanced Coupling]`
+
+**Value: medium** | **Effort: low**
+
+New standalone `cnavDistance` task computing structural distance between coupled packages. Distance represents how far knowledge must travel (package hierarchy hops) between two coupled packages.
+
+- **`PackageDistanceCalculator`** — pure function computing tree distance between two `PackageName`s.
+- **`PackageDistanceBuilder`** — takes a `DsmMatrix`, computes distances for all dependency edges, supports `top` and `packageFilter`.
+- **`PackageDistanceFormatter`** — TEXT format with `noResultsHints`.
+- **`PackageDistanceConfig`** — config data class parsing from property map.
+- **Output formats**: TEXT (`source → target  distance=N  deps=N`), JSON (`{source, target, distance, deps}`), LLM (compact `source->target distance=N deps=N`).
+- **Gradle task**: `PackageDistanceTask` registered as `cnavDistance`.
+- **Maven mojo**: `PackageDistanceMojo` with goal `distance`.
+
+**Changes**: New files: `PackageDistanceCalculator.kt`, `PackageDistanceBuilder.kt`, `PackageDistanceConfig.kt`, `PackageDistanceFormatter.kt`, `PackageDistanceTask.kt`, `PackageDistanceMojo.kt` + test files. Modified: `TaskRegistry.kt`, `JsonFormatter.kt`, `LlmFormatter.kt`, `HelpText.kt`, `AgentHelpText.kt`, `CodeNavigatorPlugin.kt`.

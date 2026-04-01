@@ -28,6 +28,7 @@ import no.f12.codenavigator.navigation.callgraph.UsageSite
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.context.ContextResult
+import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 
 @JvmInline
 private value class JsonRaw(val json: String)
@@ -356,6 +357,16 @@ object JsonFormatter {
             }),
             "implementedInterfaces" to JsonRaw(jsonStringArray(result.implementedInterfaces.map { it.toString() })),
         )
+
+    fun formatDistance(result: PackageDistanceResult): String =
+        jsonArray(result.entries) { entry ->
+            jsonObject(
+                "source" to entry.source.toString(),
+                "target" to entry.target.toString(),
+                "distance" to entry.distance,
+                "deps" to entry.dependencyCount,
+            )
+        }
 
     private fun renderCallNode(node: CallTreeNode): String {
         val children = jsonArray(node.children) { child -> renderCallNode(child) }

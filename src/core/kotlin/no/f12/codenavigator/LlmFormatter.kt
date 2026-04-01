@@ -32,6 +32,7 @@ import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.callgraph.AnnotationTag
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.context.ContextResult
+import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 
 object LlmFormatter {
 
@@ -238,6 +239,11 @@ object LlmFormatter {
             append("implements:${result.implementedInterfaces.joinToString(",")}")
         }
     }.trimEnd()
+
+    fun formatDistance(result: PackageDistanceResult): String =
+        result.entries.joinToString("\n") { entry ->
+            "${entry.source}->${entry.target} distance=${entry.distance} deps=${entry.dependencyCount}"
+        }
 
     fun formatDsm(matrix: DsmMatrix): String = buildString {
         append("packages:${matrix.packages.joinToString(",")}")

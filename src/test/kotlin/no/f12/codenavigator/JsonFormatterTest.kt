@@ -37,6 +37,8 @@ import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.annotation.MethodAnnotationMatch
 import no.f12.codenavigator.navigation.SourceSet
 import no.f12.codenavigator.navigation.context.ContextResult
+import no.f12.codenavigator.navigation.dsm.PackageDistanceEntry
+import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -1094,6 +1096,34 @@ class JsonFormatterTest {
 
         assertTrue(result.contains(""""implementedInterfaces""""), "Should have implementedInterfaces key")
         assertTrue(result.contains(""""com.example.Iface""""), "Should contain interface name")
+    }
+
+    // === Distance formatting ===
+
+    @Test
+    fun `formatDistance with empty result produces empty array`() {
+        val result = PackageDistanceResult(emptyList())
+
+        assertEquals("[]", JsonFormatter.formatDistance(result))
+    }
+
+    @Test
+    fun `formatDistance produces JSON with source target distance and deps`() {
+        val result = PackageDistanceResult(
+            listOf(
+                PackageDistanceEntry(PackageName("com.example.api"), PackageName("org.other.service"), 6, 3),
+                PackageDistanceEntry(PackageName("com.example.api"), PackageName("com.example.model"), 2, 5),
+            ),
+        )
+
+        val json = JsonFormatter.formatDistance(result)
+
+        assertTrue(json.contains("\"source\":\"com.example.api\""))
+        assertTrue(json.contains("\"target\":\"org.other.service\""))
+        assertTrue(json.contains("\"distance\":6"))
+        assertTrue(json.contains("\"deps\":3"))
+        assertTrue(json.contains("\"distance\":2"))
+        assertTrue(json.contains("\"deps\":5"))
     }
 
     private fun aContextResult(

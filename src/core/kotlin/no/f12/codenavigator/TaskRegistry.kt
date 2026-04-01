@@ -440,6 +440,14 @@ object TaskRegistry {
         category = TaskCategory.NAVIGATION,
     )
 
+    val DISTANCE = TaskDef(
+        goal = "distance",
+        description = "Compute structural distance between coupled packages",
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+    )
+
     val ALL_TASKS: List<TaskDef> = listOf(
         LIST_CLASSES,
         FIND_CLASS,
@@ -466,6 +474,7 @@ object TaskRegistry {
         COUPLING,
         CHANGED_SINCE,
         CONTEXT,
+        DISTANCE,
         HELP,
         AGENT_HELP,
         CONFIG_HELP,

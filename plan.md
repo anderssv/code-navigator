@@ -279,19 +279,6 @@ Aggregate file-level git metrics (change frequency, churn) to the package level.
 
 ---
 
-## Structural distance between packages — `[Balanced Coupling]`
-
-**Value: medium** | **Effort: low**
-
-Compute the distance between coupled packages. Distance represents how far knowledge must travel and how much coordination is needed to implement a change.
-
-- **Structural distance**: Package hierarchy hops between two coupled packages (e.g., `com.app.order` → `com.app.order.validation` = 1 hop, `com.app.order` → `com.app.infra.db` = 3 hops). Computable directly from package names.
-- **Module distance** (stretch goal): Whether packages live in the same Gradle subproject / Maven module or different ones. Requires multi-module project awareness.
-- **Where**: Utility function on top of `DsmMatrix` package pairs.
-- **Output**: Distance value per package-pair dependency edge.
-
----
-
 ## `cnavBalance` — balanced coupling analysis — `[Balanced Coupling]`
 
 **Value: high** | **Effort: medium**
