@@ -9,6 +9,7 @@ enum class TaskCategory {
     NAVIGATION,
     GIT_HISTORY,
     HYBRID,
+    COMPOSITE,
     HELP,
 }
 
@@ -475,7 +476,7 @@ object TaskRegistry {
         description = "Composite balanced coupling analysis: strength × distance × volatility",
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP, AFTER, MIN_REVS, NO_FOLLOW) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
-        category = TaskCategory.HYBRID,
+        category = TaskCategory.COMPOSITE,
         paramDefaultOverrides = mapOf("top" to "all"),
     )
 

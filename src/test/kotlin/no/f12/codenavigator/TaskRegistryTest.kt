@@ -690,9 +690,13 @@ class TaskRegistryTest {
     }
 
     @Test
-    fun `changed-since and balance have category HYBRID`() {
+    fun `changed-since has category HYBRID`() {
         assertEquals(TaskCategory.HYBRID, TaskRegistry.CHANGED_SINCE.category)
-        assertEquals(TaskCategory.HYBRID, TaskRegistry.BALANCE.category)
+    }
+
+    @Test
+    fun `balance has category COMPOSITE`() {
+        assertEquals(TaskCategory.COMPOSITE, TaskRegistry.BALANCE.category)
     }
 
     @Test
