@@ -248,19 +248,6 @@ Support Gradle's incremental task API (`@InputFiles`, `@OutputFile`, `InputChang
 
 ---
 
-## Volatility per package — `[Balanced Coupling]`
-
-**Value: high** | **Effort: low-medium**
-
-Aggregate file-level git metrics (change frequency, churn) to the package level. Produces a per-package volatility score.
-
-- **Where**: New `PackageVolatilityBuilder` that maps file paths from `HotspotBuilder`/`ChurnBuilder` output to package names (using source set root + directory structure).
-- **Output**: `PackageVolatility(packageName, revisions, totalChurn, fileCount, avgRevisionsPerFile)` sorted by descending volatility.
-- **Parameters**: `-Psince=<git-ref>` (time window), `-Ptop=N`.
-- **Why**: Volatility is one of the three dimensions of Balanced Coupling. High-volatility packages require loose coupling; low-volatility packages can tolerate tight coupling without harm.
-
----
-
 ## `cnavBalance` — balanced coupling analysis — `[Balanced Coupling]`
 
 **Value: high** | **Effort: medium**

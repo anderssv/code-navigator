@@ -545,3 +545,22 @@ DSM and Cycles tasks pass `config.packageFilter` directly to `DsmDependencyExtra
 - **Risk**: Must not reintroduce the double-filter bug (FIX 1). Source-side filtering at extraction is safe; target-side filtering remains at result level for Distance/Strength.
 
 **Changes**: Modified: `DsmDependencyExtractor.kt` (added `filterTargets` parameter), `PackageDistanceTask.kt`, `IntegrationStrengthTask.kt`, `PackageDistanceMojo.kt`, `IntegrationStrengthMojo.kt` (pass actual `packageFilter` with `filterTargets = false`). New tests: `DsmDependencyExtractorTest.kt` (4 tests).
+
+---
+
+## ~~Volatility per package~~ DONE — `[Balanced Coupling]`
+
+**Value: high** | **Effort: low-medium**
+
+Aggregates file-level git metrics (change frequency, churn) to the package level. Produces a per-package volatility score.
+
+- **`FileToPackageMapper`** — maps git file paths to package names by stripping known source roots (`src/main/kotlin/`, `src/main/java/`, `src/test/kotlin/`, `src/test/java/`). Files with unrecognized source roots are silently skipped.
+- **`PackageVolatilityBuilder`** — takes `HotspotBuilder` output (file-level) and aggregates to package level. Data types: `PackageVolatility(packageName, revisions, totalChurn, fileCount, avgRevisionsPerFile)` and `PackageVolatilityResult`.
+- **`PackageVolatilityFormatter`** — text table output.
+- **`VolatilityConfig`** — config parsing following `HotspotConfig` pattern.
+- **Output formats**: TEXT (table), JSON (array), LLM (compact key=value).
+- **Gradle task**: `PackageVolatilityTask` registered as `cnavVolatility`.
+- **Maven mojo**: `PackageVolatilityMojo` with goal `volatility`.
+- **Registered as task 31** in `TaskRegistry` under GIT_HISTORY category.
+
+**Changes**: New files: `FileToPackageMapper.kt`, `PackageVolatilityBuilder.kt`, `PackageVolatilityFormatter.kt`, `VolatilityConfig.kt`, `PackageVolatilityTask.kt`, `PackageVolatilityMojo.kt` + 4 test files (26 tests total). Modified: `TaskRegistry.kt`, `JsonFormatter.kt`, `LlmFormatter.kt`, `HelpText.kt`, `AgentHelpText.kt`, `CodeNavigatorPlugin.kt`, `TaskRegistryTest.kt`.
