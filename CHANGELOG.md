@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.51
+
+- **New:** `cnavVolatility` task / `cnav:volatility` goal — aggregates file-level git history to the package level. Shows which packages change most often, a key dimension of Balanced Coupling analysis. Parameters: `-Pafter=YYYY-MM-DD`, `-Pmin-revs=N`, `-Ptop=N`. TEXT, JSON, and LLM output formats.
+- **New:** `cnavBalance` task / `cnav:balance` goal — composite balanced coupling analysis combining strength × distance × volatility into a single verdict per package pair. Verdicts: BALANCED, TOLERABLE, OVER_ENGINEERED, DANGER. Requires both compiled code and git history. Parameters: `-Ppackage-filter=<regex>`, `-Ptop=N`, `-Pafter=YYYY-MM-DD`, `-Pmin-revs=N`.
+- **New:** `COMPOSITE` TaskCategory — distinguishes aggregated/composite analysis tasks (e.g. `balance`) from base analyses. `balance` reclassified from HYBRID to COMPOSITE.
+- **Improved:** Help text and agent help text now include a "Useful Combinations" section suggesting task combos for refactoring targets, architecture overview, change risk, and code review context.
+- **Improved:** Composite goals (e.g. `balance`) now list their base goals in parentheses in help text.
+- **Improved:** ConfigHelpText includes a "Composite Analysis" section for COMPOSITE category tasks.
+
 ## 0.1.50
 
 - **Refactoring:** Extracted `registry` package from root — `TaskRegistry`, `BuildTool`, `CacheFreshness` moved to `no.f12.codenavigator.registry`.
