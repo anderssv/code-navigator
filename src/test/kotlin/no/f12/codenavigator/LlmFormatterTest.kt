@@ -583,6 +583,24 @@ class LlmFormatterTest {
         assertTrue(result.contains("CYCLE x,y,z"))
     }
 
+    @Test
+    fun `formatCycles includes prefix line when displayPrefix is non-empty`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
+                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("service.Service") to ClassName("api.Controller"))),
+                ),
+            ),
+        )
+
+        val result = LlmFormatter.formatCycles(details, displayPrefix = PackageName("com.example"))
+
+        assertTrue(result.startsWith("prefix:com.example\n"), "Should start with prefix line, got:\n$result")
+        assertTrue(result.contains("CYCLE"), "Should contain cycle info")
+    }
+
     // === Annotation query formatting ===
 
     @Test
@@ -928,6 +946,129 @@ class LlmFormatterTest {
             "com.example.api->org.other.service distance=6 deps=3\ncom.example.api->com.example.model distance=2 deps=5",
             output,
         )
+    }
+
+    @Test
+    fun `formatDistance includes prefix line when displayPrefix is non-empty`() {
+        val result = PackageDistanceResult(
+            entries = listOf(
+                PackageDistanceEntry(PackageName("api"), PackageName("model"), 2, 3),
+            ),
+            displayPrefix = PackageName("com.example"),
+        )
+
+        val output = LlmFormatter.formatDistance(result)
+
+        assertTrue(output.startsWith("prefix:com.example\n"), "Should start with prefix line, got:\n$output")
+        assertTrue(output.contains("api->model"), "Should contain entry data")
+    }
+
+    @Test
+    fun `formatDistance omits prefix line when displayPrefix is empty`() {
+        val result = PackageDistanceResult(
+            entries = listOf(
+                PackageDistanceEntry(PackageName("api"), PackageName("model"), 2, 3),
+            ),
+            displayPrefix = PackageName(""),
+        )
+
+        val output = LlmFormatter.formatDistance(result)
+
+        assertTrue(!output.contains("prefix:"), "Should not contain prefix line when empty")
+    }
+
+    @Test
+    fun `formatDsm includes prefix line when displayPrefix is non-empty`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("model")),
+            cells = mapOf((PackageName("api") to PackageName("model")) to 3),
+            classDependencies = emptyMap(),
+            displayPrefix = PackageName("com.example"),
+        )
+
+        val output = LlmFormatter.formatDsm(matrix)
+
+        assertTrue(output.startsWith("prefix:com.example\n"), "Should start with prefix line, got:\n$output")
+        assertTrue(output.contains("packages:api,model"), "Should contain package list")
+    }
+
+    @Test
+    fun `formatDsmCycles includes prefix line when displayPrefix is non-empty`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("service")),
+            cells = mapOf(
+                (PackageName("api") to PackageName("service")) to 1,
+                (PackageName("service") to PackageName("api")) to 1,
+            ),
+            classDependencies = mapOf(
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("Controller") to ClassName("Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("Service") to ClassName("Controller")),
+            ),
+            displayPrefix = PackageName("com.example"),
+        )
+
+        val output = LlmFormatter.formatDsmCycles(matrix)
+
+        assertTrue(output.startsWith("prefix:com.example\n"), "Should start with prefix line, got:\n$output")
+        assertTrue(output.contains("CYCLE"), "Should contain cycle info")
+    }
+
+    // === Class name stripping tests ===
+
+    @Test
+    fun `formatDsm strips class names when displayPrefix is non-empty`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("model")),
+            cells = mapOf((PackageName("api") to PackageName("model")) to 3),
+            classDependencies = mapOf(
+                (PackageName("api") to PackageName("model")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.model.User")),
+            ),
+            displayPrefix = PackageName("com.example"),
+        )
+
+        val result = LlmFormatter.formatDsm(matrix)
+
+        assertTrue(result.contains("[api.Controller->model.User]"), "Should show stripped class names, got:\n$result")
+        assertTrue(!result.contains("com.example.api.Controller"), "Should not show full class name, got:\n$result")
+    }
+
+    @Test
+    fun `formatDsmCycles strips class names when displayPrefix is non-empty`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("service")),
+            cells = mapOf(
+                (PackageName("api") to PackageName("service")) to 1,
+                (PackageName("service") to PackageName("api")) to 1,
+            ),
+            classDependencies = mapOf(
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller")),
+            ),
+            displayPrefix = PackageName("com.example"),
+        )
+
+        val result = LlmFormatter.formatDsmCycles(matrix)
+
+        assertTrue(result.contains("api.Controller->service.Service"), "Should show stripped class names, got:\n$result")
+        assertTrue(!result.contains("com.example.api.Controller"), "Should not show full class name, got:\n$result")
+    }
+
+    @Test
+    fun `formatCycles strips class names when displayPrefix is non-empty`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service"))),
+                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller"))),
+                ),
+            ),
+        )
+
+        val result = LlmFormatter.formatCycles(details, displayPrefix = PackageName("com.example"))
+
+        assertTrue(result.contains("api.Controller->service.Service"), "Should show stripped class names, got:\n$result")
+        assertTrue(!result.contains("com.example.api.Controller"), "Should not show full class name, got:\n$result")
     }
 
     // === Strength formatting ===

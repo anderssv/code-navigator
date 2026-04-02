@@ -63,4 +63,74 @@ class CyclesFormatterTest {
         assertTrue(output.contains("CYCLE: x, y, z"))
         assertTrue(output.contains("\n\n"), "Cycles should be separated by blank line")
     }
+
+    @Test
+    fun `shows prefix header when displayPrefix is non-empty`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
+                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("service.Service") to ClassName("api.Controller"))),
+                ),
+            ),
+        )
+
+        val output = CyclesFormatter.format(details, displayPrefix = PackageName("com.example"))
+
+        assertTrue(output.contains("Common prefix: com.example"), "Should show common prefix header, got:\n$output")
+        assertTrue(output.contains("CYCLE:"), "Should still show cycle info")
+    }
+
+    @Test
+    fun `omits prefix header when displayPrefix is empty`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
+                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("service.Service") to ClassName("api.Controller"))),
+                ),
+            ),
+        )
+
+        val output = CyclesFormatter.format(details, displayPrefix = PackageName(""))
+
+        assertTrue(!output.contains("Common prefix:"), "Should not show prefix when empty")
+    }
+
+    @Test
+    fun `strips class names when displayPrefix is set`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service"))),
+                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller"))),
+                ),
+            ),
+        )
+
+        val output = CyclesFormatter.format(details, displayPrefix = PackageName("com.example"))
+
+        assertTrue(output.contains("api.Controller -> service.Service"), "Should show stripped class names, got:\n$output")
+        assertTrue(!output.contains("com.example.api.Controller"), "Should not show full class names, got:\n$output")
+    }
+
+    @Test
+    fun `shows full class names when displayPrefix is empty`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service"))),
+                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller"))),
+                ),
+            ),
+        )
+
+        val output = CyclesFormatter.format(details, displayPrefix = PackageName(""))
+
+        assertTrue(output.contains("com.example.api.Controller -> com.example.service.Service"), "Should show full class names when no prefix, got:\n$output")
+    }
 }

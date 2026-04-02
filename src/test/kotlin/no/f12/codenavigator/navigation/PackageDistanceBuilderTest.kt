@@ -122,4 +122,24 @@ class PackageDistanceBuilderTest {
         assertEquals(1, result.entries.size)
         assertEquals(3, result.entries.first().dependencyCount)
     }
+
+    @Test
+    fun `build forwards matrix displayPrefix to result`() {
+        val matrix = buildMatrix(
+            PackageDependency(PackageName("com.example.api"), PackageName("com.example.model"), ClassName("Ctrl"), ClassName("User")),
+        )
+
+        val result = PackageDistanceBuilder.build(matrix)
+
+        assertEquals(PackageName("com.example"), result.displayPrefix)
+    }
+
+    @Test
+    fun `build with empty matrix preserves empty displayPrefix`() {
+        val matrix = DsmMatrix(emptyList(), emptyMap(), emptyMap())
+
+        val result = PackageDistanceBuilder.build(matrix)
+
+        assertEquals(PackageName(""), result.displayPrefix)
+    }
 }

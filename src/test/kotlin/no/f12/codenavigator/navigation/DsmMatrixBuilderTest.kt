@@ -134,4 +134,33 @@ class DsmMatrixBuilderTest {
 
         assertEquals(listOf(PackageName("com.example.api"), PackageName("com.example.model")), matrix.packages)
     }
+
+    @Test
+    fun `build stores rootPrefix as displayPrefix`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.example.api"), PackageName("com.example.model"), ClassName("Ctrl"), ClassName("User")),
+        )
+
+        val matrix = DsmMatrixBuilder.build(deps, PackageName("com.example"), 1)
+
+        assertEquals(PackageName("com.example"), matrix.displayPrefix)
+    }
+
+    @Test
+    fun `build stores empty displayPrefix when rootPrefix is empty`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.example.api"), PackageName("com.example.model"), ClassName("Ctrl"), ClassName("User")),
+        )
+
+        val matrix = DsmMatrixBuilder.build(deps, PackageName(""), 3)
+
+        assertEquals(PackageName(""), matrix.displayPrefix)
+    }
+
+    @Test
+    fun `empty dependencies stores empty displayPrefix`() {
+        val matrix = DsmMatrixBuilder.build(emptyList(), PackageName("com.example"), 2)
+
+        assertEquals(PackageName(""), matrix.displayPrefix)
+    }
 }

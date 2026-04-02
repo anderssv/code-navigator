@@ -189,18 +189,23 @@ object LlmFormatter {
             }
         }
 
-    fun formatCycles(details: List<CycleDetail>): String {
+    fun formatCycles(details: List<CycleDetail>, displayPrefix: PackageName = PackageName("")): String {
         if (details.isEmpty()) return "(no cycles)"
 
-        return details.joinToString("\n") { detail ->
-            buildString {
-                append("CYCLE ${detail.packages.joinToString(",")}")
-                for (edge in detail.edges) {
-                    val classStr = edge.classEdges.sortedBy { "${it.first}-${it.second}" }
-                        .joinToString(",") { "${it.first}->${it.second}" }
-                    append("\n  ${edge.from}->${edge.to}: $classStr")
-                }
+        return buildString {
+            if (displayPrefix.isNotEmpty()) {
+                appendLine("prefix:$displayPrefix")
             }
+            append(details.joinToString("\n") { detail ->
+                buildString {
+                    append("CYCLE ${detail.packages.joinToString(",")}")
+                    for (edge in detail.edges) {
+                        val classStr = edge.classEdges.sortedBy { "${it.first}-${it.second}" }
+                            .joinToString(",") { "${it.first.stripPackagePrefix(displayPrefix)}->${it.second.stripPackagePrefix(displayPrefix)}" }
+                        append("\n  ${edge.from}->${edge.to}: $classStr")
+                    }
+                }
+            })
         }
     }
 
@@ -241,10 +246,14 @@ object LlmFormatter {
         }
     }.trimEnd()
 
-    fun formatDistance(result: PackageDistanceResult): String =
-        result.entries.joinToString("\n") { entry ->
-            "${entry.source}->${entry.target} distance=${entry.distance} deps=${entry.dependencyCount}"
+    fun formatDistance(result: PackageDistanceResult): String = buildString {
+        if (result.displayPrefix.isNotEmpty()) {
+            appendLine("prefix:${result.displayPrefix}")
         }
+        append(result.entries.joinToString("\n") { entry ->
+            "${entry.source}->${entry.target} distance=${entry.distance} deps=${entry.dependencyCount}"
+        })
+    }
 
     fun formatStrength(result: StrengthResult): String =
         result.entries.joinToString("\n") { entry ->
@@ -257,6 +266,10 @@ object LlmFormatter {
         }
 
     fun formatDsm(matrix: DsmMatrix): String = buildString {
+        val prefix = matrix.displayPrefix
+        if (prefix.isNotEmpty()) {
+            appendLine("prefix:$prefix")
+        }
         append("packages:${matrix.packages.joinToString(",")}")
         if (matrix.cells.isEmpty()) {
             append("\n(no dependencies)")
@@ -266,7 +279,7 @@ object LlmFormatter {
                 val classDeps = matrix.classDependencies[key]
                 if (!classDeps.isNullOrEmpty()) {
                     val classStr = classDeps.sortedBy { "${it.first}-${it.second}" }
-                        .joinToString(",") { "${it.first}->${it.second}" }
+                        .joinToString(",") { "${it.first.stripPackagePrefix(prefix)}->${it.second.stripPackagePrefix(prefix)}" }
                     append(" [$classStr]")
                 }
             }
@@ -281,19 +294,25 @@ object LlmFormatter {
     fun formatDsmCycles(matrix: DsmMatrix, cycleFilter: Pair<PackageName, PackageName>? = null): String {
         val cyclicPairs = matrix.findCyclicPairs(cycleFilter)
         if (cyclicPairs.isEmpty()) return "(no cycles)"
+        val prefix = matrix.displayPrefix
 
-        return cyclicPairs.joinToString("\n") { (a, b, counts) ->
-            val fwd = matrix.classDependencies[a to b]
-            val bwd = matrix.classDependencies[b to a]
-            val fwdStr = fwd?.sortedBy { "${it.first}-${it.second}" }
-                ?.joinToString(",") { "${it.first}->${it.second}" } ?: ""
-            val bwdStr = bwd?.sortedBy { "${it.first}-${it.second}" }
-                ?.joinToString(",") { "${it.first}->${it.second}" } ?: ""
-            buildString {
-                append("CYCLE $a<->$b ${counts.first}/${counts.second}")
-                if (fwdStr.isNotEmpty()) append("\n  $a->$b: $fwdStr")
-                if (bwdStr.isNotEmpty()) append("\n  $b->$a: $bwdStr")
+        return buildString {
+            if (prefix.isNotEmpty()) {
+                appendLine("prefix:$prefix")
             }
+            append(cyclicPairs.joinToString("\n") { (a, b, counts) ->
+                val fwd = matrix.classDependencies[a to b]
+                val bwd = matrix.classDependencies[b to a]
+                val fwdStr = fwd?.sortedBy { "${it.first}-${it.second}" }
+                    ?.joinToString(",") { "${it.first.stripPackagePrefix(prefix)}->${it.second.stripPackagePrefix(prefix)}" } ?: ""
+                val bwdStr = bwd?.sortedBy { "${it.first}-${it.second}" }
+                    ?.joinToString(",") { "${it.first.stripPackagePrefix(prefix)}->${it.second.stripPackagePrefix(prefix)}" } ?: ""
+                buildString {
+                    append("CYCLE $a<->$b ${counts.first}/${counts.second}")
+                    if (fwdStr.isNotEmpty()) append("\n  $a->$b: $fwdStr")
+                    if (bwdStr.isNotEmpty()) append("\n  $b->$a: $bwdStr")
+                }
+            })
         }
     }
 

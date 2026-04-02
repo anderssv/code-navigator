@@ -565,12 +565,12 @@ class JsonFormatterTest {
     // === DSM cycles-only formatting ===
 
     @Test
-    fun `dsm cycles-only with no cycles produces empty array`() {
+    fun `dsm cycles-only with no cycles produces object with empty cycles`() {
         val matrix = DsmMatrix(emptyList(), emptyMap(), emptyMap())
 
         val result = JsonFormatter.formatDsmCycles(matrix)
 
-        assertEquals("[]", result)
+        assertEquals("""{"cycles":[]}""", result)
     }
 
     @Test
@@ -769,14 +769,14 @@ class JsonFormatterTest {
     // === Cycles formatting ===
 
     @Test
-    fun `formatCycles returns empty array for no cycles`() {
+    fun `formatCycles returns object with empty cycles for no cycles`() {
         val result = JsonFormatter.formatCycles(emptyList())
 
-        assertEquals("[]", result)
+        assertEquals("""{"cycles":[]}""", result)
     }
 
     @Test
-    fun `formatCycles includes cycle packages and edges`() {
+    fun `formatCycles includes cycle packages and edges in object`() {
         val details = listOf(
             CycleDetail(
                 packages = listOf(PackageName("api"), PackageName("service")),
@@ -789,6 +789,8 @@ class JsonFormatterTest {
 
         val result = JsonFormatter.formatCycles(details)
 
+        assertTrue(result.startsWith("{"), "Should start with object, got: $result")
+        assertTrue(result.contains("\"cycles\":["), "Should contain cycles key")
         assertTrue(result.contains("\"packages\":[\"api\",\"service\"]"))
         assertTrue(result.contains("\"from\":\"api\""))
         assertTrue(result.contains("\"to\":\"service\""))
@@ -797,7 +799,7 @@ class JsonFormatterTest {
     }
 
     @Test
-    fun `formatCycles handles multiple cycles`() {
+    fun `formatCycles handles multiple cycles in object`() {
         val details = listOf(
             CycleDetail(
                 packages = listOf(PackageName("a"), PackageName("b")),
@@ -816,8 +818,9 @@ class JsonFormatterTest {
 
         val result = JsonFormatter.formatCycles(details)
 
-        assertTrue(result.startsWith("[{"))
-        assertTrue(result.endsWith("}]"))
+        assertTrue(result.startsWith("{"), "Should start with object, got: $result")
+        assertTrue(result.endsWith("}"), "Should end with object close")
+        assertTrue(result.contains("\"cycles\":["))
         assertTrue(result.contains("\"packages\":[\"a\",\"b\"]"))
         assertTrue(result.contains("\"packages\":[\"x\",\"y\",\"z\"]"))
     }
@@ -1104,10 +1107,10 @@ class JsonFormatterTest {
     // === Distance formatting ===
 
     @Test
-    fun `formatDistance with empty result produces empty array`() {
+    fun `formatDistance with empty result produces object with empty entries`() {
         val result = PackageDistanceResult(emptyList())
 
-        assertEquals("[]", JsonFormatter.formatDistance(result))
+        assertEquals("""{"entries":[]}""", JsonFormatter.formatDistance(result))
     }
 
     @Test
@@ -1127,6 +1130,35 @@ class JsonFormatterTest {
         assertTrue(json.contains("\"deps\":3"))
         assertTrue(json.contains("\"distance\":2"))
         assertTrue(json.contains("\"deps\":5"))
+    }
+
+    @Test
+    fun `formatDistance includes displayPrefix when non-empty`() {
+        val result = PackageDistanceResult(
+            entries = listOf(
+                PackageDistanceEntry(PackageName("api"), PackageName("model"), 2, 3),
+            ),
+            displayPrefix = PackageName("com.example"),
+        )
+
+        val json = JsonFormatter.formatDistance(result)
+
+        assertTrue(json.contains("\"displayPrefix\":\"com.example\""), "Should contain displayPrefix, got:\n$json")
+        assertTrue(json.contains("\"source\":\"api\""), "Should contain entry data")
+    }
+
+    @Test
+    fun `formatDistance omits displayPrefix when empty`() {
+        val result = PackageDistanceResult(
+            entries = listOf(
+                PackageDistanceEntry(PackageName("api"), PackageName("model"), 2, 3),
+            ),
+            displayPrefix = PackageName(""),
+        )
+
+        val json = JsonFormatter.formatDistance(result)
+
+        assertTrue(!json.contains("displayPrefix"), "Should not contain displayPrefix when empty")
     }
 
     // === Strength formatting ===
@@ -1181,6 +1213,67 @@ class JsonFormatterTest {
 
         assertTrue(json.contains("\"unknown\":5"))
         assertTrue(json.contains("\"totalDeps\":6"))
+    }
+
+    // === Class name stripping tests ===
+
+    @Test
+    fun `formatDsm strips class names when displayPrefix is set`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("model")),
+            cells = mapOf((PackageName("api") to PackageName("model")) to 1),
+            classDependencies = mapOf(
+                (PackageName("api") to PackageName("model")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.model.User")),
+            ),
+            displayPrefix = PackageName("com.example"),
+        )
+
+        val json = JsonFormatter.formatDsm(matrix)
+
+        assertTrue(json.contains("\"source\":\"api.Controller\""), "Should show stripped source class, got:\n$json")
+        assertTrue(json.contains("\"target\":\"model.User\""), "Should show stripped target class, got:\n$json")
+        assertTrue(!json.contains("\"source\":\"com.example.api.Controller\""), "Should not show full class name, got:\n$json")
+    }
+
+    @Test
+    fun `formatDsmCycles strips class names when displayPrefix is set`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("service")),
+            cells = mapOf(
+                (PackageName("api") to PackageName("service")) to 1,
+                (PackageName("service") to PackageName("api")) to 1,
+            ),
+            classDependencies = mapOf(
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller")),
+            ),
+            displayPrefix = PackageName("com.example"),
+        )
+
+        val json = JsonFormatter.formatDsmCycles(matrix)
+
+        assertTrue(json.contains("\"source\":\"api.Controller\""), "Should show stripped source class, got:\n$json")
+        assertTrue(json.contains("\"target\":\"service.Service\""), "Should show stripped target class, got:\n$json")
+        assertTrue(!json.contains("\"source\":\"com.example.api.Controller\""), "Should not show full class name, got:\n$json")
+    }
+
+    @Test
+    fun `formatCycles strips class names when displayPrefix is set`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service"))),
+                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller"))),
+                ),
+            ),
+        )
+
+        val json = JsonFormatter.formatCycles(details, displayPrefix = PackageName("com.example"))
+
+        assertTrue(json.contains("\"source\":\"api.Controller\""), "Should show stripped source class, got:\n$json")
+        assertTrue(json.contains("\"target\":\"service.Service\""), "Should show stripped target class, got:\n$json")
+        assertTrue(!json.contains("\"source\":\"com.example.api.Controller\""), "Should not show full class name, got:\n$json")
     }
 
     private fun aContextResult(

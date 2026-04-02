@@ -11,8 +11,14 @@ object PackageDistanceFormatter {
     fun format(result: PackageDistanceResult): String {
         if (result.entries.isEmpty()) return "No inter-package dependencies found."
 
-        return result.entries.joinToString("\n") { entry ->
-            "${entry.source} → ${entry.target}  distance=${entry.distance}  deps=${entry.dependencyCount}"
-        }
+        return buildString {
+            if (result.displayPrefix.isNotEmpty()) {
+                appendLine("Common prefix: ${result.displayPrefix} (stripped for readability)")
+                appendLine()
+            }
+            append(result.entries.joinToString("\n") { entry ->
+                "${entry.source} → ${entry.target}  distance=${entry.distance}  deps=${entry.dependencyCount}"
+            })
+        }.trimEnd()
     }
 }

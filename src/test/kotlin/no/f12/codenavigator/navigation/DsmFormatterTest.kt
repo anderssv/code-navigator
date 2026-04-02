@@ -146,10 +146,10 @@ class DsmFormatterTest {
 
         assertTrue(result.contains("CYCLE: api <-> service (2 refs / 1 ref)"))
         assertTrue(result.contains("  api -> service:"))
-        assertTrue(result.contains("    api.Controller -> service.Service"))
-        assertTrue(result.contains("    api.Filter -> service.Service"))
+        assertTrue(result.contains("    com.example.api.Controller -> com.example.service.Service"))
+        assertTrue(result.contains("    com.example.api.Filter -> com.example.service.Service"))
         assertTrue(result.contains("  service -> api:"))
-        assertTrue(result.contains("    service.Service -> api.Controller"))
+        assertTrue(result.contains("    com.example.service.Service -> com.example.api.Controller"))
     }
 
     @Test
@@ -256,6 +256,122 @@ class DsmFormatterTest {
     }
 
     // === noResultsHints tests ===
+
+    @Test
+    fun `format shows prefix header when displayPrefix is non-empty`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("model"), PackageName("web")),
+            cells = mapOf((PackageName("web") to PackageName("model")) to 2),
+            classDependencies = emptyMap(),
+            displayPrefix = PackageName("org.springframework.samples.petclinic"),
+        )
+
+        val result = DsmFormatter.format(matrix)
+
+        assertTrue(result.contains("Common prefix: org.springframework.samples.petclinic"), "Should show common prefix header, got:\n$result")
+        assertTrue(result.contains("=== Dependency Structure Matrix (DSM) ==="), "Should still show DSM header")
+    }
+
+    @Test
+    fun `format omits prefix header when displayPrefix is empty`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("model")),
+            cells = mapOf((PackageName("api") to PackageName("model")) to 1),
+            classDependencies = emptyMap(),
+            displayPrefix = PackageName(""),
+        )
+
+        val result = DsmFormatter.format(matrix)
+
+        assertTrue(!result.contains("Common prefix:"), "Should not show prefix header when empty")
+    }
+
+    @Test
+    fun `formatCycles shows prefix header when displayPrefix is non-empty`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("service")),
+            cells = mapOf(
+                (PackageName("api") to PackageName("service")) to 1,
+                (PackageName("service") to PackageName("api")) to 1,
+            ),
+            classDependencies = mapOf(
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller")),
+            ),
+            displayPrefix = PackageName("com.example"),
+        )
+
+        val result = DsmFormatter.formatCycles(matrix)
+
+        assertTrue(result.contains("Common prefix: com.example"), "Should show common prefix in cycles output, got:\n$result")
+        assertTrue(result.contains("CYCLE:"), "Should still show cycle info")
+    }
+
+    // === class name stripping tests ===
+
+    @Test
+    fun `format strips class names in cyclic dependency details when displayPrefix is set`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("service")),
+            cells = mapOf(
+                (PackageName("api") to PackageName("service")) to 1,
+                (PackageName("service") to PackageName("api")) to 1,
+            ),
+            classDependencies = mapOf(
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller")),
+            ),
+            displayPrefix = PackageName("com.example"),
+        )
+
+        val result = DsmFormatter.format(matrix)
+
+        assertTrue(result.contains("api.Controller"), "Should show stripped class name, got:\n$result")
+        assertTrue(result.contains("service.Service"), "Should show stripped class name, got:\n$result")
+        assertTrue(!result.contains("com.example.api.Controller"), "Should not show full class name, got:\n$result")
+    }
+
+    @Test
+    fun `format shows full class names when displayPrefix is empty`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("service")),
+            cells = mapOf(
+                (PackageName("api") to PackageName("service")) to 1,
+                (PackageName("service") to PackageName("api")) to 1,
+            ),
+            classDependencies = mapOf(
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller")),
+            ),
+            displayPrefix = PackageName(""),
+        )
+
+        val result = DsmFormatter.format(matrix)
+
+        assertTrue(result.contains("com.example.api.Controller"), "Should show full class name when no prefix, got:\n$result")
+    }
+
+    @Test
+    fun `formatCycles strips class names when displayPrefix is set`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("service")),
+            cells = mapOf(
+                (PackageName("api") to PackageName("service")) to 1,
+                (PackageName("service") to PackageName("api")) to 1,
+            ),
+            classDependencies = mapOf(
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("com.example.api.Controller") to ClassName("com.example.service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("com.example.service.Service") to ClassName("com.example.api.Controller")),
+            ),
+            displayPrefix = PackageName("com.example"),
+        )
+
+        val result = DsmFormatter.formatCycles(matrix)
+
+        assertTrue(result.contains("api.Controller"), "Should show stripped class name, got:\n$result")
+        assertTrue(result.contains("service.Service"), "Should show stripped class name, got:\n$result")
+        assertTrue(!result.contains("com.example.api.Controller"), "Should not show full class name, got:\n$result")
+    }
 
     @Test
     fun `noResultsHints mentions single-package when packageCount is 1`() {

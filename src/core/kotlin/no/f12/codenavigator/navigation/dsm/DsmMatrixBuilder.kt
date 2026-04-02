@@ -19,6 +19,7 @@ data class DsmMatrix(
     val packages: List<PackageName>,
     val cells: Map<Pair<PackageName, PackageName>, Int>,
     val classDependencies: Map<Pair<PackageName, PackageName>, Set<Pair<ClassName, ClassName>>>,
+    val displayPrefix: PackageName = PackageName(""),
 ) {
     fun findCyclicPairs(cycleFilter: Pair<PackageName, PackageName>? = null): List<Triple<PackageName, PackageName, Pair<Int, Int>>> {
         val allPairs = packages.flatMapIndexed { rowIdx, rowPkg ->
@@ -65,7 +66,7 @@ object DsmMatrixBuilder {
 
         val packages = (crossPackage.flatMap { listOf(it.first, it.second) }).distinct().sorted()
 
-        return DsmMatrix(packages, cells, classDeps)
+        return DsmMatrix(packages, cells, classDeps, displayPrefix = rootPrefix)
     }
 
 }

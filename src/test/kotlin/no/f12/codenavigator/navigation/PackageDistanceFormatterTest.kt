@@ -47,6 +47,36 @@ class PackageDistanceFormatterTest {
     }
 
     @Test
+    fun `shows prefix header when displayPrefix is non-empty`() {
+        val result = PackageDistanceResult(
+            entries = listOf(
+                PackageDistanceEntry(PackageName("model"), PackageName("web"), 2, 3),
+            ),
+            displayPrefix = PackageName("org.springframework.samples.petclinic"),
+        )
+
+        val output = PackageDistanceFormatter.format(result)
+
+        assertTrue(output.contains("Common prefix: org.springframework.samples.petclinic"), "Should show common prefix header, got:\n$output")
+        assertTrue(output.contains("model"), "Should still show package entries")
+    }
+
+    @Test
+    fun `omits prefix header when displayPrefix is empty`() {
+        val result = PackageDistanceResult(
+            entries = listOf(
+                PackageDistanceEntry(PackageName("api"), PackageName("model"), 2, 3),
+            ),
+            displayPrefix = PackageName(""),
+        )
+
+        val output = PackageDistanceFormatter.format(result)
+
+        assertTrue(!output.contains("Common prefix:"), "Should not show prefix header when empty")
+        assertTrue(output.contains("api"), "Should still show entries")
+    }
+
+    @Test
     fun `no-results hints when single package`() {
         val hints = PackageDistanceFormatter.noResultsHints(1)
 

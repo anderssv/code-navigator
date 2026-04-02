@@ -225,6 +225,32 @@ class ClassNameTest {
         assertEquals("com.example.MyService", ClassName("com.example.MyService").displayName())
     }
 
+    // --- stripPrefix ---
+
+    @Test
+    fun `stripPrefix removes matching prefix`() {
+        assertEquals(
+            ClassName("api.SetupKt"),
+            ClassName("com.example.myapp.api.SetupKt").stripPackagePrefix(PackageName("com.example.myapp")),
+        )
+    }
+
+    @Test
+    fun `stripPrefix returns same class when prefix does not match`() {
+        assertEquals(
+            ClassName("org.other.Service"),
+            ClassName("org.other.Service").stripPackagePrefix(PackageName("com.example.myapp")),
+        )
+    }
+
+    @Test
+    fun `stripPrefix returns same class when prefix is empty`() {
+        assertEquals(
+            ClassName("com.example.MyService"),
+            ClassName("com.example.MyService").stripPackagePrefix(PackageName("")),
+        )
+    }
+
     // --- packagePath ---
 
     @Test

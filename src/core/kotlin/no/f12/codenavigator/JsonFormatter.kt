@@ -171,6 +171,7 @@ object JsonFormatter {
         }
 
     fun formatDsm(matrix: DsmMatrix): String {
+        val prefix = matrix.displayPrefix
         val packages = jsonStringArray(matrix.packages.map { it.toString() })
         val cells = jsonArray(matrix.cells.entries.toList().sortedBy { "${it.key.first}-${it.key.second}" }) { (key, count) ->
             val classDeps = matrix.classDependencies[key]
@@ -180,7 +181,7 @@ object JsonFormatter {
                 "count" to count,
                 "classes" to JsonRaw(
                     jsonArray(classDeps?.toList()?.sortedBy { "${it.first}-${it.second}" } ?: emptyList()) { (src, tgt) ->
-                        jsonObject("source" to src.toString(), "target" to tgt.toString())
+                        jsonObject("source" to src.stripPackagePrefix(prefix).toString(), "target" to tgt.stripPackagePrefix(prefix).toString())
                     },
                 ),
             )
@@ -189,12 +190,14 @@ object JsonFormatter {
         val cyclesJson = jsonArray(cycles) { (a, b, counts) ->
             jsonObject("packageA" to a.toString(), "packageB" to b.toString(), "forwardRefs" to counts.first, "backwardRefs" to counts.second)
         }
-        return jsonObject("packages" to JsonRaw(packages), "cells" to JsonRaw(cells), "cycles" to JsonRaw(cyclesJson))
+        val prefixStr = if (prefix.isNotEmpty()) prefix.toString() else null
+        return jsonObject("displayPrefix" to prefixStr, "packages" to JsonRaw(packages), "cells" to JsonRaw(cells), "cycles" to JsonRaw(cyclesJson))
     }
 
     fun formatDsmCycles(matrix: DsmMatrix, cycleFilter: Pair<PackageName, PackageName>? = null): String {
         val cycles = matrix.findCyclicPairs(cycleFilter)
-        return jsonArray(cycles) { (a, b, counts) ->
+        val prefix = matrix.displayPrefix
+        val cyclesJson = jsonArray(cycles) { (a, b, counts) ->
             val fwdEdges = matrix.classDependencies[a to b]
             val bwdEdges = matrix.classDependencies[b to a]
             jsonObject(
@@ -204,16 +207,18 @@ object JsonFormatter {
                 "backwardRefs" to counts.second,
                 "forwardEdges" to JsonRaw(
                     jsonArray(fwdEdges?.toList()?.sortedBy { "${it.first}-${it.second}" } ?: emptyList()) { (src, tgt) ->
-                        jsonObject("source" to src.toString(), "target" to tgt.toString())
+                        jsonObject("source" to src.stripPackagePrefix(prefix).toString(), "target" to tgt.stripPackagePrefix(prefix).toString())
                     },
                 ),
                 "backwardEdges" to JsonRaw(
                     jsonArray(bwdEdges?.toList()?.sortedBy { "${it.first}-${it.second}" } ?: emptyList()) { (src, tgt) ->
-                        jsonObject("source" to src.toString(), "target" to tgt.toString())
+                        jsonObject("source" to src.stripPackagePrefix(prefix).toString(), "target" to tgt.stripPackagePrefix(prefix).toString())
                     },
                 ),
             )
         }
+        val prefixStr = if (prefix.isNotEmpty()) prefix.toString() else null
+        return jsonObject("displayPrefix" to prefixStr, "cycles" to JsonRaw(cyclesJson))
     }
 
     fun formatUsages(usages: List<UsageSite>): String =
@@ -312,8 +317,8 @@ object JsonFormatter {
             )
         }
 
-    fun formatCycles(details: List<CycleDetail>): String =
-        jsonArray(details) { detail ->
+    fun formatCycles(details: List<CycleDetail>, displayPrefix: PackageName = PackageName("")): String {
+        val cyclesJson = jsonArray(details) { detail ->
             jsonObject(
                 "packages" to JsonRaw(jsonStringArray(detail.packages.map { it.toString() })),
                 "edges" to JsonRaw(jsonArray(detail.edges) { edge ->
@@ -322,13 +327,16 @@ object JsonFormatter {
                         "to" to edge.to.toString(),
                         "classEdges" to JsonRaw(
                             jsonArray(edge.classEdges.toList().sortedBy { "${it.first}-${it.second}" }) { (src, tgt) ->
-                                jsonObject("source" to src.toString(), "target" to tgt.toString())
+                                jsonObject("source" to src.stripPackagePrefix(displayPrefix).toString(), "target" to tgt.stripPackagePrefix(displayPrefix).toString())
                             },
                         ),
                     )
                 }),
             )
         }
+        val prefix = if (displayPrefix.isNotEmpty()) displayPrefix.toString() else null
+        return jsonObject("displayPrefix" to prefix, "cycles" to JsonRaw(cyclesJson))
+    }
 
     fun formatMetrics(metrics: MetricsResult): String =
         jsonObject(
@@ -359,8 +367,8 @@ object JsonFormatter {
             "implementedInterfaces" to JsonRaw(jsonStringArray(result.implementedInterfaces.map { it.toString() })),
         )
 
-    fun formatDistance(result: PackageDistanceResult): String =
-        jsonArray(result.entries) { entry ->
+    fun formatDistance(result: PackageDistanceResult): String {
+        val entriesJson = jsonArray(result.entries) { entry ->
             jsonObject(
                 "source" to entry.source.toString(),
                 "target" to entry.target.toString(),
@@ -368,6 +376,9 @@ object JsonFormatter {
                 "deps" to entry.dependencyCount,
             )
         }
+        val prefix = if (result.displayPrefix.isNotEmpty()) result.displayPrefix.toString() else null
+        return jsonObject("displayPrefix" to prefix, "entries" to JsonRaw(entriesJson))
+    }
 
     fun formatStrength(result: StrengthResult): String =
         jsonArray(result.entries) { entry ->

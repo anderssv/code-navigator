@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation.dsm
 
+import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.PackageName
 
 object DsmFormatter {
@@ -13,8 +14,13 @@ object DsmFormatter {
     fun format(matrix: DsmMatrix): String {
         val packages = matrix.packages
         if (packages.isEmpty()) return "No inter-package dependencies found."
+        val prefix = matrix.displayPrefix
 
         return buildString {
+            if (prefix.isNotEmpty()) {
+                appendLine("Common prefix: $prefix (stripped for readability)")
+                appendLine()
+            }
             appendLine("=== Dependency Structure Matrix (DSM) ===")
             appendLine()
             appendLine("Legend:")
@@ -60,8 +66,8 @@ object DsmFormatter {
                     appendLine("  $a <-> $b  (${counts.first} refs / ${counts.second} refs)")
                     val fwd = matrix.classDependencies[a to b]
                     val bwd = matrix.classDependencies[b to a]
-                    fwd?.take(5)?.forEach { (src, tgt) -> appendLine("    $a.${src.simpleName()} -> $b.${tgt.simpleName()}") }
-                    bwd?.take(5)?.forEach { (src, tgt) -> appendLine("    $b.${src.simpleName()} -> $a.${tgt.simpleName()}") }
+                    fwd?.take(5)?.forEach { (src, tgt) -> appendLine("    ${src.stripPackagePrefix(prefix)} -> ${tgt.stripPackagePrefix(prefix)}") }
+                    bwd?.take(5)?.forEach { (src, tgt) -> appendLine("    ${src.stripPackagePrefix(prefix)} -> ${tgt.stripPackagePrefix(prefix)}") }
                 }
             }
         }.trimEnd()
@@ -70,8 +76,13 @@ object DsmFormatter {
     fun formatCycles(matrix: DsmMatrix, cycleFilter: Pair<PackageName, PackageName>? = null): String {
         val cyclicPairs = matrix.findCyclicPairs(cycleFilter)
         if (cyclicPairs.isEmpty()) return "No cyclic dependencies found."
+        val prefix = matrix.displayPrefix
 
         return buildString {
+            if (prefix.isNotEmpty()) {
+                appendLine("Common prefix: $prefix (stripped for readability)")
+                appendLine()
+            }
             cyclicPairs.forEachIndexed { idx, (a, b, counts) ->
                 if (idx > 0) appendLine()
                 val fwdLabel = if (counts.first == 1) "ref" else "refs"
@@ -80,12 +91,12 @@ object DsmFormatter {
                 appendLine("  $a -> $b:")
                 val fwd = matrix.classDependencies[a to b]
                 fwd?.sortedBy { "${it.first}-${it.second}" }?.forEach { (src, tgt) ->
-                    appendLine("    $a.${src.simpleName()} -> $b.${tgt.simpleName()}")
+                    appendLine("    ${src.stripPackagePrefix(prefix)} -> ${tgt.stripPackagePrefix(prefix)}")
                 }
                 appendLine("  $b -> $a:")
                 val bwd = matrix.classDependencies[b to a]
                 bwd?.sortedBy { "${it.first}-${it.second}" }?.forEach { (src, tgt) ->
-                    appendLine("    $b.${src.simpleName()} -> $a.${tgt.simpleName()}")
+                    appendLine("    ${src.stripPackagePrefix(prefix)} -> ${tgt.stripPackagePrefix(prefix)}")
                 }
             }
         }.trimEnd()

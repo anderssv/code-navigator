@@ -50,6 +50,13 @@ value class ClassName(val value: String) : Comparable<ClassName> {
 
     fun startsWith(prefix: PackageName): Boolean = value.startsWith(prefix.value)
 
+    fun stripPackagePrefix(prefix: PackageName): ClassName =
+        if (prefix.isNotEmpty() && value.startsWith("${prefix.value}.")) {
+            ClassName(value.removePrefix("${prefix.value}."))
+        } else {
+            this
+        }
+
     override fun compareTo(other: ClassName): Int = value.compareTo(other.value)
 
     override fun toString(): String = value

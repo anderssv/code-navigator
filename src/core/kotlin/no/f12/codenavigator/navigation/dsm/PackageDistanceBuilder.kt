@@ -11,6 +11,7 @@ data class PackageDistanceEntry(
 
 data class PackageDistanceResult(
     val entries: List<PackageDistanceEntry>,
+    val displayPrefix: PackageName = PackageName(""),
 )
 
 object PackageDistanceBuilder {
@@ -31,6 +32,6 @@ object PackageDistanceBuilder {
             .sortedWith(compareByDescending<PackageDistanceEntry> { it.distance }.thenBy { it.source }.thenBy { it.target })
             .take(top)
 
-        return PackageDistanceResult(entries)
+        return PackageDistanceResult(entries, displayPrefix = matrix.displayPrefix)
     }
 }

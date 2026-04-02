@@ -57,9 +57,9 @@ abstract class CyclesTask : DefaultTask() {
             return
         }
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { CyclesFormatter.format(details) },
-            json = { JsonFormatter.formatCycles(details) },
-            llm = { LlmFormatter.formatCycles(details) },
+            text = { CyclesFormatter.format(details, displayPrefix = displayPrefix) },
+            json = { JsonFormatter.formatCycles(details, displayPrefix = displayPrefix) },
+            llm = { LlmFormatter.formatCycles(details, displayPrefix = displayPrefix) },
         ))
     }
 }
