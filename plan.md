@@ -286,6 +286,42 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 
 ---
 
+## Extract shared orchestration from Gradle tasks and Maven mojos
+
+**Value: medium** | **Effort: low**
+
+`IntegrationStrengthTask.kt` and `IntegrationStrengthMojo.kt` duplicate ~17 lines of identical orchestration logic (extract → classify → format → output). `PackageDistanceTask.kt` and `PackageDistanceMojo.kt` duplicate ~20 lines. The only differences are config preamble (reading Gradle `-P` properties vs Maven `@Parameter` fields), report file path, and logging mechanism.
+
+- **Approach**: Extract shared orchestration functions (e.g., `runStrengthAnalysis(config, classDirs, logger) -> String`) into core. Gradle tasks and Maven mojos become thin wrappers that build the config from their respective property mechanisms and delegate to the shared function.
+- **Scope**: Start with Distance and Strength (smallest, most recently touched). If the pattern works well, apply to other task/mojo pairs.
+- **Benefits**: Bug fixes apply once. New features (e.g., a new output format) only need one code path.
+
+---
+
+## Make `DsmDependencyExtractor.packageFilter` nullable
+
+**Value: low** | **Effort: low**
+
+Four task/mojo files pass `PackageName("")` to `DsmDependencyExtractor.extractFromClassWithProjectFilter()` as a workaround for "no filter." The downstream APIs (`filterByPackage`, `StrengthClassifier.classify`) already accept `PackageName?` with null semantics. The extractor's `packageFilter` parameter should be `PackageName?` with null meaning "no filter."
+
+- **Approach**: Change `extractFromClassWithProjectFilter(packageFilter: PackageName)` to `PackageName?`. Update callers to pass `null` instead of `PackageName("")`. Update internal logic to skip `startsWith` check when null.
+- **Benefits**: Eliminates a magic value. Makes the API self-documenting.
+
+---
+
+## Lazy JAR scanning for external class classification
+
+**Value: medium** | **Effort: medium**
+
+When `include-external=true`, `ClassTypeCollector` only scans project class directories. External library classes aren't in the `classTypeRegistry`, so `classifyTarget` returns null and they're counted as `unknown`. The current workaround (FIX 5) tracks these as `unknownCount` and defaults all-unknown pairs to CONTRACT strength.
+
+- **Approach**: When a target class is not in the registry, lazily resolve its `.class` file from the runtime classpath JARs and classify it. Only scan the specific classes that appear in dependencies, not entire JARs.
+- **Reuses**: Classpath resolution infrastructure from the planned `cnavJar` feature. Consider doing `cnavJar` first.
+- **Benefits**: Eliminates `unknownCount` entirely. Strength classifications for external dependencies become accurate instead of defaulting to CONTRACT.
+- **Trade-off**: Adds JAR I/O during classification. Mitigate with a per-run cache of resolved classes.
+
+---
+
 ## Parked
 
 Items below are low-priority or may not be worth building. Revisit if demand emerges.

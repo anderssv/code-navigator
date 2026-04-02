@@ -517,3 +517,31 @@ Classification is based on the **target type**, not individual method calls. Whe
 - **Maven mojo**: `IntegrationStrengthMojo` with goal `strength`.
 
 **Changes**: New files: `ClassTypeCollector.kt`, `StrengthClassifier.kt`, `StrengthConfig.kt`, `StrengthFormatter.kt`, `IntegrationStrengthTask.kt`, `IntegrationStrengthMojo.kt` + test files (`ClassTypeCollectorTest.kt`, `StrengthClassifierTest.kt`, `StrengthConfigTest.kt`, `StrengthFormatterTest.kt`). Modified: `TaskRegistry.kt`, `JsonFormatter.kt`, `LlmFormatter.kt`, `HelpText.kt`, `AgentHelpText.kt`, `CodeNavigatorPlugin.kt`.
+
+---
+
+## Fix `top` default in AgentHelpText and HelpText
+
+**Value: medium** | **Effort: low**
+
+`TaskRegistry.TOP.defaultValue` is `"50"`, and `AgentHelpText.kt` / `HelpText.kt` render `default: 50` for all tasks that use the `top` parameter. However, Distance and Strength override the default to `Int.MAX_VALUE` (unlimited) in their `parseTop()` calls. An agent reading the help would wrongly believe it gets only 50 results from `cnavDistance` or `cnavStrength`.
+
+- **Approach**: Allow `ParamDef.defaultValue` to be overridden per-task in `TaskDef`. When rendering help, use the task-specific default if present, otherwise fall back to `ParamDef.defaultValue`. For Distance/Strength, the rendered default would be "unlimited" or "all".
+- **Alternative**: Duplicate the `TOP` param definition with a different default for Distance/Strength. Simpler but less DRY.
+
+**Implementation**: Added `paramDefaultOverrides: Map<String, String>` to `TaskDef` with `effectiveDefault(param)` helper. `DISTANCE` and `STRENGTH` have `paramDefaultOverrides = mapOf("top" to "all")`. `AgentHelpText.appendGlobalParameters()` groups tasks by effective default when defaults differ. `HelpText.paramDoc()` accepts optional `task` parameter for task-specific defaults.
+
+**Changes**: Modified: `TaskRegistry.kt` (added `paramDefaultOverrides` + `effectiveDefault()`), `AgentHelpText.kt` (grouped defaults), `HelpText.kt` (per-task defaults). New tests: `AgentHelpTextTest.kt` (1 test), `HelpTextTest.kt` (3 tests).
+
+---
+
+## Resolve extractor filtering asymmetry
+
+**Value: low** | **Effort: medium**
+
+DSM and Cycles tasks pass `config.packageFilter` directly to `DsmDependencyExtractor` (filtering during extraction), while Distance and Strength pass `PackageName("")` (no extraction-level filter) and filter afterwards. This means Distance and Strength extract more data than needed — they scan all project classes even when the user specified a `package-filter`.
+
+- **Approach**: Added `filterTargets: Boolean = true` parameter to `DsmDependencyExtractor.extract()` and `extractFromClassWithProjectFilter()`. When `filterTargets = false`, the target-side `startsWith(packageFilter)` check is skipped at extraction time. Distance/Strength pass the actual `packageFilter` with `filterTargets = false` (source-only filtering). DSM/Cycles unchanged (default `filterTargets = true`).
+- **Risk**: Must not reintroduce the double-filter bug (FIX 1). Source-side filtering at extraction is safe; target-side filtering remains at result level for Distance/Strength.
+
+**Changes**: Modified: `DsmDependencyExtractor.kt` (added `filterTargets` parameter), `PackageDistanceTask.kt`, `IntegrationStrengthTask.kt`, `PackageDistanceMojo.kt`, `IntegrationStrengthMojo.kt` (pass actual `packageFilter` with `filterTargets = false`). New tests: `DsmDependencyExtractorTest.kt` (4 tests).
