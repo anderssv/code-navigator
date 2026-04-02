@@ -26,21 +26,25 @@ src/
 
 ### Core packages (`src/core/kotlin/no/f12/codenavigator/`)
 
-**Root package** — shared infrastructure:
-- `TaskRegistry.kt` — `ParamDef`/`TaskDef` DSL, all task+param definitions
-- `BuildTool.kt` — goal-to-task-name mapping (Gradle/Maven)
-- `JsonFormatter.kt`, `LlmFormatter.kt`, `TableFormatter.kt` — output formatters
-- `OutputWrapper.kt` — wraps output with LLM markers
+**Root package** — help text only:
 - `AgentHelpText.kt` — generates `cnavAgentHelp` output
 - `HelpText.kt`, `ConfigHelpText.kt` — detailed help + config help
+
+**`registry/`** — task registration and build tool support:
+- `TaskRegistry.kt` — `ParamDef`/`TaskDef` DSL, all task+param definitions
+- `BuildTool.kt` — goal-to-task-name mapping (Gradle/Maven)
 - `CacheFreshness.kt` — cache staleness detection
+
+**`formatting/`** — output formatters:
+- `JsonFormatter.kt`, `LlmFormatter.kt`, `TableFormatter.kt` — output formatters
+- `OutputWrapper.kt` — wraps output with LLM markers
 
 **`config/`** — dependency-free leaf package:
 - `OutputFormat.kt` — `OutputFormat` enum (TEXT/JSON/LLM), imported by all `*Config` classes
 
 **`navigation/`** — bytecode-based analysis (requires compiled `classes`). Organized into sub-packages by feature:
 
-- **Shared root** (`navigation/`): `BytecodeReader.kt` (`ScanResult<T>`), `DomainTypes.kt` (`ClassName`, `MethodRef`), `FileCache.kt`, `KotlinMethodFilter.kt`, `LambdaCollapser.kt`, `PatternEnhancer.kt`, `SkippedFileReporter.kt`
+- **`core/`**: `BytecodeReader.kt` (`ScanResult<T>`), `DomainTypes.kt` (`ClassName`, `PackageName`, `AnnotationName`, `SourceSet`), `FileCache.kt`, `KotlinMethodFilter.kt`, `LambdaCollapser.kt`, `PatternEnhancer.kt`, `SkippedFileReporter.kt`, `ProjectClassScanner.kt`, `RootPackageDetector.kt`, `SourceSetResolver.kt`, `AnnotationParameterCollector.kt`
 - **`annotation/`**: `AnnotationExtractor`, `AnnotationQueryBuilder`, `AnnotationQueryConfig`, `AnnotationQueryFormatter`, `FrameworkPresets`
 - **`callgraph/`**: `CallGraphBuilder` (ASM → `CallGraph`), `CallGraphCache`, `CallGraphConfig`, `CallTreeBuilder` (→ `CallTreeNode`), `CallTreeFormatter`, `FindUsagesConfig`, `UsageFormatter`, `UsageScanner`
 - **`classinfo/`**: `ClassDetailExtractor`, `ClassDetailFormatter`, `ClassDetailScanner`, `ClassFilter`, `ClassIndexCache`, `ClassInfoExtractor`, `ClassScanner`, `FindClassConfig`, `FindClassDetailConfig`, `ListClassesConfig`
