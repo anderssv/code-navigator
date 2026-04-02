@@ -39,19 +39,14 @@ abstract class IntegrationStrengthTask : DefaultTask() {
 
         val projectClasses = scanProjectClasses(classDirectories)
 
-        // Pass 1: collect class kinds (interface, abstract, data class, record, concrete)
         val classTypeRegistry = ClassTypeCollector.collect(classDirectories)
 
-        // Pass 2: extract inter-package dependencies
-        val packageFilter = PackageName(config.packageFilter ?: "")
-        val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter, config.includeExternal)
+        val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, PackageName(""), config.includeExternal)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val dependencies = extractResult.data
 
-        // Classify strength per package pair
-        val packageFilterName = config.packageFilter?.let { PackageName(it) }
-        val result = StrengthClassifier.classify(dependencies, classTypeRegistry, config.top, packageFilterName)
+        val packageFilter = config.packageFilter?.let { PackageName(it) }
+        val result = StrengthClassifier.classify(extractResult.data, classTypeRegistry, config.top, packageFilter)
 
         if (result.entries.isEmpty()) {
             val packageCount = projectClasses.map { it.packageName() }.distinct().size

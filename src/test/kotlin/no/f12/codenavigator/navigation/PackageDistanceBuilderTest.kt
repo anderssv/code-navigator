@@ -4,7 +4,6 @@ import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
 import no.f12.codenavigator.navigation.dsm.PackageDependency
 import no.f12.codenavigator.navigation.dsm.PackageDistanceBuilder
-import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -83,16 +82,31 @@ class PackageDistanceBuilderTest {
     }
 
     @Test
-    fun `package filter restricts to matching packages`() {
+    fun `all pre-filtered entries are included without additional filtering`() {
         val matrix = buildMatrix(
             PackageDependency(PackageName("com.example.api"), PackageName("com.example.model"), ClassName("Ctrl"), ClassName("User")),
             PackageDependency(PackageName("com.example.service"), PackageName("com.example.repo"), ClassName("Svc"), ClassName("Repo")),
         )
 
-        val result = PackageDistanceBuilder.build(matrix, packageFilter = "api")
+        val result = PackageDistanceBuilder.build(matrix)
 
-        assertTrue(result.entries.all { it.source.value.contains("api") || it.target.value.contains("api") })
-        assertEquals(1, result.entries.size)
+        assertEquals(2, result.entries.size)
+    }
+
+    @Test
+    fun `pre-filtered matrix with shortened display names returns all entries`() {
+        val matrix = DsmMatrixBuilder.build(
+            listOf(
+                PackageDependency(PackageName("com.example.api"), PackageName("com.example.api.routes"), ClassName("Ctrl"), ClassName("Routes")),
+                PackageDependency(PackageName("com.example.api.routes"), PackageName("com.example.api"), ClassName("Routes"), ClassName("Ctrl")),
+            ),
+            PackageName("com.example"),
+            2,
+        )
+
+        val result = PackageDistanceBuilder.build(matrix)
+
+        assertEquals(2, result.entries.size)
     }
 
     @Test

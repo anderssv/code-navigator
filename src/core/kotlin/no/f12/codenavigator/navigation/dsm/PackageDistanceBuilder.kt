@@ -18,10 +18,7 @@ object PackageDistanceBuilder {
     fun build(
         matrix: DsmMatrix,
         top: Int = Int.MAX_VALUE,
-        packageFilter: String? = null,
     ): PackageDistanceResult {
-        val filterRegex = packageFilter?.let { Regex(it) }
-
         val entries = matrix.cells.map { (key, count) ->
             val (source, target) = key
             PackageDistanceEntry(
@@ -31,9 +28,6 @@ object PackageDistanceBuilder {
                 dependencyCount = count,
             )
         }
-            .filter { entry ->
-                filterRegex == null || entry.source.matches(filterRegex) || entry.target.matches(filterRegex)
-            }
             .sortedWith(compareByDescending<PackageDistanceEntry> { it.distance }.thenBy { it.source }.thenBy { it.target })
             .take(top)
 

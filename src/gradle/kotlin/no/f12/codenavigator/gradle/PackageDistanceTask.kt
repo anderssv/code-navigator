@@ -13,6 +13,7 @@ import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
 import no.f12.codenavigator.navigation.dsm.PackageDistanceBuilder
 import no.f12.codenavigator.navigation.dsm.PackageDistanceConfig
 import no.f12.codenavigator.navigation.dsm.PackageDistanceFormatter
+import no.f12.codenavigator.navigation.dsm.filterByPackage
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
@@ -40,15 +41,17 @@ abstract class PackageDistanceTask : DefaultTask() {
 
         val projectClasses = scanProjectClasses(classDirectories)
 
-        val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, PackageName(config.packageFilter ?: ""), config.includeExternal)
+        val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, PackageName(""), config.includeExternal)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val dependencies = extractResult.data
+
+        val packageFilter = config.packageFilter?.let { PackageName(it) }
+        val dependencies = extractResult.data.filterByPackage(packageFilter)
 
         val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
         val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)
 
-        val result = PackageDistanceBuilder.build(matrix, config.top, config.packageFilter)
+        val result = PackageDistanceBuilder.build(matrix, config.top)
 
         if (result.entries.isEmpty()) {
             val packageCount = projectClasses.map { it.packageName() }.distinct().size

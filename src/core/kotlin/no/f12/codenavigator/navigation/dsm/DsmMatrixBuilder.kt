@@ -10,6 +10,11 @@ data class PackageDependency(
     val targetClass: ClassName,
 )
 
+fun List<PackageDependency>.filterByPackage(packageFilter: PackageName?): List<PackageDependency> {
+    if (packageFilter == null || packageFilter.isEmpty()) return this
+    return filter { it.sourcePackage.startsWith(packageFilter) || it.targetPackage.startsWith(packageFilter) }
+}
+
 data class DsmMatrix(
     val packages: List<PackageName>,
     val cells: Map<Pair<PackageName, PackageName>, Int>,

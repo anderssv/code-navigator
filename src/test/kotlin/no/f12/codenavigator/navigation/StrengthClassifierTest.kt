@@ -225,4 +225,34 @@ class StrengthClassifierTest {
         assertEquals(1, result.entries.size)
         assertEquals(PackageName("com.app.api"), result.entries[0].source)
     }
+
+    @Test
+    fun `package filter includes edges where filtered package is the target`() {
+        val deps = listOf(
+            PackageDependency(
+                PackageName("com.app.api"), PackageName("com.app.domain"),
+                ClassName("com.app.api.Controller"), ClassName("com.app.domain.Order"),
+            ),
+            PackageDependency(
+                PackageName("com.app.domain"), PackageName("com.app.api"),
+                ClassName("com.app.domain.OrderFactory"), ClassName("com.app.api.ApiUtils"),
+            ),
+            PackageDependency(
+                PackageName("com.other.service"), PackageName("com.other.model"),
+                ClassName("com.other.service.Svc"), ClassName("com.other.model.Dto"),
+            ),
+        )
+        val registry = mapOf(
+            ClassName("com.app.domain.Order") to ClassKind.DATA_CLASS,
+            ClassName("com.app.api.ApiUtils") to ClassKind.CONCRETE,
+            ClassName("com.other.model.Dto") to ClassKind.DATA_CLASS,
+        )
+
+        val result = StrengthClassifier.classify(deps, registry, packageFilter = PackageName("com.app.api"))
+
+        assertEquals(2, result.entries.size)
+        val pairs = result.entries.map { it.source to it.target }.toSet()
+        assertTrue(pairs.contains(PackageName("com.app.api") to PackageName("com.app.domain")))
+        assertTrue(pairs.contains(PackageName("com.app.domain") to PackageName("com.app.api")))
+    }
 }

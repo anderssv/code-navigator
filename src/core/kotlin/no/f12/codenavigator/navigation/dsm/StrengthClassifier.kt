@@ -31,11 +31,7 @@ object StrengthClassifier {
         top: Int = Int.MAX_VALUE,
         packageFilter: PackageName? = null,
     ): StrengthResult {
-        val filtered = if (packageFilter != null && packageFilter.isNotEmpty()) {
-            dependencies.filter { it.sourcePackage.startsWith(packageFilter) }
-        } else {
-            dependencies
-        }
+        val filtered = dependencies.filterByPackage(packageFilter)
 
         val grouped = filtered.groupBy { it.sourcePackage to it.targetPackage }
 
