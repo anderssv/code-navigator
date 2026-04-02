@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.49
+
+- **New:** `cnavDistance` task / `cnav:distance` goal — measures structural distance between packages using shortest path in the dependency graph. Parameters: `-Ppackage-filter=<regex>` (scope), `-Ptop=N` (limit, default unlimited). TEXT, JSON, and LLM output formats with `displayPrefix` stripping.
+- **New:** `cnavStrength` task / `cnav:strength` goal — classifies integration strength between packages using Balanced Coupling heuristics. Categories: CONTRACT (interfaces/abstractions), MODEL (data/entity classes), FUNCTIONAL (direct logic coupling), UNKNOWN (external/unclassifiable). Parameters: `-Ppackage-filter=<regex>`, `-Ptop=N` (default unlimited). TEXT, JSON, and LLM output formats.
+- **New:** Framework entry point hints in `cnavFindCallers` — when a method annotated with framework annotations (e.g. `@GetMapping`, `@Test`, `@Scheduled`) shows `(no callers)`, an inline hint is appended explaining it is a framework entry point invoked at runtime. Prevents AI agents from misinterpreting framework entry points as dead code. Supported in all three output formats (TEXT, LLM, JSON).
+- **Improved:** LLM formatter now shows `(no callers)` / `(no callees)` messages for root nodes with empty children, matching TEXT format for consistency.
+- **Improved:** JPA-annotated classes (`@Entity`, `@Table`, `@MappedSuperclass`, etc.) are now classified as MODEL in integration strength analysis via `FrameworkPresets`.
+- **Improved:** Class name stripping — all formatters (TEXT, LLM, JSON) that use `displayPrefix` now also strip class names, not just package names. Applies to DSM, cycles, and DSM cycles output.
+- **Improved:** Interpretation heuristics added to `cnavAgentHelp` for DSM, cycles, distance, rank, code-age, churn, authors, and metrics tasks.
+- **Improved:** Distance and Strength tasks default `top` to unlimited (show all results). Other tasks retain `top=50` default. Help texts now show task-specific defaults.
+- **Improved:** Source-only extraction filtering for Distance/Strength — only project source classes are analyzed, excluding test and external dependencies.
+- **Fixed:** Unclassifiable external targets in strength analysis now tracked as UNKNOWN instead of incorrectly defaulting to FUNCTIONAL.
+- **Fixed:** Package-filter bugs in `cnavDistance` and `cnavStrength` — filter now correctly scopes both source and target packages.
+- **Fixed:** `top=0` now rejected with a clear error message instead of silently returning empty results.
+- **Fixed:** Override tasks excluded from base task list in `cnavAgentHelp` global params section.
+
 ## 0.1.48
 
 - **Fixed:** `cnavMetrics` dead code count now matches `cnavDead`. Previously, `MetricsTask`/`MetricsMojo` called `DeadCodeFinder.find()` without passing delegation methods, bridge methods, interface implementors, class fields, inline methods, external interfaces, or receiver types — producing inflated dead code counts (e.g. 46 vs 7).
