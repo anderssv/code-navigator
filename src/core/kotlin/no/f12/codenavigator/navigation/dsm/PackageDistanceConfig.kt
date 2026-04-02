@@ -14,14 +14,17 @@ data class PackageDistanceConfig(
     val format: OutputFormat,
 ) {
     companion object {
-        fun parse(properties: Map<String, String?>): PackageDistanceConfig = PackageDistanceConfig(
-            packageFilter = TaskRegistry.PACKAGE_FILTER.parseFrom(properties),
-            includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
-            depth = TaskRegistry.DSM_DEPTH.parseFrom(properties),
-            top = TaskRegistry.TOP.parseFrom(properties),
-            prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
-            testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
-            format = ParamDef.parseFormat(properties),
-        )
+        fun parse(properties: Map<String, String?>): PackageDistanceConfig {
+            val top = parseTop(properties)
+            return PackageDistanceConfig(
+                packageFilter = TaskRegistry.PACKAGE_FILTER.parseFrom(properties),
+                includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
+                depth = TaskRegistry.DSM_DEPTH.parseFrom(properties),
+                top = top,
+                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
+                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
+                format = ParamDef.parseFormat(properties),
+            )
+        }
     }
 }

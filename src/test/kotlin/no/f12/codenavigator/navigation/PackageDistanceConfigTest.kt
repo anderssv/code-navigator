@@ -4,6 +4,7 @@ import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.dsm.PackageDistanceConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -88,5 +89,31 @@ class PackageDistanceConfigTest {
         val config = PackageDistanceConfig.parse(mapOf("llm" to "true"))
 
         assertEquals(OutputFormat.LLM, config.format)
+    }
+
+    @Test
+    fun `top zero throws with clear message`() {
+        val exception = assertFailsWith<IllegalArgumentException> {
+            PackageDistanceConfig.parse(mapOf("top" to "0"))
+        }
+
+        assertTrue(exception.message!!.contains("top"))
+        assertTrue(exception.message!!.contains("Omit"))
+    }
+
+    @Test
+    fun `top unlimited parses to max int`() {
+        val config = PackageDistanceConfig.parse(mapOf("top" to "unlimited"))
+
+        assertEquals(Int.MAX_VALUE, config.top)
+    }
+
+    @Test
+    fun `top negative throws with clear message`() {
+        val exception = assertFailsWith<IllegalArgumentException> {
+            PackageDistanceConfig.parse(mapOf("top" to "-1"))
+        }
+
+        assertTrue(exception.message!!.contains("top"))
     }
 }
