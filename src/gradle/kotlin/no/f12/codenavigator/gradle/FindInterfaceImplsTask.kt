@@ -1,10 +1,10 @@
 package no.f12.codenavigator.gradle
 
-import no.f12.codenavigator.BuildTool
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.JsonFormatter
 import no.f12.codenavigator.LlmFormatter
 import no.f12.codenavigator.OutputWrapper
-import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.SourceSet
 import no.f12.codenavigator.navigation.SourceSetResolver
 import no.f12.codenavigator.navigation.interfaces.FindInterfaceImplsConfig

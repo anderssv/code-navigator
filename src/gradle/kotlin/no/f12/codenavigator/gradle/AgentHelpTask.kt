@@ -1,7 +1,7 @@
 package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.AgentHelpText
-import no.f12.codenavigator.BuildTool
+import no.f12.codenavigator.registry.BuildTool
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault

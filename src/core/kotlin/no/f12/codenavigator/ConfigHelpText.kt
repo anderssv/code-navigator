@@ -1,5 +1,11 @@
 package no.f12.codenavigator
 
+import no.f12.codenavigator.registry.BuildTool
+import no.f12.codenavigator.registry.ParamDef
+import no.f12.codenavigator.registry.TaskCategory
+import no.f12.codenavigator.registry.TaskDef
+import no.f12.codenavigator.registry.TaskRegistry
+
 object ConfigHelpText {
     fun generate(tool: BuildTool = BuildTool.GRADLE): String = buildString {
         val propType = when (tool) {

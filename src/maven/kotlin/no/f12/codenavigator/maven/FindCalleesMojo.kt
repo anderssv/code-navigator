@@ -1,6 +1,6 @@
 package no.f12.codenavigator.maven
 
-import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.callgraph.CallDirection
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute

@@ -1,5 +1,8 @@
 package no.f12.codenavigator
 
+import no.f12.codenavigator.registry.BuildTool
+import no.f12.codenavigator.registry.TaskCategory
+import no.f12.codenavigator.registry.TaskRegistry
 import kotlin.test.Test
 import kotlin.test.assertTrue
 

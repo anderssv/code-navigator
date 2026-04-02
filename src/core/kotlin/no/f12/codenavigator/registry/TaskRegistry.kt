@@ -1,4 +1,4 @@
-package no.f12.codenavigator
+package no.f12.codenavigator.registry
 
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.PatternEnhancer

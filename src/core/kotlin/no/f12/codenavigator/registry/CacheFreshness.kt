@@ -1,4 +1,4 @@
-package no.f12.codenavigator
+package no.f12.codenavigator.registry
 
 import java.io.File
 

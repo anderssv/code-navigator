@@ -1,5 +1,6 @@
 package no.f12.codenavigator
 
+import no.f12.codenavigator.registry.CacheFreshness
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import org.objectweb.asm.ClassWriter

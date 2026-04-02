@@ -1,7 +1,7 @@
 package no.f12.codenavigator.gradle
 
-import no.f12.codenavigator.TaskDef
-import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.registry.TaskDef
+import no.f12.codenavigator.registry.TaskRegistry
 import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project

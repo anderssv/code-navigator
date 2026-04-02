@@ -2,8 +2,8 @@ package no.f12.codenavigator.navigation.deadcode
 
 import no.f12.codenavigator.navigation.annotation.FrameworkPresets
 import no.f12.codenavigator.navigation.ClassName
-import no.f12.codenavigator.ParamDef
-import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.registry.ParamDef
+import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 
 data class DeadCodeConfig(

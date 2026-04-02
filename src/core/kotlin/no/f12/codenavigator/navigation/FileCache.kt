@@ -1,6 +1,6 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.CacheFreshness
+import no.f12.codenavigator.registry.CacheFreshness
 import java.io.BufferedWriter
 import java.io.File
 

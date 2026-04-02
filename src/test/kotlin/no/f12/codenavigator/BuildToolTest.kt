@@ -1,5 +1,7 @@
 package no.f12.codenavigator
 
+import no.f12.codenavigator.registry.BuildTool
+import no.f12.codenavigator.registry.TaskDef
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

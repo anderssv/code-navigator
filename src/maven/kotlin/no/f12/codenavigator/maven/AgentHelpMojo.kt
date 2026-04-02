@@ -1,7 +1,7 @@
 package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.AgentHelpText
-import no.f12.codenavigator.BuildTool
+import no.f12.codenavigator.registry.BuildTool
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo
 import org.apache.maven.plugins.annotations.Parameter

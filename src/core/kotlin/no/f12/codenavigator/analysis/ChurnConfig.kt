@@ -1,7 +1,7 @@
 package no.f12.codenavigator.analysis
 
-import no.f12.codenavigator.ParamDef
-import no.f12.codenavigator.TaskRegistry
+import no.f12.codenavigator.registry.ParamDef
+import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 import java.time.LocalDate
 
