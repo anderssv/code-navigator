@@ -1,5 +1,6 @@
 package no.f12.codenavigator
 
+import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.analysis.CoupledPair
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot

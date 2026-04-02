@@ -1,5 +1,6 @@
 package no.f12.codenavigator
 
+import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.config.OutputFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,4 +1,4 @@
-package no.f12.codenavigator
+package no.f12.codenavigator.formatting
 
 import no.f12.codenavigator.navigation.classinfo.ClassInfo
 

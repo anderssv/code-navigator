@@ -1,8 +1,8 @@
 package no.f12.codenavigator.maven
 
-import no.f12.codenavigator.JsonFormatter
-import no.f12.codenavigator.LlmFormatter
-import no.f12.codenavigator.OutputWrapper
+import no.f12.codenavigator.formatting.JsonFormatter
+import no.f12.codenavigator.formatting.LlmFormatter
+import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskDef
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
