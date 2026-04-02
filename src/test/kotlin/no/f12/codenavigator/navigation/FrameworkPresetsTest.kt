@@ -638,4 +638,64 @@ class FrameworkPresetsTest {
         assertTrue(supertypes.contains(ClassName("com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier")))
     }
 
+    // --- Model annotations ---
+
+    @Test
+    fun `jpa preset includes model annotations for Entity MappedSuperclass and Embeddable`() {
+        val modelAnnotations = FrameworkPresets.resolveModelAnnotations("jpa")
+
+        assertTrue(modelAnnotations.contains("jakarta.persistence.Entity"))
+        assertTrue(modelAnnotations.contains("jakarta.persistence.MappedSuperclass"))
+        assertTrue(modelAnnotations.contains("jakarta.persistence.Embeddable"))
+    }
+
+    @Test
+    fun `jpa preset includes javax model annotations`() {
+        val modelAnnotations = FrameworkPresets.resolveModelAnnotations("jpa")
+
+        assertTrue(modelAnnotations.contains("javax.persistence.Entity"))
+        assertTrue(modelAnnotations.contains("javax.persistence.MappedSuperclass"))
+        assertTrue(modelAnnotations.contains("javax.persistence.Embeddable"))
+    }
+
+    @Test
+    fun `spring preset includes JPA model annotations`() {
+        val modelAnnotations = FrameworkPresets.resolveModelAnnotations("spring")
+
+        assertTrue(modelAnnotations.contains("jakarta.persistence.Entity"))
+        assertTrue(modelAnnotations.contains("jakarta.persistence.MappedSuperclass"))
+    }
+
+    @Test
+    fun `resolveAllModelAnnotations merges from all presets`() {
+        val all = FrameworkPresets.resolveAllModelAnnotations()
+
+        assertTrue(all.contains("jakarta.persistence.Entity"))
+        assertTrue(all.contains("jakarta.persistence.MappedSuperclass"))
+        assertTrue(all.contains("jakarta.persistence.Embeddable"))
+    }
+
+    @Test
+    fun `resolveAllModelAnnotationsExcept excludes named preset`() {
+        val withJpa = FrameworkPresets.resolveAllModelAnnotationsExcept(emptyList())
+        val withoutJpa = FrameworkPresets.resolveAllModelAnnotationsExcept(listOf("jpa", "spring", "quarkus"))
+
+        assertTrue(withJpa.contains("jakarta.persistence.Entity"))
+        assertFalse(withoutJpa.contains("jakarta.persistence.Entity"))
+    }
+
+    @Test
+    fun `resolveAllModelAnnotationsExcept ALL returns empty set`() {
+        val result = FrameworkPresets.resolveAllModelAnnotationsExcept(listOf("ALL"))
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `preset without model annotations returns empty set`() {
+        val result = FrameworkPresets.resolveModelAnnotations("jackson")
+
+        assertTrue(result.isEmpty())
+    }
+
 }

@@ -85,7 +85,7 @@ object StrengthClassifier {
         val kind = registry[targetClass] ?: return null
         return when (kind) {
             ClassKind.INTERFACE, ClassKind.ABSTRACT -> IntegrationStrength.CONTRACT
-            ClassKind.DATA_CLASS, ClassKind.RECORD -> IntegrationStrength.MODEL
+            ClassKind.DATA_CLASS, ClassKind.RECORD, ClassKind.ANNOTATED_MODEL -> IntegrationStrength.MODEL
             ClassKind.CONCRETE -> IntegrationStrength.FUNCTIONAL
         }
     }

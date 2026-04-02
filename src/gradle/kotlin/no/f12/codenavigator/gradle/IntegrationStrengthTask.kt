@@ -12,6 +12,7 @@ import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.StrengthClassifier
 import no.f12.codenavigator.navigation.dsm.StrengthConfig
 import no.f12.codenavigator.navigation.dsm.StrengthFormatter
+import no.f12.codenavigator.navigation.annotation.FrameworkPresets
 import no.f12.codenavigator.navigation.SkippedFileReporter
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
@@ -39,7 +40,7 @@ abstract class IntegrationStrengthTask : DefaultTask() {
 
         val projectClasses = scanProjectClasses(classDirectories)
 
-        val classTypeRegistry = ClassTypeCollector.collect(classDirectories)
+        val classTypeRegistry = ClassTypeCollector.collect(classDirectories, FrameworkPresets.resolveAllModelAnnotations())
 
         val packageFilter = config.packageFilter?.let { PackageName(it) }
 

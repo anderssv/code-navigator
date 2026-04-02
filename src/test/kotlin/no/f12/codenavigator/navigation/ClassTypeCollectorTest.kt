@@ -124,4 +124,77 @@ class ClassTypeCollectorTest {
 
         assertEquals(ClassKind.INTERFACE, registry[ClassName("com.example.Repo")])
     }
+
+    @Test
+    fun `concrete class with Embeddable annotation is classified as ANNOTATED_MODEL`() {
+        TestClassWriter.writeClassFile(classesDir, "com/example/Address", "Address.java") {
+            visitAnnotation("Ljakarta/persistence/Embeddable;", true)
+        }
+
+        val registry = ClassTypeCollector.collect(
+            listOf(classesDir),
+            modelAnnotations = setOf("jakarta.persistence.Embeddable"),
+        )
+
+        assertEquals(ClassKind.ANNOTATED_MODEL, registry[ClassName("com.example.Address")])
+    }
+
+    @Test
+    fun `concrete class with javax Entity annotation is classified as ANNOTATED_MODEL`() {
+        TestClassWriter.writeClassFile(classesDir, "com/example/LegacyOwner", "LegacyOwner.java") {
+            visitAnnotation("Ljavax/persistence/Entity;", true)
+        }
+
+        val registry = ClassTypeCollector.collect(
+            listOf(classesDir),
+            modelAnnotations = setOf("javax.persistence.Entity"),
+        )
+
+        assertEquals(ClassKind.ANNOTATED_MODEL, registry[ClassName("com.example.LegacyOwner")])
+    }
+
+    @Test
+    fun `model annotation not in provided set is ignored`() {
+        TestClassWriter.writeClassFile(classesDir, "com/example/Service", "Service.java") {
+            visitAnnotation("Lorg/springframework/stereotype/Service;", true)
+        }
+
+        val registry = ClassTypeCollector.collect(
+            listOf(classesDir),
+            modelAnnotations = setOf("jakarta.persistence.Entity"),
+        )
+
+        assertEquals(ClassKind.CONCRETE, registry[ClassName("com.example.Service")])
+    }
+
+    @Test
+    fun `concrete class with Entity annotation is classified as ANNOTATED_MODEL`() {
+        TestClassWriter.writeClassFile(classesDir, "com/example/Owner", "Owner.java") {
+            visitAnnotation("Ljakarta/persistence/Entity;", true)
+        }
+
+        val registry = ClassTypeCollector.collect(
+            listOf(classesDir),
+            modelAnnotations = setOf("jakarta.persistence.Entity"),
+        )
+
+        assertEquals(ClassKind.ANNOTATED_MODEL, registry[ClassName("com.example.Owner")])
+    }
+
+    @Test
+    fun `abstract class with MappedSuperclass annotation is classified as ANNOTATED_MODEL`() {
+        TestClassWriter.writeClassFile(
+            classesDir, "com/example/BaseEntity", "BaseEntity.java",
+            access = Opcodes.ACC_PUBLIC or Opcodes.ACC_ABSTRACT,
+        ) {
+            visitAnnotation("Ljakarta/persistence/MappedSuperclass;", true)
+        }
+
+        val registry = ClassTypeCollector.collect(
+            listOf(classesDir),
+            modelAnnotations = setOf("jakarta.persistence.MappedSuperclass"),
+        )
+
+        assertEquals(ClassKind.ANNOTATED_MODEL, registry[ClassName("com.example.BaseEntity")])
+    }
 }

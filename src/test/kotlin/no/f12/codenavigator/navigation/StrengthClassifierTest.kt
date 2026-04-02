@@ -80,6 +80,24 @@ class StrengthClassifierTest {
     }
 
     @Test
+    fun `dependency on annotated model is MODEL`() {
+        val deps = listOf(
+            PackageDependency(
+                PackageName("com.app.api"), PackageName("com.app.domain"),
+                ClassName("com.app.api.Controller"), ClassName("com.app.domain.Owner"),
+            ),
+        )
+        val registry = mapOf(
+            ClassName("com.app.domain.Owner") to ClassKind.ANNOTATED_MODEL,
+        )
+
+        val result = StrengthClassifier.classify(deps, registry)
+
+        assertEquals(IntegrationStrength.MODEL, result.entries[0].strength)
+        assertEquals(1, result.entries[0].modelCount)
+    }
+
+    @Test
     fun `dependency on concrete class is FUNCTIONAL`() {
         val deps = listOf(
             PackageDependency(

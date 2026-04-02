@@ -274,23 +274,33 @@ object FrameworkPresets {
         "io.ktor.server.application.Application",
     ).map { ClassName(it) }.toSet()
 
+    private val JPA_MODEL = setOf(
+        "jakarta.persistence.Entity",
+        "jakarta.persistence.MappedSuperclass",
+        "jakarta.persistence.Embeddable",
+        "javax.persistence.Entity",
+        "javax.persistence.MappedSuperclass",
+        "javax.persistence.Embeddable",
+    )
+
     private data class Preset(
         val entryPoints: Set<AnnotationName>,
         val modifiers: Set<AnnotationName> = emptySet(),
         val supertypeEntryPoints: Set<ClassName> = emptySet(),
         val receiverTypeEntryPoints: Set<ClassName> = emptySet(),
+        val modelAnnotations: Set<String> = emptySet(),
     ) {
         val all: Set<AnnotationName> get() = entryPoints + modifiers
     }
 
     private val PRESET_MAP: Map<String, Preset> = mapOf(
-        "spring" to Preset(SPRING + JPA + JAKARTA + VALIDATION + GRPC, SPRING_MODIFIERS, SPRING_DATA_SUPERTYPES),
-        "quarkus" to Preset(QUARKUS + JAXRS + CDI + MICROPROFILE + JPA + JAKARTA + VALIDATION + JACKSON + GRPC, MICROPROFILE_MODIFIERS + GRPC_MODIFIERS, PANACHE_SUPERTYPES),
+        "spring" to Preset(SPRING + JPA + JAKARTA + VALIDATION + GRPC, SPRING_MODIFIERS, SPRING_DATA_SUPERTYPES, modelAnnotations = JPA_MODEL),
+        "quarkus" to Preset(QUARKUS + JAXRS + CDI + MICROPROFILE + JPA + JAKARTA + VALIDATION + JACKSON + GRPC, MICROPROFILE_MODIFIERS + GRPC_MODIFIERS, PANACHE_SUPERTYPES, modelAnnotations = JPA_MODEL),
         "grpc" to Preset(GRPC, GRPC_MODIFIERS),
         "jaxrs" to Preset(JAXRS),
         "cdi" to Preset(CDI),
         "microprofile" to Preset(MICROPROFILE, MICROPROFILE_MODIFIERS),
-        "jpa" to Preset(JPA),
+        "jpa" to Preset(JPA, modelAnnotations = JPA_MODEL),
         "jackson" to Preset(JACKSON),
         "jakarta" to Preset(JAKARTA),
         "validation" to Preset(VALIDATION),
@@ -355,6 +365,15 @@ object FrameworkPresets {
 
     fun resolveAllReceiverTypeEntryPointsExcept(excluded: List<String>): Set<ClassName> =
         presetsExcept(excluded).flatMap { it.receiverTypeEntryPoints }.toSet()
+
+    fun resolveModelAnnotations(framework: String): Set<String> =
+        PRESET_MAP[framework.lowercase()]?.modelAnnotations ?: emptySet()
+
+    fun resolveAllModelAnnotations(): Set<String> =
+        PRESET_MAP.values.flatMap { it.modelAnnotations }.toSet()
+
+    fun resolveAllModelAnnotationsExcept(excluded: List<String>): Set<String> =
+        presetsExcept(excluded).flatMap { it.modelAnnotations }.toSet()
 
     private fun presetsExcept(excluded: List<String>): Collection<Preset> {
         if (excluded.any { it.equals("ALL", ignoreCase = true) }) return emptyList()
