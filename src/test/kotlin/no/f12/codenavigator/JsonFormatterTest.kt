@@ -39,6 +39,9 @@ import no.f12.codenavigator.navigation.SourceSet
 import no.f12.codenavigator.navigation.context.ContextResult
 import no.f12.codenavigator.navigation.dsm.PackageDistanceEntry
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
+import no.f12.codenavigator.navigation.dsm.IntegrationStrength
+import no.f12.codenavigator.navigation.dsm.PackageStrengthEntry
+import no.f12.codenavigator.navigation.dsm.StrengthResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -1124,6 +1127,43 @@ class JsonFormatterTest {
         assertTrue(json.contains("\"deps\":3"))
         assertTrue(json.contains("\"distance\":2"))
         assertTrue(json.contains("\"deps\":5"))
+    }
+
+    // === Strength formatting ===
+
+    @Test
+    fun `formatStrength with empty result produces empty array`() {
+        val result = StrengthResult(emptyList())
+
+        assertEquals("[]", JsonFormatter.formatStrength(result))
+    }
+
+    @Test
+    fun `formatStrength produces JSON with source target strength and counts`() {
+        val result = StrengthResult(
+            listOf(
+                PackageStrengthEntry(
+                    PackageName("com.example.api"), PackageName("com.example.model"),
+                    IntegrationStrength.MODEL, contractCount = 1, modelCount = 2, functionalCount = 0, totalDeps = 3,
+                ),
+                PackageStrengthEntry(
+                    PackageName("com.example.api"), PackageName("org.other.service"),
+                    IntegrationStrength.FUNCTIONAL, contractCount = 0, modelCount = 0, functionalCount = 4, totalDeps = 4,
+                ),
+            ),
+        )
+
+        val json = JsonFormatter.formatStrength(result)
+
+        assertTrue(json.contains("\"source\":\"com.example.api\""))
+        assertTrue(json.contains("\"target\":\"com.example.model\""))
+        assertTrue(json.contains("\"strength\":\"MODEL\""))
+        assertTrue(json.contains("\"contract\":1"))
+        assertTrue(json.contains("\"model\":2"))
+        assertTrue(json.contains("\"functional\":0"))
+        assertTrue(json.contains("\"totalDeps\":3"))
+        assertTrue(json.contains("\"strength\":\"FUNCTIONAL\""))
+        assertTrue(json.contains("\"functional\":4"))
     }
 
     private fun aContextResult(

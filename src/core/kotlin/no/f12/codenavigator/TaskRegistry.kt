@@ -448,6 +448,14 @@ object TaskRegistry {
         category = TaskCategory.NAVIGATION,
     )
 
+    val STRENGTH = TaskDef(
+        goal = "strength",
+        description = "Classify integration strength of inter-package dependencies",
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+    )
+
     val ALL_TASKS: List<TaskDef> = listOf(
         LIST_CLASSES,
         FIND_CLASS,
@@ -475,6 +483,7 @@ object TaskRegistry {
         CHANGED_SINCE,
         CONTEXT,
         DISTANCE,
+        STRENGTH,
         HELP,
         AGENT_HELP,
         CONFIG_HELP,

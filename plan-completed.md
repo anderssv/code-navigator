@@ -495,3 +495,25 @@ New standalone `cnavDistance` task computing structural distance between coupled
 - **Maven mojo**: `PackageDistanceMojo` with goal `distance`.
 
 **Changes**: New files: `PackageDistanceCalculator.kt`, `PackageDistanceBuilder.kt`, `PackageDistanceConfig.kt`, `PackageDistanceFormatter.kt`, `PackageDistanceTask.kt`, `PackageDistanceMojo.kt` + test files. Modified: `TaskRegistry.kt`, `JsonFormatter.kt`, `LlmFormatter.kt`, `HelpText.kt`, `AgentHelpText.kt`, `CodeNavigatorPlugin.kt`.
+
+## ~~Integration strength classification~~ DONE — `[Balanced Coupling]`
+
+**Value: high** | **Effort: medium**
+
+New standalone `cnavStrength` task classifying each inter-package dependency edge by the type of knowledge shared, based on Vlad Khononov's Balanced Coupling theory. Three strength levels (weakest to strongest):
+
+1. **CONTRACT** — target type is an interface or abstract class. Caller depends on a contract, not an implementation.
+2. **MODEL** — target type is a Kotlin data class (detected via `component1` + `copy` methods in bytecode) or a Java record (`ACC_RECORD` flag). Caller knows the shape of the data, not behavior.
+3. **FUNCTIONAL** — target type is any other concrete class. Caller depends on behavior and implementation.
+
+Classification is based on the **target type**, not individual method calls. When a package pair has edges at multiple strength levels, the **strongest** level wins. Only inter-package edges are classified — intra-package coupling is intentionally excluded.
+
+- **`ClassTypeCollector`** — first-pass bytecode scanner using `ClassKindVisitor` that reads class flags and builds a `Map<ClassName, ClassKind>`. `ClassKind` enum: INTERFACE, ABSTRACT, DATA_CLASS, RECORD, CONCRETE.
+- **`StrengthClassifier`** — classifies dependency edges using the class type registry, aggregates per package pair with strongest-wins logic. Returns `StrengthResult` with `List<PackageStrengthEntry>`.
+- **`StrengthConfig`** — config data class parsing `top`, `package-filter`, `format` from property map.
+- **`StrengthFormatter`** — TEXT format with `noResultsHints`.
+- **Output formats**: TEXT (`source → target  strength=FUNCTIONAL  (contract=1, model=2, functional=3)`), JSON (`{source, target, strength, counts}`), LLM (compact `source->target strength=FUNCTIONAL contract=1 model=2 functional=3`).
+- **Gradle task**: `IntegrationStrengthTask` registered as `cnavStrength`.
+- **Maven mojo**: `IntegrationStrengthMojo` with goal `strength`.
+
+**Changes**: New files: `ClassTypeCollector.kt`, `StrengthClassifier.kt`, `StrengthConfig.kt`, `StrengthFormatter.kt`, `IntegrationStrengthTask.kt`, `IntegrationStrengthMojo.kt` + test files (`ClassTypeCollectorTest.kt`, `StrengthClassifierTest.kt`, `StrengthConfigTest.kt`, `StrengthFormatterTest.kt`). Modified: `TaskRegistry.kt`, `JsonFormatter.kt`, `LlmFormatter.kt`, `HelpText.kt`, `AgentHelpText.kt`, `CodeNavigatorPlugin.kt`.

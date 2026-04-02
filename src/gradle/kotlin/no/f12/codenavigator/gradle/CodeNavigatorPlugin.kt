@@ -76,6 +76,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "changed-since" to ChangedSinceTask::class.java,
             "context" to ContextTask::class.java,
             "distance" to PackageDistanceTask::class.java,
+            "strength" to IntegrationStrengthTask::class.java,
             "help" to CodeNavigatorHelpTask::class.java,
             "agent-help" to AgentHelpTask::class.java,
             "config-help" to ConfigHelpTask::class.java,

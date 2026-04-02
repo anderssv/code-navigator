@@ -237,35 +237,6 @@ Support Gradle's incremental task API (`@InputFiles`, `@OutputFile`, `InputChang
 
 ---
 
-## Abstractness per package — `[Balanced Coupling]`
-
-**Value: medium** | **Effort: low**
-
-Capture `ACC_ABSTRACT` and `ACC_INTERFACE` flags from bytecode during scanning. Compute per-package abstractness ratio: `A = (abstract classes + interfaces) / total classes`.
-
-- **Where**: Extend `DsmDependencyExtractor` (or `ClassInfoExtractor`) to record whether each class is abstract/interface.
-- **Output**: Per-package abstractness as a value between 0.0 (all concrete) and 1.0 (all abstract/interface).
-- **Why**: Abstractness is a prerequisite for integration strength classification and the balanced coupling heuristic. Also independently useful for Robert C. Martin package metrics (instability/abstractness).
-
----
-
-## Integration strength classification — `[Balanced Coupling]`
-
-**Value: high** | **Effort: medium**
-
-Classify each inter-package dependency edge by the type of knowledge shared. Balanced Coupling defines four levels (from weakest to strongest):
-
-1. **Contract coupling**: dependency is against an interface or abstract type only.
-2. **Model coupling**: dependency is against a shared domain model (concrete type, but stable).
-3. **Functional coupling**: dependency involves calling behavior/logic, not just referencing types.
-4. **Intrusive coupling**: dependency accesses internal/private implementation details.
-
-- **Where**: Extend `DsmDependencyExtractor` to tag each `PackageDependency` with a strength level. ASM provides access flags (`ACC_INTERFACE`, `ACC_ABSTRACT`, `ACC_PUBLIC`) and the dependency kind (field type vs. method call vs. type cast) to approximate this classification.
-- **Heuristic**: Target is interface/abstract → contract. Target is concrete type used as field/parameter/return → model. Target is concrete type with method calls → functional. Target accessed via reflection or non-public members → intrusive.
-- **Prerequisite**: Abstractness per package (for detecting interface/abstract targets).
-
----
-
 ## Volatility per package — `[Balanced Coupling]`
 
 **Value: high** | **Effort: low-medium**
@@ -294,10 +265,10 @@ balance    = modularity OR NOT volatility
 - **Low strength + low distance + low volatility** → over-engineering: unnecessary indirection in stable, loosely coupled code. Suggest simplifying or merging.
 - **Balanced combinations** → no action needed.
 
-- **Inputs**: Integration strength (from classification), distance (from structural distance), volatility (from package volatility).
+- **Inputs**: Integration strength (contract/model/functional from classification), distance (from structural distance), volatility (from package volatility).
 - **Output**: Ranked list of package pairs by imbalance severity, with per-pair breakdown of all three dimensions and actionable suggestions.
 - **Parameters**: `-PpackageFilter=<prefix>`, `-Pformat=llm|json|text`, `-Ptop=N`.
-- **Prerequisites**: Integration strength classification, structural distance, volatility per package.
+- **Prerequisites**: Integration strength classification (done), structural distance (done), volatility per package.
 
 ---
 
@@ -305,13 +276,13 @@ balance    = modularity OR NOT volatility
 
 **Value: medium** | **Effort: medium**
 
-Aggregate all per-package metrics into a single view: abstractness, volatility, coupling strength breakdown, distance profile, cycle involvement, and balance assessment.
+Aggregate all per-package metrics into a single view: volatility, coupling strength breakdown, distance profile, cycle involvement, and balance assessment.
 
-- **Where**: New builder that combines outputs from `DsmMatrixBuilder`, abstractness, volatility, and the balance heuristic.
+- **Where**: New builder that combines outputs from `DsmMatrixBuilder`, volatility, and the balance heuristic.
 - **Output**: One row per package with columns for each metric dimension. Highlight packages that are imbalanced.
 - **Why**: Currently `MetricsBuilder` only produces project-level aggregates. Per-package breakdown is needed to act on Balanced Coupling findings.
 - **Could be**: A mode of `cnavMetrics` (`-Pby-package=true`) or a separate `cnavPackageHealth` task.
-- **Prerequisites**: Abstractness per package, volatility per package, `cnavBalance`.
+- **Prerequisites**: Volatility per package, `cnavBalance`.
 
 ---
 
@@ -319,6 +290,7 @@ Aggregate all per-package metrics into a single view: abstractness, volatility, 
 
 Items below are low-priority or may not be worth building. Revisit if demand emerges.
 
+- **Abstractness per package** `[Balanced Coupling]`: Per-package ratio of abstract/interface classes to total classes (Robert C. Martin's `A` metric). Not needed for the Balanced Coupling pipeline — integration strength classification only needs per-class abstract/interface flags, not a package-level aggregate. Add as a standalone metric if demand emerges.
 - **Custom entry-point config file** (`.cnav-entry-points`): Framework presets + `exclude-annotated` + `treat-as-dead` cover most cases. A config file adds marginal value over the existing parameters. Revisit if users request it.
 - **DI-aware `cnavInjectors`**: Largely solvable with `cnavUsages -Ptype=X` combined with interface dispatch resolution. High effort for marginal gain.
 - **Stable JSON schemas** (`cnavSchema`): JSON output is already self-describing. Agents infer schema from examples.

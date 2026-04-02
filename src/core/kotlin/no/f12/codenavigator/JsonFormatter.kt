@@ -29,6 +29,7 @@ import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.context.ContextResult
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
+import no.f12.codenavigator.navigation.dsm.StrengthResult
 
 @JvmInline
 private value class JsonRaw(val json: String)
@@ -365,6 +366,19 @@ object JsonFormatter {
                 "target" to entry.target.toString(),
                 "distance" to entry.distance,
                 "deps" to entry.dependencyCount,
+            )
+        }
+
+    fun formatStrength(result: StrengthResult): String =
+        jsonArray(result.entries) { entry ->
+            jsonObject(
+                "source" to entry.source.toString(),
+                "target" to entry.target.toString(),
+                "strength" to entry.strength.name,
+                "contract" to entry.contractCount,
+                "model" to entry.modelCount,
+                "functional" to entry.functionalCount,
+                "totalDeps" to entry.totalDeps,
             )
         }
 

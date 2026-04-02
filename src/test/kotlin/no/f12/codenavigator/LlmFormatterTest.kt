@@ -37,6 +37,9 @@ import no.f12.codenavigator.navigation.SourceSet
 import no.f12.codenavigator.navigation.context.ContextResult
 import no.f12.codenavigator.navigation.dsm.PackageDistanceEntry
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
+import no.f12.codenavigator.navigation.dsm.IntegrationStrength
+import no.f12.codenavigator.navigation.dsm.PackageStrengthEntry
+import no.f12.codenavigator.navigation.dsm.StrengthResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -923,6 +926,38 @@ class LlmFormatterTest {
 
         assertEquals(
             "com.example.api->org.other.service distance=6 deps=3\ncom.example.api->com.example.model distance=2 deps=5",
+            output,
+        )
+    }
+
+    // === Strength formatting ===
+
+    @Test
+    fun `formatStrength with empty result produces empty string`() {
+        val result = StrengthResult(emptyList())
+
+        assertEquals("", LlmFormatter.formatStrength(result))
+    }
+
+    @Test
+    fun `formatStrength produces compact LLM lines`() {
+        val result = StrengthResult(
+            listOf(
+                PackageStrengthEntry(
+                    PackageName("com.example.api"), PackageName("com.example.model"),
+                    IntegrationStrength.MODEL, contractCount = 1, modelCount = 2, functionalCount = 0, totalDeps = 3,
+                ),
+                PackageStrengthEntry(
+                    PackageName("com.example.api"), PackageName("org.other.service"),
+                    IntegrationStrength.FUNCTIONAL, contractCount = 0, modelCount = 0, functionalCount = 4, totalDeps = 4,
+                ),
+            ),
+        )
+
+        val output = LlmFormatter.formatStrength(result)
+
+        assertEquals(
+            "com.example.api->com.example.model strength=MODEL contract=1 model=2 functional=0\ncom.example.api->org.other.service strength=FUNCTIONAL contract=0 model=0 functional=4",
             output,
         )
     }
