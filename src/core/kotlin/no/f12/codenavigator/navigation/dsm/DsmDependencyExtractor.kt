@@ -44,6 +44,7 @@ object DsmDependencyExtractor {
         projectClasses: Set<ClassName>,
         packageFilter: PackageName = PackageName(""),
         includeExternal: Boolean = false,
+        filterTargets: Boolean = true,
     ): ScanResult<List<PackageDependency>> {
         val dependencies = mutableSetOf<PackageDependency>()
         val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
@@ -55,7 +56,7 @@ object DsmDependencyExtractor {
                     .filter { it.isFile && it.extension == "class" }
                     .forEach { classFile ->
                         try {
-                            extractFromClassWithProjectFilter(classFile, projectClasses, packageFilter, includeExternal, dependencies)
+                            extractFromClassWithProjectFilter(classFile, projectClasses, packageFilter, includeExternal, filterTargets, dependencies)
                         } catch (e: UnsupportedBytecodeVersionException) {
                             skipped.add(e)
                         }
@@ -73,6 +74,7 @@ object DsmDependencyExtractor {
         projectClasses: Set<ClassName>,
         packageFilter: PackageName,
         includeExternal: Boolean,
+        filterTargets: Boolean,
         dependencies: MutableSet<PackageDependency>,
     ) {
         val reader = createClassReader(classFile)
@@ -88,7 +90,7 @@ object DsmDependencyExtractor {
         collector.referencedTypes
             .filter { it != sourceClass }
             .filter { includeExternal || it in projectClasses }
-            .filter { packageFilter.isEmpty() || it.startsWith(packageFilter) }
+            .filter { !filterTargets || packageFilter.isEmpty() || it.startsWith(packageFilter) }
             .forEach { targetClass ->
                 val targetPackage = targetClass.packageName()
                 if (targetPackage != sourcePackage) {

@@ -72,11 +72,17 @@ class IntegrationStrengthMojo : AbstractMojo() {
 
         val classTypeRegistry = ClassTypeCollector.collect(classDirectories)
 
-        val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, PackageName(""), config.includeExternal)
+        val packageFilter = config.packageFilter?.let { PackageName(it) }
+
+        val extractResult = DsmDependencyExtractor.extract(
+            classDirectories, projectClasses,
+            packageFilter = packageFilter ?: PackageName(""),
+            includeExternal = config.includeExternal,
+            filterTargets = false,
+        )
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { log.warn(it) }
 
-        val packageFilter = config.packageFilter?.let { PackageName(it) }
         val result = StrengthClassifier.classify(extractResult.data, classTypeRegistry, config.top, packageFilter)
 
         if (result.entries.isEmpty()) {

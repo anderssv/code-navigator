@@ -360,6 +360,86 @@ class DsmDependencyExtractorTest {
         assertTrue(deps.all { it.sourcePackage.startsWith(PackageName("com.example.api")) }, "Only sources matching package-filter should be included")
     }
 
+    @Test
+    fun `source-only filter includes targets outside filter`() {
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            "handle", listOf(Call("com/example/service/Service", "process", "()V")),
+        )
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
+
+        val projectClasses = setOf(
+            ClassName("com.example.api.Controller"),
+            ClassName("com.example.service.Service"),
+        )
+
+        val deps = DsmDependencyExtractor.extract(
+            classDirectories = listOf(classesDir),
+            projectClasses = projectClasses,
+            packageFilter = PackageName("com.example.api"),
+            filterTargets = false,
+        ).data
+
+        val dep = deps.find {
+            it.sourceClass == ClassName("com.example.api.Controller") &&
+                it.targetClass == ClassName("com.example.service.Service")
+        }
+        assertTrue(dep != null, "Source-only filter should include targets outside the filter (api -> service)")
+    }
+
+    @Test
+    fun `source-only filter still excludes sources outside filter`() {
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            "handle", listOf(Call("com/example/service/Service", "process", "()V")),
+        )
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/other/Other", "Other.kt",
+            "run", listOf(Call("com/example/api/Controller", "handle", "()V")),
+        )
+
+        val projectClasses = setOf(
+            ClassName("com.example.api.Controller"),
+            ClassName("com.example.service.Service"),
+            ClassName("com.example.other.Other"),
+        )
+
+        val deps = DsmDependencyExtractor.extract(
+            classDirectories = listOf(classesDir),
+            projectClasses = projectClasses,
+            packageFilter = PackageName("com.example.api"),
+            filterTargets = false,
+        ).data
+
+        assertTrue(
+            deps.all { it.sourcePackage.startsWith(PackageName("com.example.api")) },
+            "Source-only filter should still exclude sources outside the filter",
+        )
+    }
+
+    @Test
+    fun `default filterTargets is true for backward compatibility`() {
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            "handle", listOf(Call("com/example/service/Service", "process", "()V")),
+        )
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
+
+        val projectClasses = setOf(
+            ClassName("com.example.api.Controller"),
+            ClassName("com.example.service.Service"),
+        )
+
+        val deps = DsmDependencyExtractor.extract(
+            classDirectories = listOf(classesDir),
+            projectClasses = projectClasses,
+            packageFilter = PackageName("com.example.api"),
+        ).data
+
+        assertTrue(deps.isEmpty(), "Default filterTargets=true should filter out targets outside the filter (existing DSM behavior)")
+    }
+
     private fun buildTestProject() {
         val testProjectDir = File("test-project")
         val gradlew = File(testProjectDir.parentFile, "gradlew").absolutePath
