@@ -6,6 +6,7 @@ import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.analysis.ModuleAuthors
 import no.f12.codenavigator.navigation.callgraph.CallDirection
+import no.f12.codenavigator.navigation.callgraph.CallTreeFormatter
 import no.f12.codenavigator.navigation.callgraph.CallTreeNode
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.dsm.CycleDetail
@@ -83,6 +84,11 @@ object LlmFormatter {
             append("${tree.method.qualifiedName} ${tree.sourceFile ?: "<unknown>"}$lineRef${formatAnnotationTags(tree.annotations)}")
             if (tree.children.isNotEmpty()) {
                 renderChildren(tree.children, direction, 1)
+            } else {
+                appendLine()
+                append("  ${direction.emptyMessage}")
+                val hint = CallTreeFormatter.frameworkEntryPointHint(tree, direction)
+                if (hint != null) append(" — $hint")
             }
         }
     }.trimEnd()

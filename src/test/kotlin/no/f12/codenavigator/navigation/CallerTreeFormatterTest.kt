@@ -380,7 +380,7 @@ class CallerTreeFormatterTest {
         assertEquals(
             """
             com.example.Controller.getOwner [@GetMapping [spring], @ResponseBody [spring]]
-              (no callers)
+              (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.
             """.trimIndent(),
             result,
         )
@@ -425,7 +425,7 @@ class CallerTreeFormatterTest {
         assertEquals(
             """
             com.example.Controller.doWork [@GetMapping [spring], @CustomAnnotation]
-              (no callers)
+              (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.
             """.trimIndent(),
             result,
         )
@@ -454,7 +454,7 @@ class CallerTreeFormatterTest {
         assertEquals(
             """
             com.example.Controller.getUsers [@GetMapping(value="/users") [spring]]
-              (no callers)
+              (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.
             """.trimIndent(),
             result,
         )
@@ -483,7 +483,7 @@ class CallerTreeFormatterTest {
         assertEquals(
             """
             com.example.Controller.getUsers [@Cacheable(value="users", key="#id") [spring]]
-              (no callers)
+              (no callers) — @Cacheable is a spring entry point; invoked by the framework at runtime.
             """.trimIndent(),
             result,
         )
@@ -599,7 +599,135 @@ class CallerTreeFormatterTest {
         assertEquals(
             """
             com.example.Controller.doWork [@GetMapping [spring]]
+              (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    // === Framework entry point hint tests ===
+
+    // [TEST] Framework-annotated method with no callers shows entry point hint
+    @Test
+    fun `framework-annotated method with no callers shows entry point hint`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag(AnnotationName("GetMapping"), "spring")),
+            ),
+        )
+
+        val result = CallTreeFormatter.renderTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            """
+            com.example.Controller.getUsers [@GetMapping [spring]]
+              (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `non-framework-annotated method with no callers shows no hint`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Service"), "doWork"),
+                sourceFile = "Service.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag(AnnotationName("CustomAnnotation"))),
+            ),
+        )
+
+        val result = CallTreeFormatter.renderTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            """
+            com.example.Service.doWork [@CustomAnnotation]
               (no callers)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `method with callers shows no hint even with framework annotations`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = listOf(
+                    CallTreeNode(
+                        method = MethodRef(ClassName("com.example.Test"), "testGetUsers"),
+                        sourceFile = "Test.kt",
+                        lineNumber = 10,
+                        children = emptyList(),
+                    ),
+                ),
+                annotations = listOf(AnnotationTag(AnnotationName("GetMapping"), "spring")),
+            ),
+        )
+
+        val result = CallTreeFormatter.renderTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            """
+            com.example.Controller.getUsers [@GetMapping [spring]]
+              ← com.example.Test.testGetUsers (Test.kt:10)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `CALLEES direction shows no hint even with framework annotations`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag(AnnotationName("GetMapping"), "spring")),
+            ),
+        )
+
+        val result = CallTreeFormatter.renderTrees(trees, CallDirection.CALLEES)
+
+        assertEquals(
+            """
+            com.example.Controller.getUsers [@GetMapping [spring]]
+              (no callees)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `multiple framework annotations picks first for hint message`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(
+                    AnnotationTag(AnnotationName("ResponseBody"), "spring"),
+                    AnnotationTag(AnnotationName("GetMapping"), "spring"),
+                ),
+            ),
+        )
+
+        val result = CallTreeFormatter.renderTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            """
+            com.example.Controller.getUsers [@ResponseBody [spring], @GetMapping [spring]]
+              (no callers) — @ResponseBody is a spring entry point; invoked by the framework at runtime.
             """.trimIndent(),
             result,
         )

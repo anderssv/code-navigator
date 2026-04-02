@@ -1161,6 +1161,100 @@ class JsonFormatterTest {
         assertTrue(!json.contains("displayPrefix"), "Should not contain displayPrefix when empty")
     }
 
+    // === Framework entry point hint tests (JSON) ===
+
+    @Test
+    fun `call tree JSON includes frameworkEntryPointHint for framework-annotated root with no callers`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag(AnnotationName("GetMapping"), "spring")),
+            ),
+        )
+
+        val result = JsonFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+
+        assertTrue(result.contains(""""frameworkEntryPointHint":"@GetMapping is a spring entry point; invoked by the framework at runtime.""""), "Should contain hint, got:\n$result")
+    }
+
+    @Test
+    fun `call tree JSON omits hint for non-framework annotations`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Service"), "doWork"),
+                sourceFile = "Service.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag(AnnotationName("CustomAnnotation"))),
+            ),
+        )
+
+        val result = JsonFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+
+        assertTrue(!result.contains("frameworkEntryPointHint"), "Should not contain hint for non-framework annotation, got:\n$result")
+    }
+
+    @Test
+    fun `call tree JSON omits hint for CALLEES direction`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag(AnnotationName("GetMapping"), "spring")),
+            ),
+        )
+
+        val result = JsonFormatter.renderCallTrees(trees, CallDirection.CALLEES)
+
+        assertTrue(!result.contains("frameworkEntryPointHint"), "Should not contain hint for CALLEES direction, got:\n$result")
+    }
+
+    @Test
+    fun `call tree JSON omits hint when method has callers`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = listOf(
+                    CallTreeNode(
+                        method = MethodRef(ClassName("com.example.Test"), "testGetUsers"),
+                        sourceFile = "Test.kt",
+                        lineNumber = 10,
+                        children = emptyList(),
+                    ),
+                ),
+                annotations = listOf(AnnotationTag(AnnotationName("GetMapping"), "spring")),
+            ),
+        )
+
+        val result = JsonFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+
+        assertTrue(!result.contains("frameworkEntryPointHint"), "Should not contain hint when method has callers, got:\n$result")
+    }
+
+    @Test
+    fun `call tree JSON without direction omits hint for backward compatibility`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag(AnnotationName("GetMapping"), "spring")),
+            ),
+        )
+
+        val result = JsonFormatter.renderCallTrees(trees)
+
+        assertTrue(!result.contains("frameworkEntryPointHint"), "Should not contain hint without direction, got:\n$result")
+    }
+
     // === Strength formatting ===
 
     @Test

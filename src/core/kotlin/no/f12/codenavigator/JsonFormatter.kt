@@ -6,6 +6,8 @@ import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.analysis.ModuleAuthors
 import no.f12.codenavigator.navigation.callgraph.AnnotationTag
+import no.f12.codenavigator.navigation.callgraph.CallDirection
+import no.f12.codenavigator.navigation.callgraph.CallTreeFormatter
 import no.f12.codenavigator.navigation.callgraph.CallTreeNode
 import no.f12.codenavigator.navigation.ClassName
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
@@ -82,8 +84,8 @@ object JsonFormatter {
             )
         }
 
-    fun renderCallTrees(trees: List<CallTreeNode>): String =
-        jsonArray(trees) { node -> renderCallNode(node) }
+    fun renderCallTrees(trees: List<CallTreeNode>, direction: CallDirection? = null): String =
+        jsonArray(trees) { node -> renderCallNode(node, direction, isRoot = true) }
 
     fun formatInterfaces(registry: InterfaceRegistry, interfaceNames: List<ClassName>): String =
         jsonArray(interfaceNames.sorted()) { name ->
@@ -359,8 +361,8 @@ object JsonFormatter {
     fun formatContext(result: ContextResult): String =
         jsonObject(
             "classDetail" to JsonRaw(formatClassDetails(listOf(result.classDetail))),
-            "callers" to JsonRaw(renderCallTrees(result.callers)),
-            "callees" to JsonRaw(renderCallTrees(result.callees)),
+            "callers" to JsonRaw(renderCallTrees(result.callers, CallDirection.CALLERS)),
+            "callees" to JsonRaw(renderCallTrees(result.callees, CallDirection.CALLEES)),
             "implementors" to JsonRaw(jsonArray(result.implementors) { impl ->
                 jsonObject("className" to impl.className.toString(), "sourceFile" to impl.sourceFile)
             }),
@@ -394,8 +396,13 @@ object JsonFormatter {
             )
         }
 
-    private fun renderCallNode(node: CallTreeNode): String {
+    private fun renderCallNode(node: CallTreeNode, direction: CallDirection? = null, isRoot: Boolean = false): String {
         val children = jsonArray(node.children) { child -> renderCallNode(child) }
+        val hint = if (isRoot && direction != null && node.children.isEmpty()) {
+            CallTreeFormatter.frameworkEntryPointHint(node, direction)
+        } else {
+            null
+        }
         return jsonObject(
             "method" to node.method.qualifiedName,
             "sourceFile" to node.sourceFile,
@@ -403,6 +410,7 @@ object JsonFormatter {
             "sourceSet" to node.sourceSet?.label,
             "annotations" to if (node.annotations.isNotEmpty()) JsonRaw(renderAnnotationTags(node.annotations)) else null,
             "children" to JsonRaw(children),
+            "frameworkEntryPointHint" to hint,
         )
     }
 

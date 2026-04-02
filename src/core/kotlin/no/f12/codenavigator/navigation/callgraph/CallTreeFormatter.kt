@@ -32,6 +32,8 @@ object CallTreeFormatter {
             appendLine("${tree.method.qualifiedName}${formatAnnotationTags(tree.annotations)}")
             if (tree.children.isEmpty()) {
                 append("  ${direction.emptyMessage}")
+                val hint = frameworkEntryPointHint(tree, direction)
+                if (hint != null) append(" — $hint")
             } else {
                 renderChildren(tree.children, direction, depth = 1)
             }
@@ -65,5 +67,11 @@ object CallTreeFormatter {
                 renderChildren(node.children, direction, depth + 1)
             }
         }
+    }
+
+    internal fun frameworkEntryPointHint(node: CallTreeNode, direction: CallDirection): String? {
+        if (direction != CallDirection.CALLERS) return null
+        val frameworkAnnotation = node.annotations.firstOrNull { it.framework != null } ?: return null
+        return "@${frameworkAnnotation.name.simpleName()} is a ${frameworkAnnotation.framework} entry point; invoked by the framework at runtime."
     }
 }

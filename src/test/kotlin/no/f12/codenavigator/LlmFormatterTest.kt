@@ -689,7 +689,7 @@ class LlmFormatterTest {
         val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
 
         assertEquals(
-            "com.example.Controller.getOwner Controller.kt [@GetMapping [spring], @ResponseBody [spring]]",
+            "com.example.Controller.getOwner Controller.kt [@GetMapping [spring], @ResponseBody [spring]]\n  (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.",
             result,
         )
     }
@@ -707,7 +707,7 @@ class LlmFormatterTest {
 
         val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
 
-        assertEquals("com.example.Service.doWork Service.kt", result)
+        assertEquals("com.example.Service.doWork Service.kt\n  (no callers)", result)
     }
 
     @Test
@@ -725,7 +725,7 @@ class LlmFormatterTest {
         val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
 
         assertEquals(
-            "com.example.Controller.doWork Controller.kt [@GetMapping [spring], @CustomAnnotation]",
+            "com.example.Controller.doWork Controller.kt [@GetMapping [spring], @CustomAnnotation]\n  (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.",
             result,
         )
     }
@@ -751,7 +751,7 @@ class LlmFormatterTest {
         val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
 
         assertEquals(
-            "com.example.Controller.getUsers Controller.kt [@GetMapping(value=\"/users\") [spring]]",
+            "com.example.Controller.getUsers Controller.kt [@GetMapping(value=\"/users\") [spring]]\n  (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.",
             result,
         )
     }
@@ -1069,6 +1069,95 @@ class LlmFormatterTest {
 
         assertTrue(result.contains("api.Controller->service.Service"), "Should show stripped class names, got:\n$result")
         assertTrue(!result.contains("com.example.api.Controller"), "Should not show full class name, got:\n$result")
+    }
+
+    // === Framework entry point hint tests (LLM) ===
+
+    @Test
+    fun `LLM call tree shows framework entry point hint for no-callers`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag(AnnotationName("GetMapping"), "spring")),
+            ),
+        )
+
+        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            "com.example.Controller.getUsers Controller.kt [@GetMapping [spring]]\n  (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.",
+            result,
+        )
+    }
+
+    @Test
+    fun `LLM call tree shows no hint for non-framework annotations with no callers`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Service"), "doWork"),
+                sourceFile = "Service.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag(AnnotationName("CustomAnnotation"))),
+            ),
+        )
+
+        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            "com.example.Service.doWork Service.kt [@CustomAnnotation]\n  (no callers)",
+            result,
+        )
+    }
+
+    @Test
+    fun `LLM call tree shows no hint for CALLEES direction`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = emptyList(),
+                annotations = listOf(AnnotationTag(AnnotationName("GetMapping"), "spring")),
+            ),
+        )
+
+        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLEES)
+
+        assertEquals(
+            "com.example.Controller.getUsers Controller.kt [@GetMapping [spring]]\n  (no callees)",
+            result,
+        )
+    }
+
+    @Test
+    fun `LLM call tree shows no hint when method has callers`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "getUsers"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = listOf(
+                    CallTreeNode(
+                        method = MethodRef(ClassName("com.example.Test"), "testGetUsers"),
+                        sourceFile = "Test.kt",
+                        lineNumber = 10,
+                        children = emptyList(),
+                    ),
+                ),
+                annotations = listOf(AnnotationTag(AnnotationName("GetMapping"), "spring")),
+            ),
+        )
+
+        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+
+        assertEquals(
+            "com.example.Controller.getUsers Controller.kt [@GetMapping [spring]]\n  ← com.example.Test.testGetUsers Test.kt:10",
+            result,
+        )
     }
 
     // === Strength formatting ===

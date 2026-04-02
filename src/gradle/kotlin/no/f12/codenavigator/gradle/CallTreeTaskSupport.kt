@@ -73,7 +73,7 @@ object CallTreeTaskSupport {
             OutputWrapper.formatAndWrap(
                 config.format,
                 text = { CallTreeFormatter.renderTrees(trees, direction) },
-                json = { JsonFormatter.renderCallTrees(trees) },
+                json = { JsonFormatter.renderCallTrees(trees, direction) },
                 llm = { LlmFormatter.renderCallTrees(trees, direction) },
             ),
         )
