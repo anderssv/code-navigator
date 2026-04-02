@@ -78,6 +78,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "distance" to PackageDistanceTask::class.java,
             "strength" to IntegrationStrengthTask::class.java,
             "volatility" to PackageVolatilityTask::class.java,
+            "balance" to BalanceTask::class.java,
             "help" to CodeNavigatorHelpTask::class.java,
             "agent-help" to AgentHelpTask::class.java,
             "config-help" to ConfigHelpTask::class.java,

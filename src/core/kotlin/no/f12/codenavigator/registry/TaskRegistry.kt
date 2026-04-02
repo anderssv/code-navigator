@@ -470,6 +470,15 @@ object TaskRegistry {
         category = TaskCategory.GIT_HISTORY,
     )
 
+    val BALANCE = TaskDef(
+        goal = "balance",
+        description = "Composite balanced coupling analysis: strength × distance × volatility",
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP, AFTER, MIN_REVS, NO_FOLLOW) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.HYBRID,
+        paramDefaultOverrides = mapOf("top" to "all"),
+    )
+
     val ALL_TASKS: List<TaskDef> = listOf(
         LIST_CLASSES,
         FIND_CLASS,
@@ -499,6 +508,7 @@ object TaskRegistry {
         DISTANCE,
         STRENGTH,
         VOLATILITY,
+        BALANCE,
         HELP,
         AGENT_HELP,
         CONFIG_HELP,

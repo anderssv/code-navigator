@@ -32,6 +32,7 @@ import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.context.ContextResult
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
+import no.f12.codenavigator.navigation.dsm.BalanceResult
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 
 @JvmInline
@@ -405,6 +406,20 @@ object JsonFormatter {
                 "functional" to entry.functionalCount,
                 "unknown" to entry.unknownCount,
                 "totalDeps" to entry.totalDeps,
+            )
+        }
+
+    fun formatBalance(result: BalanceResult): String =
+        jsonArray(result.entries) { entry ->
+            jsonObject(
+                "source" to entry.source.toString(),
+                "target" to entry.target.toString(),
+                "strength" to entry.strength.name,
+                "distance" to entry.distance,
+                "sourceVolatility" to entry.sourceVolatility,
+                "targetVolatility" to entry.targetVolatility,
+                "verdict" to entry.verdict.name,
+                "suggestion" to entry.suggestion,
             )
         }
 

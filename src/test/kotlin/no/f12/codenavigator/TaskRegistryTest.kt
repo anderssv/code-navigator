@@ -546,10 +546,10 @@ class TaskDefTest {
 class TaskRegistryTest {
 
     @Test
-    fun `contains all 31 goals`() {
+    fun `contains all 32 goals`() {
         val goals = TaskRegistry.ALL_TASKS.map { it.goal }.toSet()
 
-        assertEquals(31, goals.size)
+        assertEquals(32, goals.size)
         assertTrue(goals.contains("find-class"))
         assertTrue(goals.contains("hotspots"))
         assertTrue(goals.contains("complexity"))
@@ -563,6 +563,7 @@ class TaskRegistryTest {
         assertTrue(goals.contains("distance"))
         assertTrue(goals.contains("strength"))
         assertTrue(goals.contains("volatility"))
+        assertTrue(goals.contains("balance"))
     }
 
     @Test
@@ -573,7 +574,7 @@ class TaskRegistryTest {
             val gradleName = task.taskName(BuildTool.GRADLE)
             assertNotNull(gradleName, "Goal '${task.goal}' should resolve to a Gradle task name")
         }
-        assertEquals(31, registryGoals.size)
+        assertEquals(32, registryGoals.size)
     }
 
     @Test
@@ -689,8 +690,9 @@ class TaskRegistryTest {
     }
 
     @Test
-    fun `changed-since has category HYBRID`() {
+    fun `changed-since and balance have category HYBRID`() {
         assertEquals(TaskCategory.HYBRID, TaskRegistry.CHANGED_SINCE.category)
+        assertEquals(TaskCategory.HYBRID, TaskRegistry.BALANCE.category)
     }
 
     @Test

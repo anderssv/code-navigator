@@ -34,6 +34,7 @@ import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.callgraph.AnnotationTag
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.context.ContextResult
+import no.f12.codenavigator.navigation.dsm.BalanceResult
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 
@@ -271,6 +272,16 @@ object LlmFormatter {
                 append("${entry.source}->${entry.target} strength=${entry.strength} contract=${entry.contractCount} model=${entry.modelCount} functional=${entry.functionalCount}")
                 if (entry.unknownCount > 0) {
                     append(" unknown=${entry.unknownCount}")
+                }
+            }
+        }
+
+    fun formatBalance(result: BalanceResult): String =
+        result.entries.joinToString("\n") { entry ->
+            buildString {
+                append("${entry.source}->${entry.target} verdict=${entry.verdict} strength=${entry.strength} distance=${entry.distance} volatility=${entry.sourceVolatility}/${entry.targetVolatility}")
+                if (entry.suggestion.isNotEmpty()) {
+                    append(" | ${entry.suggestion}")
                 }
             }
         }

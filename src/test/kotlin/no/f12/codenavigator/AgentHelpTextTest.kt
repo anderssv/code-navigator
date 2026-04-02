@@ -482,26 +482,27 @@ class AgentHelpTextTest {
     }
 
     @Test
-    fun `global parameters section shows task-specific top defaults for distance and strength`() {
+    fun `global parameters section shows task-specific top defaults for distance, strength, and balance`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
         val globalSection = text.substringAfter("--- Global Parameters ---")
             .substringBefore("--- Pattern")
 
         val distanceTask = TaskRegistry.DISTANCE.taskName(BuildTool.GRADLE)
         val strengthTask = TaskRegistry.STRENGTH.taskName(BuildTool.GRADLE)
+        val balanceTask = TaskRegistry.BALANCE.taskName(BuildTool.GRADLE)
 
         assertTrue(
             globalSection.contains("default: 50"),
             "Global section should show default: 50 for most tasks using top",
         )
         assertTrue(
-            globalSection.contains("$distanceTask, $strengthTask: default: all"),
-            "Global section should show 'all' default for distance and strength top param",
+            globalSection.contains("$distanceTask, $strengthTask, $balanceTask: default: all"),
+            "Global section should show 'all' default for distance, strength, and balance top param",
         )
     }
 
     @Test
-    fun `global parameters top line does not list distance and strength in default-50 task group`() {
+    fun `global parameters top line does not list distance, strength, and balance in default-50 task group`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
         val globalSection = text.substringAfter("--- Global Parameters ---")
             .substringBefore("--- Pattern")
@@ -509,6 +510,7 @@ class AgentHelpTextTest {
         val topLine = globalSection.lines().first { it.contains("top=") && it.contains("Max results") }
         val distanceTask = TaskRegistry.DISTANCE.taskName(BuildTool.GRADLE)
         val strengthTask = TaskRegistry.STRENGTH.taskName(BuildTool.GRADLE)
+        val balanceTask = TaskRegistry.BALANCE.taskName(BuildTool.GRADLE)
 
         val mainTaskList = topLine.substringAfter("(").substringBefore(", default:")
         assertFalse(
@@ -518,6 +520,10 @@ class AgentHelpTextTest {
         assertFalse(
             mainTaskList.contains(strengthTask),
             "Task list before 'default: 50' should not contain $strengthTask. Got: $mainTaskList",
+        )
+        assertFalse(
+            mainTaskList.contains(balanceTask),
+            "Task list before 'default: 50' should not contain $balanceTask. Got: $mainTaskList",
         )
     }
 
