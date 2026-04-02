@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.classinfo.ClassInfo
 import no.f12.codenavigator.navigation.changedsince.SourceFileResolver
 import kotlin.test.Test

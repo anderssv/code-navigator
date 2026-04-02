@@ -9,13 +9,13 @@ import no.f12.codenavigator.navigation.callgraph.AnnotationTag
 import no.f12.codenavigator.navigation.callgraph.CallDirection
 import no.f12.codenavigator.navigation.callgraph.CallTreeFormatter
 import no.f12.codenavigator.navigation.callgraph.CallTreeNode
-import no.f12.codenavigator.navigation.ClassName
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
 import no.f12.codenavigator.navigation.classinfo.ClassDetail
 import no.f12.codenavigator.navigation.classinfo.ClassInfo
 import no.f12.codenavigator.navigation.interfaces.InterfaceRegistry
 import no.f12.codenavigator.navigation.dsm.PackageDependencies
-import no.f12.codenavigator.navigation.PackageName
+import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.symbol.SymbolInfo
 import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType

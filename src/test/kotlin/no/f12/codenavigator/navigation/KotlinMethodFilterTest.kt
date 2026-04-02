@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.KotlinMethodFilter
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue

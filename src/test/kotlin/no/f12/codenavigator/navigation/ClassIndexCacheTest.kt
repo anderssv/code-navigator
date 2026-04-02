@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.classinfo.ClassIndexCache
 import no.f12.codenavigator.navigation.classinfo.ClassInfo
 import org.junit.jupiter.api.BeforeEach

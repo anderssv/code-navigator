@@ -1,9 +1,9 @@
 package no.f12.codenavigator.navigation.deadcode
 
-import no.f12.codenavigator.navigation.AnnotationName
+import no.f12.codenavigator.navigation.core.AnnotationName
 import no.f12.codenavigator.navigation.callgraph.CallGraph
-import no.f12.codenavigator.navigation.ClassName
-import no.f12.codenavigator.navigation.KotlinMethodFilter
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.KotlinMethodFilter
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 
 enum class DeadCodeKind {

@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.dsm.CyclesConfig
 import kotlin.test.Test

@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation.symbol
 
-import no.f12.codenavigator.navigation.ClassName
-import no.f12.codenavigator.navigation.ScanResult
-import no.f12.codenavigator.navigation.UnsupportedBytecodeVersionException
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.ScanResult
+import no.f12.codenavigator.navigation.core.UnsupportedBytecodeVersionException
 import java.io.File
 
 object SymbolScanner {

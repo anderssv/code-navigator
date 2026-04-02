@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.stringconstant.StringConstantFormatter
 import no.f12.codenavigator.navigation.stringconstant.StringConstantMatch
 import kotlin.test.Test

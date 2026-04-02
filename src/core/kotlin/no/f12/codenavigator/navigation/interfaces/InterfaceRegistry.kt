@@ -1,9 +1,9 @@
 package no.f12.codenavigator.navigation.interfaces
 
-import no.f12.codenavigator.navigation.ClassName
-import no.f12.codenavigator.navigation.ScanResult
-import no.f12.codenavigator.navigation.UnsupportedBytecodeVersionException
-import no.f12.codenavigator.navigation.createClassReader
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.ScanResult
+import no.f12.codenavigator.navigation.core.UnsupportedBytecodeVersionException
+import no.f12.codenavigator.navigation.core.createClassReader
 
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor

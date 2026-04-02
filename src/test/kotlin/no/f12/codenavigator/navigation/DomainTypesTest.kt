@@ -1,5 +1,8 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.AnnotationName
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import kotlin.test.Test
 import kotlin.test.assertEquals

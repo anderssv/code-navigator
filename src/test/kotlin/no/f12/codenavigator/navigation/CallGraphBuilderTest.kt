@@ -1,11 +1,12 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.callgraph.CallGraph
 import no.f12.codenavigator.navigation.callgraph.CallGraphBuilder
 import no.f12.codenavigator.navigation.callgraph.CallDirection
 import no.f12.codenavigator.navigation.callgraph.CallTreeFormatter
 import no.f12.codenavigator.navigation.callgraph.MethodRef
-import no.f12.codenavigator.navigation.SourceSet
+import no.f12.codenavigator.navigation.core.SourceSet
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import java.io.File

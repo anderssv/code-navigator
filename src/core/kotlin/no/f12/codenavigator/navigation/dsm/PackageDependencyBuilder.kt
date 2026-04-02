@@ -1,6 +1,6 @@
 package no.f12.codenavigator.navigation.dsm
 
-import no.f12.codenavigator.navigation.PackageName
+import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.callgraph.CallGraph
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 

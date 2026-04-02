@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.symbol.SymbolFilter
 import no.f12.codenavigator.navigation.symbol.SymbolInfo
 import no.f12.codenavigator.navigation.symbol.SymbolKind

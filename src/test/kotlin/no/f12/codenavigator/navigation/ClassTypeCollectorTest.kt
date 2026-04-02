@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.dsm.ClassKind
 import no.f12.codenavigator.navigation.dsm.ClassTypeCollector
 import org.objectweb.asm.Opcodes

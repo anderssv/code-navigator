@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.rank.RankFormatter
 import no.f12.codenavigator.navigation.rank.RankedType
 import kotlin.test.Test

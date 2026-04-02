@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.callgraph.CallTreeNode
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import no.f12.codenavigator.navigation.classinfo.ClassDetail

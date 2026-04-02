@@ -1,6 +1,6 @@
 package no.f12.codenavigator.navigation.changedsince
 
-import no.f12.codenavigator.navigation.ClassName
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.callgraph.CallGraph
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 

@@ -5,8 +5,8 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.SourceSet
-import no.f12.codenavigator.navigation.SourceSetResolver
+import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.SourceSetResolver
 import no.f12.codenavigator.navigation.annotation.AnnotationQueryBuilder
 import no.f12.codenavigator.navigation.annotation.AnnotationQueryConfig
 import no.f12.codenavigator.navigation.annotation.AnnotationQueryFormatter

@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.dsm.PackageDistanceCalculator
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,6 +1,6 @@
 package no.f12.codenavigator.navigation.callgraph
 
-import no.f12.codenavigator.navigation.ClassName
+import no.f12.codenavigator.navigation.core.ClassName
 
 enum class CallDirection(
     val arrow: String,

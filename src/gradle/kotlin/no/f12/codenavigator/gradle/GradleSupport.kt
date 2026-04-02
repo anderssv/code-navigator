@@ -2,7 +2,7 @@ package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.registry.TaskDef
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.SourceSet
+import no.f12.codenavigator.navigation.core.SourceSet
 import org.gradle.api.Project
 import org.gradle.api.tasks.SourceSetContainer
 import java.io.File

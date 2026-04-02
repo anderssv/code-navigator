@@ -1,6 +1,6 @@
 package no.f12.codenavigator.maven
 
-import no.f12.codenavigator.navigation.SourceSet
+import no.f12.codenavigator.navigation.core.SourceSet
 import org.apache.maven.project.MavenProject
 import java.io.File
 

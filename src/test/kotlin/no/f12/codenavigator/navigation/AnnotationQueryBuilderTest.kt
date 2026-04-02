@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.AnnotationName
 import no.f12.codenavigator.navigation.annotation.AnnotationQueryBuilder
 import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.io.TempDir

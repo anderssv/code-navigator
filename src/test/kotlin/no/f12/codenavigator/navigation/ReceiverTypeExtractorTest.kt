@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.deadcode.ReceiverTypeExtractor
 import org.objectweb.asm.Opcodes
 import kotlin.io.path.createTempDirectory

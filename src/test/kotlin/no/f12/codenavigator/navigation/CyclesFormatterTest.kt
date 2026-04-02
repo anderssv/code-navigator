@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.dsm.CycleDetail
 import no.f12.codenavigator.navigation.dsm.CycleEdge
 import no.f12.codenavigator.navigation.dsm.CyclesFormatter

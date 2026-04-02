@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.hierarchy.SupertypeKind
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyBuilder
 import org.junit.jupiter.api.io.TempDir

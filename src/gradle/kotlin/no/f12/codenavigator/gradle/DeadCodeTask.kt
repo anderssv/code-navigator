@@ -6,7 +6,7 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
-import no.f12.codenavigator.navigation.ClassName
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.deadcode.BridgeMethodDetector
 import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFinder
@@ -16,7 +16,7 @@ import no.f12.codenavigator.navigation.deadcode.FieldExtractor
 import no.f12.codenavigator.navigation.deadcode.InlineMethodDetector
 import no.f12.codenavigator.navigation.deadcode.ReceiverTypeExtractor
 import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
-import no.f12.codenavigator.navigation.SkippedFileReporter
+import no.f12.codenavigator.navigation.core.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.SourceSetContainer

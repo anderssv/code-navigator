@@ -1,9 +1,9 @@
 package no.f12.codenavigator.navigation.callgraph
 
-import no.f12.codenavigator.navigation.ClassName
-import no.f12.codenavigator.navigation.FileCache
-import no.f12.codenavigator.navigation.ScanResult
-import no.f12.codenavigator.navigation.SourceSet
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.FileCache
+import no.f12.codenavigator.navigation.core.ScanResult
+import no.f12.codenavigator.navigation.core.SourceSet
 import java.io.File
 
 object CallGraphCache : FileCache<CallGraph>() {

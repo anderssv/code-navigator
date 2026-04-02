@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.navigation.classinfo.ClassInfo
 import no.f12.codenavigator.navigation.deadcode.DeadCode

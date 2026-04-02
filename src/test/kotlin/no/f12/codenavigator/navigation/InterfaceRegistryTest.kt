@@ -1,6 +1,6 @@
 package no.f12.codenavigator.navigation.interfaces
 
-import no.f12.codenavigator.navigation.ClassName
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.TestClassWriter
 
 import org.junit.jupiter.api.io.TempDir

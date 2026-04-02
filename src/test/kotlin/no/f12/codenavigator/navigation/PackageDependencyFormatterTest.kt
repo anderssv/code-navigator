@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.dsm.PackageDependencies
 import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
 import kotlin.test.Test

@@ -1,4 +1,4 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.core
 
 import org.objectweb.asm.AnnotationVisitor
 import org.objectweb.asm.Opcodes

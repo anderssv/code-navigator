@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.AnnotationName
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
 import no.f12.codenavigator.navigation.classinfo.ClassDetailExtractor
 import no.f12.codenavigator.navigation.classinfo.FieldDetail

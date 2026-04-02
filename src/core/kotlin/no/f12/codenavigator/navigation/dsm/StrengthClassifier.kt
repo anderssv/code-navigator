@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation.dsm
 
-import no.f12.codenavigator.navigation.ClassName
-import no.f12.codenavigator.navigation.PackageName
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.PackageName
 
 enum class IntegrationStrength(val level: Int) {
     CONTRACT(1),

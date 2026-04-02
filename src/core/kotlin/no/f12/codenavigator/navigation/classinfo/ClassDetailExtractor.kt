@@ -1,11 +1,11 @@
 package no.f12.codenavigator.navigation.classinfo
 
-import no.f12.codenavigator.navigation.AnnotationName
-import no.f12.codenavigator.navigation.ClassName
-import no.f12.codenavigator.navigation.KotlinMethodFilter
-import no.f12.codenavigator.navigation.ResolvedAnnotation
-import no.f12.codenavigator.navigation.unwrappingAnnotationVisitor
-import no.f12.codenavigator.navigation.createClassReader
+import no.f12.codenavigator.navigation.core.AnnotationName
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.KotlinMethodFilter
+import no.f12.codenavigator.navigation.core.ResolvedAnnotation
+import no.f12.codenavigator.navigation.core.unwrappingAnnotationVisitor
+import no.f12.codenavigator.navigation.core.createClassReader
 import org.objectweb.asm.AnnotationVisitor
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor

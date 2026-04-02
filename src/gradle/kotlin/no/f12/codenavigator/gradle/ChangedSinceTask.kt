@@ -4,8 +4,8 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.SourceSet
-import no.f12.codenavigator.navigation.SourceSetResolver
+import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.SourceSetResolver
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.changedsince.ChangedSinceBuilder
 import no.f12.codenavigator.navigation.changedsince.ChangedSinceConfig
@@ -13,7 +13,7 @@ import no.f12.codenavigator.navigation.changedsince.ChangedSinceFormatter
 import no.f12.codenavigator.navigation.changedsince.GitDiffRunner
 import no.f12.codenavigator.navigation.changedsince.SourceFileResolver
 import no.f12.codenavigator.navigation.classinfo.ClassIndexCache
-import no.f12.codenavigator.navigation.SkippedFileReporter
+import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault

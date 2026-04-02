@@ -6,10 +6,10 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
-import no.f12.codenavigator.navigation.RootPackageDetector
-import no.f12.codenavigator.navigation.SourceSet
-import no.f12.codenavigator.navigation.scanProjectClasses
-import no.f12.codenavigator.navigation.ClassName
+import no.f12.codenavigator.navigation.core.RootPackageDetector
+import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.scanProjectClasses
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.classinfo.ClassScanner
@@ -27,7 +27,7 @@ import no.f12.codenavigator.navigation.metrics.MetricsBuilder
 import no.f12.codenavigator.navigation.metrics.MetricsConfig
 import no.f12.codenavigator.navigation.metrics.MetricsFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
-import no.f12.codenavigator.navigation.SkippedFileReporter
+import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.rank.TypeRanker
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute

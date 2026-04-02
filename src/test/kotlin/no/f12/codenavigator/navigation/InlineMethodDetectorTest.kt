@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.deadcode.InlineMethodDetector
 import no.f12.codenavigator.navigation.fixtures.ClassWithInline
 import no.f12.codenavigator.navigation.fixtures.ClassWithMixedMethods

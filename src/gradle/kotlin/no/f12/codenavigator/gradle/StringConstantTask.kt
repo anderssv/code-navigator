@@ -4,9 +4,9 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.formatting.OutputWrapper
-import no.f12.codenavigator.navigation.SourceSet
-import no.f12.codenavigator.navigation.SourceSetResolver
-import no.f12.codenavigator.navigation.SkippedFileReporter
+import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.SourceSetResolver
+import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.stringconstant.StringConstantConfig
 import no.f12.codenavigator.navigation.stringconstant.StringConstantFormatter
 import no.f12.codenavigator.navigation.stringconstant.StringConstantScanner

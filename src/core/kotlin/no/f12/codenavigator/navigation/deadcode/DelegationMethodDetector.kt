@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation.deadcode
 
-import no.f12.codenavigator.navigation.ClassName
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.callgraph.MethodRef
-import no.f12.codenavigator.navigation.createClassReader
+import no.f12.codenavigator.navigation.core.createClassReader
 import kotlin.metadata.jvm.KotlinClassMetadata
 import kotlin.metadata.jvm.signature
 import org.objectweb.asm.AnnotationVisitor

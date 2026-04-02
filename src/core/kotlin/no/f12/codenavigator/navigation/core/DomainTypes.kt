@@ -1,4 +1,4 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.core
 
 enum class SourceSet(val label: String) {
     MAIN("prod"),

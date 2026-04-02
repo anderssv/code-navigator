@@ -1,4 +1,4 @@
-package no.f12.codenavigator.navigation
+package no.f12.codenavigator.navigation.core
 
 import no.f12.codenavigator.registry.CacheFreshness
 import java.io.BufferedWriter

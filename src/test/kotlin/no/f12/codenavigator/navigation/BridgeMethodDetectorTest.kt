@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.deadcode.BridgeMethodDetector
 import no.f12.codenavigator.navigation.fixtures.ClassWithDelegation
 import no.f12.codenavigator.navigation.fixtures.ClassWithoutDelegation

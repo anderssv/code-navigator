@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.UnsupportedBytecodeVersionException
+import no.f12.codenavigator.navigation.core.createClassReader
 import no.f12.codenavigator.navigation.classinfo.ClassScanner
 import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes

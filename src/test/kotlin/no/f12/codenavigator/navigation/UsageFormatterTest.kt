@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.callgraph.UsageKind
 import no.f12.codenavigator.navigation.callgraph.UsageSite

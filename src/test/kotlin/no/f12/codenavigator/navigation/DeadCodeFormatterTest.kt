@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation
 
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.deadcode.DeadCode
 import no.f12.codenavigator.navigation.deadcode.DeadCodeConfidence
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter

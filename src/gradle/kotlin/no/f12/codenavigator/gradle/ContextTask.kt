@@ -5,7 +5,7 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.SkippedFileReporter
+import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallDirection
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache

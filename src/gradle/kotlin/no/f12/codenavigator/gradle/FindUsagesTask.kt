@@ -6,7 +6,7 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
-import no.f12.codenavigator.navigation.SkippedFileReporter
+import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.callgraph.UsageScanner
 

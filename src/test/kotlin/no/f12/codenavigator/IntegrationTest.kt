@@ -3,7 +3,7 @@ package no.f12.codenavigator
 import no.f12.codenavigator.navigation.callgraph.CallGraphBuilder
 import no.f12.codenavigator.navigation.callgraph.CallDirection
 import no.f12.codenavigator.navigation.callgraph.CallTreeFormatter
-import no.f12.codenavigator.navigation.ClassName
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import kotlin.test.Test
 import kotlin.test.assertTrue
