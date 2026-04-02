@@ -5,6 +5,17 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
+## Add interpretation section to all analysis task output
+
+**Value: high** | **Effort: medium**
+
+All analysis tasks should include a short (2-4 sentences) interpretation section in their output to help LLMs pick up the right context for results. Show to both humans and LLMs.
+
+- Each task formatter appends a brief "Interpretation" block explaining what the results mean and how to act on them.
+- Keeps agents from misreading output (e.g., treating 0-caller framework entry points as dead code, or confusing stripped package prefixes with actual package names).
+
+---
+
 ## `cnavDead` baseline diff — confirm cleanup was complete
 
 **Value: medium** | **Effort: low**
