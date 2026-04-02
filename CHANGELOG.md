@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.50
+
+- **Refactoring:** Extracted `registry` package from root — `TaskRegistry`, `BuildTool`, `CacheFreshness` moved to `no.f12.codenavigator.registry`.
+- **Refactoring:** Extracted `formatting` package from root — `LlmFormatter`, `JsonFormatter`, `TableFormatter`, `OutputWrapper` moved to `no.f12.codenavigator.formatting`.
+- **Refactoring:** Extracted `navigation.core` package — `DomainTypes`, `BytecodeReader`, `FileCache`, `KotlinMethodFilter`, `AnnotationParameterCollector`, `LambdaCollapser`, `PatternEnhancer`, `ProjectClassScanner`, `RootPackageDetector`, `SkippedFileReporter`, `SourceSetResolver` moved to `no.f12.codenavigator.navigation.core`.
+- **Improved:** Package structure — broke the 17-package mega-cycle into two smaller independent cycles (5-package and 7-package). Root package now contains only help text files.
+
 ## 0.1.49
 
 - **New:** `cnavDistance` task / `cnav:distance` goal — measures structural distance between packages using shortest path in the dependency graph. Parameters: `-Ppackage-filter=<regex>` (scope), `-Ptop=N` (limit, default unlimited). TEXT, JSON, and LLM output formats with `displayPrefix` stripping.
