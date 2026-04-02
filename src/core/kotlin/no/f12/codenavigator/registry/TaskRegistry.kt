@@ -462,6 +462,14 @@ object TaskRegistry {
         paramDefaultOverrides = mapOf("top" to "all"),
     )
 
+    val VOLATILITY = TaskDef(
+        goal = "volatility",
+        description = "Show package-level volatility from git history (change frequency and churn)",
+        params = FORMAT_PARAMS + listOf(AFTER, MIN_REVS, TOP, NO_FOLLOW),
+        requiresCompilation = false,
+        category = TaskCategory.GIT_HISTORY,
+    )
+
     val ALL_TASKS: List<TaskDef> = listOf(
         LIST_CLASSES,
         FIND_CLASS,
@@ -490,6 +498,7 @@ object TaskRegistry {
         CONTEXT,
         DISTANCE,
         STRENGTH,
+        VOLATILITY,
         HELP,
         AGENT_HELP,
         CONFIG_HELP,

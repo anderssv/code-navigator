@@ -5,6 +5,7 @@ import no.f12.codenavigator.analysis.FileAge
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.analysis.ModuleAuthors
+import no.f12.codenavigator.analysis.PackageVolatilityResult
 import no.f12.codenavigator.navigation.callgraph.AnnotationTag
 import no.f12.codenavigator.navigation.callgraph.CallDirection
 import no.f12.codenavigator.navigation.callgraph.CallTreeFormatter
@@ -130,6 +131,17 @@ object JsonFormatter {
                 "file" to h.file,
                 "revisions" to h.revisions,
                 "totalChurn" to h.totalChurn,
+            )
+        }
+
+    fun formatVolatility(result: PackageVolatilityResult): String =
+        jsonArray(result.entries) { entry ->
+            jsonObject(
+                "package" to entry.packageName,
+                "revisions" to entry.revisions,
+                "totalChurn" to entry.totalChurn,
+                "fileCount" to entry.fileCount,
+                "avgRevisionsPerFile" to "%.1f".format(entry.avgRevisionsPerFile).toDouble(),
             )
         }
 

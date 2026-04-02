@@ -5,6 +5,7 @@ import no.f12.codenavigator.analysis.FileAge
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.analysis.ModuleAuthors
+import no.f12.codenavigator.analysis.PackageVolatilityResult
 import no.f12.codenavigator.navigation.callgraph.CallDirection
 import no.f12.codenavigator.navigation.callgraph.CallTreeFormatter
 import no.f12.codenavigator.navigation.callgraph.CallTreeNode
@@ -103,6 +104,9 @@ object LlmFormatter {
 
     fun formatHotspots(hotspots: List<Hotspot>): String =
         hotspots.joinToString("\n") { "${it.file} revisions=${it.revisions} churn=${it.totalChurn}" }
+
+    fun formatVolatility(result: PackageVolatilityResult): String =
+        result.entries.joinToString("\n") { "${it.packageName} revisions=${it.revisions} churn=${it.totalChurn} files=${it.fileCount} avgRev=${"%.1f".format(it.avgRevisionsPerFile)}" }
 
     fun formatCoupling(pairs: List<CoupledPair>): String =
         pairs.joinToString("\n") { "${it.entity} -- ${it.coupled} degree=${it.degree}% shared=${it.sharedRevs} avg=${it.avgRevs}" }

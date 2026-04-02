@@ -420,6 +420,17 @@ object HelpText {
         appendLine("    Usage: ${u("churn")}")
         appendLine("    Usage: ${u("churn", p("after", "2024-06-01"), p("top", "30"))}")
         appendLine()
+        appendLine("  ${t("volatility")}")
+        appendLine("    Aggregates file-level git history to the package level. Shows which packages")
+        appendLine("    change most often — a key dimension of Balanced Coupling analysis.")
+        appendLine("    High-volatility packages need loose coupling; low-volatility ones can tolerate tighter coupling.")
+        appendLine("    Parameters:")
+        appendLine("      ${pd(TaskRegistry.AFTER)}")
+        appendLine("      ${pd(TaskRegistry.MIN_REVS)}")
+        appendLine("      ${pd(TaskRegistry.TOP)}")
+        appendLine("    Usage: ${u("volatility")}")
+        appendLine("    Usage: ${u("volatility", p("after", "2024-01-01"), p("top", "20"))}")
+        appendLine()
         appendLine("If you are an AI coding agent, run ${u("agent-help")} for optimized guidance.")
     }
 
