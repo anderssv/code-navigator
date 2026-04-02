@@ -57,10 +57,10 @@ class StrengthConfigTest {
     }
 
     @Test
-    fun `defaults top to 50`() {
+    fun `defaults top to unlimited`() {
         val config = StrengthConfig.parse(emptyMap())
 
-        assertEquals(50, config.top)
+        assertEquals(Int.MAX_VALUE, config.top)
     }
 
     @Test
@@ -102,16 +102,18 @@ class StrengthConfigTest {
     }
 
     @Test
-    fun `top unlimited parses to max int`() {
-        val config = StrengthConfig.parse(mapOf("top" to "unlimited"))
-
-        assertEquals(Int.MAX_VALUE, config.top)
-    }
-
-    @Test
     fun `top negative throws with clear message`() {
         val exception = assertFailsWith<IllegalArgumentException> {
             StrengthConfig.parse(mapOf("top" to "-1"))
+        }
+
+        assertTrue(exception.message!!.contains("top"))
+    }
+
+    @Test
+    fun `top non-numeric throws with clear message`() {
+        val exception = assertFailsWith<IllegalArgumentException> {
+            StrengthConfig.parse(mapOf("top" to "abc"))
         }
 
         assertTrue(exception.message!!.contains("top"))

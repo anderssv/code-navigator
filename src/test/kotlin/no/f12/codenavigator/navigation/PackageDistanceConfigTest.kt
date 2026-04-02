@@ -57,10 +57,10 @@ class PackageDistanceConfigTest {
     }
 
     @Test
-    fun `defaults top to 50`() {
+    fun `defaults top to unlimited`() {
         val config = PackageDistanceConfig.parse(emptyMap())
 
-        assertEquals(50, config.top)
+        assertEquals(Int.MAX_VALUE, config.top)
     }
 
     @Test
@@ -102,16 +102,18 @@ class PackageDistanceConfigTest {
     }
 
     @Test
-    fun `top unlimited parses to max int`() {
-        val config = PackageDistanceConfig.parse(mapOf("top" to "unlimited"))
-
-        assertEquals(Int.MAX_VALUE, config.top)
-    }
-
-    @Test
     fun `top negative throws with clear message`() {
         val exception = assertFailsWith<IllegalArgumentException> {
             PackageDistanceConfig.parse(mapOf("top" to "-1"))
+        }
+
+        assertTrue(exception.message!!.contains("top"))
+    }
+
+    @Test
+    fun `top non-numeric throws with clear message`() {
+        val exception = assertFailsWith<IllegalArgumentException> {
+            PackageDistanceConfig.parse(mapOf("top" to "abc"))
         }
 
         assertTrue(exception.message!!.contains("top"))

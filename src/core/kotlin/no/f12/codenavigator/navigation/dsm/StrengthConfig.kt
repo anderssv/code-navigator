@@ -15,7 +15,7 @@ data class StrengthConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): StrengthConfig {
-            val top = parseTop(properties)
+            val top = parseTop(properties, defaultValue = Int.MAX_VALUE)
             return StrengthConfig(
                 packageFilter = TaskRegistry.PACKAGE_FILTER.parseFrom(properties),
                 includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),

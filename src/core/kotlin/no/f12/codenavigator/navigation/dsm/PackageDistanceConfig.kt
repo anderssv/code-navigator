@@ -15,7 +15,7 @@ data class PackageDistanceConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): PackageDistanceConfig {
-            val top = parseTop(properties)
+            val top = parseTop(properties, defaultValue = Int.MAX_VALUE)
             return PackageDistanceConfig(
                 packageFilter = TaskRegistry.PACKAGE_FILTER.parseFrom(properties),
                 includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
