@@ -248,28 +248,6 @@ Support Gradle's incremental task API (`@InputFiles`, `@OutputFile`, `InputChang
 
 ---
 
-## `cnavBalance` — balanced coupling analysis — `[Balanced Coupling]`
-
-**Value: high** | **Effort: medium**
-
-The composite Balanced Coupling heuristic. For each package pair, evaluate the three dimensions and flag imbalances:
-
-```
-modularity = strength XOR distance
-balance    = modularity OR NOT volatility
-```
-
-- **High strength + high distance + high volatility** → danger zone: tightly coupled across boundaries in fast-changing code. Suggest reducing distance (co-locate) or reducing strength (introduce contract/interface).
-- **Low strength + low distance + low volatility** → over-engineering: unnecessary indirection in stable, loosely coupled code. Suggest simplifying or merging.
-- **Balanced combinations** → no action needed.
-
-- **Inputs**: Integration strength (contract/model/functional from classification), distance (from structural distance), volatility (from package volatility).
-- **Output**: Ranked list of package pairs by imbalance severity, with per-pair breakdown of all three dimensions and actionable suggestions.
-- **Parameters**: `-PpackageFilter=<prefix>`, `-Pformat=llm|json|text`, `-Ptop=N`.
-- **Prerequisites**: Integration strength classification (done), structural distance (done), volatility per package.
-
----
-
 ## Per-package health dashboard — `[Balanced Coupling]`
 
 **Value: medium** | **Effort: medium**

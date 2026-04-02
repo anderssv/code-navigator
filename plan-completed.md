@@ -564,3 +564,22 @@ Aggregates file-level git metrics (change frequency, churn) to the package level
 - **Registered as task 31** in `TaskRegistry` under GIT_HISTORY category.
 
 **Changes**: New files: `FileToPackageMapper.kt`, `PackageVolatilityBuilder.kt`, `PackageVolatilityFormatter.kt`, `VolatilityConfig.kt`, `PackageVolatilityTask.kt`, `PackageVolatilityMojo.kt` + 4 test files (26 tests total). Modified: `TaskRegistry.kt`, `JsonFormatter.kt`, `LlmFormatter.kt`, `HelpText.kt`, `AgentHelpText.kt`, `CodeNavigatorPlugin.kt`, `TaskRegistryTest.kt`.
+
+## ~~`cnavBalance` — balanced coupling analysis~~ DONE — `[Balanced Coupling]`
+
+**Value: high** | **Effort: medium**
+
+Composite Balanced Coupling heuristic. For each package pair, evaluates three dimensions — integration strength, structural distance, and package volatility — and produces a single verdict.
+
+- **Formula**: `modularity = strength XOR distance; balance = modularity OR NOT volatility`
+- **Verdicts**: `BALANCED` (good modularity), `TOLERABLE` (poor modularity but low volatility), `OVER_ENGINEERED` (low strength + low distance), `DANGER` (high strength + high distance + high volatility).
+- **Thresholds**: Distance >= 3 = HIGH, Strength >= FUNCTIONAL = HIGH, Volatility uses median-based classification (revisions >= project median = HIGH).
+- **`BalanceBuilder`** — core logic with `BalanceVerdict` enum, `BalanceEntry` and `BalanceResult` data classes, `classify()`, `suggest()`, `computeMedianRevisions()`.
+- **`BalanceConfig`** — hybrid config parsing DSM + git history params.
+- **`BalanceFormatter`** — TEXT format with verdict, strength, distance, volatility display, suggestions.
+- **Output formats**: TEXT (table with suggestions), JSON (array), LLM (compact key=value).
+- **Gradle task**: `BalanceTask` registered as `cnavBalance` — hybrid task orchestrating bytecode (strength + distance) and git history (volatility).
+- **Maven mojo**: `BalanceMojo` with goal `balance`.
+- **Registered as task 32** in `TaskRegistry` under COMPOSITE category (new category added to distinguish composite/aggregated tasks from base analyses).
+
+**Changes**: New files: `BalanceBuilder.kt`, `BalanceConfig.kt`, `BalanceFormatter.kt`, `BalanceTask.kt`, `BalanceMojo.kt` + 3 test files (15 tests total). Modified: `TaskRegistry.kt` (added COMPOSITE category + BALANCE TaskDef), `JsonFormatter.kt`, `LlmFormatter.kt`, `HelpText.kt`, `AgentHelpText.kt`, `CodeNavigatorPlugin.kt`, `ConfigHelpText.kt`, `TaskRegistryTest.kt`, `AgentHelpTextTest.kt`, `ConfigHelpTextTest.kt`.
