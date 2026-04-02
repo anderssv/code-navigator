@@ -359,3 +359,4 @@ Items below are low-priority or may not be worth building. Revisit if demand eme
 - **Entity ownership / main developer**: Who "owns" each file by contribution weight. Mode on `cnavAuthors`.
 - **Architectural-level grouping**: Aggregate file-level results by logical component/layer.
 - **Source-level structural analysis**: Analyze imports from source files without requiring compilation.
+- **Deterministic refactorings**: Explore whether code-navigator's bytecode analysis (call graph, usages, type hierarchy, interface registry) can drive deterministic refactoring operations like rename, extract interface, move class, etc. The analysis already knows all callers, implementors, and dependencies — emitting precise source edits (file + line + replacement) could make agent-driven refactorings reliable rather than heuristic.
