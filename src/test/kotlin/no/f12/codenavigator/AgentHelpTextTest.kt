@@ -499,6 +499,27 @@ class AgentHelpTextTest {
     }
 
     @Test
+    fun `global parameters top line does not list distance and strength in default-50 task group`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val globalSection = text.substringAfter("--- Global Parameters ---")
+            .substringBefore("--- Pattern")
+
+        val topLine = globalSection.lines().first { it.contains("top=") && it.contains("Max results") }
+        val distanceTask = TaskRegistry.DISTANCE.taskName(BuildTool.GRADLE)
+        val strengthTask = TaskRegistry.STRENGTH.taskName(BuildTool.GRADLE)
+
+        val mainTaskList = topLine.substringAfter("(").substringBefore(", default:")
+        assertFalse(
+            mainTaskList.contains(distanceTask),
+            "Task list before 'default: 50' should not contain $distanceTask. Got: $mainTaskList",
+        )
+        assertFalse(
+            mainTaskList.contains(strengthTask),
+            "Task list before 'default: 50' should not contain $strengthTask. Got: $mainTaskList",
+        )
+    }
+
+    @Test
     fun `Maven task reference uses Maven task names and -D params`() {
         val text = AgentHelpText.generate(BuildTool.MAVEN)
         val taskReferenceSection = text.substringAfter("--- Task Reference ---")

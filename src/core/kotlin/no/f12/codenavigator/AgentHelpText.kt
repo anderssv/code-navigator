@@ -647,25 +647,30 @@ object AgentHelpText {
         for (param in allParams) {
             val tasks = tasksByParam[param.name] ?: continue
             val rendered = param.render(tool)
-            val taskList = tasks.joinToString(", ") { it.taskName(tool) }
 
             val defaultsByValue = tasks.groupBy { it.effectiveDefault(param) }
-            val defaultSuffix = if (defaultsByValue.size == 1) {
+            val (taskList, defaultSuffix) = if (defaultsByValue.size == 1) {
                 val value = defaultsByValue.keys.single()
-                value?.let { ", default: $it" } ?: ""
+                val allTaskNames = tasks.joinToString(", ") { it.taskName(tool) }
+                allTaskNames to (value?.let { ", default: $it" } ?: "")
             } else {
+                val baseDefault = param.defaultValue
+                val baseTasks = defaultsByValue[baseDefault] ?: emptyList()
+                val baseTaskNames = baseTasks.joinToString(", ") { it.taskName(tool) }
+
                 val parts = defaultsByValue.entries
-                    .sortedBy { entry -> if (entry.key == param.defaultValue) 0 else 1 }
+                    .sortedBy { entry -> if (entry.key == baseDefault) 0 else 1 }
                     .mapNotNull { (value, tasksForValue) ->
                         value ?: return@mapNotNull null
                         val taskNames = tasksForValue.joinToString(", ") { it.taskName(tool) }
-                        if (value == param.defaultValue) {
+                        if (value == baseDefault) {
                             "default: $value"
                         } else {
                             "$taskNames: default: $value"
                         }
                     }
-                if (parts.isNotEmpty()) ", ${parts.joinToString("; ")}" else ""
+                val suffix = if (parts.isNotEmpty()) ", ${parts.joinToString("; ")}" else ""
+                baseTaskNames to suffix
             }
 
             appendLine("  ${padTo(rendered, 28)}${param.description} ($taskList$defaultSuffix)")
