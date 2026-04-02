@@ -378,6 +378,7 @@ object JsonFormatter {
                 "contract" to entry.contractCount,
                 "model" to entry.modelCount,
                 "functional" to entry.functionalCount,
+                "unknown" to entry.unknownCount,
                 "totalDeps" to entry.totalDeps,
             )
         }

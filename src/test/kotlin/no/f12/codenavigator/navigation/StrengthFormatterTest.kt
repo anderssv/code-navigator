@@ -29,6 +29,7 @@ class StrengthFormatterTest {
                 contractCount = 1,
                 modelCount = 2,
                 functionalCount = 0,
+                unknownCount = 0,
                 totalDeps = 3,
             ),
         ))
@@ -53,6 +54,7 @@ class StrengthFormatterTest {
                 contractCount = 0,
                 modelCount = 0,
                 functionalCount = 3,
+                unknownCount = 0,
                 totalDeps = 3,
             ),
             PackageStrengthEntry(
@@ -62,6 +64,7 @@ class StrengthFormatterTest {
                 contractCount = 2,
                 modelCount = 0,
                 functionalCount = 0,
+                unknownCount = 0,
                 totalDeps = 2,
             ),
         ))
@@ -87,5 +90,45 @@ class StrengthFormatterTest {
         val hints = StrengthFormatter.noResultsHints(3)
 
         assertTrue(hints.isEmpty())
+    }
+
+    @Test
+    fun `shows unknown count when greater than zero`() {
+        val result = StrengthResult(listOf(
+            PackageStrengthEntry(
+                source = PackageName("api"),
+                target = PackageName("external"),
+                strength = IntegrationStrength.CONTRACT,
+                contractCount = 1,
+                modelCount = 0,
+                functionalCount = 0,
+                unknownCount = 3,
+                totalDeps = 4,
+            ),
+        ))
+
+        val output = StrengthFormatter.format(result)
+
+        assertTrue(output.contains("unknown=3"), "Should contain unknown count")
+    }
+
+    @Test
+    fun `hides unknown count when zero`() {
+        val result = StrengthResult(listOf(
+            PackageStrengthEntry(
+                source = PackageName("api"),
+                target = PackageName("model"),
+                strength = IntegrationStrength.MODEL,
+                contractCount = 1,
+                modelCount = 2,
+                functionalCount = 0,
+                unknownCount = 0,
+                totalDeps = 3,
+            ),
+        ))
+
+        val output = StrengthFormatter.format(result)
+
+        assertTrue(!output.contains("unknown"), "Should not contain unknown when zero")
     }
 }

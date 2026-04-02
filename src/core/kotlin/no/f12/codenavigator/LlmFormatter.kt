@@ -248,7 +248,12 @@ object LlmFormatter {
 
     fun formatStrength(result: StrengthResult): String =
         result.entries.joinToString("\n") { entry ->
-            "${entry.source}->${entry.target} strength=${entry.strength} contract=${entry.contractCount} model=${entry.modelCount} functional=${entry.functionalCount}"
+            buildString {
+                append("${entry.source}->${entry.target} strength=${entry.strength} contract=${entry.contractCount} model=${entry.modelCount} functional=${entry.functionalCount}")
+                if (entry.unknownCount > 0) {
+                    append(" unknown=${entry.unknownCount}")
+                }
+            }
         }
 
     fun formatDsm(matrix: DsmMatrix): String = buildString {

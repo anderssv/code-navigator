@@ -16,6 +16,7 @@ data class PackageStrengthEntry(
     val contractCount: Int,
     val modelCount: Int,
     val functionalCount: Int,
+    val unknownCount: Int,
     val totalDeps: Int,
 )
 
@@ -40,12 +41,14 @@ object StrengthClassifier {
             var contract = 0
             var model = 0
             var functional = 0
+            var unknown = 0
 
             for (dep in deps) {
                 when (classifyTarget(dep.targetClass, classTypeRegistry)) {
                     IntegrationStrength.CONTRACT -> contract++
                     IntegrationStrength.MODEL -> model++
                     IntegrationStrength.FUNCTIONAL -> functional++
+                    null -> unknown++
                 }
             }
 
@@ -62,6 +65,7 @@ object StrengthClassifier {
                 contractCount = contract,
                 modelCount = model,
                 functionalCount = functional,
+                unknownCount = unknown,
                 totalDeps = deps.size,
             )
         }
@@ -77,8 +81,8 @@ object StrengthClassifier {
     private fun classifyTarget(
         targetClass: ClassName,
         registry: Map<ClassName, ClassKind>,
-    ): IntegrationStrength {
-        val kind = registry[targetClass] ?: return IntegrationStrength.FUNCTIONAL
+    ): IntegrationStrength? {
+        val kind = registry[targetClass] ?: return null
         return when (kind) {
             ClassKind.INTERFACE, ClassKind.ABSTRACT -> IntegrationStrength.CONTRACT
             ClassKind.DATA_CLASS, ClassKind.RECORD -> IntegrationStrength.MODEL

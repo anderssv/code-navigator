@@ -97,7 +97,7 @@ class StrengthClassifierTest {
     }
 
     @Test
-    fun `unknown target class defaults to FUNCTIONAL`() {
+    fun `unknown target class is counted as unknown not functional`() {
         val deps = listOf(
             PackageDependency(
                 PackageName("com.app.api"), PackageName("com.app.external"),
@@ -108,7 +108,78 @@ class StrengthClassifierTest {
 
         val result = StrengthClassifier.classify(deps, registry)
 
-        assertEquals(IntegrationStrength.FUNCTIONAL, result.entries[0].strength)
+        val entry = result.entries[0]
+        assertEquals(0, entry.functionalCount)
+        assertEquals(1, entry.unknownCount)
+        assertEquals(1, entry.totalDeps)
+    }
+
+    @Test
+    fun `all-unknown pair has aggregate strength CONTRACT`() {
+        val deps = listOf(
+            PackageDependency(
+                PackageName("com.app.api"), PackageName("com.app.external"),
+                ClassName("com.app.api.Controller"), ClassName("com.app.external.Client"),
+            ),
+            PackageDependency(
+                PackageName("com.app.api"), PackageName("com.app.external"),
+                ClassName("com.app.api.Handler"), ClassName("com.app.external.Util"),
+            ),
+        )
+        val registry = emptyMap<ClassName, ClassKind>()
+
+        val result = StrengthClassifier.classify(deps, registry)
+
+        val entry = result.entries[0]
+        assertEquals(IntegrationStrength.CONTRACT, entry.strength)
+        assertEquals(0, entry.contractCount)
+        assertEquals(0, entry.modelCount)
+        assertEquals(0, entry.functionalCount)
+        assertEquals(2, entry.unknownCount)
+    }
+
+    @Test
+    fun `mixed known and unknown deps aggregates strongest known and tracks unknownCount`() {
+        val deps = listOf(
+            PackageDependency(
+                PackageName("com.app.api"), PackageName("com.app.domain"),
+                ClassName("com.app.api.Controller"), ClassName("com.app.domain.Repository"),
+            ),
+            PackageDependency(
+                PackageName("com.app.api"), PackageName("com.app.domain"),
+                ClassName("com.app.api.Controller"), ClassName("com.app.domain.UnknownExternal"),
+            ),
+        )
+        val registry = mapOf(
+            ClassName("com.app.domain.Repository") to ClassKind.INTERFACE,
+        )
+
+        val result = StrengthClassifier.classify(deps, registry)
+
+        val entry = result.entries[0]
+        assertEquals(IntegrationStrength.CONTRACT, entry.strength)
+        assertEquals(1, entry.contractCount)
+        assertEquals(0, entry.modelCount)
+        assertEquals(0, entry.functionalCount)
+        assertEquals(1, entry.unknownCount)
+        assertEquals(2, entry.totalDeps)
+    }
+
+    @Test
+    fun `all-known deps have unknownCount zero`() {
+        val deps = listOf(
+            PackageDependency(
+                PackageName("com.app.api"), PackageName("com.app.domain"),
+                ClassName("com.app.api.Controller"), ClassName("com.app.domain.Order"),
+            ),
+        )
+        val registry = mapOf(
+            ClassName("com.app.domain.Order") to ClassKind.DATA_CLASS,
+        )
+
+        val result = StrengthClassifier.classify(deps, registry)
+
+        assertEquals(0, result.entries[0].unknownCount)
     }
 
     @Test

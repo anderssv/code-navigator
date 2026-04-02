@@ -945,11 +945,11 @@ class LlmFormatterTest {
             listOf(
                 PackageStrengthEntry(
                     PackageName("com.example.api"), PackageName("com.example.model"),
-                    IntegrationStrength.MODEL, contractCount = 1, modelCount = 2, functionalCount = 0, totalDeps = 3,
+                    IntegrationStrength.MODEL, contractCount = 1, modelCount = 2, functionalCount = 0, unknownCount = 0, totalDeps = 3,
                 ),
                 PackageStrengthEntry(
                     PackageName("com.example.api"), PackageName("org.other.service"),
-                    IntegrationStrength.FUNCTIONAL, contractCount = 0, modelCount = 0, functionalCount = 4, totalDeps = 4,
+                    IntegrationStrength.FUNCTIONAL, contractCount = 0, modelCount = 0, functionalCount = 4, unknownCount = 0, totalDeps = 4,
                 ),
             ),
         )
@@ -958,6 +958,25 @@ class LlmFormatterTest {
 
         assertEquals(
             "com.example.api->com.example.model strength=MODEL contract=1 model=2 functional=0\ncom.example.api->org.other.service strength=FUNCTIONAL contract=0 model=0 functional=4",
+            output,
+        )
+    }
+
+    @Test
+    fun `formatStrength includes unknown count when greater than zero`() {
+        val result = StrengthResult(
+            listOf(
+                PackageStrengthEntry(
+                    PackageName("com.example.api"), PackageName("org.external.lib"),
+                    IntegrationStrength.CONTRACT, contractCount = 1, modelCount = 0, functionalCount = 0, unknownCount = 3, totalDeps = 4,
+                ),
+            ),
+        )
+
+        val output = LlmFormatter.formatStrength(result)
+
+        assertEquals(
+            "com.example.api->org.external.lib strength=CONTRACT contract=1 model=0 functional=0 unknown=3",
             output,
         )
     }

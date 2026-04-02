@@ -1144,11 +1144,11 @@ class JsonFormatterTest {
             listOf(
                 PackageStrengthEntry(
                     PackageName("com.example.api"), PackageName("com.example.model"),
-                    IntegrationStrength.MODEL, contractCount = 1, modelCount = 2, functionalCount = 0, totalDeps = 3,
+                    IntegrationStrength.MODEL, contractCount = 1, modelCount = 2, functionalCount = 0, unknownCount = 0, totalDeps = 3,
                 ),
                 PackageStrengthEntry(
                     PackageName("com.example.api"), PackageName("org.other.service"),
-                    IntegrationStrength.FUNCTIONAL, contractCount = 0, modelCount = 0, functionalCount = 4, totalDeps = 4,
+                    IntegrationStrength.FUNCTIONAL, contractCount = 0, modelCount = 0, functionalCount = 4, unknownCount = 0, totalDeps = 4,
                 ),
             ),
         )
@@ -1164,6 +1164,23 @@ class JsonFormatterTest {
         assertTrue(json.contains("\"totalDeps\":3"))
         assertTrue(json.contains("\"strength\":\"FUNCTIONAL\""))
         assertTrue(json.contains("\"functional\":4"))
+    }
+
+    @Test
+    fun `formatStrength includes unknown count in JSON`() {
+        val result = StrengthResult(
+            listOf(
+                PackageStrengthEntry(
+                    PackageName("com.example.api"), PackageName("org.external.lib"),
+                    IntegrationStrength.CONTRACT, contractCount = 1, modelCount = 0, functionalCount = 0, unknownCount = 5, totalDeps = 6,
+                ),
+            ),
+        )
+
+        val json = JsonFormatter.formatStrength(result)
+
+        assertTrue(json.contains("\"unknown\":5"))
+        assertTrue(json.contains("\"totalDeps\":6"))
     }
 
     private fun aContextResult(
