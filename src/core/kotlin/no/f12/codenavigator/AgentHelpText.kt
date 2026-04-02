@@ -648,7 +648,26 @@ object AgentHelpText {
             val tasks = tasksByParam[param.name] ?: continue
             val rendered = param.render(tool)
             val taskList = tasks.joinToString(", ") { it.taskName(tool) }
-            val defaultSuffix = param.defaultValue?.let { ", default: $it" } ?: ""
+
+            val defaultsByValue = tasks.groupBy { it.effectiveDefault(param) }
+            val defaultSuffix = if (defaultsByValue.size == 1) {
+                val value = defaultsByValue.keys.single()
+                value?.let { ", default: $it" } ?: ""
+            } else {
+                val parts = defaultsByValue.entries
+                    .sortedBy { entry -> if (entry.key == param.defaultValue) 0 else 1 }
+                    .mapNotNull { (value, tasksForValue) ->
+                        value ?: return@mapNotNull null
+                        val taskNames = tasksForValue.joinToString(", ") { it.taskName(tool) }
+                        if (value == param.defaultValue) {
+                            "default: $value"
+                        } else {
+                            "$taskNames: default: $value"
+                        }
+                    }
+                if (parts.isNotEmpty()) ", ${parts.joinToString("; ")}" else ""
+            }
+
             appendLine("  ${padTo(rendered, 28)}${param.description} ($taskList$defaultSuffix)")
         }
     }

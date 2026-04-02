@@ -6,7 +6,7 @@ object HelpText {
         val p = { name: String, value: String -> tool.param(name, value) }
         val pf = { name: String -> tool.paramFlag(name) }
         fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
-        fun pd(param: ParamDef<*>, description: String? = null) = paramDoc(param, tool, description)
+        fun pd(param: ParamDef<*>, description: String? = null, task: TaskDef? = null) = paramDoc(param, tool, description, task)
 
         appendLine("=== code-navigator plugin ===")
         appendLine()
@@ -329,7 +329,7 @@ object HelpText {
         appendLine("      ${pd(TaskRegistry.PACKAGE_FILTER)}")
         appendLine("      ${pd(TaskRegistry.INCLUDE_EXTERNAL)}")
         appendLine("      ${pd(TaskRegistry.DISTANCE.paramByName("dsm-depth"))}")
-        appendLine("      ${pd(TaskRegistry.TOP)}")
+        appendLine("      ${pd(TaskRegistry.TOP, task = TaskRegistry.DISTANCE)}")
         appendLine("    Usage: ${u("distance")}")
         appendLine("    Usage: ${u("distance", p("top", "20"))}")
         appendLine("    Usage: ${u("distance", p("package-filter", "com.example"))}")
@@ -344,7 +344,7 @@ object HelpText {
         appendLine("      ${pd(TaskRegistry.PACKAGE_FILTER)}")
         appendLine("      ${pd(TaskRegistry.INCLUDE_EXTERNAL)}")
         appendLine("      ${pd(TaskRegistry.STRENGTH.paramByName("dsm-depth"))}")
-        appendLine("      ${pd(TaskRegistry.TOP)}")
+        appendLine("      ${pd(TaskRegistry.TOP, task = TaskRegistry.STRENGTH)}")
         appendLine("    Usage: ${u("strength")}")
         appendLine("    Usage: ${u("strength", p("top", "20"))}")
         appendLine("    Usage: ${u("strength", p("package-filter", "com.example"))}")
@@ -418,10 +418,11 @@ object HelpText {
         appendLine("If you are an AI coding agent, run ${u("agent-help")} for optimized guidance.")
     }
 
-    private fun paramDoc(param: ParamDef<*>, tool: BuildTool, description: String?): String {
+    private fun paramDoc(param: ParamDef<*>, tool: BuildTool, description: String? = null, task: TaskDef? = null): String {
         val rendered = param.render(tool)
+        val effectiveDefault = task?.effectiveDefault(param) ?: param.defaultValue
         val annotation = when {
-            param.defaultValue != null -> "(optional, default: ${param.defaultValue})"
+            effectiveDefault != null -> "(optional, default: $effectiveDefault)"
             param.flag -> "(optional)"
             else -> "(required)"
         }

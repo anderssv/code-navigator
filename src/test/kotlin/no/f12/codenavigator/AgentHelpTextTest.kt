@@ -473,13 +473,29 @@ class AgentHelpTextTest {
         val globalSection = text.substringAfter("--- Global Parameters ---")
             .substringBefore("--- Tips")
 
-        val paramsWithDefaults = listOf(TaskRegistry.MAXDEPTH, TaskRegistry.TOP)
-        for (param in paramsWithDefaults) {
-            assertTrue(
-                globalSection.contains("default: ${param.defaultValue}"),
-                "Global section should show default for ${param.name}: ${param.defaultValue}",
-            )
-        }
+        assertTrue(
+            globalSection.contains("default: ${TaskRegistry.MAXDEPTH.defaultValue}"),
+            "Global section should show default for maxdepth: ${TaskRegistry.MAXDEPTH.defaultValue}",
+        )
+    }
+
+    @Test
+    fun `global parameters section shows task-specific top defaults for distance and strength`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val globalSection = text.substringAfter("--- Global Parameters ---")
+            .substringBefore("--- Pattern")
+
+        val distanceTask = TaskRegistry.DISTANCE.taskName(BuildTool.GRADLE)
+        val strengthTask = TaskRegistry.STRENGTH.taskName(BuildTool.GRADLE)
+
+        assertTrue(
+            globalSection.contains("default: 50"),
+            "Global section should show default: 50 for most tasks using top",
+        )
+        assertTrue(
+            globalSection.contains("$distanceTask, $strengthTask: default: all"),
+            "Global section should show 'all' default for distance and strength top param",
+        )
     }
 
     @Test

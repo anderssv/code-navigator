@@ -220,4 +220,54 @@ class HelpTextTest {
         assertTrue(gradleText.contains("cnavAgentHelp"), "Should reference cnavAgentHelp task")
         assertTrue(mavenText.contains("cnav:agent-help"), "Maven should reference cnav:agent-help goal")
     }
+
+    @Test
+    fun `distance task section shows top default as all instead of 50`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val distanceTask = TaskRegistry.DISTANCE.taskName(BuildTool.GRADLE)
+        val strengthTask = TaskRegistry.STRENGTH.taskName(BuildTool.GRADLE)
+        val distanceSection = text.substringAfter(distanceTask)
+            .substringBefore(strengthTask)
+
+        assertTrue(
+            distanceSection.contains("default: all"),
+            "Distance section should show 'default: all' for top param, but was:\n$distanceSection",
+        )
+        assertFalse(
+            distanceSection.contains("default: 50"),
+            "Distance section should NOT show 'default: 50' for top param",
+        )
+    }
+
+    @Test
+    fun `strength task section shows top default as all instead of 50`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val strengthTask = TaskRegistry.STRENGTH.taskName(BuildTool.GRADLE)
+        val agentHelpTask = TaskRegistry.AGENT_HELP.taskName(BuildTool.GRADLE)
+        val strengthSection = text.substringAfter(strengthTask)
+            .substringBefore(agentHelpTask)
+
+        assertTrue(
+            strengthSection.contains("default: all"),
+            "Strength section should show 'default: all' for top param, but was:\n$strengthSection",
+        )
+        assertFalse(
+            strengthSection.contains("default: 50"),
+            "Strength section should NOT show 'default: 50' for top param",
+        )
+    }
+
+    @Test
+    fun `rank task section still shows top default as 50`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val rankTask = TaskRegistry.RANK.taskName(BuildTool.GRADLE)
+        val deadTask = TaskRegistry.DEAD.taskName(BuildTool.GRADLE)
+        val rankSection = text.substringAfter(rankTask)
+            .substringBefore(deadTask)
+
+        assertTrue(
+            rankSection.contains("default: 50"),
+            "Rank section should still show 'default: 50' for top param, but was:\n$rankSection",
+        )
+    }
 }

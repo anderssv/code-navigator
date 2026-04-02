@@ -98,8 +98,12 @@ data class TaskDef(
     val category: TaskCategory,
     val legacyGradleTaskName: String? = null,
     val requiresTestCompilation: Boolean = false,
+    val paramDefaultOverrides: Map<String, String> = emptyMap(),
 ) {
     val gradleTaskName: String = goalToGradleTaskName(goal)
+
+    fun effectiveDefault(param: ParamDef<*>): String? =
+        paramDefaultOverrides[param.name] ?: param.defaultValue
 
     fun taskName(tool: BuildTool): String = tool.taskName(goal)
 
@@ -446,6 +450,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        paramDefaultOverrides = mapOf("top" to "all"),
     )
 
     val STRENGTH = TaskDef(
@@ -454,6 +459,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        paramDefaultOverrides = mapOf("top" to "all"),
     )
 
     val ALL_TASKS: List<TaskDef> = listOf(
