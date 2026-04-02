@@ -213,6 +213,96 @@ class HelpTextTest {
         )
     }
 
+    // --- Useful Combinations section ---
+
+    @Test
+    fun `help text contains a Useful Combinations section`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(text.contains("Useful Combinations"), "Should have a Useful Combinations section")
+    }
+
+    @Test
+    fun `Useful Combinations section mentions hotspots complexity and cycles for refactoring targets`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val combinationsSection = text.substringAfter("Useful Combinations")
+            .substringBefore("If you are an AI")
+
+        val hotspotsTask = TaskRegistry.HOTSPOTS.taskName(BuildTool.GRADLE)
+        val complexityTask = TaskRegistry.COMPLEXITY.taskName(BuildTool.GRADLE)
+        val cyclesTask = TaskRegistry.CYCLE_DETECTION.taskName(BuildTool.GRADLE)
+
+        assertTrue(combinationsSection.contains(hotspotsTask), "Should mention hotspots")
+        assertTrue(combinationsSection.contains(complexityTask), "Should mention complexity")
+        assertTrue(combinationsSection.contains(cyclesTask), "Should mention cycles")
+    }
+
+    @Test
+    fun `Useful Combinations section mentions changed-since and find-callers for change risk`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val combinationsSection = text.substringAfter("Useful Combinations")
+            .substringBefore("If you are an AI")
+
+        val changedSinceTask = TaskRegistry.CHANGED_SINCE.taskName(BuildTool.GRADLE)
+        val findCallersTask = TaskRegistry.FIND_CALLERS.taskName(BuildTool.GRADLE)
+
+        assertTrue(combinationsSection.contains(changedSinceTask), "Should mention changed-since")
+        assertTrue(combinationsSection.contains(findCallersTask), "Should mention find-callers")
+    }
+
+    @Test
+    fun `Useful Combinations section mentions balance as existing composite for coupling health`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val combinationsSection = text.substringAfter("Useful Combinations")
+            .substringBefore("If you are an AI")
+
+        val balanceTask = TaskRegistry.BALANCE.taskName(BuildTool.GRADLE)
+
+        assertTrue(combinationsSection.contains(balanceTask), "Should mention balance as existing composite")
+    }
+
+    @Test
+    fun `Useful Combinations section appears after volatility and before agent hint`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val volatilityIndex = text.indexOf(TaskRegistry.VOLATILITY.taskName(BuildTool.GRADLE))
+        val combinationsIndex = text.indexOf("Useful Combinations")
+        val agentHintIndex = text.indexOf("If you are an AI")
+
+        assertTrue(combinationsIndex > volatilityIndex, "Combinations should appear after volatility task")
+        assertTrue(combinationsIndex < agentHintIndex, "Combinations should appear before agent hint")
+    }
+
+    @Test
+    fun `Maven help text also contains Useful Combinations section`() {
+        val text = HelpText.generate(BuildTool.MAVEN)
+
+        assertTrue(text.contains("Useful Combinations"), "Maven help should have Useful Combinations")
+        assertTrue(
+            text.contains(TaskRegistry.HOTSPOTS.taskName(BuildTool.MAVEN)),
+            "Maven combinations should use Maven task names",
+        )
+    }
+
+    // --- Composite goal parenthetical ---
+
+    @Test
+    fun `balance task description mentions its base goals in parentheses`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+        val balanceTask = TaskRegistry.BALANCE.taskName(BuildTool.GRADLE)
+        val balanceSection = text.substringAfter(balanceTask)
+            .substringBefore("agent-help")
+
+        val strengthTask = TaskRegistry.STRENGTH.taskName(BuildTool.GRADLE)
+        val distanceTask = TaskRegistry.DISTANCE.taskName(BuildTool.GRADLE)
+        val volatilityTask = TaskRegistry.VOLATILITY.taskName(BuildTool.GRADLE)
+
+        assertTrue(
+            balanceSection.contains("(combines $strengthTask, $distanceTask, $volatilityTask)") ||
+                balanceSection.contains("(combines ${TaskRegistry.STRENGTH.goal}, ${TaskRegistry.DISTANCE.goal}, ${TaskRegistry.VOLATILITY.goal})"),
+            "Balance section should list base goals in parentheses, but was:\n$balanceSection",
+        )
+    }
+
     @Test
     fun `help text includes agent hint pointing to agent-help`() {
         val gradleText = HelpText.generate(BuildTool.GRADLE)

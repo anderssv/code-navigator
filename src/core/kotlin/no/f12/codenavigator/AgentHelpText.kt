@@ -154,7 +154,7 @@ object AgentHelpText {
         appendLine()
         appendLine("  \"Overall coupling health?\" / \"Which package pairs are problematic?\"")
         appendLine("    → ${u("balance")}")
-        appendLine("    # Combines strength × distance × volatility into a single verdict per package pair")
+        appendLine("    # combines ${t("strength")} × ${t("distance")} × ${t("volatility")} into a single verdict per package pair")
         appendLine()
         appendLine("--- Task Reference ---")
         appendLine()
@@ -184,10 +184,20 @@ object AgentHelpText {
         appendLine("- Results are cached across calls — subsequent runs in the same build are fast.")
         appendLine("- Run ${u("help")} for full parameter documentation.")
         appendLine()
+        appendLine("--- Useful Combinations ---")
+        appendLine()
+        appendLine("These task combinations answer common questions no single task covers:")
+        appendLine("  Refactoring targets: ${t("hotspots")} + ${t("complexity")} + ${t("cycles")}")
+        appendLine("  Architecture overview: ${t("dsm")} + ${t("package-deps")} + ${t("cycles")}")
+        appendLine("  Change risk: ${t("changed-since")} + ${t("find-callers")}")
+        appendLine("  Code review context: ${t("hotspots")} + ${t("authors")} + ${t("churn")}")
+        appendLine("  Coupling health: use ${t("balance")} (combines ${t("strength")} × ${t("distance")} × ${t("volatility")})")
+        appendLine()
         appendSectionDirectory(tool)
     }
 
     private fun generateWorkflow(tool: BuildTool): String = buildString {
+        val t = { goal: String -> tool.taskName(goal) }
         val p = { name: String, value: String -> tool.param(name, value) }
         fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
 
@@ -300,6 +310,19 @@ object AgentHelpText {
         appendLine("   ${u("changed-since", p("ref", "v1.2.0"))}          # blast radius since a tag")
         appendLine("   ${u("changed-since", p("ref", "HEAD~5"))}          # blast radius of last 5 commits")
         appendLine("   # Shows changed classes, their callers, and unresolved files (non-class changes)")
+        appendLine()
+        appendLine("--- Useful Combinations ---")
+        appendLine()
+        appendLine("These task combinations answer common questions no single task covers:")
+        appendLine("  Refactoring targets: ${t("hotspots")} + ${t("complexity")} + ${t("cycles")}")
+        appendLine("    Files that change often, have high fan-out, and sit in dependency cycles.")
+        appendLine("  Architecture overview: ${t("dsm")} + ${t("package-deps")} + ${t("cycles")}")
+        appendLine("    Structural map: dependency matrix, per-package edges, and tangles.")
+        appendLine("  Change risk: ${t("changed-since")} + ${t("find-callers")}")
+        appendLine("    Blast radius of recent changes, then trace deeper into affected call chains.")
+        appendLine("  Code review context: ${t("hotspots")} + ${t("authors")} + ${t("churn")}")
+        appendLine("    Behavioral history: what changes often, who owns it, how much churn.")
+        appendLine("  Coupling health: use ${t("balance")} (combines ${t("strength")} × ${t("distance")} × ${t("volatility")})")
     }
 
     private fun generateInterpretation(tool: BuildTool): String = buildString {

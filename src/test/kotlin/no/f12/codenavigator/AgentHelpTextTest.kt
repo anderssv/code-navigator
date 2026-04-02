@@ -765,4 +765,77 @@ class AgentHelpTextTest {
         assertTrue(text.contains("\"hints\""), "Should document the hints field")
         assertTrue(text.contains("Empty Results"), "Should have an Empty Results heading")
     }
+
+    // --- Useful Combinations section ---
+
+    @Test
+    fun `default output contains Useful Combinations section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "Useful Combinations")
+    }
+
+    @Test
+    fun `Useful Combinations mentions hotspots complexity and cycles for refactoring targets`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val combinationsSection = text.substringAfter("Useful Combinations")
+            .substringBefore("--- More Detail ---")
+
+        val hotspotsTask = TaskRegistry.HOTSPOTS.taskName(BuildTool.GRADLE)
+        val complexityTask = TaskRegistry.COMPLEXITY.taskName(BuildTool.GRADLE)
+        val cyclesTask = TaskRegistry.CYCLE_DETECTION.taskName(BuildTool.GRADLE)
+
+        assertContains(combinationsSection, hotspotsTask)
+        assertContains(combinationsSection, complexityTask)
+        assertContains(combinationsSection, cyclesTask)
+    }
+
+    @Test
+    fun `Useful Combinations mentions changed-since and find-callers for change risk`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val combinationsSection = text.substringAfter("Useful Combinations")
+            .substringBefore("--- More Detail ---")
+
+        val changedSinceTask = TaskRegistry.CHANGED_SINCE.taskName(BuildTool.GRADLE)
+        val findCallersTask = TaskRegistry.FIND_CALLERS.taskName(BuildTool.GRADLE)
+
+        assertContains(combinationsSection, changedSinceTask)
+        assertContains(combinationsSection, findCallersTask)
+    }
+
+    @Test
+    fun `Useful Combinations mentions balance as existing composite for coupling`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val combinationsSection = text.substringAfter("Useful Combinations")
+            .substringBefore("--- More Detail ---")
+
+        val balanceTask = TaskRegistry.BALANCE.taskName(BuildTool.GRADLE)
+
+        assertContains(combinationsSection, balanceTask)
+    }
+
+    @Test
+    fun `workflow section contains Useful Combinations section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "workflow")
+
+        assertContains(text, "Useful Combinations")
+    }
+
+    // --- Composite goal parenthetical ---
+
+    @Test
+    fun `balance common question mentions base goals in parentheses`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "combines")
+        assertContains(text, "cnavStrength")
+        assertContains(text, "cnavDistance")
+        assertContains(text, "cnavVolatility")
+
+        // Verify they're in the balance common question specifically
+        val balanceQuestion = text.substringAfter("Overall coupling health")
+            .substringBefore("--- Task Reference ---")
+
+        assertContains(balanceQuestion, "combines")
+    }
 }
