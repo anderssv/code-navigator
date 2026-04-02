@@ -103,6 +103,10 @@ object ConfigHelpText {
             .filter { it.category == TaskCategory.GIT_HISTORY }
         val gitParams = collectSharedParams(gitTasks, globalParamNames)
 
+        val compositeTasks = TaskRegistry.ALL_TASKS
+            .filter { it.category == TaskCategory.COMPOSITE }
+        val compositeParams = collectSharedParams(compositeTasks, globalParamNames)
+
         return listOf(
             Section("Navigation Tasks", navigationParams),
             Section("Type Ranking", rankParams),
@@ -111,6 +115,7 @@ object ConfigHelpText {
             Section("Dead Code Detection", deadParams),
             Section("Class Complexity", complexityParams),
             Section("Git History Analysis", gitParams),
+            Section("Composite Analysis", compositeParams),
         )
     }
 

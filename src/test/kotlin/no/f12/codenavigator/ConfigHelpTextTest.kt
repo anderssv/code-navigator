@@ -191,4 +191,15 @@ class ConfigHelpTextTest {
 
         assertTrue(defaultText == gradleText, "Default should produce same output as explicit GRADLE")
     }
+
+    @Test
+    fun `lists composite analysis section with balance parameters`() {
+        val text = ConfigHelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(text.contains("Composite Analysis"), "Should have Composite Analysis section")
+        assertTrue(
+            text.contains(TaskRegistry.BALANCE.taskName(BuildTool.GRADLE)),
+            "Should mention cnavBalance task",
+        )
+    }
 }
