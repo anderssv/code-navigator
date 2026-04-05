@@ -6,20 +6,20 @@ Built primarily for **coding agents** (AI assistants that write and refactor cod
 
 ## Getting started
 
-Add the plugin, then ask your agent to run the help task. It will figure out the rest.
+Copy-paste this to your agent:
 
-**Gradle** — add to `build.gradle.kts`, then tell your agent:
+> Install the no.f12.code-navigator plugin and run cnavAgentHelp to figure out what to have in AGENTS.md and update it.
 
+That's it. The agent will install the plugin, run the help task, and set up its own instructions. If you prefer to install manually:
+
+**Gradle** (`build.gradle.kts`):
 ```kotlin
 plugins {
     id("no.f12.code-navigator") version "0.1.51"
 }
 ```
 
-> Run `./gradlew cnavAgentHelp` and follow the instructions.
-
-**Maven** — add to `pom.xml`, then tell your agent:
-
+**Maven** (`pom.xml`):
 ```xml
 <build>
     <plugins>
@@ -31,8 +31,6 @@ plugins {
     </plugins>
 </build>
 ```
-
-> Run `mvn cnav:agent-help` and follow the instructions.
 
 The `cnavAgentHelp` output covers workflows, parameters, JSON schemas, and output tips. You can also use it as the basis for a custom agent skill (e.g. a Claude Code skill or Cursor rule).
 
