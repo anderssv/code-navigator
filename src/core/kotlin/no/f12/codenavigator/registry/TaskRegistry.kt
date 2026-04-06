@@ -208,6 +208,8 @@ object TaskRegistry {
     val STRING_PATTERN = ParamDef("pattern", "<regex>", "Regex to match against string constant values", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val METHODS = ParamDef("methods", "true", "Also search method-level annotations", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val CONTEXT_MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth (default: 2)", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
+    val LAYER_CONFIG = ParamDef("config", "<path>", "Path to layer config file", flag = false, defaultValue = ".cnav-layers.json", enhancePattern = false, type = ParamType.STRING)
+    val INIT = ParamDef("init", "true", "Generate starter config file", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
 
     val FORMAT_PARAMS = listOf(FORMAT, LLM)
     val SOURCE_SET_PARAMS = listOf(PROD_ONLY, TEST_ONLY)
@@ -482,6 +484,14 @@ object TaskRegistry {
         paramDefaultOverrides = mapOf("top" to "all"),
     )
 
+    val LAYER_CHECK = TaskDef(
+        goal = "layer-check",
+        description = "Check architecture layer conformance against config",
+        params = FORMAT_PARAMS + listOf(LAYER_CONFIG, INIT),
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+    )
+
     val SIZE = TaskDef(
         goal = "size",
         description = "List source files by line count",
@@ -520,6 +530,7 @@ object TaskRegistry {
         STRENGTH,
         VOLATILITY,
         BALANCE,
+        LAYER_CHECK,
         SIZE,
         HELP,
         AGENT_HELP,

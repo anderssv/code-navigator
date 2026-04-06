@@ -79,6 +79,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "strength" to IntegrationStrengthTask::class.java,
             "volatility" to PackageVolatilityTask::class.java,
             "balance" to BalanceTask::class.java,
+            "layer-check" to LayerCheckTask::class.java,
             "size" to SizeTask::class.java,
             "help" to CodeNavigatorHelpTask::class.java,
             "agent-help" to AgentHelpTask::class.java,

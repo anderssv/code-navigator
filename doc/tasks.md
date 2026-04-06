@@ -232,6 +232,41 @@ mvn cnav:dsm -Ddsm-html=target/dsm.html
 
 Use `-Pdsm-html=<path>` (Gradle) or `-Ddsm-html=<path>` (Maven) to generate an interactive HTML matrix with color-coded cells (green = forward, red = backward/cyclic) and hover tooltips showing class-level dependencies.
 
+### layer-check
+
+Checks architecture conformance against a `.cnav-layers.json` config. Layers are defined by class naming patterns (globs like `*Controller`, `*Service`, `*`), not by listing packages. First matching pattern wins. Detects OUTWARD violations (class depends on a higher layer) and PEER violations (class exceeds `peerLimit` for same-layer dependencies).
+
+```bash
+# Gradle — generate starter config
+./gradlew cnavLayerCheck -Pinit=true
+
+# Gradle — check conformance
+./gradlew cnavLayerCheck
+
+# Maven
+mvn cnav:layer-check -Dinit=true
+mvn cnav:layer-check
+```
+
+Config file (`.cnav-layers.json`):
+
+```json
+{
+  "layers": [
+    { "name": "wiring", "patterns": ["*Dependencies", "*TestContext", "App"], "testInfrastructure": true },
+    { "name": "http", "patterns": ["*Route", "*Routes", "*Endpoint"] },
+    { "name": "service", "patterns": ["*Service"], "peerLimit": 3 },
+    { "name": "adapter", "patterns": ["*Repository", "*Client", "*Cache"] },
+    { "name": "domain", "patterns": ["*"], "peerLimit": -1 }
+  ]
+}
+```
+
+Parameters:
+- `-Pconfig=<path>` / `-Dconfig=<path>` — config file path (default: `.cnav-layers.json`)
+- `-Pinit=true` / `-Dinit=true` — generate starter config from project dependencies
+- `-Pllm=true` / `-Dllm=true` — structured output for agents
+
 ## Analysis Tasks (Git History)
 
 These tasks analyze git history and do **not** require compilation. All accept `-Pafter=YYYY-MM-DD` (Gradle) or `-Dafter=YYYY-MM-DD` (Maven) to set the analysis window (default: 1 year ago). Git rename tracking is enabled by default; use `-Pno-follow` (Gradle) or `-Dno-follow` (Maven) to disable it.

@@ -2,8 +2,12 @@
 
 ## Unreleased
 
+- **New:** `cnavLayerCheck` task / `cnav:layer-check` goal — architecture conformance checking based on hexagonal architecture principles. Layers are defined by class naming patterns (globs like `*Controller`, `*Service`, `*Repository`, `*`) in a `.cnav-layers.json` config file, not by listing packages. First matching pattern wins, enabling enforcement in projects organized by feature. Detects two violation types: OUTWARD (class depends on a higher/outer layer) and PEER (class exceeds `peerLimit` for same-layer dependencies). Supports `peerLimit` per layer (`-1` = unlimited, default `0` = no peer deps), `testInfrastructure` flag (allows test classes to depend on wiring/context layers without OUTWARD violations), and `-Pinit=true` to generate a starter config. TEXT, JSON, and LLM output formats with non-zero exit code on violations.
+- **New:** `testInfrastructure` attribute on layer config — when `true`, test classes (names ending in `Test` or `TestKt`) are allowed to depend on that layer without generating OUTWARD violations. Production code depending on a testInfrastructure layer is still a violation.
 - **New:** `cnavSize` task / `cnav:size` goal — lists source files (Kotlin/Java) by line count, largest first. First source-level task: scans source files directly, no compilation needed. Parameters: `-Pover=N` (minimum line count), `-Ptop=N` (default 50). Includes "Consider splitting" recommendation when largest file exceeds 3× median. TEXT, JSON, and LLM output formats.
 - **New:** `SOURCE` TaskCategory for tasks that analyze source files without compilation.
+- **Improved:** `ClassName` now hosts `candidateNames()`, `isTest()`, and `STRIPPABLE_SUFFIXES` — moved from `LayerConfig.companion` for reuse. `Kt` and `Test` suffixes are stripped recursively before pattern matching.
+- **Improved:** `SimpleJson` parser supports boolean values (`true`/`false` literals) for config parsing.
 - **Improved:** AgentHelpText troubleshooting section and import/dependency question added.
 
 ## 0.1.52

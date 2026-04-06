@@ -13,6 +13,28 @@ value class ClassName(val value: String) : Comparable<ClassName> {
     fun simpleName(): String =
         value.substringAfterLast('.').substringBefore('$')
 
+    fun isTest(): Boolean {
+        val simple = simpleName()
+        return simple.endsWith("Test") || simple.endsWith("TestKt")
+    }
+
+    fun candidateNames(): List<String> {
+        val candidates = mutableListOf<String>()
+        fun strip(name: String) {
+            for (suffix in STRIPPABLE_SUFFIXES) {
+                if (name.endsWith(suffix)) {
+                    val stripped = name.removeSuffix(suffix)
+                    if (stripped.isNotEmpty()) {
+                        candidates.add(stripped)
+                        strip(stripped)
+                    }
+                }
+            }
+        }
+        strip(simpleName())
+        return candidates
+    }
+
     fun isGenerated(): Boolean = '$' in value
 
     fun isPackageInfo(): Boolean = value.endsWith(".package-info")
@@ -62,6 +84,7 @@ value class ClassName(val value: String) : Comparable<ClassName> {
     override fun toString(): String = value
 
     companion object {
+        private val STRIPPABLE_SUFFIXES = listOf("Kt", "Test")
         private val TRAILING_NUMERIC_SEGMENT = Regex("""\$\d+$""")
         private val TRAILING_LOWERCASE_SEGMENT = Regex("""\$[a-z][^$]*$""")
         private val LAMBDA_PATTERN = Regex("""\${'$'}lambda\${'$'}""")

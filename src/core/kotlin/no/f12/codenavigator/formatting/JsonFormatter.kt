@@ -34,6 +34,7 @@ import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.context.ContextResult
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.BalanceResult
+import no.f12.codenavigator.navigation.dsm.LayerCheckResult
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 
 @JvmInline
@@ -143,6 +144,21 @@ object JsonFormatter {
                 "lines" to e.lines,
             )
         }
+
+    fun formatLayerCheck(result: LayerCheckResult): String =
+        jsonObject(
+            "violations" to JsonRaw(jsonArray(result.violations) { v ->
+                jsonObject(
+                    "sourceLayer" to v.sourceLayer,
+                    "targetLayer" to v.targetLayer,
+                    "type" to v.type.name.lowercase(),
+                    "sourceClass" to v.sourceClass.value,
+                    "targetClass" to v.targetClass.value,
+                )
+            }),
+            "unassignedClasses" to JsonRaw(jsonStringArray(result.unassignedClasses.sorted().map { it.value })),
+            "violationCount" to result.violations.size,
+        )
 
     fun formatVolatility(result: PackageVolatilityResult): String =
         jsonArray(result.entries) { entry ->

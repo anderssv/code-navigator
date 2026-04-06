@@ -151,83 +151,17 @@ Add `-Pclasspath=true` to scan the full runtime classpath (project classes + all
 
 ---
 
-## `cnavLayerCheck` — architecture conformance via agent-provided config
+## Revise peerLimit and testInfrastructure expressiveness
 
-**Value: high** | **Effort: medium**
+**Value: medium** | **Effort: low**
 
-The agent provides a `.cnav-layers.json` config file describing the intended layer architecture. The tool verifies all inter-package dependencies comply with the layer ordering. No auto-detection — the agent reads the DSM, drafts the config, and the tool checks it mechanically.
+The current `peerLimit` and `testInfrastructure` attributes work but may not be the most intuitive way to express the intent. Evaluate whether there's a better way to express:
 
-**Config format** (`.cnav-layers.json` in project root):
+- **Peer dependencies**: `peerLimit = 0` (forbidden), `peerLimit = 3` (max 3 per class), `peerLimit = -1` (unlimited). Is per-class counting the right granularity? Should there be a layer-level total?
+- **Test infrastructure exemptions**: `testInfrastructure: true` on a layer lets test classes depend on it. Is there a more general "exemption" model?
+- **Layer groups**: The old package-based plan had "peer groups" (same-index arrays). The pattern-based model uses layer ordering only. Is there demand for peer groups?
 
-```json
-{
-  "layers": [
-    [
-      { "name": "api", "packages": ["com.example.api", "com.example.web"] },
-      { "name": "infrastructure", "packages": ["com.example.infra", "com.example.persistence"] }
-    ],
-    { "name": "services", "packages": ["com.example.services"] },
-    { "name": "domain", "packages": ["com.example.domain", "com.example.model"] }
-  ]
-}
-```
-
-**Rules derived from structure:**
-- Layer order is outermost-first, innermost-last (hexagonal: adapters → application → domain).
-- Each layer may depend on layers defined *after* it (further inward). Never sideways or outward.
-- Layers in the same array (same index) are *peers* — they cannot depend on each other but can both depend on layers below them. This models hexagonal adapters: `api` and `infrastructure` are parallel outer layers.
-- A single layer not in an array is shorthand for a group of one.
-
-**Unassigned packages**: Packages not listed in any layer are reported as warnings but their dependencies are not treated as violations. This lets the agent incrementally assign packages.
-
-**Violation output**: For each violation, show the class-level edges that break the rule (reuse DSM/dependency extraction infrastructure):
-```
-VIOLATION: domain → services (domain must not depend on outer layers)
-  com.example.domain.Order → com.example.services.OrderService (field reference)
-
-VIOLATION: api → infrastructure (peer layers cannot depend on each other)
-  com.example.api.OrderController → com.example.infra.DatabasePool (method call)
-```
-
-**Parameters**: `-Pconfig=<path>` (default: `.cnav-layers.json`), `-Pinit=true` (generate starter config), standard format/llm flags.
-
-**Exit code**: Non-zero on violations, usable in CI.
-
-**`-Pinit=true` mode**: When no config file exists (or when `-Pinit=true` is passed explicitly), generate a starter `.cnav-layers.json` with all project packages in a single "unassigned" layer. Output includes:
-1. Confirmation of what was generated and where.
-2. The current inter-package dependency summary (extracted from DSM), so the agent can see the dependency reality without a separate command.
-3. Step-by-step instructions for the agent: edit the config to organize packages into layers, run `cnavLayerCheck` to verify, commit the file.
-
-Example output:
-```
-Generated .cnav-layers.json with 8 packages in a single "unassigned" layer.
-
-Current package dependencies (from DSM):
-  com.example.api → com.example.services, com.example.domain
-  com.example.infra → com.example.services, com.example.domain
-  com.example.services → com.example.domain
-  com.example.domain → (none)
-
-Next steps:
-1. Edit .cnav-layers.json to organize packages into layers.
-   - Outermost layers first, innermost (domain) last.
-   - Packages at the same level go in the same array (peer group).
-   - Each layer may only depend on layers below it. Peers cannot depend on each other.
-2. Run cnavLayerCheck to verify your architecture against the config.
-3. Commit .cnav-layers.json to version control.
-```
-
-This gives the agent everything it needs in one step — real package names, their actual dependencies, the config file format, and clear next actions.
-
-**Workflow**: Agent runs `cnavLayerCheck -Pinit=true` → reads output → edits `.cnav-layers.json` → runs `cnavLayerCheck` → fixes violations or updates config. The config file is checked into version control as machine-readable architecture documentation.
-
-**Documentation**: The config format, `--init` workflow, and layer rules are documented in `cnavAgentHelp` so agents discover it without being told.
-
-**Implementation notes**:
-- Config parser: read JSON, validate structure, build ordered layer groups with peer sets.
-- Checker: for each inter-package dependency edge from DSM, look up source and target layers, verify the dependency direction is allowed (target layer index > source layer index, and not in the same peer group).
-- Formatter: group violations by rule type (outward, sideways), show class-level detail.
-- Reuses `DsmDependencyExtractor` for dependency edges and `DsmMatrixBuilder` for package resolution.
+Low priority — the current model works. Revisit when real-world usage reveals friction.
 
 ---
 

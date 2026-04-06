@@ -15,7 +15,7 @@ That's it. The agent will install the plugin, run the help task, and set up its 
 **Gradle** (`build.gradle.kts`):
 ```kotlin
 plugins {
-    id("no.f12.code-navigator") version "0.1.52"
+    id("no.f12.code-navigator") version "0.1.53"
 }
 ```
 
@@ -26,7 +26,7 @@ plugins {
         <plugin>
             <groupId>no.f12</groupId>
             <artifactId>code-navigator-maven-plugin</artifactId>
-            <version>0.1.52</version>
+            <version>0.1.53</version>
         </plugin>
     </plugins>
 </build>
@@ -78,6 +78,7 @@ All tasks support `-Pformat=json` / `-Dformat=json` and `-Pllm=true` / `-Dllm=tr
 | `cnavCycles` / `cnav:cycles` | Detect dependency cycles (Tarjan's SCC) |
 | `cnavStrength` / `cnav:strength` | Classify integration strength of inter-package dependencies |
 | `cnavDistance` / `cnav:distance` | Structural distance between coupled packages |
+| `cnavLayerCheck` / `cnav:layer-check` | Architecture conformance check (hexagonal layers) |
 | **Git activity analysis** (no compilation needed) | |
 | `cnavHotspots` / `cnav:hotspots` | Files ranked by change frequency |
 | `cnavCoupling` / `cnav:coupling` | Files that change together (temporal coupling) |

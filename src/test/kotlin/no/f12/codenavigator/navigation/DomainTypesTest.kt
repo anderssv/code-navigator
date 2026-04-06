@@ -292,6 +292,56 @@ class ClassNameTest {
     fun `isSyntheticName detects numeric suffix mid-name`() {
         assertTrue(ClassName.isSyntheticName("Foo\$1\$bar"))
     }
+    // --- isTest ---
+
+    @Test
+    fun `isTest returns true for class ending in Test`() {
+        assertTrue(ClassName("com.example.OrderServiceTest").isTest())
+    }
+
+    @Test
+    fun `isTest returns true for class ending in TestKt`() {
+        assertTrue(ClassName("com.example.OrderServiceTestKt").isTest())
+    }
+
+    @Test
+    fun `isTest returns false for regular class`() {
+        assertFalse(ClassName("com.example.OrderService").isTest())
+    }
+
+    @Test
+    fun `isTest returns false for class containing Test but not ending in it`() {
+        assertFalse(ClassName("com.example.E2ETestBase").isTest())
+    }
+
+    @Test
+    fun `isTest returns false for Kt suffix class that is not a test`() {
+        assertFalse(ClassName("com.example.OrderRouteKt").isTest())
+    }
+
+    // --- candidateNames ---
+
+    @Test
+    fun `candidateNames strips Kt suffix`() {
+        assertEquals(listOf("OrderRoute"), ClassName("com.example.OrderRouteKt").candidateNames())
+    }
+
+    @Test
+    fun `candidateNames strips Test suffix`() {
+        assertEquals(listOf("OrderService"), ClassName("com.example.OrderServiceTest").candidateNames())
+    }
+
+    @Test
+    fun `candidateNames strips both Kt and Test recursively`() {
+        val candidates = ClassName("com.example.OrderRouteTestKt").candidateNames()
+
+        assertEquals(listOf("OrderRouteTest", "OrderRoute"), candidates)
+    }
+
+    @Test
+    fun `candidateNames returns empty for class with no strippable suffixes`() {
+        assertEquals(emptyList(), ClassName("com.example.OrderService").candidateNames())
+    }
 }
 
 class PackageNameTest {

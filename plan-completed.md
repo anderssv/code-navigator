@@ -1,5 +1,49 @@
 # Plan — Completed
 
+## ~~`cnavLayerCheck` — architecture conformance via pattern-based layers~~ DONE
+
+Architecture conformance checking based on hexagonal architecture principles. Layers are defined by class naming patterns (globs) in `.cnav-layers.json`, not by listing packages. First matching pattern wins, enabling enforcement in feature-organized projects where controllers, services, and repositories share a package.
+
+**Layer rule model**:
+- Layer order: top to bottom in config = outermost to innermost.
+- Each layer may only depend on layers **below** it.
+- Peer dependencies (same layer) are **forbidden by default** (`peerLimit = 0`).
+- `peerLimit` on a layer raises the allowed per-class peer dependency count (`-1` = unlimited).
+- Two violation types: **OUTWARD** (class depends on a higher/outer layer) and **PEER** (class exceeds `peerLimit` for same-layer dependencies).
+
+**Config format** (`.cnav-layers.json`):
+```json
+{
+  "layers": [
+    { "name": "wiring", "patterns": ["*Dependencies", "*TestContext", "App"], "testInfrastructure": true },
+    { "name": "http", "patterns": ["*Route", "*Routes", "*Setup", "*Endpoint"] },
+    { "name": "service", "patterns": ["*Service"], "peerLimit": 3 },
+    { "name": "adapter", "patterns": ["*Repository", "*Client", "*Cache", "*Sender"] },
+    { "name": "domain", "patterns": ["*"], "peerLimit": -1 }
+  ]
+}
+```
+
+**Pattern matching**: On simple class name (not FQN). `matchesGlob` supports `*` (all), `*Suffix`, `Prefix*`, `*Middle*`, `Exact`. `Kt` and `Test` suffixes are stripped recursively before matching — `OrderRouteKt` matches `*Route`, `OrderServiceTest` matches `*Service`.
+
+**testInfrastructure**: `testInfrastructure: true` on a layer means test classes (names ending in `Test`/`TestKt`) may depend on it from any layer without OUTWARD violations. Production code depending on a testInfrastructure layer is still a violation.
+
+**`-Pinit=true` mode**: Generates a starter `.cnav-layers.json` with all class name patterns in a single "unassigned" layer plus dependency summary and next-step instructions.
+
+**Implementation**:
+- `LayerConfig.kt` — JSON parser (`SimpleJson`) reading layers, patterns, peerLimit, testInfrastructure. Boolean parsing added. `Layer` data class. `layerIndexOf()` with candidate name stripping.
+- `LayerChecker.kt` — `checkDependencies()` evaluates OUTWARD and PEER violations per `PackageDependency`. `exemptedByTestInfrastructure()` check.
+- `LayerFormatter.kt` — TEXT, JSON, LLM output for violations and summaries.
+- `LayerCheckConfig.kt` — config parsing from property map.
+- `LayerInitGenerator.kt` — generates starter config from dependency edges.
+- `LayerCheckTask.kt` (Gradle), `LayerCheckMojo.kt` (Maven) — wired with non-zero exit code on violations.
+- `ClassName.candidateNames()`, `ClassName.isTest()`, `ClassName.STRIPPABLE_SUFFIXES` — moved from LayerConfig companion for reuse.
+- `JsonFormatter.formatLayerCheck()`, `LlmFormatter.formatLayerCheck()` — structured output.
+
+**Tests**: `LayerConfigTest` (28 tests), `LayerCheckerTest` (19 tests), `LayerFormatterTest` (6 tests), `LayerInitGeneratorTest` (6 tests), `LayerCheckConfigTest`, `DomainTypesTest` (9 new tests for isTest/candidateNames).
+
+**E2E validated** on greitt (83→0 violations), bass-ra-backend (34→2 real violations), spring-petclinic.
+
 ## ~~`cnavSize` — source file size analysis~~ DONE
 
 New `SOURCE` category task that scans source files (Kotlin, Java) by line count without requiring compilation. First source-level scanner in the project.

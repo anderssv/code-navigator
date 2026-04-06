@@ -36,6 +36,7 @@ import no.f12.codenavigator.navigation.callgraph.AnnotationTag
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.context.ContextResult
 import no.f12.codenavigator.navigation.dsm.BalanceResult
+import no.f12.codenavigator.navigation.dsm.LayerCheckResult
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 
@@ -109,6 +110,21 @@ object LlmFormatter {
 
     fun formatSize(entries: List<FileSizeEntry>): String =
         entries.joinToString("\n") { "${it.file} lines=${it.lines}" }
+
+    fun formatLayerCheck(result: LayerCheckResult): String = buildString {
+        if (result.violations.isEmpty()) {
+            append("No layer violations found.")
+        } else {
+            appendLine("${result.violations.size} violation(s):")
+            for (v in result.violations) {
+                appendLine("${v.type.name}: ${v.sourceLayer} → ${v.targetLayer}: ${v.sourceClass} → ${v.targetClass}")
+            }
+        }
+        if (result.unassignedClasses.isNotEmpty()) {
+            appendLine()
+            appendLine("Unassigned: ${result.unassignedClasses.sorted().joinToString(", ")}")
+        }
+    }.trimEnd()
 
     fun formatVolatility(result: PackageVolatilityResult): String =
         result.entries.joinToString("\n") { "${it.packageName} revisions=${it.revisions} churn=${it.totalChurn} files=${it.fileCount} avgRev=${"%.1f".format(it.avgRevisionsPerFile)}" }
