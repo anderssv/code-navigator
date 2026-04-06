@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.52
+
+- **New:** Terse recommendations in analysis formatters — short, actionable one-liners appended to output when thresholds are exceeded.
+  - **Cycles**: "Extract shared types into a new package or invert one dependency direction."
+  - **Complexity**: Flags high fan-out (>10 distinct outgoing classes) and high fan-in (>20 distinct incoming classes).
+  - **Change coupling**: Flags degree >=70% with merge/extract suggestion. Suppresses test+main pairs (expected to co-change).
+  - **Hotspots**: Flags files with revisions >=2× median (minimum 5 files in dataset).
+- **Improved:** README revised — streamlined Getting Started with copy-paste agent prompt, added 6 missing tasks to task table, reorganized into 5 groups.
+
 ## 0.1.51
 
 - **New:** `cnavVolatility` task / `cnav:volatility` goal — aggregates file-level git history to the package level. Shows which packages change most often, a key dimension of Balanced Coupling analysis. Parameters: `-Pafter=YYYY-MM-DD`, `-Pmin-revs=N`, `-Ptop=N`. TEXT, JSON, and LLM output formats.
