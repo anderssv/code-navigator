@@ -16,6 +16,17 @@ object ComplexityFormatter {
         appendLine("  Fan-in:  ${c.fanIn} calls from ${c.distinctIncomingClasses} distinct classes")
         appendLine("  Top outgoing: ${formatByClass(c.outgoingByClass)}")
         append("  Top incoming: ${formatByClass(c.incomingByClass)}")
+        val recommendation = recommend(c)
+        if (recommendation != null) {
+            append("\n  → $recommendation")
+        }
+    }
+
+    private fun recommend(c: ClassComplexity): String? {
+        val parts = mutableListOf<String>()
+        if (c.distinctOutgoingClasses > 10) parts += "High fan-out — candidate for splitting."
+        if (c.distinctIncomingClasses > 20) parts += "High fan-in — changes here ripple widely."
+        return parts.joinToString(" ").ifEmpty { null }
     }
 
     private fun formatByClass(byClass: List<Pair<ClassName, Int>>): String =

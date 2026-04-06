@@ -120,6 +120,41 @@ class CyclesFormatterTest {
     }
 
     @Test
+    fun `two-package cycle includes recommendation to extract shared types`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
+                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("service.Service") to ClassName("api.Controller"))),
+                ),
+            ),
+        )
+
+        val output = CyclesFormatter.format(details)
+
+        assertTrue(output.contains("Extract shared types"), "Should include recommendation, got:\n$output")
+    }
+
+    @Test
+    fun `three-plus-package cycle includes recommendation`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("a"), PackageName("b"), PackageName("c")),
+                edges = listOf(
+                    CycleEdge(PackageName("a"), PackageName("b"), setOf(ClassName("a.X") to ClassName("b.Y"))),
+                    CycleEdge(PackageName("b"), PackageName("c"), setOf(ClassName("b.Y") to ClassName("c.Z"))),
+                    CycleEdge(PackageName("c"), PackageName("a"), setOf(ClassName("c.Z") to ClassName("a.X"))),
+                ),
+            ),
+        )
+
+        val output = CyclesFormatter.format(details)
+
+        assertTrue(output.contains("Extract shared types"), "Should include recommendation, got:\n$output")
+    }
+
+    @Test
     fun `shows full class names when displayPrefix is empty`() {
         val details = listOf(
             CycleDetail(

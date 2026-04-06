@@ -21,6 +21,7 @@ object CyclesFormatter {
                             append("\n    ${src.stripPackagePrefix(displayPrefix)} -> ${tgt.stripPackagePrefix(displayPrefix)}")
                         }
                     }
+                    append("\n  → Extract shared types into a new package or invert one dependency direction.")
                 }
             })
         }.trimEnd()

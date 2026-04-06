@@ -2,6 +2,8 @@ package no.f12.codenavigator.analysis
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ChangeCouplingFormatterTest {
 
@@ -65,5 +67,60 @@ class ChangeCouplingFormatterTest {
         assert(lines[0].contains("Entity"))
         assert(lines[1].contains("short"))
         assert(lines[2].contains("a-much-longer-entity-name"))
+    }
+
+    @Test
+    fun `high coupling degree across directories shows recommendation`() {
+        val pairs = listOf(
+            CoupledPair("src/main/kotlin/services/Foo.kt", "src/main/kotlin/domain/Bar.kt", 80, 15, 18),
+        )
+
+        val result = ChangeCouplingFormatter.format(pairs)
+
+        assertTrue(result.contains("High coupling"), "Should flag high coupling across directories, got:\n$result")
+    }
+
+    @Test
+    fun `same directory pair shows recommendation with high coupling`() {
+        val pairs = listOf(
+            CoupledPair("src/main/kotlin/services/FooService.kt", "src/main/kotlin/services/FooRepository.kt", 85, 15, 18),
+        )
+
+        val result = ChangeCouplingFormatter.format(pairs)
+
+        assertTrue(result.contains("High coupling"), "Same-directory production pairs should be flagged, got:\n$result")
+    }
+
+    @Test
+    fun `test and main pair shows no recommendation even with high coupling`() {
+        val pairs = listOf(
+            CoupledPair("src/main/kotlin/services/FooService.kt", "src/test/kotlin/services/FooServiceTest.kt", 90, 20, 22),
+        )
+
+        val result = ChangeCouplingFormatter.format(pairs)
+
+        assertFalse(result.contains("High coupling"), "Test+main pairs should not be flagged, got:\n$result")
+    }
+
+    @Test
+    fun `test and main pair suppressed regardless of path order`() {
+        val pairs = listOf(
+            CoupledPair("src/test/kotlin/services/FooServiceTest.kt", "src/main/kotlin/services/FooService.kt", 90, 20, 22),
+        )
+
+        val result = ChangeCouplingFormatter.format(pairs)
+
+        assertFalse(result.contains("High coupling"), "Test+main pairs should not be flagged regardless of order, got:\n$result")
+    }
+
+    @Test
+    fun `moderate coupling shows no recommendation`() {
+        val pairs = listOf(
+            CoupledPair("src/Foo.kt", "src/Bar.kt", 50, 5, 10),
+        )
+
+        val result = ChangeCouplingFormatter.format(pairs)
+
+        assertFalse(result.contains("High coupling"), "Should not flag moderate coupling")
     }
 }

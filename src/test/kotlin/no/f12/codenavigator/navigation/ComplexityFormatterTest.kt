@@ -5,6 +5,8 @@ import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.complexity.ComplexityFormatter
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ComplexityFormatterTest {
 
@@ -63,6 +65,61 @@ class ComplexityFormatterTest {
             append("  Top incoming: com.example.Service (2)")
         }
         assertEquals(expected, result)
+    }
+
+    @Test
+    fun `high fan-out shows splitting recommendation`() {
+        val complexity = ClassComplexity(
+            className = ClassName("com.example.GodClass"),
+            sourceFile = "GodClass.kt",
+            fanOut = 25,
+            fanIn = 2,
+            distinctOutgoingClasses = 11,
+            distinctIncomingClasses = 1,
+            outgoingByClass = listOf(ClassName("com.example.A") to 5),
+            incomingByClass = listOf(ClassName("com.example.B") to 2),
+        )
+
+        val result = ComplexityFormatter.format(listOf(complexity))
+
+        assertTrue(result.contains("High fan-out"), "Should flag high fan-out, got:\n$result")
+    }
+
+    @Test
+    fun `high fan-in shows central type warning`() {
+        val complexity = ClassComplexity(
+            className = ClassName("com.example.SharedUtil"),
+            sourceFile = "SharedUtil.kt",
+            fanOut = 1,
+            fanIn = 45,
+            distinctOutgoingClasses = 1,
+            distinctIncomingClasses = 21,
+            outgoingByClass = listOf(ClassName("com.example.X") to 1),
+            incomingByClass = listOf(ClassName("com.example.Y") to 10),
+        )
+
+        val result = ComplexityFormatter.format(listOf(complexity))
+
+        assertTrue(result.contains("High fan-in"), "Should flag high fan-in, got:\n$result")
+    }
+
+    @Test
+    fun `normal complexity shows no recommendation`() {
+        val complexity = ClassComplexity(
+            className = ClassName("com.example.Simple"),
+            sourceFile = "Simple.kt",
+            fanOut = 3,
+            fanIn = 4,
+            distinctOutgoingClasses = 2,
+            distinctIncomingClasses = 3,
+            outgoingByClass = listOf(ClassName("com.example.A") to 2),
+            incomingByClass = listOf(ClassName("com.example.B") to 3),
+        )
+
+        val result = ComplexityFormatter.format(listOf(complexity))
+
+        assertFalse(result.contains("High fan-out"), "Should not flag normal fan-out")
+        assertFalse(result.contains("High fan-in"), "Should not flag normal fan-in")
     }
 
     @Test
