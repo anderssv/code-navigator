@@ -88,6 +88,8 @@ All tasks support `-Pformat=json` / `-Dformat=json` and `-Pllm=true` / `-Dllm=tr
 | **Hybrid and composite** | |
 | `cnavChangedSince` / `cnav:changed-since` | Blast radius of changes since a git ref (changed classes + their callers) |
 | `cnavBalance` / `cnav:balance` | Balanced coupling analysis: strength x distance x volatility |
+| **Source analysis** (no compilation needed) | |
+| `cnavSize` / `cnav:size` | Source files ranked by line count |
 
 ### Dead code detection and framework awareness
 

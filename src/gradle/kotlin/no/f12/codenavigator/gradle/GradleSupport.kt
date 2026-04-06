@@ -42,6 +42,21 @@ fun Project.taggedClassDirectories(): List<Pair<File, SourceSet>> {
     return result
 }
 
+fun Project.sourceDirectories(): List<File> {
+    val sourceSets = extensions.getByType(SourceSetContainer::class.java)
+    val dirs = mutableListOf<File>()
+
+    for (sourceSet in sourceSets) {
+        for (dir in sourceSet.allSource.srcDirs) {
+            if (dir.exists()) {
+                dirs.add(dir)
+            }
+        }
+    }
+
+    return dirs
+}
+
 private fun Project.buildPropertyMap(
     propertyNames: List<String>,
     flagNames: List<String>,

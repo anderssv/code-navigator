@@ -3,6 +3,7 @@ package no.f12.codenavigator.formatting
 import no.f12.codenavigator.analysis.CoupledPair
 import no.f12.codenavigator.analysis.FileAge
 import no.f12.codenavigator.analysis.FileChurn
+import no.f12.codenavigator.analysis.FileSizeEntry
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.analysis.ModuleAuthors
 import no.f12.codenavigator.analysis.PackageVolatilityResult
@@ -132,6 +133,14 @@ object JsonFormatter {
                 "file" to h.file,
                 "revisions" to h.revisions,
                 "totalChurn" to h.totalChurn,
+            )
+        }
+
+    fun formatSize(entries: List<FileSizeEntry>): String =
+        jsonArray(entries) { e ->
+            jsonObject(
+                "file" to e.file,
+                "lines" to e.lines,
             )
         }
 

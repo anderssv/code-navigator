@@ -122,11 +122,19 @@ object AgentHelpText {
         appendLine("  \"What depends on package X?\"")
         appendLine("    → ${u("package-deps", p("package", "X"), p("reverse", "true"))}")
         appendLine()
+        appendLine("  \"What does package X import?\" / \"What are the dependencies between packages?\"")
+        appendLine("    → ${u("package-deps")} for per-package edges, ${t("dsm")} for the full matrix")
+        appendLine("    # Bytecode analysis — more accurate than source-level import scanning")
+        appendLine()
         appendLine("  \"Is there dead code?\"  → ${u("dead")}")
         appendLine()
         appendLine("  \"What are the most important types?\"  → ${u("rank")}")
         appendLine()
         appendLine("  \"Which files change the most?\"  → ${u("hotspots")}")
+        appendLine()
+        appendLine("  \"Which source files are the largest?\" / \"How big are my files?\"")
+        appendLine("    → ${u("size")}")
+        appendLine("    # Lists source files by line count; use ${p("over", "100")} to filter small files")
         appendLine()
         appendLine("  \"Where is string X hardcoded?\"")
         appendLine("    → ${u("find-string-constant", p("pattern", "X"))}")
@@ -193,6 +201,8 @@ object AgentHelpText {
         appendLine("  Code review context: ${t("hotspots")} + ${t("authors")} + ${t("churn")}")
         appendLine("  Coupling health: use ${t("balance")} (combines ${t("strength")} × ${t("distance")} × ${t("volatility")})")
         appendLine()
+        appendTroubleshooting(tool)
+        appendLine()
         appendSectionDirectory(tool)
     }
 
@@ -243,6 +253,10 @@ object AgentHelpText {
         appendLine("   ${u("authors")}                      # distinct contributors per file")
         appendLine("   ${u("churn")}                        # lines added/deleted per file")
         appendLine("   # All git tasks accept ${p("after", "YYYY-MM-DD")} (default: 1 year ago)")
+        appendLine()
+        appendLine("   Source analysis (no compilation needed):")
+        appendLine("   ${u("size")}                         # largest source files by line count")
+        appendLine("   ${u("size", p("over", "100"))}                # only files over 100 lines")
         appendLine()
         appendLine("8. RANK: Identify structurally important types")
         appendLine("   ${u("rank")}                         # top 50 most important types (PageRank)")
@@ -571,6 +585,9 @@ object AgentHelpText {
         appendLine("${t("balance")}:")
         appendLine("  [{\"source\": \"com.example.api\", \"target\": \"com.example.persistence\", \"strength\": \"FUNCTIONAL\", \"distance\": 3, \"sourceVolatility\": 12, \"targetVolatility\": 8, \"verdict\": \"DANGER\", \"suggestion\": \"...\"}]")
         appendLine()
+        appendLine("${t("size")}:")
+        appendLine("  [{\"file\": \"services/UserService.kt\", \"lines\": 61}, {\"file\": \"domain/Domain.kt\", \"lines\": 22}]")
+        appendLine()
         appendLine("Empty Results:")
         appendLine("  When a query returns no results, JSON/LLM output uses a wrapper with hints:")
         appendLine("  {\"results\":[],\"hints\":[\"Try -Pmethods=true to include method-level annotations\"]}")
@@ -640,6 +657,19 @@ object AgentHelpText {
         appendLine("Run ${u("help")} for full parameter documentation.")
     }
 
+    private fun StringBuilder.appendTroubleshooting(tool: BuildTool) {
+        val cmd = when (tool) {
+            BuildTool.GRADLE -> "./gradlew"
+            BuildTool.MAVEN -> "mvn"
+        }
+        appendLine("--- Troubleshooting ---")
+        appendLine()
+        appendLine("If bytecode-based tasks fail with compilation or cache errors:")
+        appendLine("  1. Stop the daemon:   $cmd --stop")
+        appendLine("  2. Clear Kotlin cache: rm -rf build/kotlin")
+        appendLine("  3. Retry with clean:   $cmd clean <task>")
+    }
+
     private val HELP_GOALS = setOf("help", "agent-help", "config-help")
     private val FORMAT_PARAM_NAMES = setOf("format", "llm")
 
@@ -647,7 +677,9 @@ object AgentHelpText {
         val compilationTasks = TaskRegistry.ALL_TASKS
             .filter { it.requiresCompilation && it.goal !in HELP_GOALS }
         val gitTasks = TaskRegistry.ALL_TASKS
-            .filter { !it.requiresCompilation && it.goal !in HELP_GOALS }
+            .filter { it.category == TaskCategory.GIT_HISTORY }
+        val sourceTasks = TaskRegistry.ALL_TASKS
+            .filter { it.category == TaskCategory.SOURCE }
         val helpTasks = TaskRegistry.ALL_TASKS
             .filter { it.goal in HELP_GOALS }
 
@@ -658,6 +690,13 @@ object AgentHelpText {
         appendLine("  Git history (no compilation needed):")
         for (task in gitTasks) {
             appendTaskLine(task, tool)
+        }
+        if (sourceTasks.isNotEmpty()) {
+            appendLine()
+            appendLine("  Source analysis (no compilation needed):")
+            for (task in sourceTasks) {
+                appendTaskLine(task, tool)
+            }
         }
         appendLine()
         appendLine("  Help:")

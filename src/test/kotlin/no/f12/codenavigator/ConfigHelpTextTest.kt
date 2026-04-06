@@ -202,4 +202,34 @@ class ConfigHelpTextTest {
             "Should mention cnavBalance task",
         )
     }
+
+    @Test
+    fun `lists source analysis section with size parameters`() {
+        val text = ConfigHelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(text.contains("Source Analysis"), "Should have Source Analysis section")
+        assertTrue(
+            text.contains(TaskRegistry.SIZE.taskName(BuildTool.GRADLE)),
+            "Should mention cnavSize task",
+        )
+        assertTrue(
+            text.contains(TaskRegistry.OVER.render(BuildTool.GRADLE)),
+            "Should list over parameter",
+        )
+    }
+
+    @Test
+    fun `Maven lists source analysis section with size parameters`() {
+        val text = ConfigHelpText.generate(BuildTool.MAVEN)
+
+        assertTrue(text.contains("Source Analysis"), "Should have Source Analysis section")
+        assertTrue(
+            text.contains(TaskRegistry.SIZE.taskName(BuildTool.MAVEN)),
+            "Should mention cnav:size goal",
+        )
+        assertTrue(
+            text.contains(TaskRegistry.OVER.render(BuildTool.MAVEN)),
+            "Should list over parameter for Maven",
+        )
+    }
 }

@@ -1,9 +1,10 @@
 # Task Reference
 
-The plugin provides two categories of tasks:
+The plugin provides three categories of tasks:
 
 - **Navigation tasks** analyze compiled code and depend on the `classes` task (compilation happens automatically before analysis).
 - **Analysis tasks** analyze git history and do **not** require compilation.
+- **Source analysis tasks** scan source files directly and do **not** require compilation.
 
 ## Navigation Tasks
 
@@ -303,4 +304,24 @@ Shows lines added and deleted per file. High churn files are where most developm
 # Maven
 mvn cnav:churn
 mvn cnav:churn -Dtop=20
+```
+
+## Source Analysis Tasks
+
+These tasks scan source files directly and do **not** require compilation.
+
+### size
+
+Lists source files (Kotlin/Java) by line count, largest first. Use `-Pover` / `-Dover` to filter out small files.
+
+```bash
+# Gradle
+./gradlew cnavSize
+./gradlew cnavSize -Pover=100
+./gradlew cnavSize -Pover=200 -Ptop=10
+
+# Maven
+mvn cnav:size
+mvn cnav:size -Dover=100
+mvn cnav:size -Dover=200 -Dtop=10
 ```

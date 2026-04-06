@@ -1,5 +1,18 @@
 # Plan — Completed
 
+## ~~`cnavSize` — source file size analysis~~ DONE
+
+New `SOURCE` category task that scans source files (Kotlin, Java) by line count without requiring compilation. First source-level scanner in the project.
+
+- **Core**: `FileSizeScanner.scan(sourceRoots, over, top)` walks source roots, counts lines, filters by `over` threshold, returns top N sorted by size descending. `FileSizeEntry(file, lines)` data class.
+- **Config**: `FileSizeConfig.parse()` reads `over` (default 0), `top` (default 50), `format` from properties. New `OVER` ParamDef in TaskRegistry.
+- **Formatters**: TEXT with column-aligned table + terse "Consider splitting" recommendation (fires when largest file >= 3x median, minimum 3 files). JSON as array of `{file, lines}` objects. LLM as compact `file lines=N` format.
+- **Gradle**: `SizeTask` uses new `project.sourceDirectories()` extension (iterates all sourceSets, collects existing `allSource.srcDirs`). Does not depend on compilation.
+- **Maven**: `SizeMojo` uses `project.compileSourceRoots + project.testCompileSourceRoots`.
+- **Registry**: `SIZE` TaskDef (goal="size", requiresCompilation=false, category=SOURCE). New `SOURCE` TaskCategory. Task count: 33.
+- **Help**: Added to both `AgentHelpText` (common questions, workflow, task reference with SOURCE category, JSON schema) and `HelpText` (Source Analysis Tasks section).
+- **Tests**: 22 new tests across FileSizeScannerTest (9), FileSizeConfigTest (5), FileSizeFormatterTest (5), JsonFormatterTest (2), LlmFormatterTest (1).
+
 ## ~~Terse recommendations in analysis formatters~~ DONE
 
 Added short, actionable one-liner recommendations to four analysis formatters:

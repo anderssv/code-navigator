@@ -3,6 +3,7 @@ package no.f12.codenavigator
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.analysis.CoupledPair
 import no.f12.codenavigator.analysis.FileChurn
+import no.f12.codenavigator.analysis.FileSizeEntry
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
 import no.f12.codenavigator.navigation.core.AnnotationName
@@ -1210,6 +1211,20 @@ class LlmFormatterTest {
             "com.example.api->org.external.lib strength=CONTRACT contract=1 model=0 functional=0 unknown=3",
             output,
         )
+    }
+
+    // === Size formatting ===
+
+    @Test
+    fun `formats size entries compactly`() {
+        val entries = listOf(
+            FileSizeEntry("services/UserService.kt", 61),
+            FileSizeEntry("domain/Domain.kt", 22),
+        )
+
+        val result = LlmFormatter.formatSize(entries)
+
+        assertEquals("services/UserService.kt lines=61\ndomain/Domain.kt lines=22", result)
     }
 
     private fun aContextResult(

@@ -3,6 +3,7 @@ package no.f12.codenavigator
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.analysis.CoupledPair
 import no.f12.codenavigator.analysis.FileChurn
+import no.f12.codenavigator.analysis.FileSizeEntry
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
 import no.f12.codenavigator.navigation.core.AnnotationName
@@ -1369,6 +1370,30 @@ class JsonFormatterTest {
         assertTrue(json.contains("\"source\":\"api.Controller\""), "Should show stripped source class, got:\n$json")
         assertTrue(json.contains("\"target\":\"service.Service\""), "Should show stripped target class, got:\n$json")
         assertTrue(!json.contains("\"source\":\"com.example.api.Controller\""), "Should not show full class name, got:\n$json")
+    }
+
+    // === Size formatting ===
+
+    @Test
+    fun `empty size entries produce empty JSON array`() {
+        val result = JsonFormatter.formatSize(emptyList())
+
+        assertEquals("[]", result)
+    }
+
+    @Test
+    fun `size entries produce JSON array with file and lines`() {
+        val entries = listOf(
+            FileSizeEntry("services/UserService.kt", 61),
+            FileSizeEntry("domain/Domain.kt", 22),
+        )
+
+        val result = JsonFormatter.formatSize(entries)
+
+        assertEquals(
+            """[{"file":"services/UserService.kt","lines":61},{"file":"domain/Domain.kt","lines":22}]""",
+            result,
+        )
     }
 
     private fun aContextResult(

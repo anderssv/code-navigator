@@ -3,6 +3,7 @@ package no.f12.codenavigator.formatting
 import no.f12.codenavigator.analysis.CoupledPair
 import no.f12.codenavigator.analysis.FileAge
 import no.f12.codenavigator.analysis.FileChurn
+import no.f12.codenavigator.analysis.FileSizeEntry
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.analysis.ModuleAuthors
 import no.f12.codenavigator.analysis.PackageVolatilityResult
@@ -105,6 +106,9 @@ object LlmFormatter {
 
     fun formatHotspots(hotspots: List<Hotspot>): String =
         hotspots.joinToString("\n") { "${it.file} revisions=${it.revisions} churn=${it.totalChurn}" }
+
+    fun formatSize(entries: List<FileSizeEntry>): String =
+        entries.joinToString("\n") { "${it.file} lines=${it.lines}" }
 
     fun formatVolatility(result: PackageVolatilityResult): String =
         result.entries.joinToString("\n") { "${it.packageName} revisions=${it.revisions} churn=${it.totalChurn} files=${it.fileCount} avgRev=${"%.1f".format(it.avgRevisionsPerFile)}" }

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **New:** `cnavSize` task / `cnav:size` goal — lists source files (Kotlin/Java) by line count, largest first. First source-level task: scans source files directly, no compilation needed. Parameters: `-Pover=N` (minimum line count), `-Ptop=N` (default 50). Includes "Consider splitting" recommendation when largest file exceeds 3× median. TEXT, JSON, and LLM output formats.
+- **New:** `SOURCE` TaskCategory for tasks that analyze source files without compilation.
+- **Improved:** AgentHelpText troubleshooting section and import/dependency question added.
+
 ## 0.1.52
 
 - **New:** Terse recommendations in analysis formatters — short, actionable one-liners appended to output when thresholds are exceeded.

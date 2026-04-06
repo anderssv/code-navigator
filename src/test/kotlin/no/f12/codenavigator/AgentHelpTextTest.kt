@@ -755,6 +755,68 @@ class AgentHelpTextTest {
         assertContains(text, "section=setup")
     }
 
+    // --- Troubleshooting section ---
+
+    @Test
+    fun `default output contains Troubleshooting section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "Troubleshooting")
+    }
+
+    @Test
+    fun `troubleshooting section mentions daemon stop`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val troubleshooting = text.substringAfter("Troubleshooting")
+            .substringBefore("--- More Detail ---")
+
+        assertContains(troubleshooting, "--stop")
+    }
+
+    @Test
+    fun `troubleshooting section mentions build kotlin cleanup`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val troubleshooting = text.substringAfter("Troubleshooting")
+            .substringBefore("--- More Detail ---")
+
+        assertContains(troubleshooting, "build/kotlin")
+    }
+
+    @Test
+    fun `troubleshooting section mentions clean task`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val troubleshooting = text.substringAfter("Troubleshooting")
+            .substringBefore("--- More Detail ---")
+
+        assertContains(troubleshooting, "clean")
+    }
+
+    @Test
+    fun `Maven troubleshooting uses mvn instead of gradlew`() {
+        val text = AgentHelpText.generate(BuildTool.MAVEN)
+        val troubleshooting = text.substringAfter("Troubleshooting")
+            .substringBefore("--- More Detail ---")
+
+        assertContains(troubleshooting, "mvn")
+        assertFalse(troubleshooting.contains("./gradlew"), "Maven troubleshooting should not mention gradlew")
+    }
+
+    // --- Import/dependency common question ---
+
+    @Test
+    fun `common questions maps import analysis question to package-deps and dsm`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val commonQuestionsSection = text.substringAfter("Common Questions")
+            .substringBefore("--- Task Reference ---")
+
+        val packageDepsTask = TaskRegistry.PACKAGE_DEPS.taskName(BuildTool.GRADLE)
+        val dsmTask = TaskRegistry.DSM.taskName(BuildTool.GRADLE)
+
+        assertContains(commonQuestionsSection, "import")
+        assertContains(commonQuestionsSection, packageDepsTask)
+        assertContains(commonQuestionsSection, dsmTask)
+    }
+
     // --- Empty result / hint shape documentation ---
 
     @Test
@@ -837,5 +899,31 @@ class AgentHelpTextTest {
             .substringBefore("--- Task Reference ---")
 
         assertContains(balanceQuestion, "combines")
+    }
+
+    // --- Size task in help output ---
+
+    @Test
+    fun `default output contains size task in task reference`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "cnavSize")
+        assertContains(text, "Source analysis")
+    }
+
+    @Test
+    fun `common questions include file size question`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "largest")
+        assertContains(text, "cnavSize")
+    }
+
+    @Test
+    fun `schemas section includes size schema`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "schemas")
+
+        assertContains(text, "cnavSize")
+        assertContains(text, "\"lines\"")
     }
 }

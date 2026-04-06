@@ -107,6 +107,10 @@ object ConfigHelpText {
             .filter { it.category == TaskCategory.COMPOSITE }
         val compositeParams = collectSharedParams(compositeTasks, globalParamNames)
 
+        val sourceTasks = TaskRegistry.ALL_TASKS
+            .filter { it.category == TaskCategory.SOURCE }
+        val sourceParams = collectSharedParams(sourceTasks, globalParamNames)
+
         return listOf(
             Section("Navigation Tasks", navigationParams),
             Section("Type Ranking", rankParams),
@@ -116,6 +120,7 @@ object ConfigHelpText {
             Section("Class Complexity", complexityParams),
             Section("Git History Analysis", gitParams),
             Section("Composite Analysis", compositeParams),
+            Section("Source Analysis (no compilation needed)", sourceParams),
         )
     }
 

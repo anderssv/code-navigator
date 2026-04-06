@@ -10,6 +10,7 @@ enum class TaskCategory {
     GIT_HISTORY,
     HYBRID,
     COMPOSITE,
+    SOURCE,
     HELP,
 }
 
@@ -168,6 +169,7 @@ object TaskRegistry {
     val PROJECTONLY = ParamDef("project-only", "false", "Hide JDK/stdlib/library classes (default: on)", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val FILTER_SYNTHETIC = ParamDef("filter-synthetic", "false", "Set false to include synthetic methods (equals, hashCode, copy, componentN, etc.)", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val TOP = ParamDef("top", "<N>", "Max results", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
+    val OVER = ParamDef("over", "<N>", "Only show files over N lines", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
     val AFTER = ParamDef("after", "YYYY-MM-DD", "Only consider commits after this date", flag = false, defaultValue = "1 year ago", enhancePattern = false, type = ParamType.DATE)
     val NO_FOLLOW = ParamDef("no-follow", "", "Disable git rename tracking", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val MIN_REVS = ParamDef("min-revs", "<N>", "Min revisions to include", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
@@ -480,6 +482,14 @@ object TaskRegistry {
         paramDefaultOverrides = mapOf("top" to "all"),
     )
 
+    val SIZE = TaskDef(
+        goal = "size",
+        description = "List source files by line count",
+        params = FORMAT_PARAMS + listOf(TOP, OVER),
+        requiresCompilation = false,
+        category = TaskCategory.SOURCE,
+    )
+
     val ALL_TASKS: List<TaskDef> = listOf(
         LIST_CLASSES,
         FIND_CLASS,
@@ -510,6 +520,7 @@ object TaskRegistry {
         STRENGTH,
         VOLATILITY,
         BALANCE,
+        SIZE,
         HELP,
         AGENT_HELP,
         CONFIG_HELP,

@@ -151,23 +151,83 @@ Add `-Pclasspath=true` to scan the full runtime classpath (project classes + all
 
 ---
 
-## `cnavLayerCheck` — architecture conformance
+## `cnavLayerCheck` — architecture conformance via agent-provided config
 
-**Value: high** | **Effort: ambitious**
+**Value: high** | **Effort: medium**
 
-Declare layer rules and validate them against the actual call graph. Like ArchUnit but without writing test code.
+The agent provides a `.cnav-layers.json` config file describing the intended layer architecture. The tool verifies all inter-package dependencies comply with the layer ordering. No auto-detection — the agent reads the DSM, drafts the config, and the tool checks it mechanically.
 
-```kotlin
-codeNavigator {
-    rules {
-        "services" mustNotDependOn "ra"
-        "domain" mustNotDependOn "ktor"
-    }
+**Config format** (`.cnav-layers.json` in project root):
+
+```json
+{
+  "layers": [
+    [
+      { "name": "api", "packages": ["com.example.api", "com.example.web"] },
+      { "name": "infrastructure", "packages": ["com.example.infra", "com.example.persistence"] }
+    ],
+    { "name": "services", "packages": ["com.example.services"] },
+    { "name": "domain", "packages": ["com.example.domain", "com.example.model"] }
+  ]
 }
 ```
 
-- Output: list of violations with the specific class-level edges that break the rule.
-- **Prerequisite**: Benefits from `cnavWhyDepends` for edge explanation.
+**Rules derived from structure:**
+- Layer order is outermost-first, innermost-last (hexagonal: adapters → application → domain).
+- Each layer may depend on layers defined *after* it (further inward). Never sideways or outward.
+- Layers in the same array (same index) are *peers* — they cannot depend on each other but can both depend on layers below them. This models hexagonal adapters: `api` and `infrastructure` are parallel outer layers.
+- A single layer not in an array is shorthand for a group of one.
+
+**Unassigned packages**: Packages not listed in any layer are reported as warnings but their dependencies are not treated as violations. This lets the agent incrementally assign packages.
+
+**Violation output**: For each violation, show the class-level edges that break the rule (reuse DSM/dependency extraction infrastructure):
+```
+VIOLATION: domain → services (domain must not depend on outer layers)
+  com.example.domain.Order → com.example.services.OrderService (field reference)
+
+VIOLATION: api → infrastructure (peer layers cannot depend on each other)
+  com.example.api.OrderController → com.example.infra.DatabasePool (method call)
+```
+
+**Parameters**: `-Pconfig=<path>` (default: `.cnav-layers.json`), `-Pinit=true` (generate starter config), standard format/llm flags.
+
+**Exit code**: Non-zero on violations, usable in CI.
+
+**`-Pinit=true` mode**: When no config file exists (or when `-Pinit=true` is passed explicitly), generate a starter `.cnav-layers.json` with all project packages in a single "unassigned" layer. Output includes:
+1. Confirmation of what was generated and where.
+2. The current inter-package dependency summary (extracted from DSM), so the agent can see the dependency reality without a separate command.
+3. Step-by-step instructions for the agent: edit the config to organize packages into layers, run `cnavLayerCheck` to verify, commit the file.
+
+Example output:
+```
+Generated .cnav-layers.json with 8 packages in a single "unassigned" layer.
+
+Current package dependencies (from DSM):
+  com.example.api → com.example.services, com.example.domain
+  com.example.infra → com.example.services, com.example.domain
+  com.example.services → com.example.domain
+  com.example.domain → (none)
+
+Next steps:
+1. Edit .cnav-layers.json to organize packages into layers.
+   - Outermost layers first, innermost (domain) last.
+   - Packages at the same level go in the same array (peer group).
+   - Each layer may only depend on layers below it. Peers cannot depend on each other.
+2. Run cnavLayerCheck to verify your architecture against the config.
+3. Commit .cnav-layers.json to version control.
+```
+
+This gives the agent everything it needs in one step — real package names, their actual dependencies, the config file format, and clear next actions.
+
+**Workflow**: Agent runs `cnavLayerCheck -Pinit=true` → reads output → edits `.cnav-layers.json` → runs `cnavLayerCheck` → fixes violations or updates config. The config file is checked into version control as machine-readable architecture documentation.
+
+**Documentation**: The config format, `--init` workflow, and layer rules are documented in `cnavAgentHelp` so agents discover it without being told.
+
+**Implementation notes**:
+- Config parser: read JSON, validate structure, build ordered layer groups with peer sets.
+- Checker: for each inter-package dependency edge from DSM, look up source and target layers, verify the dependency direction is allowed (target layer index > source layer index, and not in the same peer group).
+- Formatter: group violations by rule type (outward, sideways), show class-level detail.
+- Reuses `DsmDependencyExtractor` for dependency edges and `DsmMatrixBuilder` for package resolution.
 
 ---
 
@@ -335,5 +395,5 @@ Items below are low-priority or may not be worth building. Revisit if demand eme
 - **Cross-reference hotspots with bytecode**: Combine `cnavHotspots` with `cnavCallers`/`cnavDeps`.
 - **Entity ownership / main developer**: Who "owns" each file by contribution weight. Mode on `cnavAuthors`.
 - **Architectural-level grouping**: Aggregate file-level results by logical component/layer.
-- **Source-level structural analysis**: Analyze imports from source files without requiring compilation.
+- **Source-level structural analysis**: Analyze imports from source files without requiring compilation. `cnavSize` (DONE) is the first source-level task; import/dependency analysis from source would be the next step.
 - **Deterministic refactorings**: Explore whether code-navigator's bytecode analysis (call graph, usages, type hierarchy, interface registry) can drive deterministic refactoring operations like rename, extract interface, move class, etc. The analysis already knows all callers, implementors, and dependencies — emitting precise source edits (file + line + replacement) could make agent-driven refactorings reliable rather than heuristic.

@@ -546,10 +546,10 @@ class TaskDefTest {
 class TaskRegistryTest {
 
     @Test
-    fun `contains all 32 goals`() {
+    fun `contains all 33 goals`() {
         val goals = TaskRegistry.ALL_TASKS.map { it.goal }.toSet()
 
-        assertEquals(32, goals.size)
+        assertEquals(33, goals.size)
         assertTrue(goals.contains("find-class"))
         assertTrue(goals.contains("hotspots"))
         assertTrue(goals.contains("complexity"))
@@ -564,6 +564,7 @@ class TaskRegistryTest {
         assertTrue(goals.contains("strength"))
         assertTrue(goals.contains("volatility"))
         assertTrue(goals.contains("balance"))
+        assertTrue(goals.contains("size"))
     }
 
     @Test
@@ -574,7 +575,7 @@ class TaskRegistryTest {
             val gradleName = task.taskName(BuildTool.GRADLE)
             assertNotNull(gradleName, "Goal '${task.goal}' should resolve to a Gradle task name")
         }
-        assertEquals(32, registryGoals.size)
+        assertEquals(33, registryGoals.size)
     }
 
     @Test
@@ -697,6 +698,11 @@ class TaskRegistryTest {
     @Test
     fun `balance has category COMPOSITE`() {
         assertEquals(TaskCategory.COMPOSITE, TaskRegistry.BALANCE.category)
+    }
+
+    @Test
+    fun `size has category SOURCE`() {
+        assertEquals(TaskCategory.SOURCE, TaskRegistry.SIZE.category)
     }
 
     @Test
@@ -902,6 +908,7 @@ class TaskRegistryTest {
             "methods" to ParamType.BOOLEAN,
             "package-filter" to ParamType.STRING,
             "include-external" to ParamType.BOOLEAN,
+            "over" to ParamType.INT,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }
