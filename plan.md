@@ -5,6 +5,18 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
+## Filter non-source files from git analysis recommendations
+
+**Value: medium** | **Effort: low**
+
+Coupling and hotspot recommendations flag build/config/doc files (e.g., `gradle-wrapper.properties`, `deployment/configmap.yaml`, `pom.xml`, `README.md`) with advice meant for source code ("unclear responsibilities", "consider merging"). These are noise — config files co-changing is expected, and build files don't have "responsibilities" in the code sense.
+
+- **Approach**: Add an optional source-file filter at the builder level. Default to files matching `src/**` (or configurable pattern). Non-source files still appear in results but don't get recommendation annotations.
+- **Affects**: `ChangeCouplingFormatter`, `HotspotFormatter`.
+- **Note**: Test+main pairs in coupling are already suppressed (v0.1.52).
+
+---
+
 ## Add interpretation section to all analysis task output
 
 **Value: high** | **Effort: medium**

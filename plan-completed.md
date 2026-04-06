@@ -1,5 +1,16 @@
 # Plan — Completed
 
+## ~~Terse recommendations in analysis formatters~~ DONE
+
+Added short, actionable one-liner recommendations to four analysis formatters:
+
+- **CyclesFormatter**: Every cycle gets "Extract shared types into a new package or invert one dependency direction."
+- **ComplexityFormatter**: Flags high fan-out (>10 distinct outgoing classes) and high fan-in (>20 distinct incoming classes) with splitting/ripple warnings.
+- **ChangeCouplingFormatter**: Flags coupling degree >=70% with merge/extract suggestion. Suppresses recommendations for test+main pairs (one file in `src/main/`, other in `src/test/`) since these are expected to co-change.
+- **HotspotFormatter**: Flags files with revisions >=2x median (minimum 5 files) as change hotspots.
+
+Tested on three projects of different sizes (greitt ~small, spring-petclinic ~medium, bass-ra-backend ~large). Thresholds scale well — small projects don't get false positives, larger ones get actionable signals. Remaining noise from non-source files (build config, deployment config) tracked as future improvement.
+
 ## ~~Dead code: polymorphic dispatch via intra-class calls~~ DONE
 
 Interface/abstract dispatch resolution now runs inside the same BFS as intra-class call propagation. Previously, dispatch resolution ran once before intra-class BFS, so methods discovered via intra-class edges (e.g. `LeafPattern.match` → `this.singleMatch`) were never dispatched to implementors. The unified BFS handles both: when a method becomes alive, it dispatches to all implementors AND follows intra-class call edges. Covers multi-level hierarchies (Pattern → BranchPattern → Either/Required). This was the #1 source of false positives in the v0.1.46 docopt-kotlin field test.
