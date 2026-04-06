@@ -35,8 +35,8 @@ class SizeMojo : AbstractMojo() {
         val config = FileSizeConfig.parse(TaskRegistry.SIZE.enhanceProperties(buildPropertyMap()))
 
         val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
-            .map { File(it) }
-            .filter { it.exists() }
+            .map { root -> File(root as String) }
+            .filter { file -> file.exists() }
 
         val entries = FileSizeScanner.scan(sourceRoots, config.over, config.top)
 
