@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import java.io.File
+import java.nio.file.Files
 
 class RenameParamRewriterTest {
 
@@ -14,6 +15,7 @@ class RenameParamRewriterTest {
     // [TEST] Does not rename positional arguments at call site
     // [TEST] Returns list of changed files with before/after content
     // [TEST] Leaves unrelated files unchanged
+    // [TEST] Preview mode does not write to disk
     // [TEST] Does not rename named arguments of other method calls in body
     // [TEST] Renames named arguments at cross-file call sites
     // [TEST] Detects cascade candidates when param is forwarded to same-named param
@@ -181,6 +183,25 @@ class RenameParamRewriterTest {
     }
 
     @Test
+    fun `preview mode does not write to disk`() {
+        val sourceDir = copySourcesToTemp("rename-param-preview", "com/example/services", "com/example/domain")
+        val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
+        val originalContent = auditFile.readText()
+
+        val result = RenameParamRewriter.rename(
+            sourceRoots = listOf(sourceDir),
+            className = "com.example.services.AuditService",
+            methodName = "formatAuditEntry",
+            paramName = "name",
+            newName = "userName",
+            preview = true,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should detect changes")
+        assertEquals(originalContent, auditFile.readText(), "File should not be modified in preview mode")
+    }
+
+    @Test
     fun `does not rename named arguments of other method calls in body`() {
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(testProjectSrc),
@@ -246,5 +267,18 @@ class RenameParamRewriterTest {
         )
 
         assertTrue(result.cascadeCandidates.isEmpty(), "Should NOT detect cascade candidate when param names differ. cascadeCandidates: ${result.cascadeCandidates}")
+    }
+
+    private fun copySourcesToTemp(label: String, vararg packages: String): File {
+        val testProjectSrc = File("test-project/src/main/kotlin")
+        val tempDir = Files.createTempDirectory("cnav-test-$label").toFile()
+
+        for (pkg in packages) {
+            val srcPkg = File(testProjectSrc, pkg)
+            val destPkg = File(tempDir, pkg)
+            srcPkg.copyRecursively(destPkg)
+        }
+
+        return tempDir
     }
 }

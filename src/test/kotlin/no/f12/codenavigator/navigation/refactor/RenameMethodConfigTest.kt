@@ -9,6 +9,7 @@ class RenameMethodConfigTest {
 
     // [TEST] Parses all required params from property map
     // [TEST] Preview flag sets preview to true
+    // [TEST] Preview flag with null value sets preview to true
     // [TEST] Preview defaults to false when absent
     // [TEST] Parses LLM format
     // [TEST] Throws when class is missing
@@ -39,6 +40,20 @@ class RenameMethodConfigTest {
             "method" to "findUsers",
             "new-name" to "lookupUsers",
             "preview" to "true",
+        )
+
+        val config = RenameMethodConfig.parse(props)
+
+        assertEquals(true, config.preview)
+    }
+
+    @Test
+    fun `preview flag with null value sets preview to true`() {
+        val props: Map<String, String?> = mapOf(
+            "target-class" to "com.example.UserService",
+            "method" to "findUsers",
+            "new-name" to "lookupUsers",
+            "preview" to null,
         )
 
         val config = RenameMethodConfig.parse(props)
