@@ -1,8 +1,6 @@
 package no.f12.codenavigator
 
 import no.f12.codenavigator.formatting.LlmFormatter
-import no.f12.codenavigator.analysis.CoupledPair
-import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.FileSizeEntry
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
@@ -27,16 +25,23 @@ import no.f12.codenavigator.navigation.rank.RankedType
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.dsm.CycleDetail
 import no.f12.codenavigator.navigation.dsm.CycleEdge
-import no.f12.codenavigator.navigation.deadcode.DeadCode
-import no.f12.codenavigator.navigation.deadcode.DeadCodeConfidence
-import no.f12.codenavigator.navigation.deadcode.DeadCodeKind
-import no.f12.codenavigator.navigation.deadcode.DeadCodeReason
-import no.f12.codenavigator.navigation.stringconstant.StringConstantMatch
-import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
-import no.f12.codenavigator.navigation.annotation.MethodAnnotationMatch
+import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.context.ContextResult
+import no.f12.codenavigator.navigation.fixtures.aContextResult
+import no.f12.codenavigator.navigation.fixtures.aDeadCodePair
+import no.f12.codenavigator.navigation.fixtures.aHotspotPair
+import no.f12.codenavigator.navigation.fixtures.aCoupledPair
+import no.f12.codenavigator.navigation.fixtures.aChurnPair
+import no.f12.codenavigator.navigation.fixtures.aStringConstantPair
+import no.f12.codenavigator.navigation.fixtures.anAnnotationMatch
+import no.f12.codenavigator.navigation.fixtures.anAnnotationMatchWithMethods
+import no.f12.codenavigator.navigation.fixtures.aRankedTypePair
+import no.f12.codenavigator.navigation.fixtures.aClassComplexity
+import no.f12.codenavigator.navigation.fixtures.aSingleCycle
+import no.f12.codenavigator.navigation.fixtures.aMultiCycle
+import no.f12.codenavigator.navigation.fixtures.aStrengthResultPair
 import no.f12.codenavigator.navigation.dsm.PackageDistanceEntry
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.IntegrationStrength
@@ -210,10 +215,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats hotspots compactly`() {
-        val hotspots = listOf(
-            Hotspot("src/Foo.kt", 10, 150),
-            Hotspot("src/Bar.kt", 5, 30),
-        )
+        val hotspots = aHotspotPair()
 
         val result = LlmFormatter.formatHotspots(hotspots)
 
@@ -224,9 +226,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats coupling compactly`() {
-        val pairs = listOf(
-            CoupledPair("src/Foo.kt", "src/Bar.kt", 85, 10, 12),
-        )
+        val pairs = aCoupledPair()
 
         val result = LlmFormatter.formatCoupling(pairs)
 
@@ -237,10 +237,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats churn compactly`() {
-        val churn = listOf(
-            FileChurn("src/Foo.kt", 100, 50, 10),
-            FileChurn("src/Bar.kt", 30, 10, 5),
-        )
+        val churn = aChurnPair()
 
         val result = LlmFormatter.formatChurn(churn)
 
@@ -331,10 +328,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats ranked types compactly`() {
-        val ranked = listOf(
-            RankedType(ClassName("com.example.Core"), 0.42, inDegree = 5, outDegree = 2),
-            RankedType(ClassName("com.example.Service"), 0.15, inDegree = 2, outDegree = 3),
-        )
+        val ranked = aRankedTypePair()
 
         val result = LlmFormatter.formatRank(ranked)
 
@@ -353,10 +347,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats dead code compactly`() {
-        val dead = listOf(
-            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt", DeadCodeConfidence.HIGH, DeadCodeReason.NO_REFERENCES),
-            DeadCode(ClassName("com.example.Service"), "unused", DeadCodeKind.METHOD, "Service.kt", DeadCodeConfidence.MEDIUM, DeadCodeReason.TEST_ONLY),
-        )
+        val dead = aDeadCodePair()
 
         val result = LlmFormatter.formatDead(dead)
 
@@ -378,10 +369,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats string constants compactly`() {
-        val matches = listOf(
-            StringConstantMatch(ClassName("com.example.Routes"), "getUsers", "/api/v1/users", "Routes.kt"),
-            StringConstantMatch(ClassName("com.example.Config"), "setup", "application/json", "Config.kt"),
-        )
+        val matches = aStringConstantPair()
 
         val result = LlmFormatter.formatStringConstants(matches)
 
@@ -400,18 +388,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats complexity compactly`() {
-        val results = listOf(
-            ClassComplexity(
-                className = ClassName("com.example.Service"),
-                sourceFile = "Service.kt",
-                fanOut = 5,
-                fanIn = 3,
-                distinctOutgoingClasses = 2,
-                distinctIncomingClasses = 1,
-                outgoingByClass = listOf(ClassName("com.example.Repo") to 3, ClassName("com.example.Cache") to 2),
-                incomingByClass = listOf(ClassName("com.example.Controller") to 3),
-            ),
-        )
+        val results = aClassComplexity()
 
         val result = LlmFormatter.formatComplexity(results)
 
@@ -544,15 +521,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formatCycles formats cycle with class edges`() {
-        val details = listOf(
-            CycleDetail(
-                packages = listOf(PackageName("api"), PackageName("service")),
-                edges = listOf(
-                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
-                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("service.Service") to ClassName("api.Controller"))),
-                ),
-            ),
-        )
+        val details = aSingleCycle()
 
         val result = LlmFormatter.formatCycles(details)
 
@@ -563,21 +532,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formatCycles separates multiple cycles with newlines`() {
-        val details = listOf(
-            CycleDetail(
-                packages = listOf(PackageName("a"), PackageName("b")),
-                edges = listOf(
-                    CycleEdge(PackageName("a"), PackageName("b"), setOf(ClassName("a.X") to ClassName("b.Y"))),
-                    CycleEdge(PackageName("b"), PackageName("a"), setOf(ClassName("b.Y") to ClassName("a.X"))),
-                ),
-            ),
-            CycleDetail(
-                packages = listOf(PackageName("x"), PackageName("y"), PackageName("z")),
-                edges = listOf(
-                    CycleEdge(PackageName("x"), PackageName("y"), setOf(ClassName("x.A") to ClassName("y.B"))),
-                ),
-            ),
-        )
+        val details = aMultiCycle()
 
         val result = LlmFormatter.formatCycles(details)
 
@@ -587,15 +542,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formatCycles includes prefix line when displayPrefix is non-empty`() {
-        val details = listOf(
-            CycleDetail(
-                packages = listOf(PackageName("api"), PackageName("service")),
-                edges = listOf(
-                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
-                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("service.Service") to ClassName("api.Controller"))),
-                ),
-            ),
-        )
+        val details = aSingleCycle()
 
         val result = LlmFormatter.formatCycles(details, displayPrefix = PackageName("com.example"))
 
@@ -607,14 +554,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats annotation matches compactly`() {
-        val matches = listOf(
-            AnnotationMatch(
-                className = ClassName("com.example.MyController"),
-                sourceFile = "MyController.kt",
-                classAnnotations = setOf(AnnotationName("RestController")),
-                matchedMethods = emptyList(),
-            ),
-        )
+        val matches = listOf(anAnnotationMatch())
 
         val result = LlmFormatter.formatAnnotations(matches)
 
@@ -623,19 +563,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats annotation matches with methods`() {
-        val matches = listOf(
-            AnnotationMatch(
-                className = ClassName("com.example.MyController"),
-                sourceFile = "MyController.kt",
-                classAnnotations = setOf(AnnotationName("RestController")),
-                matchedMethods = listOf(
-                    MethodAnnotationMatch(
-                        method = MethodRef(ClassName("com.example.MyController"), "getUsers"),
-                        annotations = setOf(AnnotationName("GetMapping")),
-                    ),
-                ),
-            ),
-        )
+        val matches = listOf(anAnnotationMatchWithMethods())
 
         val result = LlmFormatter.formatAnnotations(matches)
 
@@ -1173,18 +1101,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formatStrength produces compact LLM lines`() {
-        val result = StrengthResult(
-            listOf(
-                PackageStrengthEntry(
-                    PackageName("com.example.api"), PackageName("com.example.model"),
-                    IntegrationStrength.MODEL, contractCount = 1, modelCount = 2, functionalCount = 0, unknownCount = 0, totalDeps = 3,
-                ),
-                PackageStrengthEntry(
-                    PackageName("com.example.api"), PackageName("org.other.service"),
-                    IntegrationStrength.FUNCTIONAL, contractCount = 0, modelCount = 0, functionalCount = 4, unknownCount = 0, totalDeps = 4,
-                ),
-            ),
-        )
+        val result = aStrengthResultPair()
 
         val output = LlmFormatter.formatStrength(result)
 
@@ -1227,24 +1144,4 @@ class LlmFormatterTest {
         assertEquals("services/UserService.kt lines=61\ndomain/Domain.kt lines=22", result)
     }
 
-    private fun aContextResult(
-        callers: List<CallTreeNode> = emptyList(),
-        callees: List<CallTreeNode> = emptyList(),
-        implementors: List<ImplementorInfo> = emptyList(),
-        implementedInterfaces: List<ClassName> = emptyList(),
-    ): ContextResult = ContextResult(
-        classDetail = ClassDetail(
-            className = ClassName("com.example.MyService"),
-            sourceFile = "MyService.kt",
-            superClass = null,
-            interfaces = emptyList(),
-            fields = emptyList(),
-            methods = listOf(MethodDetail("doWork", listOf("String"), "void", emptyList())),
-            annotations = emptyList(),
-        ),
-        callers = callers,
-        callees = callees,
-        implementors = implementors,
-        implementedInterfaces = implementedInterfaces,
-    )
 }
