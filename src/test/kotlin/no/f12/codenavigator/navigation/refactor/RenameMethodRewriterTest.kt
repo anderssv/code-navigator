@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import java.io.File
+import java.nio.file.Files
 
 class RenameMethodRewriterTest {
 
@@ -12,6 +13,7 @@ class RenameMethodRewriterTest {
     fun `returns change with before and after content`() {
         val tempDir = copyTestSources("rename-method-change-info")
         val sourceDir = File(tempDir, "src/main/kotlin")
+        compileKotlin(tempDir)
 
         val result = RenameMethodRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -35,6 +37,7 @@ class RenameMethodRewriterTest {
         val sourceDir = File(tempDir, "src/main/kotlin")
         val domainFile = File(sourceDir, "com/example/domain/Domain.kt")
         val domainBefore = domainFile.readText()
+        compileKotlin(tempDir)
 
         RenameMethodRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -54,6 +57,7 @@ class RenameMethodRewriterTest {
         val sourceDir = File(tempDir, "src/main/kotlin")
         val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
         val originalContent = auditFile.readText()
+        compileKotlin(tempDir)
 
         val result = RenameMethodRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -76,6 +80,7 @@ class RenameMethodRewriterTest {
 
         // Target: rename UserRepository.findById -> lookupById
         // The interface declares findById, and callers use the interface type
+        compileKotlin(tempDir)
 
         val result = RenameMethodRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -144,6 +149,7 @@ class RenameMethodRewriterTest {
                     "audit: ${'$'}name <${'$'}email>"
             }
         """.trimIndent() + "\n")
+        compileKotlin(tempDir)
 
         val result = RenameMethodRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -165,6 +171,7 @@ class RenameMethodRewriterTest {
     fun `renames method in declaration and call site compiles`() {
         val tempDir = copyTestSources("rename-method-decl")
         val sourceDir = File(tempDir, "src/main/kotlin")
+        compileKotlin(tempDir)
 
         val result = RenameMethodRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -180,6 +187,7 @@ class RenameMethodRewriterTest {
         assertTrue(!content.contains("fun formatAuditEntry("), "Old method name should be gone from declaration")
         assertTrue(content.contains("buildAuditLine("), "Call site should be renamed")
         assertTrue(!content.contains("formatAuditEntry("), "Old method name should be gone from call site")
+        compileKotlin(tempDir)
 
         tempDir.deleteRecursively()
     }
@@ -228,5 +236,33 @@ class RenameMethodRewriterTest {
         val deserialized = RenameMethodResult.fromJson(json)
 
         assertEquals(result, deserialized)
+    }
+
+    private fun copyTestSources(label: String): File {
+        val testProjectDir = File("test-project")
+        val tempDir = Files.createTempDirectory("cnav-test-$label").toFile()
+
+        val srcDir = File(testProjectDir, "src")
+        srcDir.copyRecursively(File(tempDir, "src"))
+
+        File(testProjectDir, "build.gradle.kts").copyTo(File(tempDir, "build.gradle.kts"))
+        File(testProjectDir, "settings.gradle.kts").copyTo(File(tempDir, "settings.gradle.kts"))
+        File(testProjectDir, "gradle").copyRecursively(File(tempDir, "gradle"))
+        File(testProjectDir, "gradlew").copyTo(File(tempDir, "gradlew"))
+        File(tempDir, "gradlew").setExecutable(true)
+
+        return tempDir
+    }
+
+    private fun compileKotlin(projectDir: File) {
+        val process = ProcessBuilder("mise", "exec", "--", "./gradlew", "compileKotlin", "--no-daemon")
+            .directory(projectDir)
+            .redirectErrorStream(true)
+            .start()
+
+        val output = process.inputStream.bufferedReader().readText()
+        val exitCode = process.waitFor()
+
+        assertTrue(exitCode == 0, "Compilation failed (exit $exitCode):\n$output")
     }
 }
