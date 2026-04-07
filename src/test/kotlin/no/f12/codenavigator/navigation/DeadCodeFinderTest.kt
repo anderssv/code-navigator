@@ -61,6 +61,18 @@ class DeadCodeFinderTest {
         bridgeMethods = bridgeMethods,
     )
 
+    private fun List<DeadCode>.deadClassNames(): List<String> =
+        filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+
+    private fun List<DeadCode>.deadMethodNames(): List<String> =
+        filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+
+    private fun List<DeadCode>.deadClasses(): List<DeadCode> =
+        filter { it.kind == DeadCodeKind.CLASS }
+
+    private fun List<DeadCode>.deadMethods(): List<DeadCode> =
+        filter { it.kind == DeadCodeKind.METHOD }
+
     @Test
     fun `empty call graph produces empty result`() {
         val graph = testCallGraph()
@@ -76,7 +88,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }
+        val deadClasses = dead.deadClasses()
         assertEquals(1, deadClasses.size)
         assertEquals("com.example.Lonely", deadClasses[0].className.value)
     }
@@ -89,7 +101,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClassNames = dead.deadClassNames()
         assertTrue("com.example.Service" !in deadClassNames, "Service is called by Caller so should not be dead")
         assertTrue("com.example.Caller" in deadClassNames, "Caller has no callers so should be dead")
     }
@@ -103,7 +115,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClassNames = dead.deadClassNames()
         assertTrue("com.example.Orphan" in deadClassNames)
         assertTrue("com.example.Controller" in deadClassNames)
         assertTrue("com.example.Service" !in deadClassNames)
@@ -117,7 +129,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClassNames = dead.deadClassNames()
         assertTrue("com.example.Recursive" in deadClassNames, "Self-referencing class with no external callers is dead")
     }
     @Test
@@ -130,8 +142,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
-        val deadMethodNames = deadMethods.map { "${it.className.value}.${it.memberName}" }
+        val deadMethodNames = dead.deadMethodNames()
         assertTrue("com.example.Service.unused" in deadMethodNames, "unused() has no callers so should be dead")
         assertTrue("com.example.Service.process" !in deadMethodNames, "process() is called by Controller")
     }
@@ -145,7 +156,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
+        val deadMethods = dead.deadMethods()
         assertTrue(deadMethods.isEmpty(), "Both process() and validate() are called by Controller, no dead methods")
     }
     @Test
@@ -188,8 +199,8 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val classes = dead.filter { it.kind == DeadCodeKind.CLASS }
-        val methods = dead.filter { it.kind == DeadCodeKind.METHOD }
+        val classes = dead.deadClasses()
+        val methods = dead.deadMethods()
 
         assertTrue(dead.indexOf(classes.first()) < dead.indexOf(methods.first()), "CLASSes come before METHODs")
         assertEquals(listOf("com.example.Controller", "com.example.Zombie"), classes.map { it.className.value })
@@ -205,8 +216,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
-        val deadMethodNames = deadMethods.map { "${it.className.value}.${it.memberName}" }
+        val deadMethodNames = dead.deadMethodNames()
         assertTrue("com.example.Service.helper" !in deadMethodNames, "helper() is called by process() which is alive — should not be dead")
         assertTrue("com.example.Service.process" !in deadMethodNames, "process() is called by Controller")
     }
@@ -230,7 +240,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
+        val deadMethods = dead.deadMethods()
         val deadMethodNames = deadMethods.map { it.memberName }
         assertTrue("unusedReal" in deadMethodNames, "Real unused method should be reported")
         assertTrue("copy" !in deadMethodNames, "Generated copy should be filtered")
@@ -260,7 +270,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClasses = dead.deadClassNames()
         assertTrue("com.example.Service" in deadClasses, "Service has no callers")
         assertTrue("com.example.Service\$Companion" !in deadClasses, "Companion inner class should be filtered")
         assertTrue("com.example.Service\$process\$1" !in deadClasses, "Coroutine inner class should be filtered")
@@ -286,8 +296,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
-        val deadMethodEntries = deadMethods.map { "${it.className.value}.${it.memberName}" }
+        val deadMethodEntries = dead.deadMethodNames()
         assertTrue("com.example.Service.unused" in deadMethodEntries, "Real unused method should be reported")
         assertTrue(
             deadMethodEntries.none { it.contains("\$") },
@@ -314,7 +323,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
+        val deadMethods = dead.deadMethods()
         assertTrue(
             deadMethods.isEmpty(),
             "Data class boilerplate on sealed variants should be filtered, but found: ${deadMethods.map { "${it.className.value}.${it.memberName}" }}",
@@ -331,8 +340,8 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, classesOnly = true)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
-        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }
+        val deadMethods = dead.deadMethods()
+        val deadClasses = dead.deadClasses()
         assertTrue(deadMethods.isEmpty(), "classesOnly should suppress all dead methods")
         assertTrue(deadClasses.isNotEmpty(), "classesOnly should still report dead classes")
     }
@@ -374,7 +383,7 @@ class DeadCodeFinderTest {
             ),
         )
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
+        val deadMethods = dead.deadMethods()
         assertTrue(
             deadMethods.none { it.memberName == "scheduledTask" },
             "scheduledTask annotated with @Scheduled should be excluded",
@@ -395,7 +404,7 @@ class DeadCodeFinderTest {
             classAnnotations = mapOf(ClassName("com.example.Service") to setOf(AnnotationName("Service"))),
         )
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClassNames = dead.deadClassNames()
         assertTrue("com.example.Service" in deadClassNames, "Service is not annotated with RestController, so still dead")
         assertTrue("com.example.Util" in deadClassNames, "Util has no annotations, so still dead")
     }
@@ -411,7 +420,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.Service.validate" !in deadMethods, "validate() is reachable from alive process()")
         assertTrue("com.example.Service.sanitize" !in deadMethods, "sanitize() is transitively reachable from alive process()")
     }
@@ -426,7 +435,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.Service.orphan" in deadMethods, "orphan() is not called from outside, so it is dead")
         assertTrue("com.example.Service.orphanHelper" in deadMethods, "orphanHelper() is only called by dead orphan(), so it is dead too")
     }
@@ -442,7 +451,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.Service.recurse" !in deadMethods, "recurse() is reachable from alive process()")
     }
 
@@ -462,7 +471,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.ServiceImpl.process" !in deadMethods, "process() on ServiceImpl should not be dead — called via interface dispatch on Service")
     }
 
@@ -479,7 +488,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
 
-        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClasses = dead.deadClassNames()
         assertTrue("com.example.ServiceImpl" !in deadClasses, "ServiceImpl should not be dead — it implements Service which is called")
     }
 
@@ -494,7 +503,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, interfaceImplementors = emptyMap())
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.ServiceImpl.process" in deadMethods, "Without interface info, process() on ServiceImpl should be dead")
     }
 
@@ -514,7 +523,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.ServiceImplA.process" !in deadMethods, "process() on ServiceImplA should not be dead")
         assertTrue("com.example.ServiceImplB.process" !in deadMethods, "process() on ServiceImplB should not be dead")
     }
@@ -534,7 +543,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, classFields = classFields)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.Service.getName" !in deadMethods, "getName() is a property accessor for field 'name' and should be filtered")
     }
 
@@ -551,7 +560,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, classFields = classFields)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.Service.getData" in deadMethods, "getData() does not match any field and should still be dead")
     }
 
@@ -568,7 +577,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, classFields = classFields)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.Service.setName" !in deadMethods, "setName() is a property accessor for field 'name' and should be filtered")
     }
 
@@ -703,7 +712,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, inlineMethods = inlineMethods)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.Service.inlineHelper" !in deadMethods, "inlineHelper() is inline and should be filtered from dead methods")
     }
 
@@ -721,7 +730,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, inlineMethods = inlineMethods)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.Service.reallyUnused" in deadMethods, "reallyUnused() is not inline and should still be dead")
         assertTrue("com.example.Service.inlineHelper" !in deadMethods, "inlineHelper() is inline and should be filtered")
     }
@@ -738,7 +747,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, inlineMethods = inlineMethods)
 
-        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClasses = dead.deadClassNames()
         assertTrue("com.example.Orphan" in deadClasses, "Inline filtering only affects methods, not class-level dead code detection")
     }
 
@@ -759,7 +768,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, delegationMethods = delegationMethods)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.DocoptResult.clear" !in deadMethods, "clear() is a delegation method and should be filtered")
         assertTrue("com.example.DocoptResult.put" !in deadMethods, "put() is a delegation method and should be filtered")
     }
@@ -778,7 +787,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, delegationMethods = delegationMethods)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.DocoptResult.reallyUnused" in deadMethods, "reallyUnused() is not a delegation method and should still be dead")
         assertTrue("com.example.DocoptResult.clear" !in deadMethods, "clear() is a delegation method and should be filtered")
     }
@@ -944,8 +953,8 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
-        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadMethods = dead.deadMethodNames()
+        val deadClasses = dead.deadClassNames()
         assertTrue("com.example.PollExtKt.withAdminPoll" !in deadMethods, "withAdminPoll is called from Controller and Service — should not be dead")
         assertTrue("com.example.PollExtKt" !in deadClasses, "PollExtKt is called from Controller and Service — should not be dead")
     }
@@ -1006,7 +1015,7 @@ class DeadCodeFinderTest {
             testClasses = setOf(ClassName("com.example.ServiceTest")),
         )
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClassNames = dead.deadClassNames()
         val deadMethodClasses = dead.filter { it.kind == DeadCodeKind.METHOD }.map { it.className.value }
         assertTrue("com.example.ServiceTest" !in deadClassNames, "Test source class should be excluded")
         assertTrue("com.example.ServiceTest" !in deadMethodClasses, "Dead methods on test source class should be excluded")
@@ -1121,7 +1130,7 @@ class DeadCodeFinderTest {
             ),
         )
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
+        val deadMethods = dead.deadMethods()
         val transactionalDead = deadMethods.first { it.memberName == "transactionalMethod" }
         assertEquals(DeadCodeConfidence.LOW, transactionalDead.confidence, "Modifier annotation should set LOW confidence")
     }
@@ -1145,7 +1154,7 @@ class DeadCodeFinderTest {
             ),
         )
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }
+        val deadMethods = dead.deadMethods()
         assertTrue(deadMethods.none { it.memberName == "scheduled" }, "Entry-point @Scheduled should be excluded")
         assertTrue(deadMethods.any { it.memberName == "transactional" }, "Modifier @Transactional should NOT be excluded, just LOW confidence")
     }
@@ -1260,7 +1269,7 @@ class DeadCodeFinderTest {
             receiverTypeEntryPoints = setOf(ClassName("io.ktor.server.routing.Route")),
         )
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClassNames = dead.deadClassNames()
         assertTrue("com.example.RoutesKt" !in deadClassNames, "Kt class with Route receiver should be excluded as framework entry point")
     }
 
@@ -1279,7 +1288,7 @@ class DeadCodeFinderTest {
             receiverTypeEntryPoints = setOf(ClassName("io.ktor.server.routing.Route")),
         )
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClassNames = dead.deadClassNames()
         assertTrue("com.example.Routes" in deadClassNames, "Non-Kt class should NOT be excluded by receiver type check")
     }
 
@@ -1298,7 +1307,7 @@ class DeadCodeFinderTest {
             receiverTypeEntryPoints = setOf(ClassName("io.ktor.server.routing.Route")),
         )
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClassNames = dead.deadClassNames()
         assertTrue("com.example.UtilKt" in deadClassNames, "Kt class with non-matching receiver type should still be dead")
     }
 
@@ -1315,7 +1324,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClasses = dead.deadClassNames()
         assertTrue("com.example.TokenError" !in deadClasses, "TokenError should be alive — its inner class ExitException is used")
         assertTrue("com.example.TokenError\$ExitException" !in deadClasses, "ExitException is directly called so should not be dead")
     }
@@ -1332,7 +1341,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph)
 
-        val deadClasses = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClasses = dead.deadClassNames()
         assertTrue("com.example.Outer" !in deadClasses, "Outer should be alive — deeply nested inner class is used")
         assertTrue("com.example.Outer\$Middle" !in deadClasses, "Middle should be alive — its inner class Inner is used")
         assertTrue("com.example.Outer\$Middle\$Inner" !in deadClasses, "Inner is directly called")
@@ -1369,7 +1378,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.Argument.singleMatch" !in deadMethods, "Argument.singleMatch should be alive via dispatch from LeafPattern.singleMatch")
         assertTrue("com.example.Command.singleMatch" !in deadMethods, "Command.singleMatch should be alive via dispatch from LeafPattern.singleMatch")
         assertTrue("com.example.Option.singleMatch" !in deadMethods, "Option.singleMatch should be alive via dispatch from LeafPattern.singleMatch")
@@ -1403,7 +1412,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.BranchPattern.fix" !in deadMethods, "BranchPattern.fix should be alive via dispatch from Pattern.fix")
         assertTrue("com.example.Either.fix" !in deadMethods, "Either.fix should be alive via dispatch from BranchPattern.fix")
         assertTrue("com.example.Required.fix" !in deadMethods, "Required.fix should be alive via dispatch from BranchPattern.fix")
@@ -1428,7 +1437,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, bridgeMethods = bridgeMethods)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.DocoptResult.entrySet" !in deadMethods, "entrySet() is a bridge method and should be filtered")
         assertTrue("com.example.DocoptResult.keySet" !in deadMethods, "keySet() is a bridge method and should be filtered")
         assertTrue("com.example.DocoptResult.size" !in deadMethods, "size() is a bridge method and should be filtered")
@@ -1448,7 +1457,7 @@ class DeadCodeFinderTest {
 
         val dead = findDead(graph, bridgeMethods = bridgeMethods)
 
-        val deadMethods = dead.filter { it.kind == DeadCodeKind.METHOD }.map { "${it.className.value}.${it.memberName}" }
+        val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.DocoptResult.reallyUnused" in deadMethods, "reallyUnused() is not a bridge method and should still be dead")
         assertTrue("com.example.DocoptResult.entrySet" !in deadMethods, "entrySet() is a bridge method and should be filtered")
     }
@@ -1468,7 +1477,7 @@ class DeadCodeFinderTest {
             receiverTypeEntryPoints = emptySet(),
         )
 
-        val deadClassNames = dead.filter { it.kind == DeadCodeKind.CLASS }.map { it.className.value }
+        val deadClassNames = dead.deadClassNames()
         assertTrue("com.example.RoutesKt" in deadClassNames, "Without receiver type entry points, Kt class should be dead")
     }
 }
