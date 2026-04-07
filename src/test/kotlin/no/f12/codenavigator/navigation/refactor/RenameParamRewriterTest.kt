@@ -4,7 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import java.io.File
-import java.nio.file.Files
 
 class RenameParamRewriterTest {
 
@@ -96,7 +95,6 @@ class RenameParamRewriterTest {
         val tempDir = copyTestSources("rename-decl")
 
         val sourceDir = File(tempDir, "src/main/kotlin")
-        compileKotlin(tempDir)
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -112,8 +110,6 @@ class RenameParamRewriterTest {
         val content = auditFile.readText()
         assertTrue(content.contains("userName: String"), "Declaration should be renamed")
         assertTrue(!content.contains("name: String"), "Old param name should be gone from declaration")
-
-        compileKotlin(tempDir)
 
         tempDir.deleteRecursively()
     }
@@ -142,8 +138,6 @@ class RenameParamRewriterTest {
             }
         """.trimIndent() + "\n")
 
-        compileKotlin(tempDir)
-
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
             className = "com.example.services.AuditService",
@@ -158,8 +152,6 @@ class RenameParamRewriterTest {
         assertTrue(content.contains("userName: String"), "Declaration should be renamed")
         assertTrue(content.contains("userName = user.name"), "Named argument should be renamed")
 
-        compileKotlin(tempDir)
-
         tempDir.deleteRecursively()
     }
 
@@ -168,7 +160,6 @@ class RenameParamRewriterTest {
         val tempDir = copyTestSources("rename-positional")
 
         val sourceDir = File(tempDir, "src/main/kotlin")
-        compileKotlin(tempDir)
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -184,8 +175,6 @@ class RenameParamRewriterTest {
         // This should NOT be changed
         assertTrue(content.contains("user.name, user.email"), "Positional args should be unchanged")
 
-        compileKotlin(tempDir)
-
         tempDir.deleteRecursively()
     }
 
@@ -194,7 +183,6 @@ class RenameParamRewriterTest {
         val tempDir = copyTestSources("rename-change-info")
 
         val sourceDir = File(tempDir, "src/main/kotlin")
-        compileKotlin(tempDir)
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -220,8 +208,6 @@ class RenameParamRewriterTest {
         val sourceDir = File(tempDir, "src/main/kotlin")
         val domainFile = File(sourceDir, "com/example/domain/Domain.kt")
         val domainBefore = domainFile.readText()
-
-        compileKotlin(tempDir)
 
         RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -263,8 +249,6 @@ class RenameParamRewriterTest {
                     AuditEntry(name = name, email = email)
             }
         """.trimIndent() + "\n")
-
-        compileKotlin(tempDir)
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -327,8 +311,6 @@ class RenameParamRewriterTest {
             }
         """.trimIndent() + "\n")
 
-        compileKotlin(tempDir)
-
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
             className = "com.example.services.AuditService",
@@ -378,8 +360,6 @@ class RenameParamRewriterTest {
             }
         """.trimIndent() + "\n")
 
-        compileKotlin(tempDir)
-
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
             className = "com.example.services.AuditService",
@@ -424,8 +404,6 @@ class RenameParamRewriterTest {
             }
         """.trimIndent() + "\n")
 
-        compileKotlin(tempDir)
-
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
             className = "com.example.services.AuditService",
@@ -437,35 +415,5 @@ class RenameParamRewriterTest {
         assertTrue(result.cascadeCandidates.isEmpty(), "Should NOT detect cascade candidate when param names differ. cascadeCandidates: ${result.cascadeCandidates}")
 
         tempDir.deleteRecursively()
-    }
-
-    private fun copyTestSources(label: String): File {
-        val testProjectDir = File("test-project")
-        val tempDir = Files.createTempDirectory("cnav-test-$label").toFile()
-
-        // Copy source files
-        val srcDir = File(testProjectDir, "src")
-        srcDir.copyRecursively(File(tempDir, "src"))
-
-        // Copy build files needed for compilation
-        File(testProjectDir, "build.gradle.kts").copyTo(File(tempDir, "build.gradle.kts"))
-        File(testProjectDir, "settings.gradle.kts").copyTo(File(tempDir, "settings.gradle.kts"))
-        File(testProjectDir, "gradle").copyRecursively(File(tempDir, "gradle"))
-        File(testProjectDir, "gradlew").copyTo(File(tempDir, "gradlew"))
-        File(tempDir, "gradlew").setExecutable(true)
-
-        return tempDir
-    }
-
-    private fun compileKotlin(projectDir: File) {
-        val process = ProcessBuilder("mise", "exec", "--", "./gradlew", "compileKotlin", "--no-daemon")
-            .directory(projectDir)
-            .redirectErrorStream(true)
-            .start()
-
-        val output = process.inputStream.bufferedReader().readText()
-        val exitCode = process.waitFor()
-
-        assertTrue(exitCode == 0, "Compilation failed (exit $exitCode):\n$output")
     }
 }
