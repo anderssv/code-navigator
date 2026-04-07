@@ -5,6 +5,19 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
+## Test suite health: coverage, speed, and duplication
+
+**Value: high** | **Effort: medium**
+
+The test suite is growing and builds are slow. Investigate and improve:
+
+- **Measure coverage**: Identify which code paths lack tests and which have redundant coverage.
+- **Measure speed**: Find the slowest tests and root-cause them (e.g., repeated Gradle compilation in rewriter tests, unnecessary full-project copies).
+- **Reduce duplication**: Simplify test data setup — extract shared helpers, use object mothers with `.copy()` for variations, avoid recreating identical fixtures across test classes.
+- **Align with kotlin-tdd**: Adopt TestContext/fakes patterns, extension functions on companion objects for test data, and Testing Through The Domain where applicable.
+
+---
+
 ## Filter non-source files from git analysis recommendations
 
 **Value: medium** | **Effort: low**
