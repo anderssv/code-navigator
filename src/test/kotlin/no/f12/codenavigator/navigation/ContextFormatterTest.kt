@@ -3,10 +3,8 @@ package no.f12.codenavigator.navigation
 import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.callgraph.CallTreeNode
 import no.f12.codenavigator.navigation.callgraph.MethodRef
-import no.f12.codenavigator.navigation.classinfo.ClassDetail
-import no.f12.codenavigator.navigation.classinfo.MethodDetail
 import no.f12.codenavigator.navigation.context.ContextFormatter
-import no.f12.codenavigator.navigation.context.ContextResult
+import no.f12.codenavigator.navigation.fixtures.aContextResult
 import no.f12.codenavigator.navigation.interfaces.ImplementorInfo
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -181,26 +179,4 @@ class ContextFormatterTest {
         assertContains(output, "Implements")
     }
 
-    private fun aContextResult(
-        callers: List<CallTreeNode> = emptyList(),
-        callees: List<CallTreeNode> = emptyList(),
-        implementors: List<ImplementorInfo> = emptyList(),
-        implementedInterfaces: List<ClassName> = emptyList(),
-    ): ContextResult = ContextResult(
-        classDetail = ClassDetail(
-            className = ClassName("com.example.MyService"),
-            sourceFile = "MyService.kt",
-            superClass = null,
-            interfaces = emptyList(),
-            fields = emptyList(),
-            methods = listOf(
-                MethodDetail("doWork", listOf("String"), "void", emptyList()),
-            ),
-            annotations = emptyList(),
-        ),
-        callers = callers,
-        callees = callees,
-        implementors = implementors,
-        implementedInterfaces = implementedInterfaces,
-    )
 }
