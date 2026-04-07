@@ -357,17 +357,6 @@ All candidates below share the same properties:
 - **Verifiable**: Compile before and after to prove correctness.
 - **Known gaps to address first**: Companion object methods, constructor parameters, Maven mojo support.
 
-### Rename method — `cnavRenameMethod`
-
-**Value: very high** | **Effort: medium**
-
-Rename a method and update all call sites project-wide. The call graph already knows every caller.
-
-- `-Ptarget-class=com.example.UserService -Pmethod=findUsers -Pnew-name=searchUsers`
-- Updates: method declaration, all call sites (including via interface dispatch), named arguments if Kotlin, string template references, KDoc `@see`/`@link` references.
-- **Why LLMs fail at this**: They find *some* call sites via text search but miss interface dispatch (callers using `UserRepository.findUsers` when `UserService` implements `UserRepository`), miss calls from other modules, and frequently introduce compile errors.
-- **Reuses**: `CallGraph.findMethods()`, `InterfaceRegistry.classToInterfacesMap()`, `RenameParamRewriter` patterns (visitor structure, string template handling).
-
 ### Rename class — `cnavRenameClass`
 
 **Value: high** | **Effort: high**

@@ -664,12 +664,12 @@ First deterministic refactoring task. Renames a Kotlin function parameter — up
 ./gradlew cnavRenameParam -Ptarget-class=com.example.UserService -Pmethod=findUsers -Pparam=limit -PnewName=maxResults
 
 # Apply mode — writes changes to source files
-./gradlew cnavRenameParam -Ptarget-class=com.example.UserService -Pmethod=findUsers -Pparam=limit -PnewName=maxResults -Papply=true
+./gradlew cnavRenameParam -Ptarget-class=com.example.UserService -Pmethod=findUsers -Pparam=limit -PnewName=maxResults -Ppreview=false
 ```
 
 **Implementation**:
-- `RenameParamConfig` — config data class with `parse()` companion, validates all 4 required params (target-class, method, param, newName) plus optional `apply` flag. 8 tests.
-- `RenameParamRewriter` — OpenRewrite-based rewriter using `KotlinParser` and `RenameParamVisitor` (`KotlinIsoVisitor<ExecutionContext>`). Handles three rename dimensions: parameter declarations (`visitMethodDeclaration`), body references including string templates (`visitIdentifier`), and named arguments at call sites (`visitMethodInvocation`). Scoped by `inTargetClass`/`inTargetMethod` flags. Returns `RenameResult` with `List<RenameChange>` diffs. `apply` parameter controls whether changes are written to disk. 5 tests (all with compile-before/compile-after verification).
+- `RenameParamConfig` — config data class with `parse()` companion, validates all 4 required params (target-class, method, param, newName) plus optional `preview` flag. 8 tests.
+- `RenameParamRewriter` — OpenRewrite-based rewriter using `KotlinParser` and `RenameParamVisitor` (`KotlinIsoVisitor<ExecutionContext>`). Handles three rename dimensions: parameter declarations (`visitMethodDeclaration`), body references including string templates (`visitIdentifier`), and named arguments at call sites (`visitMethodInvocation`). Scoped by `inTargetClass`/`inTargetMethod` flags. Returns `RenameResult` with `List<RenameChange>` diffs. `preview` parameter controls whether changes are written to disk (default: preview only). 5 tests (all with compile-before/compile-after verification).
 - `RenameParamFormatter` — TEXT/JSON/LLM formatting with unified diff computation. 7 tests.
 - `RenameParamTask` (Gradle) — follows `SizeTask` pattern, uses `project.sourceDirectories()` to find source files. `requiresCompilation = false`.
 - Registered as `RENAME_PARAM_TASK` in `TaskRegistry` (goal `rename-param`, category `SOURCE`). Task count: 35.
