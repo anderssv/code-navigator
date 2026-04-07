@@ -8,15 +8,16 @@ import java.nio.file.Files
 
 class RenameMethodRewriterTest {
 
+    private val testProjectSrc = File("test-project/src/main/kotlin")
+
     @Test
     fun `returns change with before and after content`() {
-        val sourceDir = copySourcesToTemp("rename-method-change-info", "com/example/services", "com/example/domain")
-
         val result = RenameMethodRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.services.AuditService",
             methodName = "formatAuditEntry",
             newName = "buildAuditLine",
+            preview = true,
         )
 
         assertTrue(result.changes.isNotEmpty())
@@ -28,18 +29,19 @@ class RenameMethodRewriterTest {
 
     @Test
     fun `leaves unrelated files unchanged`() {
-        val sourceDir = copySourcesToTemp("rename-method-unrelated", "com/example/services", "com/example/domain")
-        val domainFile = File(sourceDir, "com/example/domain/Domain.kt")
-        val domainBefore = domainFile.readText()
-
-        RenameMethodRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+        val result = RenameMethodRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.services.AuditService",
             methodName = "formatAuditEntry",
             newName = "buildAuditLine",
+            preview = true,
         )
 
-        assertEquals(domainBefore, domainFile.readText(), "Domain.kt should be unchanged")
+        val changedFiles = result.changes.map { it.filePath }
+        assertTrue(
+            changedFiles.none { it.endsWith("Domain.kt") },
+            "Domain.kt should not appear in changes. Changed files: $changedFiles",
+        )
     }
 
     @Test
@@ -62,78 +64,62 @@ class RenameMethodRewriterTest {
 
     @Test
     fun `renames method called via interface type`() {
-        val sourceDir = copySourcesToTemp(
-            "rename-method-interface",
-            "com/example/services",
-            "com/example/domain",
-            "com/example/infra",
-        )
-
         val result = RenameMethodRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.domain.UserRepository",
             methodName = "findById",
             newName = "lookupById",
+            preview = true,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have changes. Result: $result")
 
-        val domainFile = File(sourceDir, "com/example/domain/Domain.kt")
-        val domainContent = domainFile.readText()
-        assertTrue(domainContent.contains("fun lookupById("), "Interface method should be renamed. Content:\n$domainContent")
-        assertTrue(!domainContent.contains("fun findById("), "Old method name should be gone from interface. Content:\n$domainContent")
+        val domainChange = result.changes.first { it.filePath.endsWith("Domain.kt") }
+        assertTrue(domainChange.after.contains("fun lookupById("), "Interface method should be renamed. Content:\n${domainChange.after}")
+        assertTrue(!domainChange.after.contains("fun findById("), "Old method name should be gone from interface. Content:\n${domainChange.after}")
 
-        val implFile = File(sourceDir, "com/example/infra/InMemoryUserRepository.kt")
-        val implContent = implFile.readText()
-        assertTrue(implContent.contains("fun lookupById("), "Implementation should be renamed. Content:\n$implContent")
+        val implChange = result.changes.first { it.filePath.endsWith("InMemoryUserRepository.kt") }
+        assertTrue(implChange.after.contains("fun lookupById("), "Implementation should be renamed. Content:\n${implChange.after}")
+        assertTrue(!implChange.after.contains("fun findById("), "Old method name should be gone from implementation. Content:\n${implChange.after}")
 
-        val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
-        val auditContent = auditFile.readText()
-        assertTrue(auditContent.contains("lookupById("), "Call site should be renamed. Content:\n$auditContent")
-        assertTrue(!auditContent.contains("findById("), "Old method name should be gone from call site. Content:\n$auditContent")
+        val auditChange = result.changes.first { it.filePath.endsWith("services/AuditService.kt") }
+        assertTrue(auditChange.after.contains("lookupById("), "Call site should be renamed. Content:\n${auditChange.after}")
+        assertTrue(!auditChange.after.contains("findById("), "Old method name should be gone from call site. Content:\n${auditChange.after}")
     }
 
     @Test
     fun `renames method at cross-file call site`() {
-        val sourceDir = copySourcesToTemp(
-            "rename-method-cross",
-            "com/example/variants/crossfilecallmethod",
-            "com/example/domain",
-        )
-
         val result = RenameMethodRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.crossfilecallmethod.AuditService",
             methodName = "formatAuditEntry",
             newName = "buildAuditLine",
+            preview = true,
         )
 
         assertTrue(result.changes.size >= 2, "Should have changes in at least 2 files. Changes: ${result.changes.map { it.filePath }}")
 
-        val callerFile = File(sourceDir, "com/example/variants/crossfilecallmethod/ReportService.kt")
-        val callerContent = callerFile.readText()
-        assertTrue(callerContent.contains("buildAuditLine("), "Cross-file call site should be renamed. Content:\n$callerContent")
-        assertTrue(!callerContent.contains("formatAuditEntry("), "Old method name should be gone from caller. Content:\n$callerContent")
+        val callerChange = result.changes.first { it.filePath.endsWith("crossfilecallmethod/ReportService.kt") }
+        assertTrue(callerChange.after.contains("buildAuditLine("), "Cross-file call site should be renamed. Content:\n${callerChange.after}")
+        assertTrue(!callerChange.after.contains("formatAuditEntry("), "Old method name should be gone from caller. Content:\n${callerChange.after}")
     }
 
     @Test
     fun `renames method in declaration and call site`() {
-        val sourceDir = copySourcesToTemp("rename-method-decl", "com/example/services", "com/example/domain")
-
         val result = RenameMethodRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.services.AuditService",
             methodName = "formatAuditEntry",
             newName = "buildAuditLine",
+            preview = true,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have at least one change")
-        val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
-        val content = auditFile.readText()
-        assertTrue(content.contains("fun buildAuditLine("), "Declaration should be renamed")
-        assertTrue(!content.contains("fun formatAuditEntry("), "Old method name should be gone from declaration")
-        assertTrue(content.contains("buildAuditLine("), "Call site should be renamed")
-        assertTrue(!content.contains("formatAuditEntry("), "Old method name should be gone from call site")
+        val change = result.changes.first { it.filePath.endsWith("services/AuditService.kt") }
+        assertTrue(change.after.contains("fun buildAuditLine("), "Declaration should be renamed")
+        assertTrue(!change.after.contains("fun formatAuditEntry("), "Old method name should be gone from declaration")
+        assertTrue(change.after.contains("buildAuditLine("), "Call site should be renamed")
+        assertTrue(!change.after.contains("formatAuditEntry("), "Old method name should be gone from call site")
     }
 
     @Test
