@@ -693,3 +693,26 @@ First deterministic refactoring task. Renames a Kotlin function parameter — up
 **E2E validated**: bass-self-service (`Translations.getLocalizedString` param `localizedFeature` → `feature`, declaration + body references), greitt (`ParticipantService.findOrCreateResponse` param `verifiedEmail` → `emailAddress`, declaration + 20 named-argument call sites across 2 files).
 
 **Changes**: New files: `RenameParamConfig.kt`, `RenameParamRewriter.kt`, `RenameParamFormatter.kt`, `RenameParamTask.kt`, `RenameParamConfigTest.kt`, `RenameParamRewriterTest.kt`, `RenameParamFormatterTest.kt`, `OpenRewriteApiExplorationTest.kt`. Modified: `build.gradle.kts` (OpenRewrite deps 8.56.1 → 8.78.6), `TaskRegistry.kt`, `HelpText.kt`, `AgentHelpText.kt`, `GradleSupport.kt`, `CodeNavigatorPlugin.kt`, `TaskRegistryTest.kt`.
+
+## ~~Reduce test data duplication across formatter tests~~ DONE
+
+**Value: high** | **Effort: medium**
+
+Extracted shared test fixtures (object mothers) from duplicated test data construction across formatter test files, and extracted repeated filter/map patterns in `DeadCodeFinderTest`.
+
+**Shared formatter fixtures** (`FormatterTestFixtures.kt`, 163 lines):
+- 14 object mother functions: `aContextResult()`, `aMetricsResult()`, `aDeadCode()`, `aHotspotEntry()`, `aChangeCouplingEntry()`, `aCodeAgeEntry()`, `aChurnEntry()`, `anAuthorEntry()`, `aPackageVolatility()`, `aBalanceEntry()`, `aPackageStrengthEntry()`, `aPackageDistanceEntry()`, `aCycleDetail()`, `aCycleEdge()`.
+- All use sensible defaults with data classes enabling `.copy()` for test variations.
+- Follows existing project precedent (`TestCallGraphBuilder.kt`, `DelegationFixtures.kt`).
+
+**Formatter test reductions**:
+- `ContextFormatterTest.kt`: -24 lines (replaced inline `ContextResult` construction with `aContextResult()`)
+- `JsonFormatterTest.kt`: -97 lines (~13 inline constructions replaced)
+- `LlmFormatterTest.kt`: -103 lines (~14 inline constructions replaced)
+- `CallerTreeFormatterTest.kt`: Evaluated and skipped — `CallTreeNode` constructions are per-test tree structures that test specific rendering behavior; extracting would reduce readability.
+
+**DeadCodeFinderTest helper extraction**:
+- Added 4 private extension functions: `deadClassNames()`, `deadMethodNames()`, `deadClasses()`, `deadMethods()` — replacing ~40 repeated `filter { it.kind == ... }.map { it.className.value }` expressions across the 1474-line test file.
+- The 9 occurrences of `dead.map { it.className.value }` (mapping ALL dead items without kind filter) were left as-is since they're semantically different.
+
+**Changes**: New file: `FormatterTestFixtures.kt`. Modified: `ContextFormatterTest.kt`, `JsonFormatterTest.kt`, `LlmFormatterTest.kt`, `DeadCodeFinderTest.kt`.
