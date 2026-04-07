@@ -45,22 +45,22 @@ object RenameParamFormatter {
             "[]"
         } else {
             result.changes.joinToString(",", "[", "]") { change ->
-                val escapedPath = escapeJson(change.filePath)
+                val escapedPath = jsonEscape(change.filePath)
                 val diffLines = computeDiff(change.before, change.after)
-                val diffJson = diffLines.joinToString(",", "[", "]") { "\"${escapeJson(it)}\"" }
+                val diffJson = diffLines.joinToString(",", "[", "]") { "\"${jsonEscape(it)}\"" }
                 """{"filePath":"$escapedPath","diff":$diffJson}"""
             }
         }
-        val recommendationJson = if (config.apply) ""","recommendation":"${escapeJson(COMPILE_RECOMMENDATION)}"""" else ""
+        val recommendationJson = if (config.apply) ""","recommendation":"${jsonEscape(COMPILE_RECOMMENDATION)}"""" else ""
         val cascadeJson = if (result.cascadeCandidates.isNotEmpty()) {
             val candidates = result.cascadeCandidates.joinToString(",", "[", "]") { c ->
-                """{"className":"${escapeJson(c.className)}","methodName":"${escapeJson(c.methodName)}","paramName":"${escapeJson(c.paramName)}"}"""
+                """{"className":"${jsonEscape(c.className)}","methodName":"${jsonEscape(c.methodName)}","paramName":"${jsonEscape(c.paramName)}"}"""
             }
             ""","cascadeCandidates":$candidates"""
         } else {
             ""
         }
-        return """{"preview":$preview,"param":"${escapeJson(config.paramName)}","newName":"${escapeJson(config.newName)}","changes":$changesJson$recommendationJson$cascadeJson}"""
+        return """{"preview":$preview,"param":"${jsonEscape(config.paramName)}","newName":"${jsonEscape(config.newName)}","changes":$changesJson$recommendationJson$cascadeJson}"""
     }
 
     private fun formatLlm(result: RenameResult, config: RenameParamConfig): String {
@@ -107,10 +107,4 @@ object RenameParamFormatter {
         return diff
     }
 
-    private fun escapeJson(s: String): String =
-        s.replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t")
 }
