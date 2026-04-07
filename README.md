@@ -15,7 +15,7 @@ That's it. The agent will install the plugin, run the help task, and set up its 
 **Gradle** (`build.gradle.kts`):
 ```kotlin
 plugins {
-    id("no.f12.code-navigator") version "0.1.53"
+    id("no.f12.code-navigator") version "0.1.54"
 }
 ```
 
@@ -26,7 +26,7 @@ plugins {
         <plugin>
             <groupId>no.f12</groupId>
             <artifactId>code-navigator-maven-plugin</artifactId>
-            <version>0.1.53</version>
+            <version>0.1.54</version>
         </plugin>
     </plugins>
 </build>
@@ -91,6 +91,8 @@ All tasks support `-Pformat=json` / `-Dformat=json` and `-Pllm=true` / `-Dllm=tr
 | `cnavBalance` / `cnav:balance` | Balanced coupling analysis: strength x distance x volatility |
 | **Source analysis** (no compilation needed) | |
 | `cnavSize` / `cnav:size` | Source files ranked by line count |
+| **Refactoring** (source-level) | |
+| `cnavRenameParam` / `cnav:rename-param` | Rename a method parameter with cascade detection |
 
 ### Dead code detection and framework awareness
 

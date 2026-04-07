@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.54
+
+- **New:** `cnavRenameParam` task / `cnav:rename-param` goal — renames a method/function parameter across a Kotlin codebase using OpenRewrite. Detects cascade candidates where a renamed parameter is forwarded to another method with a same-named parameter, suggesting the user consider renaming there too. Supports preview mode (`-Ppreview`). Gradle task uses classloader isolation for OpenRewrite. TEXT, JSON, and LLM output formats.
+
+## 0.1.53
 
 - **New:** `cnavLayerCheck` task / `cnav:layer-check` goal — architecture conformance checking based on hexagonal architecture principles. Layers are defined by class naming patterns (globs like `*Controller`, `*Service`, `*Repository`, `*`) in a `.cnav-layers.json` config file, not by listing packages. First matching pattern wins, enabling enforcement in projects organized by feature. Detects two violation types: OUTWARD (class depends on a higher/outer layer) and PEER (class exceeds `peerLimit` for same-layer dependencies). Supports `peerLimit` per layer (`-1` = unlimited, default `0` = no peer deps), `testInfrastructure` flag (allows test classes to depend on wiring/context layers without OUTWARD violations), and `-Pinit=true` to generate a starter config. TEXT, JSON, and LLM output formats with non-zero exit code on violations.
 - **New:** `testInfrastructure` attribute on layer config — when `true`, test classes (names ending in `Test` or `TestKt`) are allowed to depend on that layer without generating OUTWARD violations. Production code depending on a testInfrastructure layer is still a violation.
