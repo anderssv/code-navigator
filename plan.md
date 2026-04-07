@@ -63,6 +63,18 @@ After triaging dead code and removing items, re-run `cnavDead` and see what chan
 
 ---
 
+## Introduce query/config objects for complex finders
+
+**Value: medium** | **Effort: low**
+
+`DeadCodeFinder.find()` has 18 parameters. Other finders have similarly long signatures. When a method takes that many parameters, it signals a missing domain object.
+
+- **Approach**: Introduce a `DeadCodeQuery` (or reuse/extend `DeadCodeConfig`) that bundles all parameters into a single typed object. Apply the same pattern to other finders with complex signatures.
+- **Benefits**: Makes the API self-documenting, simplifies testing (build query objects with sensible defaults and `.copy()` for variations), and makes parameter additions non-breaking.
+- **Ordering**: Natural companion to `Extract ConfidenceScorer` — both simplify `DeadCodeFinder` internals.
+
+---
+
 ## `cnavWhyDepends` — dependency edge explanation
 
 **Value: high** | **Effort: medium**
@@ -293,6 +305,14 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 
 ---
 
+## Evaluated and rejected: CLI-first architecture
+
+Shipping the core as a standalone CLI was considered to eliminate Gradle/Maven duplication. **Rejected** because Gradle and Maven plugins provide frictionless installation (`plugins { id("...") }` / `<plugin>`), automatic version management, transitive dependency resolution, and zero separate install. A CLI would require separate installation, manual upgrades, and JVM version coordination -- a significant DX regression.
+
+The shared orchestration extraction (above) achieves most of the deduplication benefit while keeping the build-tool distribution advantage.
+
+---
+
 ## Make `DsmDependencyExtractor.packageFilter` nullable
 
 **Value: low** | **Effort: low**
@@ -329,6 +349,7 @@ Items below are low-priority or may not be worth building. Revisit if demand eme
 
 ## Future ideas (not yet planned)
 
+- **Scope decision: tool vs. platform**: With 35 tasks today and 20+ planned, code-navigator is approaching "code intelligence platform" territory. This is fine, but worth an explicit decision: stay as a focused collection of tasks, or invest in extensibility infrastructure (plugin system, composable analysis pipelines, third-party task registration)? The answer affects architectural choices going forward. If staying focused, the current `TaskRegistry` approach scales well enough. If building for extensibility, consider a plugin API where tasks are discovered rather than registered.
 - **`cnavFindCallees` callee explosion**: `CallTreeBuilder` expands ALL polymorphic implementors as separate children with no collapsing. Default maxdepth=3 causes >51KB output for methods touching deep hierarchies. Root cause: `resolveInterfaceDispatch` adds every implementor, no deduplication of identical subtrees, no output truncation anywhere. Solutions: collapse dispatch groups into a single "N implementors" node with expand-on-demand, add a max-children limit per node, lower default depth for callees. v0.1.47 field test.
 - **`cnavFindCallers` class-match UX hint**: `CallGraph.findMethods()` uses `Regex.containsMatchIn` on `qualifiedName` (className.methodName). Pattern "Parser" matches every method in `Parser` class, producing separate caller trees per method. User expected "who references Parser as a type" which is `cnavFindUsages -Ptype=Parser`. Fix: when pattern matches only class-name portions of multiple methods in the same class, add a hint suggesting `cnavFindUsages -Ptype=`. v0.1.47 field test.
 - **Improve `cnavAnnotations` discoverability**: Field test (v0.1.44) reported "no inverse annotation search" but the feature exists — `cnavAnnotations -Ppattern=Serializable` finds all classes with that annotation. The task name is ambiguous. Consider a task alias (`cnavFindByAnnotation`), better no-results guidance mentioning retention policy / `methods` flags, or more prominent placement in `cnavAgentHelp`. v0.1.45 re-test clarified: `cnavAnnotations` only finds RUNTIME and CLASS retention annotations present in bytecode. SOURCE retention annotations (e.g. `@Suppress`) are invisible — this is inherent to bytecode analysis, but should be documented in no-results guidance. v0.1.46: no-results hint now suggests `-Pmethods=true` and retention policy (bug #8 FIXED). Remaining: task alias and retention policy documentation in help text.
