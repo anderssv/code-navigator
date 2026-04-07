@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.55
+
+- **New:** `cnavRenameMethod` task / `cnav:rename-method` goal — renames a method/function across a Kotlin codebase using OpenRewrite. Finds and updates the method declaration, all call sites, and interface/superclass implementor declarations (interface dispatch). Parameters: `-Ptarget-class=<FQN>` (required), `-Pmethod=<name>` (required), `-PnewName=<name>` (required), `-Ppreview` (dry-run mode). Both Gradle and Maven support. TEXT, JSON, and LLM output formats.
+- **Refactoring:** Extracted shared rewriter infrastructure from `cnavRenameParam` and `cnavRenameMethod` — `DiffSupport.kt` (unified diff computation), `RewriterSupport.kt` (source file collection and path resolution), `JsonSupport.kt` (change serialization). Both rewriters now share common code.
+- **Refactoring:** Renamed `apply` parameter to `preview` (inverted semantics) across both rewriter tasks — default is now apply mode, `-Ppreview` opts into dry-run.
+- **Refactoring:** Extracted shared test fixtures (`FormatterTestFixtures.kt`) with 14 object mother functions, reducing ~224 lines of duplicated test data construction across `JsonFormatterTest`, `LlmFormatterTest`, and `ContextFormatterTest`.
+- **Refactoring:** Extracted `deadClassNames()`/`deadMethodNames()`/`deadClasses()`/`deadMethods()` helper functions in `DeadCodeFinderTest`, replacing ~40 repeated filter/map expressions.
+- **Improved:** Rewriter test suite runs 87% faster by eliminating Gradle subprocess calls and using preview mode assertions.
+
 ## 0.1.54
 
 - **New:** `cnavRenameParam` task / `cnav:rename-param` goal — renames a method/function parameter across a Kotlin codebase using OpenRewrite. Detects cascade candidates where a renamed parameter is forwarded to another method with a same-named parameter, suggesting the user consider renaming there too. Supports preview mode (`-Ppreview`). Gradle task uses classloader isolation for OpenRewrite. TEXT, JSON, and LLM output formats.
