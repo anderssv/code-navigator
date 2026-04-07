@@ -55,8 +55,6 @@ data class RenameResult(
     }
 }
 
-
-
 object RenameParamRewriter {
 
     fun rename(
