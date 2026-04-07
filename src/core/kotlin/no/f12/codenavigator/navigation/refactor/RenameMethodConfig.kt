@@ -8,7 +8,7 @@ data class RenameMethodConfig(
     val className: String,
     val methodName: String,
     val newName: String,
-    val apply: Boolean,
+    val preview: Boolean,
     val format: OutputFormat,
 ) {
     companion object {
@@ -18,7 +18,7 @@ data class RenameMethodConfig(
                 className = TaskRegistry.RENAME_CLASS.parseRequiredFrom(properties),
                 methodName = TaskRegistry.RENAME_METHOD.parseRequiredFrom(properties),
                 newName = TaskRegistry.RENAME_NEW_NAME.parseRequiredFrom(properties),
-                apply = !preview,
+                preview = preview,
                 format = ParamDef.parseFormat(properties),
             )
         }

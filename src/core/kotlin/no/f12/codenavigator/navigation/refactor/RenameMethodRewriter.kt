@@ -50,7 +50,7 @@ object RenameMethodRewriter {
         className: String,
         methodName: String,
         newName: String,
-        apply: Boolean = true,
+        preview: Boolean = false,
     ): RenameMethodResult {
         val sourceFiles = collectSourceFiles(sourceRoots)
         if (sourceFiles.isEmpty()) return RenameMethodResult(emptyList())
@@ -77,7 +77,7 @@ object RenameMethodRewriter {
             }
         }
 
-        if (apply) {
+        if (!preview) {
             for (change in changes) {
                 File(change.filePath).writeText(change.after)
             }

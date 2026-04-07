@@ -47,7 +47,7 @@ class RenameMethodMojo : AbstractMojo() {
             className = config.className,
             methodName = config.methodName,
             newName = config.newName,
-            apply = config.apply,
+            preview = config.preview,
         )
 
         if (result.changes.isEmpty()) {

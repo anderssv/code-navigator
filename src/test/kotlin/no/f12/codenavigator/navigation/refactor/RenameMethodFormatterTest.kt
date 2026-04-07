@@ -40,12 +40,12 @@ class RenameMethodFormatterTest {
         className = "com.example.services.AuditService",
         methodName = "formatAuditEntry",
         newName = "buildAuditLine",
-        apply = true,
+        preview = false,
         format = OutputFormat.TEXT,
     )
 
     // [TEST] TEXT format shows file path and diff lines
-    // [TEST] TEXT format shows applied header when apply is true
+    // [TEST] TEXT format shows applied header when preview is false
     // [TEST] TEXT format shows preview header when preview is set
     // [TEST] TEXT format shows file count
     // [TEST] JSON format returns object with changes array
@@ -67,7 +67,7 @@ class RenameMethodFormatterTest {
     }
 
     @Test
-    fun `TEXT format shows applied header when apply is true`() {
+    fun `TEXT format shows applied header when preview is false`() {
         val output = RenameMethodFormatter.format(singleChange, config)
 
         assertTrue(output.contains("Applied"), "Should indicate applied mode")
@@ -75,7 +75,7 @@ class RenameMethodFormatterTest {
 
     @Test
     fun `TEXT format shows preview header when preview is set`() {
-        val previewConfig = config.copy(apply = false)
+        val previewConfig = config.copy(preview = true)
         val output = RenameMethodFormatter.format(singleChange, previewConfig)
 
         assertTrue(output.contains("Preview"), "Should indicate preview mode")
@@ -125,7 +125,7 @@ class RenameMethodFormatterTest {
 
     @Test
     fun `TEXT format does not include compile recommendation in preview mode`() {
-        val previewConfig = config.copy(apply = false)
+        val previewConfig = config.copy(preview = true)
         val output = RenameMethodFormatter.format(singleChange, previewConfig)
 
         assertTrue(!output.contains("Compile"), "Preview should not recommend compiling")

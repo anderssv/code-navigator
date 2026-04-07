@@ -40,7 +40,7 @@ abstract class RenameParamTask @Inject constructor(
             methodName.set(config.methodName)
             paramName.set(config.paramName)
             newName.set(config.newName)
-            preview.set(!config.apply)
+            preview.set(config.preview)
             sourceRoots.set(sourceRootPaths)
             resultFile.set(resultFileLocation)
         }

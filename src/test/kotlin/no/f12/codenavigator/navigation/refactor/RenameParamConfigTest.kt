@@ -22,12 +22,12 @@ class RenameParamConfigTest {
         assertEquals("findUsers", config.methodName)
         assertEquals("limit", config.paramName)
         assertEquals("maxResults", config.newName)
-        assertEquals(true, config.apply)
+        assertEquals(false, config.preview)
         assertEquals(OutputFormat.TEXT, config.format)
     }
 
     @Test
-    fun `preview flag sets apply to false`() {
+    fun `preview flag sets preview to true`() {
         val props = mapOf(
             "target-class" to "com.example.UserService",
             "method" to "findUsers",
@@ -38,11 +38,11 @@ class RenameParamConfigTest {
 
         val config = RenameParamConfig.parse(props)
 
-        assertEquals(false, config.apply)
+        assertEquals(true, config.preview)
     }
 
     @Test
-    fun `preview flag with null value sets apply to false`() {
+    fun `preview flag with null value sets preview to true`() {
         val props: Map<String, String?> = mapOf(
             "target-class" to "com.example.UserService",
             "method" to "findUsers",
@@ -53,11 +53,11 @@ class RenameParamConfigTest {
 
         val config = RenameParamConfig.parse(props)
 
-        assertEquals(false, config.apply)
+        assertEquals(true, config.preview)
     }
 
     @Test
-    fun `apply defaults to true when preview absent`() {
+    fun `preview defaults to false when absent`() {
         val props = mapOf(
             "target-class" to "com.example.UserService",
             "method" to "findUsers",
@@ -67,7 +67,7 @@ class RenameParamConfigTest {
 
         val config = RenameParamConfig.parse(props)
 
-        assertEquals(true, config.apply)
+        assertEquals(false, config.preview)
     }
 
     @Test

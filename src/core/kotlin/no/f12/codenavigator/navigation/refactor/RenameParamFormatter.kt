@@ -16,7 +16,7 @@ object RenameParamFormatter {
     private fun formatText(result: RenameResult, config: RenameParamConfig): String {
         if (result.changes.isEmpty()) return "No changes needed."
 
-        val mode = if (config.apply) "Applied" else "Preview"
+        val mode = if (config.preview) "Preview" else "Applied"
         val header = "$mode: rename ${config.className}.${config.methodName} param '${config.paramName}' -> '${config.newName}' (${result.changes.size} file${if (result.changes.size != 1) "s" else ""})"
 
         return buildString {
@@ -30,7 +30,7 @@ object RenameParamFormatter {
                 }
                 appendLine()
             }
-            if (config.apply) {
+            if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)
             }
             for (candidate in result.cascadeCandidates) {
@@ -40,7 +40,6 @@ object RenameParamFormatter {
     }
 
     private fun formatJson(result: RenameResult, config: RenameParamConfig): String {
-        val preview = !config.apply
         val changesJson = if (result.changes.isEmpty()) {
             "[]"
         } else {
@@ -51,7 +50,7 @@ object RenameParamFormatter {
                 """{"filePath":"$escapedPath","diff":$diffJson}"""
             }
         }
-        val recommendationJson = if (config.apply) ""","recommendation":"${jsonEscape(COMPILE_RECOMMENDATION)}"""" else ""
+        val recommendationJson = if (!config.preview) ""","recommendation":"${jsonEscape(COMPILE_RECOMMENDATION)}"""" else ""
         val cascadeJson = if (result.cascadeCandidates.isNotEmpty()) {
             val candidates = result.cascadeCandidates.joinToString(",", "[", "]") { c ->
                 """{"className":"${jsonEscape(c.className)}","methodName":"${jsonEscape(c.methodName)}","paramName":"${jsonEscape(c.paramName)}"}"""
@@ -60,13 +59,13 @@ object RenameParamFormatter {
         } else {
             ""
         }
-        return """{"preview":$preview,"param":"${jsonEscape(config.paramName)}","newName":"${jsonEscape(config.newName)}","changes":$changesJson$recommendationJson$cascadeJson}"""
+        return """{"preview":${config.preview},"param":"${jsonEscape(config.paramName)}","newName":"${jsonEscape(config.newName)}","changes":$changesJson$recommendationJson$cascadeJson}"""
     }
 
     private fun formatLlm(result: RenameResult, config: RenameParamConfig): String {
         if (result.changes.isEmpty()) return "No changes needed."
 
-        val mode = if (config.apply) "applied" else "preview"
+        val mode = if (config.preview) "preview" else "applied"
         val header = "rename-param ${config.paramName} -> ${config.newName} in ${config.className}.${config.methodName} ($mode)"
 
         return buildString {
@@ -76,7 +75,7 @@ object RenameParamFormatter {
                 val changedLineCount = computeDiff(change.before, change.after).size
                 appendLine("  $fileName name -> ${config.newName} lines=$changedLineCount")
             }
-            if (config.apply) {
+            if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)
             }
             for (candidate in result.cascadeCandidates) {

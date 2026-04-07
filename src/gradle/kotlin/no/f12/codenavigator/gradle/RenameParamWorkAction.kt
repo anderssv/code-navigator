@@ -29,7 +29,7 @@ abstract class RenameParamWorkAction : WorkAction<RenameParamWorkParameters> {
             methodName = params.methodName.get(),
             paramName = params.paramName.get(),
             newName = params.newName.get(),
-            apply = !params.preview.get(),
+            preview = params.preview.get(),
         )
 
         params.resultFile.get().asFile.writeText(result.toJson())

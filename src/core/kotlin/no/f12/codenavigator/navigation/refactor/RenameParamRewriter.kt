@@ -85,7 +85,7 @@ object RenameParamRewriter {
         methodName: String,
         paramName: String,
         newName: String,
-        apply: Boolean = true,
+        preview: Boolean = false,
     ): RenameResult {
         val sourceFiles = collectSourceFiles(sourceRoots)
         if (sourceFiles.isEmpty()) return RenameResult(emptyList())
@@ -112,7 +112,7 @@ object RenameParamRewriter {
             }
         }
 
-        if (apply) {
+        if (!preview) {
             for (change in changes) {
                 File(change.filePath).writeText(change.after)
             }

@@ -9,7 +9,7 @@ data class RenameParamConfig(
     val methodName: String,
     val paramName: String,
     val newName: String,
-    val apply: Boolean,
+    val preview: Boolean,
     val format: OutputFormat,
 ) {
     companion object {
@@ -20,7 +20,7 @@ data class RenameParamConfig(
                 methodName = TaskRegistry.RENAME_METHOD.parseRequiredFrom(properties),
                 paramName = TaskRegistry.RENAME_PARAM.parseRequiredFrom(properties),
                 newName = TaskRegistry.RENAME_NEW_NAME.parseRequiredFrom(properties),
-                apply = !preview,
+                preview = preview,
                 format = ParamDef.parseFormat(properties),
             )
         }

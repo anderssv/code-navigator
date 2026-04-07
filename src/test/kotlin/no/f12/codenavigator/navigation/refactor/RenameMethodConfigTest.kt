@@ -8,8 +8,8 @@ import kotlin.test.assertFailsWith
 class RenameMethodConfigTest {
 
     // [TEST] Parses all required params from property map
-    // [TEST] Preview flag sets apply to false
-    // [TEST] Apply defaults to true when preview absent
+    // [TEST] Preview flag sets preview to true
+    // [TEST] Preview defaults to false when absent
     // [TEST] Parses LLM format
     // [TEST] Throws when class is missing
     // [TEST] Throws when method is missing
@@ -28,12 +28,12 @@ class RenameMethodConfigTest {
         assertEquals("com.example.UserService", config.className)
         assertEquals("findUsers", config.methodName)
         assertEquals("lookupUsers", config.newName)
-        assertEquals(true, config.apply)
+        assertEquals(false, config.preview)
         assertEquals(OutputFormat.TEXT, config.format)
     }
 
     @Test
-    fun `preview flag sets apply to false`() {
+    fun `preview flag sets preview to true`() {
         val props = mapOf(
             "target-class" to "com.example.UserService",
             "method" to "findUsers",
@@ -43,11 +43,11 @@ class RenameMethodConfigTest {
 
         val config = RenameMethodConfig.parse(props)
 
-        assertEquals(false, config.apply)
+        assertEquals(true, config.preview)
     }
 
     @Test
-    fun `apply defaults to true when preview absent`() {
+    fun `preview defaults to false when absent`() {
         val props = mapOf(
             "target-class" to "com.example.UserService",
             "method" to "findUsers",
@@ -56,7 +56,7 @@ class RenameMethodConfigTest {
 
         val config = RenameMethodConfig.parse(props)
 
-        assertEquals(true, config.apply)
+        assertEquals(false, config.preview)
     }
 
     @Test

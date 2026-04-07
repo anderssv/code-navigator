@@ -47,7 +47,7 @@ class RenameParamFormatterTest {
         methodName = "formatAuditEntry",
         paramName = "name",
         newName = "userName",
-        apply = true,
+        preview = false,
         format = OutputFormat.TEXT,
     )
 
@@ -63,9 +63,9 @@ class RenameParamFormatterTest {
         assertTrue(output.contains("userName"), "Should contain new param name")
     }
 
-    // [TEST] TEXT format shows applied header when apply is true (default)
+    // [TEST] TEXT format shows applied header when preview is false
     @Test
-    fun `TEXT format shows applied header when apply is true`() {
+    fun `TEXT format shows applied header when preview is false`() {
         val output = RenameParamFormatter.format(singleChange, config)
 
         assertTrue(output.contains("Applied"), "Should indicate applied mode")
@@ -74,7 +74,7 @@ class RenameParamFormatterTest {
     // [TEST] TEXT format shows preview header when preview is set
     @Test
     fun `TEXT format shows preview header when preview is set`() {
-        val previewConfig = config.copy(apply = false)
+        val previewConfig = config.copy(preview = true)
         val output = RenameParamFormatter.format(singleChange, previewConfig)
 
         assertTrue(output.contains("Preview"), "Should indicate preview mode")
@@ -130,7 +130,7 @@ class RenameParamFormatterTest {
     // [TEST] TEXT format does not include compile recommendation in preview mode
     @Test
     fun `TEXT format does not include compile recommendation in preview mode`() {
-        val previewConfig = config.copy(apply = false)
+        val previewConfig = config.copy(preview = true)
         val output = RenameParamFormatter.format(singleChange, previewConfig)
 
         assertTrue(!output.contains("Compile"), "Preview should not recommend compiling")

@@ -16,7 +16,7 @@ object RenameMethodFormatter {
     private fun formatText(result: RenameMethodResult, config: RenameMethodConfig): String {
         if (result.changes.isEmpty()) return "No changes needed."
 
-        val mode = if (config.apply) "Applied" else "Preview"
+        val mode = if (config.preview) "Preview" else "Applied"
         val header = "$mode: rename ${config.className}.${config.methodName} -> ${config.newName} (${result.changes.size} file${if (result.changes.size != 1) "s" else ""})"
 
         return buildString {
@@ -30,14 +30,13 @@ object RenameMethodFormatter {
                 }
                 appendLine()
             }
-            if (config.apply) {
+            if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)
             }
         }.trimEnd()
     }
 
     private fun formatJson(result: RenameMethodResult, config: RenameMethodConfig): String {
-        val preview = !config.apply
         val changesJson = if (result.changes.isEmpty()) {
             "[]"
         } else {
@@ -48,14 +47,14 @@ object RenameMethodFormatter {
                 """{"filePath":"$escapedPath","diff":$diffJson}"""
             }
         }
-        val recommendationJson = if (config.apply) ""","recommendation":"${jsonEscape(COMPILE_RECOMMENDATION)}"""" else ""
-        return """{"preview":$preview,"method":"${jsonEscape(config.methodName)}","newName":"${jsonEscape(config.newName)}","changes":$changesJson$recommendationJson}"""
+        val recommendationJson = if (!config.preview) ""","recommendation":"${jsonEscape(COMPILE_RECOMMENDATION)}"""" else ""
+        return """{"preview":${config.preview},"method":"${jsonEscape(config.methodName)}","newName":"${jsonEscape(config.newName)}","changes":$changesJson$recommendationJson}"""
     }
 
     private fun formatLlm(result: RenameMethodResult, config: RenameMethodConfig): String {
         if (result.changes.isEmpty()) return "No changes needed."
 
-        val mode = if (config.apply) "applied" else "preview"
+        val mode = if (config.preview) "preview" else "applied"
         val header = "rename-method ${config.methodName} -> ${config.newName} in ${config.className} ($mode)"
 
         return buildString {
@@ -65,7 +64,7 @@ object RenameMethodFormatter {
                 val changedLineCount = computeDiff(change.before, change.after).size
                 appendLine("  $fileName ${config.methodName} -> ${config.newName} lines=$changedLineCount")
             }
-            if (config.apply) {
+            if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)
             }
         }.trimEnd()

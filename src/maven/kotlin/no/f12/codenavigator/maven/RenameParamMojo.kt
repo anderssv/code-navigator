@@ -51,7 +51,7 @@ class RenameParamMojo : AbstractMojo() {
             methodName = config.methodName,
             paramName = config.paramName,
             newName = config.newName,
-            apply = config.apply,
+            preview = config.preview,
         )
 
         if (result.changes.isEmpty()) {

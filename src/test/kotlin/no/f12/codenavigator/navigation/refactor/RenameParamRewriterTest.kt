@@ -4,9 +4,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import java.io.File
-import java.nio.file.Files
 
 class RenameParamRewriterTest {
+
+    private val testProjectSrc = File("test-project/src/main/kotlin")
 
     // [TEST] Renames parameter in method declaration
     // [TEST] Renames named argument at call site
@@ -96,71 +97,62 @@ class RenameParamRewriterTest {
 
     @Test
     fun `renames parameter in method declaration`() {
-        val sourceDir = copySourcesToTemp("rename-decl", "com/example/services", "com/example/domain")
-
         val result = RenameParamRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.services.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
+            preview = true,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have at least one change")
-
-        val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
-        val content = auditFile.readText()
-        assertTrue(content.contains("userName: String"), "Declaration should be renamed")
-        assertTrue(!content.contains("name: String"), "Old param name should be gone from declaration")
+        val change = result.changes.first { it.filePath.endsWith("AuditService.kt") }
+        assertTrue(change.after.contains("userName: String"), "Declaration should be renamed")
+        assertTrue(!change.after.contains("name: String"), "Old param name should be gone from declaration")
     }
 
     @Test
     fun `renames named argument at call site`() {
-        val sourceDir = copySourcesToTemp("rename-named-arg", "com/example/variants/namedargs", "com/example/domain")
-
         val result = RenameParamRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.namedargs.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
+            preview = true,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have changes")
-
-        val auditFile = File(sourceDir, "com/example/variants/namedargs/AuditService.kt")
-        val content = auditFile.readText()
-        assertTrue(content.contains("userName: String"), "Declaration should be renamed")
-        assertTrue(content.contains("userName = user.name"), "Named argument should be renamed")
+        val change = result.changes.first { it.filePath.endsWith("namedargs/AuditService.kt") }
+        assertTrue(change.after.contains("userName: String"), "Declaration should be renamed")
+        assertTrue(change.after.contains("userName = user.name"), "Named argument should be renamed")
     }
 
     @Test
     fun `does not rename positional arguments at call site`() {
-        val sourceDir = copySourcesToTemp("rename-positional", "com/example/services", "com/example/domain")
-
         val result = RenameParamRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.services.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
+            preview = true,
         )
 
-        val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
-        val content = auditFile.readText()
-        assertTrue(content.contains("user.name, user.email"), "Positional args should be unchanged")
+        val change = result.changes.first { it.filePath.endsWith("services/AuditService.kt") }
+        assertTrue(change.after.contains("user.name, user.email"), "Positional args should be unchanged")
     }
 
     @Test
     fun `returns change with before and after content`() {
-        val sourceDir = copySourcesToTemp("rename-change-info", "com/example/services", "com/example/domain")
-
         val result = RenameParamRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.services.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
+            preview = true,
         )
 
         assertTrue(result.changes.isNotEmpty())
@@ -172,76 +164,68 @@ class RenameParamRewriterTest {
 
     @Test
     fun `leaves unrelated files unchanged`() {
-        val sourceDir = copySourcesToTemp("rename-unrelated", "com/example/services", "com/example/domain")
-        val domainFile = File(sourceDir, "com/example/domain/Domain.kt")
-        val domainBefore = domainFile.readText()
-
-        RenameParamRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+        val result = RenameParamRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.services.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
+            preview = true,
         )
 
-        assertEquals(domainBefore, domainFile.readText(), "Domain.kt should be unchanged")
+        val changedFiles = result.changes.map { it.filePath }
+        assertTrue(
+            changedFiles.none { it.endsWith("Domain.kt") },
+            "Domain.kt should not appear in changes. Changed files: $changedFiles",
+        )
     }
 
     @Test
     fun `does not rename named arguments of other method calls in body`() {
-        val sourceDir = copySourcesToTemp("rename-other-named-args", "com/example/variants/othermethods", "com/example/domain")
-
         val result = RenameParamRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.othermethods.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
+            preview = true,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have changes. Result: $result")
-
-        val auditFile = File(sourceDir, "com/example/variants/othermethods/AuditService.kt")
-        val content = auditFile.readText()
-        assertTrue(content.contains("userName: String"), "Declaration should be renamed. Content:\n$content")
-        // The value reference should be renamed: AuditEntry(name = userName, ...)
-        assertTrue(content.contains("name = userName"), "Value reference should be renamed but named arg key kept. Content:\n$content")
-        // The named argument key for AuditEntry constructor should NOT be renamed
-        assertTrue(!content.contains("userName = userName"), "Named arg key of other method should not be renamed. Content:\n$content")
+        val change = result.changes.first { it.filePath.endsWith("othermethods/AuditService.kt") }
+        assertTrue(change.after.contains("userName: String"), "Declaration should be renamed. Content:\n${change.after}")
+        assertTrue(change.after.contains("name = userName"), "Value reference should be renamed but named arg key kept. Content:\n${change.after}")
+        assertTrue(!change.after.contains("userName = userName"), "Named arg key of other method should not be renamed. Content:\n${change.after}")
     }
 
     @Test
     fun `renames named arguments at cross-file call sites`() {
-        val sourceDir = copySourcesToTemp("rename-cross-file", "com/example/variants/crossfilecallparam", "com/example/domain")
-
         val result = RenameParamRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.crossfilecallparam.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
+            preview = true,
         )
 
         assertTrue(result.changes.size >= 2, "Should have changes in at least 2 files. Changes: ${result.changes.map { it.filePath }}")
-
-        val callerFile = File(sourceDir, "com/example/variants/crossfilecallparam/ReportService.kt")
-        val callerContent = callerFile.readText()
+        val callerChange = result.changes.first { it.filePath.endsWith("ReportService.kt") }
         assertTrue(
-            callerContent.contains("userName = userName"),
-            "Named argument at cross-file call site should be renamed. Content:\n$callerContent",
+            callerChange.after.contains("userName = userName"),
+            "Named argument at cross-file call site should be renamed. Content:\n${callerChange.after}",
         )
     }
 
     @Test
     fun `detects cascade candidates when param is forwarded to same-named param`() {
-        val sourceDir = copySourcesToTemp("rename-cascade", "com/example/variants/cascade", "com/example/domain")
-
         val result = RenameParamRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.cascade.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
+            preview = true,
         )
 
         assertTrue(result.cascadeCandidates.isNotEmpty(), "Should detect cascade candidate. Changes: ${result.changes.map { it.filePath }}, cascadeCandidates: ${result.cascadeCandidates}")
@@ -252,29 +236,15 @@ class RenameParamRewriterTest {
 
     @Test
     fun `no cascade candidate when called method param has different name`() {
-        val sourceDir = copySourcesToTemp("rename-no-cascade", "com/example/variants/nocascade", "com/example/domain")
-
         val result = RenameParamRewriter.rename(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.nocascade.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
+            preview = true,
         )
 
         assertTrue(result.cascadeCandidates.isEmpty(), "Should NOT detect cascade candidate when param names differ. cascadeCandidates: ${result.cascadeCandidates}")
-    }
-
-    private fun copySourcesToTemp(label: String, vararg packages: String): File {
-        val testProjectSrc = File("test-project/src/main/kotlin")
-        val tempDir = Files.createTempDirectory("cnav-test-$label").toFile()
-
-        for (pkg in packages) {
-            val srcPkg = File(testProjectSrc, pkg)
-            val destPkg = File(tempDir, pkg)
-            srcPkg.copyRecursively(destPkg)
-        }
-
-        return tempDir
     }
 }

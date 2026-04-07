@@ -53,7 +53,7 @@ class RenameMethodRewriterTest {
             className = "com.example.services.AuditService",
             methodName = "formatAuditEntry",
             newName = "buildAuditLine",
-            apply = false,
+            preview = true,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should detect changes")

@@ -39,7 +39,7 @@ abstract class RenameMethodTask @Inject constructor(
             className.set(config.className)
             methodName.set(config.methodName)
             newName.set(config.newName)
-            preview.set(!config.apply)
+            preview.set(config.preview)
             sourceRoots.set(sourceRootPaths)
             resultFile.set(resultFileLocation)
         }
