@@ -18,7 +18,8 @@ fun Project.buildPropertyMap(
     val raw = buildPropertyMap(propertyNames, flagNames)
 
     val allCnavParamNames = TaskRegistry.ALL_TASKS.flatMap { it.params }.map { it.name }.toSet()
-    val presentCnavProperties = allCnavParamNames.filter { findProperty(it) != null || hasProperty(it) }.toSet()
+    val cliProperties = project.gradle.startParameter.projectProperties.keys
+    val presentCnavProperties = allCnavParamNames.intersect(cliProperties)
     val warnings = taskDef.warnUnsupportedProperties(presentCnavProperties)
     require(warnings.isEmpty()) { warnings.joinToString("\n") }
 

@@ -62,6 +62,7 @@ object AgentHelpText {
     private fun generateCompact(tool: BuildTool): String = buildString {
         val t = { goal: String -> tool.taskName(goal) }
         val p = { name: String, value: String -> tool.param(name, value) }
+        val pf = { name: String -> tool.paramFlag(name) }
         fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
 
         val pluginType = when (tool) {
@@ -135,6 +136,10 @@ object AgentHelpText {
         appendLine("  \"Which source files are the largest?\" / \"How big are my files?\"")
         appendLine("    → ${u("size")}")
         appendLine("    # Lists source files by line count; use ${p("over", "100")} to filter small files")
+        appendLine()
+        appendLine("  \"Rename a method parameter?\"")
+        appendLine("    → ${u("rename-param", p("target-class", "com.example.Service"), p("method", "find"), p("param", "limit"), p("new-name", "maxResults"))}")
+        appendLine("    # Applies by default; add ${pf("preview")} for dry-run")
         appendLine()
         appendLine("  \"Where is string X hardcoded?\"")
         appendLine("    → ${u("find-string-constant", p("pattern", "X"))}")
@@ -610,6 +615,10 @@ object AgentHelpText {
         appendLine()
         appendLine("${t("size")}:")
         appendLine("  [{\"file\": \"services/UserService.kt\", \"lines\": 61}, {\"file\": \"domain/Domain.kt\", \"lines\": 22}]")
+        appendLine()
+        appendLine("${t("rename-param")}:")
+        appendLine("  {\"preview\": false, \"param\": \"limit\", \"newName\": \"maxResults\",")
+        appendLine("   \"changes\": [{\"filePath\": \"/src/main/kotlin/Service.kt\", \"diff\": [\"- limit: Int\", \"+ maxResults: Int\"]}]}")
         appendLine()
         appendLine("Empty Results:")
         appendLine("  When a query returns no results, JSON/LLM output uses a wrapper with hints:")

@@ -210,6 +210,11 @@ object TaskRegistry {
     val CONTEXT_MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth (default: 2)", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
     val LAYER_CONFIG = ParamDef("config", "<path>", "Path to layer config file", flag = false, defaultValue = ".cnav-layers.json", enhancePattern = false, type = ParamType.STRING)
     val INIT = ParamDef("init", "true", "Generate starter config file", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
+    val RENAME_CLASS = ParamDef("target-class", "<fqcn>", "Fully qualified class name containing the method", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val RENAME_METHOD = ParamDef("method", "<name>", "Method name whose parameter to rename", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val RENAME_PARAM = ParamDef("param", "<name>", "Current parameter name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val RENAME_NEW_NAME = ParamDef("new-name", "<name>", "New parameter name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val PREVIEW = ParamDef("preview", "true", "Preview changes without writing to source files", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
 
     val FORMAT_PARAMS = listOf(FORMAT, LLM)
     val SOURCE_SET_PARAMS = listOf(PROD_ONLY, TEST_ONLY)
@@ -500,6 +505,14 @@ object TaskRegistry {
         category = TaskCategory.SOURCE,
     )
 
+    val RENAME_PARAM_TASK = TaskDef(
+        goal = "rename-param",
+        description = "Rename a method parameter and update all named-argument call sites",
+        params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, RENAME_PARAM, RENAME_NEW_NAME, PREVIEW),
+        requiresCompilation = false,
+        category = TaskCategory.SOURCE,
+    )
+
     val ALL_TASKS: List<TaskDef> = listOf(
         LIST_CLASSES,
         FIND_CLASS,
@@ -532,6 +545,7 @@ object TaskRegistry {
         BALANCE,
         LAYER_CHECK,
         SIZE,
+        RENAME_PARAM_TASK,
         HELP,
         AGENT_HELP,
         CONFIG_HELP,

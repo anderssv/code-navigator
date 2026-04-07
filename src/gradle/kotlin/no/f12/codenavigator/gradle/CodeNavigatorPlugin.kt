@@ -12,6 +12,13 @@ class CodeNavigatorPlugin : Plugin<Project> {
 
         project.extensions.create("codeNavigator", CodeNavigatorExtension::class.java)
 
+        val openRewriteDeps = listOf(
+            project.dependencies.create("org.openrewrite:rewrite-core:$OPENREWRITE_VERSION"),
+            project.dependencies.create("org.openrewrite:rewrite-java:$OPENREWRITE_VERSION"),
+            project.dependencies.create("org.openrewrite:rewrite-kotlin:$OPENREWRITE_VERSION"),
+        )
+        val openRewriteConfig = project.configurations.detachedConfiguration(*openRewriteDeps.toTypedArray())
+
         for (taskDef in TaskRegistry.ALL_TASKS) {
             val taskClass = TASK_CLASSES[taskDef.goal]
                 ?: error("No Gradle task class registered for goal '${taskDef.goal}'")
@@ -23,6 +30,9 @@ class CodeNavigatorPlugin : Plugin<Project> {
                 }
                 if (taskDef.requiresTestCompilation) {
                     dependsOn("testClasses")
+                }
+                if (this is RenameParamTask) {
+                    openRewriteClasspath.from(openRewriteConfig)
                 }
             }
         }
@@ -49,6 +59,8 @@ class CodeNavigatorPlugin : Plugin<Project> {
     }
 
     companion object {
+        private const val OPENREWRITE_VERSION = "8.78.6"
+
         private val TASK_CLASSES: Map<String, Class<out DefaultTask>> = mapOf(
             "list-classes" to ListClassesTask::class.java,
             "find-class" to FindClassTask::class.java,
@@ -81,6 +93,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "balance" to BalanceTask::class.java,
             "layer-check" to LayerCheckTask::class.java,
             "size" to SizeTask::class.java,
+            "rename-param" to RenameParamTask::class.java,
             "help" to CodeNavigatorHelpTask::class.java,
             "agent-help" to AgentHelpTask::class.java,
             "config-help" to ConfigHelpTask::class.java,

@@ -651,3 +651,45 @@ Composite Balanced Coupling heuristic. For each package pair, evaluates three di
 - **Registered as task 32** in `TaskRegistry` under COMPOSITE category (new category added to distinguish composite/aggregated tasks from base analyses).
 
 **Changes**: New files: `BalanceBuilder.kt`, `BalanceConfig.kt`, `BalanceFormatter.kt`, `BalanceTask.kt`, `BalanceMojo.kt` + 3 test files (15 tests total). Modified: `TaskRegistry.kt` (added COMPOSITE category + BALANCE TaskDef), `JsonFormatter.kt`, `LlmFormatter.kt`, `HelpText.kt`, `AgentHelpText.kt`, `CodeNavigatorPlugin.kt`, `ConfigHelpText.kt`, `TaskRegistryTest.kt`, `AgentHelpTextTest.kt`, `ConfigHelpTextTest.kt`.
+
+## ~~`cnavRenameParam` — deterministic parameter renaming via OpenRewrite~~ DONE
+
+**Value: high** | **Effort: medium**
+
+First deterministic refactoring task. Renames a Kotlin function parameter — updating the declaration, all body references (including string template `$name` references), and all named-argument call sites across the project. Uses OpenRewrite (`rewrite-kotlin` 8.78.6) for AST-based source transformation. Source-level task (no compilation required for the rename itself, though tests verify compile-before and compile-after).
+
+**Usage**:
+```bash
+# Preview mode (default) — shows what would change
+./gradlew cnavRenameParam -Ptarget-class=com.example.UserService -Pmethod=findUsers -Pparam=limit -PnewName=maxResults
+
+# Apply mode — writes changes to source files
+./gradlew cnavRenameParam -Ptarget-class=com.example.UserService -Pmethod=findUsers -Pparam=limit -PnewName=maxResults -Papply=true
+```
+
+**Implementation**:
+- `RenameParamConfig` — config data class with `parse()` companion, validates all 4 required params (target-class, method, param, newName) plus optional `apply` flag. 8 tests.
+- `RenameParamRewriter` — OpenRewrite-based rewriter using `KotlinParser` and `RenameParamVisitor` (`KotlinIsoVisitor<ExecutionContext>`). Handles three rename dimensions: parameter declarations (`visitMethodDeclaration`), body references including string templates (`visitIdentifier`), and named arguments at call sites (`visitMethodInvocation`). Scoped by `inTargetClass`/`inTargetMethod` flags. Returns `RenameResult` with `List<RenameChange>` diffs. `apply` parameter controls whether changes are written to disk. 5 tests (all with compile-before/compile-after verification).
+- `RenameParamFormatter` — TEXT/JSON/LLM formatting with unified diff computation. 7 tests.
+- `RenameParamTask` (Gradle) — follows `SizeTask` pattern, uses `project.sourceDirectories()` to find source files. `requiresCompilation = false`.
+- Registered as `RENAME_PARAM_TASK` in `TaskRegistry` (goal `rename-param`, category `SOURCE`). Task count: 35.
+
+**Param naming**: Uses `target-class` instead of `class` because Gradle's `findProperty("class")` returns the Java Class object of the Project, not the user's `-Pclass=...` value. Also fixed `GradleSupport.kt` property detection to use `project.gradle.startParameter.projectProperties.keys` instead of `findProperty`/`hasProperty` to avoid false positives from Gradle internals (e.g., `hasProperty("init")` returns true even without `-Pinit`).
+
+**OpenRewrite version**: Upgraded from `rewrite-kotlin:8.56.1` to `8.78.6` because the 8.56.1 version ships `kotlin-compiler-embeddable:1.9.25` which cannot run on Java 25 (throws `IllegalArgumentException: 25.0.2` when parsing `JavaVersion`). Version 8.78.6 ships `kotlin-compiler-embeddable:2.2.0` and works correctly.
+
+**Known limitations**:
+- Companion object methods require specifying `target-class` as the companion's FQN (e.g., `com.example.Foo$Companion`). Using the outer class name does NOT find companion methods.
+- OpenRewrite's `KotlinIsoVisitor` does not traverse deeply nested lambda expressions (3+ levels, e.g., Ktor DSL `rateLimit { post { withAdminPoll { ... } } }`). Call sites inside such lambdas are not renamed. Shallow lambda nesting works correctly. Output includes a "Compile to verify all call sites were updated." recommendation when changes are applied.
+- Constructor parameter renaming not tested.
+- Maven mojo not yet created (Gradle only).
+
+**Bug fixes (post-initial release)**:
+- **PREVIEW flag type mismatch**: `PREVIEW` was declared with `type = ParamType.BOOLEAN` but `flag = true`. Changed to `type = ParamType.FLAG` so `-Ppreview` works correctly without a value.
+- **Named argument key collision**: `visitIdentifier` in `RenameParamVisitor` was renaming the key side of named arguments in calls to OTHER methods/constructors. Added guard to skip identifiers that are the left side of `J.Assignment` parent nodes. E2E verified on bass-ra-backend.
+- **Preview/Apply inversion**: Default behavior changed from preview-by-default to apply-by-default. `-Ppreview` flag opts into dry-run mode. JSON output key changed from `"applied"` to `"preview"`.
+- **Compile recommendation**: All three output formats (TEXT, JSON, LLM) now include a "Compile to verify all call sites were updated." recommendation when changes are applied.
+
+**E2E validated**: bass-self-service (`Translations.getLocalizedString` param `localizedFeature` → `feature`, declaration + body references), greitt (`ParticipantService.findOrCreateResponse` param `verifiedEmail` → `emailAddress`, declaration + 20 named-argument call sites across 2 files).
+
+**Changes**: New files: `RenameParamConfig.kt`, `RenameParamRewriter.kt`, `RenameParamFormatter.kt`, `RenameParamTask.kt`, `RenameParamConfigTest.kt`, `RenameParamRewriterTest.kt`, `RenameParamFormatterTest.kt`, `OpenRewriteApiExplorationTest.kt`. Modified: `build.gradle.kts` (OpenRewrite deps 8.56.1 → 8.78.6), `TaskRegistry.kt`, `HelpText.kt`, `AgentHelpText.kt`, `GradleSupport.kt`, `CodeNavigatorPlugin.kt`, `TaskRegistryTest.kt`.

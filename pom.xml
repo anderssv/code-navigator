@@ -43,6 +43,7 @@
         <kotlin.version>2.2.0</kotlin.version>
         <maven.compiler.release>17</maven.compiler.release>
         <asm.version>9.9.1</asm.version>
+        <openrewrite.version>8.78.6</openrewrite.version>
     </properties>
 
     <dependencies>
@@ -60,6 +61,21 @@
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-metadata-jvm</artifactId>
             <version>${kotlin.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openrewrite</groupId>
+            <artifactId>rewrite-core</artifactId>
+            <version>${openrewrite.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openrewrite</groupId>
+            <artifactId>rewrite-java</artifactId>
+            <version>${openrewrite.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openrewrite</groupId>
+            <artifactId>rewrite-kotlin</artifactId>
+            <version>${openrewrite.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.maven</groupId>

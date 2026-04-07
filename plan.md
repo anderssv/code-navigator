@@ -330,4 +330,90 @@ Items below are low-priority or may not be worth building. Revisit if demand eme
 - **Entity ownership / main developer**: Who "owns" each file by contribution weight. Mode on `cnavAuthors`.
 - **Architectural-level grouping**: Aggregate file-level results by logical component/layer.
 - **Source-level structural analysis**: Analyze imports from source files without requiring compilation. `cnavSize` (DONE) is the first source-level task; import/dependency analysis from source would be the next step.
-- **Deterministic refactorings**: Explore whether code-navigator's bytecode analysis (call graph, usages, type hierarchy, interface registry) can drive deterministic refactoring operations like rename, extract interface, move class, etc. The analysis already knows all callers, implementors, and dependencies — emitting precise source edits (file + line + replacement) could make agent-driven refactorings reliable rather than heuristic.
+- **Deterministic refactorings**: See dedicated section below.
+
+---
+
+## Future deterministic refactorings for LLMs
+
+`cnavRenameParam` (DONE — see `plan-completed.md`) is the first deterministic refactoring, using OpenRewrite for AST-based source transformation. The key insight: LLMs are unreliable at multi-file refactorings because they guess at call sites, miss named arguments, forget string templates, and hallucinate file paths. A tool that knows all callers, implementors, and dependencies from bytecode can emit precise, correct source edits every time. The LLM's job reduces to deciding *what* to rename/move/extract — the tool handles the *how*.
+
+All candidates below share the same properties:
+- **Deterministic**: Given input parameters, the output is fully determined — no heuristics, no AI judgment needed for the transformation itself.
+- **Whole-project**: Finds and updates all affected files (call sites, imports, string references) via bytecode analysis + OpenRewrite AST.
+- **Verifiable**: Compile before and after to prove correctness.
+- **Known gaps to address first**: Companion object methods, constructor parameters, Maven mojo support.
+
+### Rename method — `cnavRenameMethod`
+
+**Value: very high** | **Effort: medium**
+
+Rename a method and update all call sites project-wide. The call graph already knows every caller.
+
+- `-Ptarget-class=com.example.UserService -Pmethod=findUsers -Pnew-name=searchUsers`
+- Updates: method declaration, all call sites (including via interface dispatch), named arguments if Kotlin, string template references, KDoc `@see`/`@link` references.
+- **Why LLMs fail at this**: They find *some* call sites via text search but miss interface dispatch (callers using `UserRepository.findUsers` when `UserService` implements `UserRepository`), miss calls from other modules, and frequently introduce compile errors.
+- **Reuses**: `CallGraph.findMethods()`, `InterfaceRegistry.classToInterfacesMap()`, `RenameParamRewriter` patterns (visitor structure, string template handling).
+
+### Rename class — `cnavRenameClass`
+
+**Value: high** | **Effort: high**
+
+Rename a class and update all references: imports, type references in fields/parameters/return types/locals, file name (Kotlin convention), companion object references, string constants.
+
+- `-Ptarget-class=com.example.UserService -Pnew-name=AccountService`
+- Updates: class declaration, file name, all import statements, all type references (fields, parameters, return types, local variables, generics), companion object references, factory method naming conventions, string references.
+- **Why LLMs fail at this**: Incomplete import updates, miss generic type parameters, miss companion object references, don't rename the file, miss references in other modules.
+- **Reuses**: `cnavUsages -Ptype=X` already finds all type references. OpenRewrite has built-in `ChangeType` recipe that handles most of this.
+
+### Move class to different package — `cnavMoveClass`
+
+**Value: high** | **Effort: high**
+
+Move a class to a different package, updating all imports and fully-qualified references project-wide.
+
+- `-Ptarget-class=com.example.service.UserService -Pnew-package=com.example.domain`
+- Updates: package declaration, file location, all import statements referencing the class, all FQN references, companion object imports, extension function imports.
+- **Why LLMs fail at this**: They move the file and update *some* imports, but miss FQN references in annotations, miss extension function imports, miss references from test source sets, and frequently break star imports.
+- **Reuses**: `cnavUsages -Ptype=X`, DSM dependency data. OpenRewrite has `ChangePackage` recipe.
+
+### Extract interface — `cnavExtractInterface`
+
+**Value: high** | **Effort: high**
+
+Extract an interface from a class, choosing which methods to include, and optionally update callers to use the interface type instead.
+
+- `-Ptarget-class=com.example.UserService -Pinterface-name=UserOperations -Pmethods=findUsers,createUser`
+- Creates: new interface file with selected method signatures.
+- Updates: class declaration to add `implements`/`:` clause, optionally updates field/parameter types at call sites from concrete class to interface.
+- **Why LLMs fail at this**: They create the interface but forget to handle generic type parameters, miss default method implementations, don't update callers' type declarations, and produce interfaces that don't compile due to missing imports.
+- **Reuses**: `ClassDetailExtractor` (method signatures), `InterfaceRegistry`, `cnavUsages -Ptype=X` for caller type updates.
+
+### Inline function / extract function — `cnavExtractFunction`
+
+**Value: medium** | **Effort: very high**
+
+Extract a code block into a new function, or inline a function's body into its call sites. Requires source-level analysis beyond what bytecode provides — needs OpenRewrite's full AST.
+
+- More complex because it requires understanding local variable scope, control flow, and return semantics.
+- **Probably not worth building**: IDEs already do this well interactively. The LLM value-add is lower here because extract/inline is usually a single-file operation where LLMs are adequate.
+
+### Change method signature — `cnavChangeSignature`
+
+**Value: medium** | **Effort: high**
+
+Add, remove, or reorder parameters on a method, updating all call sites with default values or reordered arguments.
+
+- `-Ptarget-class=com.example.UserService -Pmethod=findUsers -Padd-param="limit: Int = 50" -Pposition=2`
+- Updates: method declaration, all call sites (adding default value for new param), named argument order.
+- **Why LLMs fail at this**: They update the declaration but miss call sites in other modules, don't handle overloads correctly, and frequently break named argument ordering.
+- **Reuses**: `RenameParamRewriter` visitor structure, `CallGraph` for call site discovery.
+
+### Priority order
+
+1. **Rename method** — highest value, most natural extension of `cnavRenameParam`, reuses the most existing code.
+2. **Rename class** — high value, OpenRewrite has existing recipes to build on.
+3. **Move class** — high value, but more complex due to file system operations + import rewriting.
+4. **Extract interface** — high value for architecture improvement workflows, but more complex.
+5. **Change signature** — medium value, complex parameter manipulation.
+6. **Extract function** — low priority, IDEs handle this well already.
