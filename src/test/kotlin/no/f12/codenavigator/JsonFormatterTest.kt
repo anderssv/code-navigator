@@ -1,8 +1,6 @@
 package no.f12.codenavigator
 
 import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.analysis.CoupledPair
-import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.FileSizeEntry
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
@@ -25,20 +23,25 @@ import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.symbol.SymbolInfo
 import no.f12.codenavigator.navigation.symbol.SymbolKind
 import no.f12.codenavigator.navigation.dsm.DsmMatrix
-import no.f12.codenavigator.navigation.rank.RankedType
-import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.dsm.CycleDetail
 import no.f12.codenavigator.navigation.dsm.CycleEdge
-import no.f12.codenavigator.navigation.deadcode.DeadCode
-import no.f12.codenavigator.navigation.deadcode.DeadCodeConfidence
-import no.f12.codenavigator.navigation.deadcode.DeadCodeKind
-import no.f12.codenavigator.navigation.deadcode.DeadCodeReason
-import no.f12.codenavigator.navigation.stringconstant.StringConstantMatch
 import no.f12.codenavigator.navigation.metrics.MetricsResult
-import no.f12.codenavigator.navigation.annotation.AnnotationMatch
-import no.f12.codenavigator.navigation.annotation.MethodAnnotationMatch
 import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.context.ContextResult
+import no.f12.codenavigator.navigation.fixtures.aContextResult
+import no.f12.codenavigator.navigation.fixtures.aDeadCodePair
+import no.f12.codenavigator.navigation.fixtures.aHotspotPair
+import no.f12.codenavigator.navigation.fixtures.aCoupledPair
+import no.f12.codenavigator.navigation.fixtures.aChurnPair
+import no.f12.codenavigator.navigation.fixtures.aStringConstantPair
+import no.f12.codenavigator.navigation.fixtures.anAnnotationMatch
+import no.f12.codenavigator.navigation.fixtures.anAnnotationMatchWithMethods
+import no.f12.codenavigator.navigation.fixtures.aRankedTypePair
+import no.f12.codenavigator.navigation.fixtures.aClassComplexity
+import no.f12.codenavigator.navigation.fixtures.aSingleCycle
+import no.f12.codenavigator.navigation.fixtures.aMultiCycle
+import no.f12.codenavigator.navigation.fixtures.aMetricsResult
+import no.f12.codenavigator.navigation.fixtures.aStrengthResultPair
 import no.f12.codenavigator.navigation.dsm.PackageDistanceEntry
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.IntegrationStrength
@@ -455,10 +458,7 @@ class JsonFormatterTest {
 
     @Test
     fun `hotspots produce JSON array with file, revisions, totalChurn`() {
-        val hotspots = listOf(
-            Hotspot("src/Foo.kt", 10, 150),
-            Hotspot("src/Bar.kt", 5, 30),
-        )
+        val hotspots = aHotspotPair()
 
         val result = JsonFormatter.formatHotspots(hotspots)
 
@@ -479,9 +479,7 @@ class JsonFormatterTest {
 
     @Test
     fun `coupling produces JSON with entity, coupled, degree, sharedRevs, avgRevs`() {
-        val pairs = listOf(
-            CoupledPair("src/Foo.kt", "src/Bar.kt", 85, 10, 12),
-        )
+        val pairs = aCoupledPair()
 
         val result = JsonFormatter.formatCoupling(pairs)
 
@@ -502,10 +500,7 @@ class JsonFormatterTest {
 
     @Test
     fun `churn produces JSON with file, added, deleted, commits`() {
-        val churn = listOf(
-            FileChurn("src/Foo.kt", 100, 50, 10),
-            FileChurn("src/Bar.kt", 30, 10, 5),
-        )
+        val churn = aChurnPair()
 
         val result = JsonFormatter.formatChurn(churn)
 
@@ -612,10 +607,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formats ranked types as JSON array`() {
-        val ranked = listOf(
-            RankedType(ClassName("com.example.Core"), 0.42, inDegree = 5, outDegree = 2),
-            RankedType(ClassName("com.example.Service"), 0.15, inDegree = 2, outDegree = 3),
-        )
+        val ranked = aRankedTypePair()
 
         val result = JsonFormatter.formatRank(ranked)
 
@@ -638,10 +630,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formats dead code as JSON array with all fields`() {
-        val dead = listOf(
-            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt", DeadCodeConfidence.HIGH, DeadCodeReason.NO_REFERENCES),
-            DeadCode(ClassName("com.example.Service"), "unused", DeadCodeKind.METHOD, "Service.kt", DeadCodeConfidence.MEDIUM, DeadCodeReason.TEST_ONLY),
-        )
+        val dead = aDeadCodePair()
 
         val result = JsonFormatter.formatDead(dead)
 
@@ -668,10 +657,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formats string constants as JSON array with all fields`() {
-        val matches = listOf(
-            StringConstantMatch(ClassName("com.example.Routes"), "getUsers", "/api/v1/users", "Routes.kt"),
-            StringConstantMatch(ClassName("com.example.Config"), "setup", "application/json", "Config.kt"),
-        )
+        val matches = aStringConstantPair()
 
         val result = JsonFormatter.formatStringConstants(matches)
 
@@ -695,18 +681,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formats complexity as JSON with all fields`() {
-        val complexity = listOf(
-            ClassComplexity(
-                className = ClassName("com.example.Service"),
-                sourceFile = "Service.kt",
-                fanOut = 5,
-                fanIn = 3,
-                distinctOutgoingClasses = 2,
-                distinctIncomingClasses = 1,
-                outgoingByClass = listOf(ClassName("com.example.Repo") to 3, ClassName("com.example.Cache") to 2),
-                incomingByClass = listOf(ClassName("com.example.Controller") to 3),
-            ),
-        )
+        val complexity = aClassComplexity()
 
         val result = JsonFormatter.formatComplexity(complexity)
 
@@ -724,18 +699,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formats metrics as JSON object with all fields`() {
-        val metrics = MetricsResult(
-            totalClasses = 42,
-            packageCount = 5,
-            averageFanIn = 8.5,
-            averageFanOut = 3.2,
-            cycleCount = 2,
-            deadClassCount = 3,
-            deadMethodCount = 7,
-            topHotspots = listOf(
-                Hotspot("src/main/Foo.kt", 15, 200),
-            ),
-        )
+        val metrics = aMetricsResult()
 
         val result = JsonFormatter.formatMetrics(metrics)
 
@@ -779,15 +743,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formatCycles includes cycle packages and edges in object`() {
-        val details = listOf(
-            CycleDetail(
-                packages = listOf(PackageName("api"), PackageName("service")),
-                edges = listOf(
-                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
-                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("service.Service") to ClassName("api.Controller"))),
-                ),
-            ),
-        )
+        val details = aSingleCycle()
 
         val result = JsonFormatter.formatCycles(details)
 
@@ -802,21 +758,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formatCycles handles multiple cycles in object`() {
-        val details = listOf(
-            CycleDetail(
-                packages = listOf(PackageName("a"), PackageName("b")),
-                edges = listOf(
-                    CycleEdge(PackageName("a"), PackageName("b"), setOf(ClassName("a.X") to ClassName("b.Y"))),
-                    CycleEdge(PackageName("b"), PackageName("a"), setOf(ClassName("b.Y") to ClassName("a.X"))),
-                ),
-            ),
-            CycleDetail(
-                packages = listOf(PackageName("x"), PackageName("y"), PackageName("z")),
-                edges = listOf(
-                    CycleEdge(PackageName("x"), PackageName("y"), setOf(ClassName("x.A") to ClassName("y.B"))),
-                ),
-            ),
-        )
+        val details = aMultiCycle()
 
         val result = JsonFormatter.formatCycles(details)
 
@@ -831,14 +773,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formats annotation matches as JSON array`() {
-        val matches = listOf(
-            AnnotationMatch(
-                className = ClassName("com.example.MyController"),
-                sourceFile = "MyController.kt",
-                classAnnotations = setOf(AnnotationName("RestController")),
-                matchedMethods = emptyList(),
-            ),
-        )
+        val matches = listOf(anAnnotationMatch())
 
         val result = JsonFormatter.formatAnnotations(matches)
 
@@ -850,19 +785,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formats annotation matches with methods as JSON`() {
-        val matches = listOf(
-            AnnotationMatch(
-                className = ClassName("com.example.MyController"),
-                sourceFile = "MyController.kt",
-                classAnnotations = setOf(AnnotationName("RestController")),
-                matchedMethods = listOf(
-                    MethodAnnotationMatch(
-                        method = MethodRef(ClassName("com.example.MyController"), "getUsers"),
-                        annotations = setOf(AnnotationName("GetMapping")),
-                    ),
-                ),
-            ),
-        )
+        val matches = listOf(anAnnotationMatchWithMethods())
 
         val result = JsonFormatter.formatAnnotations(matches)
 
@@ -1268,18 +1191,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formatStrength produces JSON with source target strength and counts`() {
-        val result = StrengthResult(
-            listOf(
-                PackageStrengthEntry(
-                    PackageName("com.example.api"), PackageName("com.example.model"),
-                    IntegrationStrength.MODEL, contractCount = 1, modelCount = 2, functionalCount = 0, unknownCount = 0, totalDeps = 3,
-                ),
-                PackageStrengthEntry(
-                    PackageName("com.example.api"), PackageName("org.other.service"),
-                    IntegrationStrength.FUNCTIONAL, contractCount = 0, modelCount = 0, functionalCount = 4, unknownCount = 0, totalDeps = 4,
-                ),
-            ),
-        )
+        val result = aStrengthResultPair()
 
         val json = JsonFormatter.formatStrength(result)
 
@@ -1396,24 +1308,4 @@ class JsonFormatterTest {
         )
     }
 
-    private fun aContextResult(
-        callers: List<CallTreeNode> = emptyList(),
-        callees: List<CallTreeNode> = emptyList(),
-        implementors: List<ImplementorInfo> = emptyList(),
-        implementedInterfaces: List<ClassName> = emptyList(),
-    ): ContextResult = ContextResult(
-        classDetail = ClassDetail(
-            className = ClassName("com.example.MyService"),
-            sourceFile = "MyService.kt",
-            superClass = null,
-            interfaces = emptyList(),
-            fields = emptyList(),
-            methods = listOf(MethodDetail("doWork", listOf("String"), "void", emptyList())),
-            annotations = emptyList(),
-        ),
-        callers = callers,
-        callees = callees,
-        implementors = implementors,
-        implementedInterfaces = implementedInterfaces,
-    )
 }
