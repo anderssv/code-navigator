@@ -7,7 +7,6 @@ import org.openrewrite.java.tree.J
 import org.openrewrite.kotlin.KotlinIsoVisitor
 import org.openrewrite.kotlin.KotlinParser
 import java.io.File
-import java.nio.file.Path
 
 data class RenameChange(
     val filePath: String,
@@ -121,21 +120,6 @@ object RenameParamRewriter {
         return RenameResult(changes, visitor.cascadeCandidates.toList())
     }
 
-    private fun collectSourceFiles(sourceRoots: List<File>): List<File> =
-        sourceRoots.flatMap { root ->
-            root.walkTopDown()
-                .filter { it.isFile && it.extension == "kt" }
-                .toList()
-        }
-
-    private fun resolveOriginalPath(sourceFile: SourceFile, sourceRoots: List<File>): String {
-        val relativePath = sourceFile.sourcePath.toString()
-        for (root in sourceRoots) {
-            val candidate = File(root, relativePath)
-            if (candidate.exists()) return candidate.absolutePath
-        }
-        return relativePath
-    }
 }
 
 private class RenameParamVisitor(
