@@ -11,13 +11,16 @@ class RenameParamRewriterTest {
     // [TEST] Renames parameter in method declaration
     // [TEST] Renames named argument at call site
     // [TEST] Does not rename positional arguments at call site
-    // [TEST] Source compiles before and after rename
     // [TEST] Returns list of changed files with before/after content
-    // [TEST] Handles multiple call sites with named arguments
     // [TEST] Leaves unrelated files unchanged
+    // [TEST] Does not rename named arguments of other method calls in body
+    // [TEST] Renames named arguments at cross-file call sites
+    // [TEST] Detects cascade candidates when param is forwarded to same-named param
+    // [TEST] No cascade candidate when called method param has different name
     // [TEST] RenameResult JSON roundtrip preserves empty changes
     // [TEST] RenameResult JSON roundtrip preserves changes with special characters
     // [TEST] RenameResult JSON roundtrip preserves multi-line source code
+    // [TEST] RenameResult JSON roundtrip preserves cascade candidates
 
     @Test
     fun `RenameResult JSON roundtrip preserves empty changes`() {
@@ -93,10 +96,7 @@ class RenameParamRewriterTest {
 
     @Test
     fun `renames parameter in method declaration`() {
-        val tempDir = copyTestSources("rename-decl")
-
-        val sourceDir = File(tempDir, "src/main/kotlin")
-        compileKotlin(tempDir)
+        val sourceDir = copySourcesToTemp("rename-decl", "com/example/services", "com/example/domain")
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -112,41 +112,15 @@ class RenameParamRewriterTest {
         val content = auditFile.readText()
         assertTrue(content.contains("userName: String"), "Declaration should be renamed")
         assertTrue(!content.contains("name: String"), "Old param name should be gone from declaration")
-
-        compileKotlin(tempDir)
-
-        tempDir.deleteRecursively()
     }
 
     @Test
     fun `renames named argument at call site`() {
-        val tempDir = copyTestSources("rename-named-arg")
-
-        val sourceDir = File(tempDir, "src/main/kotlin")
-        val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
-        auditFile.writeText("""
-            package com.example.services
-
-            import com.example.domain.UserRepository
-
-            class AuditService(
-                private val repository: UserRepository,
-            ) {
-                fun auditUser(userId: String): String {
-                    val user = repository.findById(userId) ?: return "not found"
-                    return formatAuditEntry(name = user.name, email = user.email)
-                }
-
-                private fun formatAuditEntry(name: String, email: String): String =
-                    "audit: ${'$'}name <${'$'}email>"
-            }
-        """.trimIndent() + "\n")
-
-        compileKotlin(tempDir)
+        val sourceDir = copySourcesToTemp("rename-named-arg", "com/example/variants/namedargs", "com/example/domain")
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
-            className = "com.example.services.AuditService",
+            className = "com.example.variants.namedargs.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
@@ -154,21 +128,15 @@ class RenameParamRewriterTest {
 
         assertTrue(result.changes.isNotEmpty(), "Should have changes")
 
+        val auditFile = File(sourceDir, "com/example/variants/namedargs/AuditService.kt")
         val content = auditFile.readText()
         assertTrue(content.contains("userName: String"), "Declaration should be renamed")
         assertTrue(content.contains("userName = user.name"), "Named argument should be renamed")
-
-        compileKotlin(tempDir)
-
-        tempDir.deleteRecursively()
     }
 
     @Test
     fun `does not rename positional arguments at call site`() {
-        val tempDir = copyTestSources("rename-positional")
-
-        val sourceDir = File(tempDir, "src/main/kotlin")
-        compileKotlin(tempDir)
+        val sourceDir = copySourcesToTemp("rename-positional", "com/example/services", "com/example/domain")
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -180,21 +148,12 @@ class RenameParamRewriterTest {
 
         val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
         val content = auditFile.readText()
-        // The call site uses positional args: formatAuditEntry(user.name, user.email)
-        // This should NOT be changed
         assertTrue(content.contains("user.name, user.email"), "Positional args should be unchanged")
-
-        compileKotlin(tempDir)
-
-        tempDir.deleteRecursively()
     }
 
     @Test
     fun `returns change with before and after content`() {
-        val tempDir = copyTestSources("rename-change-info")
-
-        val sourceDir = File(tempDir, "src/main/kotlin")
-        compileKotlin(tempDir)
+        val sourceDir = copySourcesToTemp("rename-change-info", "com/example/services", "com/example/domain")
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -209,19 +168,13 @@ class RenameParamRewriterTest {
         assertTrue(change.before.contains("name: String"))
         assertTrue(change.after.contains("userName: String"))
         assertTrue(change.filePath.endsWith("AuditService.kt"))
-
-        tempDir.deleteRecursively()
     }
 
     @Test
     fun `leaves unrelated files unchanged`() {
-        val tempDir = copyTestSources("rename-unrelated")
-
-        val sourceDir = File(tempDir, "src/main/kotlin")
+        val sourceDir = copySourcesToTemp("rename-unrelated", "com/example/services", "com/example/domain")
         val domainFile = File(sourceDir, "com/example/domain/Domain.kt")
         val domainBefore = domainFile.readText()
-
-        compileKotlin(tempDir)
 
         RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
@@ -232,43 +185,15 @@ class RenameParamRewriterTest {
         )
 
         assertEquals(domainBefore, domainFile.readText(), "Domain.kt should be unchanged")
-
-        tempDir.deleteRecursively()
     }
 
     @Test
     fun `does not rename named arguments of other method calls in body`() {
-        val tempDir = copyTestSources("rename-other-named-args")
-
-        val sourceDir = File(tempDir, "src/main/kotlin")
-        val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
-        // Add a method that calls a data class constructor using named arguments
-        // where the named arg key matches the parameter being renamed
-        auditFile.writeText("""
-            package com.example.services
-
-            import com.example.domain.UserRepository
-
-            data class AuditEntry(val name: String, val email: String)
-
-            class AuditService(
-                private val repository: UserRepository,
-            ) {
-                fun auditUser(userId: String): String {
-                    val user = repository.findById(userId) ?: return "not found"
-                    return formatAuditEntry(user.name, user.email).toString()
-                }
-
-                fun formatAuditEntry(name: String, email: String): AuditEntry =
-                    AuditEntry(name = name, email = email)
-            }
-        """.trimIndent() + "\n")
-
-        compileKotlin(tempDir)
+        val sourceDir = copySourcesToTemp("rename-other-named-args", "com/example/variants/othermethods", "com/example/domain")
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
-            className = "com.example.services.AuditService",
+            className = "com.example.variants.othermethods.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
@@ -276,62 +201,22 @@ class RenameParamRewriterTest {
 
         assertTrue(result.changes.isNotEmpty(), "Should have changes. Result: $result")
 
+        val auditFile = File(sourceDir, "com/example/variants/othermethods/AuditService.kt")
         val content = auditFile.readText()
         assertTrue(content.contains("userName: String"), "Declaration should be renamed. Content:\n$content")
         // The value reference should be renamed: AuditEntry(name = userName, ...)
         assertTrue(content.contains("name = userName"), "Value reference should be renamed but named arg key kept. Content:\n$content")
         // The named argument key for AuditEntry constructor should NOT be renamed
         assertTrue(!content.contains("userName = userName"), "Named arg key of other method should not be renamed. Content:\n$content")
-
-        compileKotlin(tempDir)
-
-        tempDir.deleteRecursively()
     }
 
     @Test
     fun `renames named arguments at cross-file call sites`() {
-        val tempDir = copyTestSources("rename-unresolved-type")
-
-        val sourceDir = File(tempDir, "src/main/kotlin")
-        val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
-        // Add method with a parameter and a cross-file caller
-        auditFile.writeText("""
-            package com.example.services
-
-            import com.example.domain.UserRepository
-
-            class AuditService(
-                private val repository: UserRepository,
-            ) {
-                fun auditUser(userId: String): String {
-                    val user = repository.findById(userId) ?: return "not found"
-                    return formatAuditEntry(user.name, user.email)
-                }
-
-                fun formatAuditEntry(name: String, email: String): String =
-                    "audit: ${'$'}name <${'$'}email>"
-            }
-        """.trimIndent() + "\n")
-
-        // Add a caller in a different file that uses named arguments
-        val callerFile = File(sourceDir, "com/example/services/ReportService.kt")
-        callerFile.parentFile.mkdirs()
-        callerFile.writeText("""
-            package com.example.services
-
-            class ReportService(
-                private val auditService: AuditService,
-            ) {
-                fun generateReport(userName: String, userEmail: String): String =
-                    auditService.formatAuditEntry(name = userName, email = userEmail)
-            }
-        """.trimIndent() + "\n")
-
-        compileKotlin(tempDir)
+        val sourceDir = copySourcesToTemp("rename-cross-file", "com/example/variants/crossfilecallparam", "com/example/domain")
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
-            className = "com.example.services.AuditService",
+            className = "com.example.variants.crossfilecallparam.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
@@ -339,50 +224,21 @@ class RenameParamRewriterTest {
 
         assertTrue(result.changes.size >= 2, "Should have changes in at least 2 files. Changes: ${result.changes.map { it.filePath }}")
 
+        val callerFile = File(sourceDir, "com/example/variants/crossfilecallparam/ReportService.kt")
         val callerContent = callerFile.readText()
         assertTrue(
             callerContent.contains("userName = userName"),
             "Named argument at cross-file call site should be renamed. Content:\n$callerContent",
         )
-
-        compileKotlin(tempDir)
-
-        tempDir.deleteRecursively()
     }
 
     @Test
     fun `detects cascade candidates when param is forwarded to same-named param`() {
-        val tempDir = copyTestSources("rename-cascade")
-
-        val sourceDir = File(tempDir, "src/main/kotlin")
-        val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
-        auditFile.writeText("""
-            package com.example.services
-
-            import com.example.domain.UserRepository
-
-            class AuditService(
-                private val repository: UserRepository,
-            ) {
-                fun auditUser(userId: String): String {
-                    val user = repository.findById(userId) ?: return "not found"
-                    return formatAuditEntry(user.name, user.email)
-                }
-
-                fun formatAuditEntry(name: String, email: String): String {
-                    return buildLine(name, email)
-                }
-
-                private fun buildLine(name: String, email: String): String =
-                    "audit: ${'$'}name <${'$'}email>"
-            }
-        """.trimIndent() + "\n")
-
-        compileKotlin(tempDir)
+        val sourceDir = copySourcesToTemp("rename-cascade", "com/example/variants/cascade", "com/example/domain")
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
-            className = "com.example.services.AuditService",
+            className = "com.example.variants.cascade.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
@@ -392,80 +248,33 @@ class RenameParamRewriterTest {
         val candidate = result.cascadeCandidates.first()
         assertEquals("buildLine", candidate.methodName)
         assertEquals("name", candidate.paramName)
-
-        tempDir.deleteRecursively()
     }
 
     @Test
     fun `no cascade candidate when called method param has different name`() {
-        val tempDir = copyTestSources("rename-no-cascade")
-
-        val sourceDir = File(tempDir, "src/main/kotlin")
-        val auditFile = File(sourceDir, "com/example/services/AuditService.kt")
-        auditFile.writeText("""
-            package com.example.services
-
-            import com.example.domain.UserRepository
-
-            class AuditService(
-                private val repository: UserRepository,
-            ) {
-                fun auditUser(userId: String): String {
-                    val user = repository.findById(userId) ?: return "not found"
-                    return formatAuditEntry(user.name, user.email)
-                }
-
-                fun formatAuditEntry(name: String, email: String): String {
-                    return buildLine(name, email)
-                }
-
-                private fun buildLine(label: String, email: String): String =
-                    "audit: ${'$'}label <${'$'}email>"
-            }
-        """.trimIndent() + "\n")
-
-        compileKotlin(tempDir)
+        val sourceDir = copySourcesToTemp("rename-no-cascade", "com/example/variants/nocascade", "com/example/domain")
 
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(sourceDir),
-            className = "com.example.services.AuditService",
+            className = "com.example.variants.nocascade.AuditService",
             methodName = "formatAuditEntry",
             paramName = "name",
             newName = "userName",
         )
 
         assertTrue(result.cascadeCandidates.isEmpty(), "Should NOT detect cascade candidate when param names differ. cascadeCandidates: ${result.cascadeCandidates}")
-
-        tempDir.deleteRecursively()
     }
 
-    private fun copyTestSources(label: String): File {
-        val testProjectDir = File("test-project")
+    private fun copySourcesToTemp(label: String, vararg packages: String): File {
+        val testProjectSrc = File("test-project/src/main/kotlin")
         val tempDir = Files.createTempDirectory("cnav-test-$label").toFile()
 
-        // Copy source files
-        val srcDir = File(testProjectDir, "src")
-        srcDir.copyRecursively(File(tempDir, "src"))
-
-        // Copy build files needed for compilation
-        File(testProjectDir, "build.gradle.kts").copyTo(File(tempDir, "build.gradle.kts"))
-        File(testProjectDir, "settings.gradle.kts").copyTo(File(tempDir, "settings.gradle.kts"))
-        File(testProjectDir, "gradle").copyRecursively(File(tempDir, "gradle"))
-        File(testProjectDir, "gradlew").copyTo(File(tempDir, "gradlew"))
-        File(tempDir, "gradlew").setExecutable(true)
+        for (pkg in packages) {
+            val srcPkg = File(testProjectSrc, pkg)
+            val destPkg = File(tempDir, pkg)
+            srcPkg.copyRecursively(destPkg)
+        }
 
         return tempDir
-    }
-
-    private fun compileKotlin(projectDir: File) {
-        val process = ProcessBuilder("mise", "exec", "--", "./gradlew", "compileKotlin", "--no-daemon")
-            .directory(projectDir)
-            .redirectErrorStream(true)
-            .start()
-
-        val output = process.inputStream.bufferedReader().readText()
-        val exitCode = process.waitFor()
-
-        assertTrue(exitCode == 0, "Compilation failed (exit $exitCode):\n$output")
     }
 }

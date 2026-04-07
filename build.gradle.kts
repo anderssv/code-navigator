@@ -62,6 +62,7 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.test {
     useJUnitPlatform()
+    dependsOn(gradle.includedBuild("test-project").task(":compileKotlin"))
     finalizedBy(tasks.jacocoTestReport)
 }
 
