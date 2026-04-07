@@ -11,34 +11,12 @@ import java.io.File
 data class RenameMethodResult(
     val changes: List<RenameChange>,
 ) {
-    fun toJson(): String {
-        val changesJson = if (changes.isEmpty()) {
-            "[]"
-        } else {
-            changes.joinToString(",", "[", "]") { change ->
-                val escapedPath = jsonEscape(change.filePath)
-                val escapedBefore = jsonEscape(change.before)
-                val escapedAfter = jsonEscape(change.after)
-                """{"filePath":"$escapedPath","before":"$escapedBefore","after":"$escapedAfter"}"""
-            }
-        }
-        return """{"changes":$changesJson}"""
-    }
+    fun toJson(): String = """{"changes":${changesToJson(changes)}}"""
 
     companion object {
         fun fromJson(json: String): RenameMethodResult {
             val obj = parseJsonObject(json)
-            val changesArr = obj["changes"] as? List<*> ?: return RenameMethodResult(emptyList())
-            val changes = changesArr.map { item ->
-                @Suppress("UNCHECKED_CAST")
-                val map = item as Map<String, Any?>
-                RenameChange(
-                    filePath = map["filePath"] as String,
-                    before = map["before"] as String,
-                    after = map["after"] as String,
-                )
-            }
-            return RenameMethodResult(changes)
+            return RenameMethodResult(changesFromJson(obj))
         }
     }
 }

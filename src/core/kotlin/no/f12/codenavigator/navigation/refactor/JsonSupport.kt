@@ -7,6 +7,28 @@ fun jsonEscape(s: String): String =
         .replace("\r", "\\r")
         .replace("\t", "\\t")
 
+fun changesToJson(changes: List<RenameChange>): String =
+    if (changes.isEmpty()) "[]"
+    else changes.joinToString(",", "[", "]") { change ->
+        val escapedPath = jsonEscape(change.filePath)
+        val escapedBefore = jsonEscape(change.before)
+        val escapedAfter = jsonEscape(change.after)
+        """{"filePath":"$escapedPath","before":"$escapedBefore","after":"$escapedAfter"}"""
+    }
+
+fun changesFromJson(obj: Map<String, Any?>): List<RenameChange> {
+    val changesArr = obj["changes"] as? List<*> ?: return emptyList()
+    return changesArr.map { item ->
+        @Suppress("UNCHECKED_CAST")
+        val map = item as Map<String, Any?>
+        RenameChange(
+            filePath = map["filePath"] as String,
+            before = map["before"] as String,
+            after = map["after"] as String,
+        )
+    }
+}
+
 fun parseJsonObject(json: String): Map<String, Any?> {
     val (result, _) = parseValue(json.trim(), 0)
     @Suppress("UNCHECKED_CAST")

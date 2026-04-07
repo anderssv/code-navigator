@@ -25,16 +25,6 @@ data class RenameResult(
     val cascadeCandidates: List<CascadeCandidate> = emptyList(),
 ) {
     fun toJson(): String {
-        val changesJson = if (changes.isEmpty()) {
-            "[]"
-        } else {
-            changes.joinToString(",", "[", "]") { change ->
-                val escapedPath = jsonEscape(change.filePath)
-                val escapedBefore = jsonEscape(change.before)
-                val escapedAfter = jsonEscape(change.after)
-                """{"filePath":"$escapedPath","before":"$escapedBefore","after":"$escapedAfter"}"""
-            }
-        }
         val cascadeJson = if (cascadeCandidates.isNotEmpty()) {
             val candidates = cascadeCandidates.joinToString(",", "[", "]") { c ->
                 """{"className":"${jsonEscape(c.className)}","methodName":"${jsonEscape(c.methodName)}","paramName":"${jsonEscape(c.paramName)}"}"""
@@ -43,22 +33,13 @@ data class RenameResult(
         } else {
             ""
         }
-        return """{"changes":$changesJson$cascadeJson}"""
+        return """{"changes":${changesToJson(changes)}$cascadeJson}"""
     }
 
     companion object {
         fun fromJson(json: String): RenameResult {
             val obj = parseJsonObject(json)
-            val changesArr = obj["changes"] as? List<*> ?: return RenameResult(emptyList())
-            val changes = changesArr.map { item ->
-                @Suppress("UNCHECKED_CAST")
-                val map = item as Map<String, Any?>
-                RenameChange(
-                    filePath = map["filePath"] as String,
-                    before = map["before"] as String,
-                    after = map["after"] as String,
-                )
-            }
+            val changes = changesFromJson(obj)
             val cascadeArr = obj["cascadeCandidates"] as? List<*> ?: emptyList<Any>()
             val cascadeCandidates = cascadeArr.map { item ->
                 @Suppress("UNCHECKED_CAST")
