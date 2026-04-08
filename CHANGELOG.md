@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.57
+
+- **Fixed:** `cnavMoveClass` now correctly moves interfaces, objects, enums, and sealed classes — not just classes. The file detection used content-based matching (`class $name`) which missed all non-class types. Replaced with deterministic path-based detection.
+- **Fixed:** File move operation now uses `Files.move()` instead of `File.renameTo()`, which could silently fail (e.g. cross-device moves). Failures now throw an exception.
+
 ## 0.1.56
 
 - **New:** `cnavMoveClass` task / `cnav:move-class` goal — moves a Kotlin class to a different package and updates all references project-wide using OpenRewrite's `ChangeType` recipe with classpath-based type resolution. Handles package declaration, import updates, and type references (fields, parameters, return types, generics). File is relocated to the new package directory. Parameters: `-Ptarget-class=<FQN>` (required), `-Pnew-package=<pkg>` (required), `-Ppreview` (dry-run mode). Requires compilation (`requiresCompilation=true`). Both Gradle and Maven support. TEXT, JSON, and LLM output formats.
