@@ -370,7 +370,7 @@ Items below are low-priority or may not be worth building. Revisit if demand eme
 
 ## Future deterministic refactorings for LLMs
 
-`cnavRenameParam` (DONE — see `plan-completed.md`) is the first deterministic refactoring, using OpenRewrite for AST-based source transformation. The key insight: LLMs are unreliable at multi-file refactorings because they guess at call sites, miss named arguments, forget string templates, and hallucinate file paths. A tool that knows all callers, implementors, and dependencies from bytecode can emit precise, correct source edits every time. The LLM's job reduces to deciding *what* to rename/move/extract — the tool handles the *how*.
+`cnavRenameParam` (DONE), `cnavRenameMethod` (DONE — v0.1.55), and `cnavMoveClass` (DONE — v0.1.56) are deterministic refactorings using OpenRewrite for AST-based source transformation. The key insight: LLMs are unreliable at multi-file refactorings because they guess at call sites, miss named arguments, forget string templates, and hallucinate file paths. A tool that knows all callers, implementors, and dependencies from bytecode can emit precise, correct source edits every time. The LLM's job reduces to deciding *what* to rename/move/extract — the tool handles the *how*.
 
 All candidates below share the same properties:
 - **Deterministic**: Given input parameters, the output is fully determined — no heuristics, no AI judgment needed for the transformation itself.
@@ -378,27 +378,13 @@ All candidates below share the same properties:
 - **Verifiable**: Compile before and after to prove correctness.
 - **Known gaps to address first**: Companion object methods, constructor parameters, Maven mojo support.
 
-### Rename class — `cnavRenameClass`
+### ~~Rename class~~ — `cnavRenameClass`
 
-**Value: high** | **Effort: high**
+**PARKED** — OpenRewrite's `ChangeType` (used by `cnavMoveClass`) already handles class renaming when combined with package move. Evaluate if standalone rename-class (same package, different name) is needed separately.
 
-Rename a class and update all references: imports, type references in fields/parameters/return types/locals, file name (Kotlin convention), companion object references, string constants.
+### ~~Move class to different package~~ — `cnavMoveClass` DONE
 
-- `-Ptarget-class=com.example.UserService -Pnew-name=AccountService`
-- Updates: class declaration, file name, all import statements, all type references (fields, parameters, return types, local variables, generics), companion object references, factory method naming conventions, string references.
-- **Why LLMs fail at this**: Incomplete import updates, miss generic type parameters, miss companion object references, don't rename the file, miss references in other modules.
-- **Reuses**: `cnavUsages -Ptype=X` already finds all type references. OpenRewrite has built-in `ChangeType` recipe that handles most of this.
-
-### Move class to different package — `cnavMoveClass`
-
-**Value: high** | **Effort: high**
-
-Move a class to a different package, updating all imports and fully-qualified references project-wide.
-
-- `-Ptarget-class=com.example.service.UserService -Pnew-package=com.example.domain`
-- Updates: package declaration, file location, all import statements referencing the class, all FQN references, companion object imports, extension function imports.
-- **Why LLMs fail at this**: They move the file and update *some* imports, but miss FQN references in annotations, miss extension function imports, miss references from test source sets, and frequently break star imports.
-- **Reuses**: `cnavUsages -Ptype=X`, DSM dependency data. OpenRewrite has `ChangePackage` recipe.
+See `plan-completed.md`.
 
 ### Extract interface — `cnavExtractInterface`
 
@@ -434,9 +420,9 @@ Add, remove, or reorder parameters on a method, updating all call sites with def
 
 ### Priority order
 
-1. **Rename method** — highest value, most natural extension of `cnavRenameParam`, reuses the most existing code.
-2. **Rename class** — high value, OpenRewrite has existing recipes to build on.
-3. **Move class** — high value, but more complex due to file system operations + import rewriting.
+1. ~~**Rename method**~~ — DONE (v0.1.55)
+2. ~~**Rename class**~~ — PARKED (covered by `cnavMoveClass` + `ChangeType`)
+3. ~~**Move class**~~ — DONE (v0.1.56)
 4. **Extract interface** — high value for architecture improvement workflows, but more complex.
 5. **Change signature** — medium value, complex parameter manipulation.
 6. **Extract function** — low priority, IDEs handle this well already.

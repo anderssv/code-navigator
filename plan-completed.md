@@ -716,3 +716,26 @@ Extracted shared test fixtures (object mothers) from duplicated test data constr
 - The 9 occurrences of `dead.map { it.className.value }` (mapping ALL dead items without kind filter) were left as-is since they're semantically different.
 
 **Changes**: New file: `FormatterTestFixtures.kt`. Modified: `ContextFormatterTest.kt`, `JsonFormatterTest.kt`, `LlmFormatterTest.kt`, `DeadCodeFinderTest.kt`.
+
+## ~~`cnavMoveClass` — move class to different package~~ DONE
+
+**Value: high** | **Effort: high**
+
+Moves a Kotlin class to a different package and updates all references project-wide using OpenRewrite's `ChangeType` recipe with classpath-based type resolution.
+
+**Parameters**: `-Ptarget-class=<FQN>` (required), `-Pnew-package=<pkg>` (required), `-Ppreview` (dry-run mode).
+
+**Implementation**:
+- Uses OpenRewrite's `ChangeType(oldFqcn, newFqcn, null)` recipe which handles: import updates, type reference updates (fields, params, return types, generics), and package declaration/class name updates via its inner `ChangeClassDefinition` visitor.
+- `KotlinParser.builder().classpath(...)` for precise type resolution from compiled classes.
+- `InMemoryLargeSourceSet`-based recipe execution via `recipe.run()` returning `RecipeRun` with `changeset.allResults`.
+- File relocation: moves the `.kt` file from old package directory to new package directory.
+- `requiresCompilation = true` — project must be compiled before move-class runs.
+- Gradle task uses classloader-isolated `WorkAction` pattern (same as `cnavRenameMethod`).
+- `rewrite-java-21` runtime dependency required for `ChangeType`'s `JavaTemplate` (added to both `build.gradle.kts` and `pom.xml`).
+
+**Key discovery**: `ChangeType` handles everything including the package declaration change — the rewriter only needs to additionally handle file relocation to the new package directory.
+
+**Output**: TEXT, JSON, and LLM formats. LLM output includes "Compile to verify all references were updated." recommendation.
+
+**Changes**: New files: `MoveClassConfig.kt`, `MoveClassRewriter.kt`, `MoveClassFormatter.kt`, `MoveClassTask.kt`, `MoveClassWorkAction.kt`, `MoveClassMojo.kt`, `MoveClassConfigTest.kt`, `MoveClassRewriterTest.kt`, `MoveClassFormatterTest.kt`. Modified: `build.gradle.kts`, `pom.xml`, `TaskRegistry.kt`, `CodeNavigatorPlugin.kt`, `HelpText.kt`, `AgentHelpText.kt`, `TaskRegistryTest.kt`, `FileSizeScannerTest.kt`. Test fixtures: 4 Kotlin files under `test-project/src/main/kotlin/com/example/variants/moveclass/`.
