@@ -1016,4 +1016,77 @@ class AgentHelpTextTest {
         assertContains(text, "cnavSize")
         assertContains(text, "\"lines\"")
     }
+
+    // --- Recommendations section ---
+
+    @Test
+    fun `recommendations is a valid section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "recommendations")
+
+        assertFalse(text.contains("Unknown section"), "recommendations should be a valid section")
+    }
+
+    @Test
+    fun `recommendations section contains heading`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "recommendations")
+
+        assertContains(text, "Recommendations")
+    }
+
+    @Test
+    fun `recommendations section covers code coverage`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "recommendations")
+
+        assertTrue(text.contains("coverage"), "Should mention code coverage")
+        assertTrue(text.contains("JaCoCo") || text.contains("jacoco"), "Should mention JaCoCo as the tool")
+    }
+
+    @Test
+    fun `recommendations section covers TDD and test-first workflow`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "recommendations")
+
+        assertTrue(text.contains("TDD") || text.contains("test-first") || text.contains("Test-Driven"), "Should mention TDD")
+        assertTrue(text.contains("test") && text.contains("before"), "Should mention writing tests before code")
+    }
+
+    @Test
+    fun `recommendations section covers structural analysis cadence`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "recommendations")
+
+        assertTrue(
+            text.contains("regular") || text.contains("cadence") || text.contains("routine"),
+            "Should mention running analysis regularly",
+        )
+    }
+
+    @Test
+    fun `recommendations section covers commit discipline`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "recommendations")
+
+        assertTrue(text.contains("structural") && text.contains("behavioral"), "Should distinguish structural from behavioral changes")
+        assertTrue(text.contains("commit"), "Should mention commit discipline")
+    }
+
+    @Test
+    fun `recommendations section covers architecture conformance with layer-check`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "recommendations")
+
+        val layerCheckTask = TaskRegistry.LAYER_CHECK.taskName(BuildTool.GRADLE)
+        assertTrue(text.contains(layerCheckTask), "Should mention $layerCheckTask")
+        assertTrue(text.contains(".cnav-layers.json"), "Should mention the config file")
+    }
+
+    @Test
+    fun `section directory lists recommendations`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "section=recommendations")
+    }
+
+    @Test
+    fun `invalid section error includes recommendations in valid list`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "bogus")
+
+        assertContains(text, "recommendations")
+    }
 }

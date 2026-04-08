@@ -7,7 +7,7 @@ import no.f12.codenavigator.registry.TaskDef
 import no.f12.codenavigator.registry.TaskRegistry
 
 object AgentHelpText {
-    private val VALID_SECTIONS = setOf("install", "setup", "workflow", "interpretation", "schemas", "extraction")
+    private val VALID_SECTIONS = setOf("install", "setup", "workflow", "interpretation", "schemas", "extraction", "recommendations")
 
     fun generate(tool: BuildTool = BuildTool.GRADLE, section: String? = null): String = when (section) {
         null -> generateCompact(tool)
@@ -17,6 +17,7 @@ object AgentHelpText {
         "interpretation" -> generateInterpretation(tool)
         "schemas" -> generateSchemas(tool)
         "extraction" -> generateExtraction(tool)
+        "recommendations" -> generateRecommendations(tool)
         else -> "Unknown section: '$section'. Valid sections: ${VALID_SECTIONS.sorted().joinToString(", ")}"
     }
 
@@ -714,6 +715,65 @@ object AgentHelpText {
         appendLine("  $helperName ${t("find-interfaces")} ${p("pattern", "Repository")} ${p("format", "json")} | jq '.[].implementors[].className'")
     }
 
+    private fun generateRecommendations(tool: BuildTool): String = buildString {
+        val t = { goal: String -> tool.taskName(goal) }
+        fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
+
+        appendLine("=== code-navigator: Recommendations ===")
+        appendLine()
+        appendLine("Practices that complement code-navigator analysis. These are not enforced by the")
+        appendLine("plugin — they are habits that make structural analysis more effective over time.")
+        appendLine()
+        appendLine("--- Code Coverage ---")
+        appendLine()
+        appendLine("Set up JaCoCo (or equivalent) and review coverage reports regularly. Coverage")
+        appendLine("tells you which code paths are exercised by tests — code-navigator tells you which")
+        appendLine("code paths are structurally important (${t("rank")}, ${t("complexity")}). Combining both")
+        appendLine("reveals the highest-risk gaps: structurally important code with low test coverage.")
+        appendLine("Without coverage data, dead code removal and refactoring carry unnecessary risk —")
+        appendLine("you can't tell whether a change broke untested behavior.")
+        appendLine()
+        appendLine("--- Test-Driven Development ---")
+        appendLine()
+        appendLine("Write tests before writing production code. TDD produces code that is testable by")
+        appendLine("design — which directly improves the value of structural analysis. When every class")
+        appendLine("has tests, ${t("dead")} results are trustworthy (TEST_ONLY items are real signals, not")
+        appendLine("noise from missing tests). When fakes are used at system boundaries instead of mocks,")
+        appendLine("${t("find-callers")} and ${t("find-interfaces")} show real dependency structure rather")
+        appendLine("than mock wiring. TDD also keeps classes small and focused, which shows up as healthy")
+        appendLine("fan-in/fan-out numbers in ${t("complexity")}.")
+        appendLine()
+        appendLine("--- Structural Analysis Cadence ---")
+        appendLine()
+        appendLine("Run structural analysis regularly, not just when problems are obvious. A routine")
+        appendLine("check catches degradation early:")
+        appendLine("  - ${t("cycles")} after adding new package dependencies")
+        appendLine("  - ${t("dead")} after removing features or deprecating APIs")
+        appendLine("  - ${t("balance")} periodically to catch coupling drift")
+        appendLine("  - ${t("hotspots")} + ${t("complexity")} before planning refactoring work")
+        appendLine("Trends matter more than absolute numbers. Rising cycle count or fan-out over time")
+        appendLine("signals architecture degradation even when individual values look acceptable.")
+        appendLine()
+        appendLine("--- Commit Discipline ---")
+        appendLine()
+        appendLine("Separate structural changes (renames, moves, extractions) from behavioral changes")
+        appendLine("(new features, bug fixes). Never mix them in a single commit. This makes git history")
+        appendLine("analysis (${t("hotspots")}, ${t("coupling")}, ${t("churn")}) more accurate —")
+        appendLine("structural-only commits won't inflate churn counts or create false coupling signals.")
+        appendLine("It also makes each commit independently verifiable: structural changes should pass")
+        appendLine("all existing tests with no new behavior, behavioral changes should have new tests.")
+        appendLine()
+        appendLine("--- Architecture Conformance ---")
+        appendLine()
+        appendLine("Define layer rules in .cnav-layers.json and run ${t("layer-check")} to enforce them.")
+        appendLine("This catches dependency violations (e.g., domain depending on infrastructure) at")
+        appendLine("analysis time rather than code review time. Start with a starter config:")
+        appendLine("  ${u("layer-check", tool.param("init", "true"))}")
+        appendLine("Then refine the layers to match your intended architecture. Run ${t("layer-check")}")
+        appendLine("as part of your regular analysis cadence or CI pipeline to prevent violations from")
+        appendLine("accumulating.")
+    }
+
     private fun StringBuilder.appendSectionDirectory(tool: BuildTool) {
         val p = { name: String, value: String -> tool.param(name, value) }
         fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
@@ -727,6 +787,7 @@ object AgentHelpText {
         appendLine("  ${p("section", "interpretation")}   — heuristics for reading results")
         appendLine("  ${p("section", "schemas")}          — JSON output schemas per task")
         appendLine("  ${p("section", "extraction")}       — extracting output, jq examples")
+        appendLine("  ${p("section", "recommendations")} — practices that complement structural analysis")
         appendLine("Run ${u("help")} for full parameter documentation.")
     }
 
