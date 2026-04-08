@@ -21,14 +21,41 @@ object AgentHelpText {
     }
 
     private fun generateInstall(tool: BuildTool): String = buildString {
-        appendLine("## code-navigator")
+        val t = { goal: String -> tool.taskName(goal) }
+        val p = { name: String, value: String -> tool.param(name, value) }
+        fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
+
+        val pluginId = when (tool) {
+            BuildTool.GRADLE -> "no.f12.code-navigator"
+            BuildTool.MAVEN -> "code-navigator-maven-plugin"
+        }
+        val pluginType = when (tool) {
+            BuildTool.GRADLE -> "Gradle"
+            BuildTool.MAVEN -> "Maven"
+        }
+
+        appendLine("## Code Navigator (cnav)")
         appendLine()
-        appendLine("code-navigator provides reliable code navigation and code smell analysis for JVM projects.")
-        appendLine("It gives structural and behavioral insight into a codebase without reading source files.")
-        appendLine("Navigation queries (callers, dependencies, implementors) return accurate, complete results")
-        appendLine("in a single call — no iterative searching needed.")
+        appendLine("$pluginType plugin (`$pluginId`) that analyzes compiled bytecode and git history.")
         appendLine()
-        appendLine("Run ${tool.usage("agent-help")} for task selection guidance, parameters, and workflows.")
+        appendLine("IMPORTANT: Always use cnav instead of grep/ripgrep for these tasks:")
+        appendLine("- Before moving/renaming/deleting a class or file: Run ${u("find-usages", p("type", "ClassName"))} to find ALL references (including implicit same-package usages that grep will miss).")
+        appendLine("- Finding who calls a method: ${u("find-callers", p("pattern", "methodName"))}")
+        appendLine("- Finding implementations of an interface: ${u("find-interfaces", p("pattern", "InterfaceName"))}")
+        appendLine("- Understanding dependencies between packages: ${t("package-deps")} or ${t("dsm")}")
+        appendLine("- Assessing impact of a change: ${u("changed-since", p("ref", "main"))}")
+        appendLine()
+        appendLine("Bytecode analysis is complete and handles all syntax variants (implicit imports, extension")
+        appendLine("functions, companion objects, lambdas) in a single query. Grep-based searches miss implicit")
+        appendLine("same-package references and require guessing import patterns.")
+        appendLine()
+        appendLine("Only use grep/ripgrep when searching for string literals, comments, or text patterns")
+        appendLine("that don't correspond to type/method/field references.")
+        appendLine()
+        appendLine("Run ${tool.usage("agent-help")} for full usage instructions optimized for AI agents.")
+        appendLine("Navigation tasks analyze compiled bytecode and require classes to be built.")
+        appendLine("Git history tasks work without compilation.")
+        appendLine("Run ${tool.usage("help")} to see all available tasks and their parameters.")
     }
 
     private fun generateSetup(tool: BuildTool): String = buildString {
@@ -81,9 +108,11 @@ object AgentHelpText {
         appendLine()
         appendLine("--- When to Use What ---")
         appendLine()
-        appendLine("Use code-navigator when:")
+        appendLine("IMPORTANT: Always use code-navigator instead of grep/ripgrep for these tasks:")
         appendLine("- Tracing call chains — ${t("find-callers")}/${t("find-callees")} resolve actual invocations")
         appendLine("  through interfaces and inheritance.")
+        appendLine("- Before moving/renaming/deleting a class — ${t("find-usages")} finds ALL references")
+        appendLine("  including implicit same-package usages that grep will miss.")
         appendLine("- Understanding dependencies — ${t("package-deps")}/${t("dsm")} give accurate package-level")
         appendLine("  coupling.")
         appendLine("- Finding interface implementations — ${t("find-interfaces")} resolves polymorphism.")
@@ -91,6 +120,10 @@ object AgentHelpText {
         appendLine("  references to external APIs.")
         appendLine("- Inspecting class structure — ${t("class-detail")} shows fields, methods, supertypes, annotations")
         appendLine("  without reading source files.")
+        appendLine("- Assessing impact of a change — ${t("changed-since")} shows blast radius vs a branch or tag.")
+        appendLine()
+        appendLine("Bytecode analysis handles all syntax variants (implicit imports, extension functions,")
+        appendLine("companion objects, lambdas) in a single query.")
         appendLine()
         appendLine("Use grep/glob when:")
         appendLine("- Searching for string patterns, variable names, or text in comments")

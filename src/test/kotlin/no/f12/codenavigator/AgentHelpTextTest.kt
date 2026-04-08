@@ -88,7 +88,7 @@ class AgentHelpTextTest {
         val lines = text.trimEnd().lines()
 
         assertTrue(
-            lines.size <= 15,
+            lines.size <= 30,
             "install section should be concise (was ${lines.size} lines)",
         )
     }
@@ -100,6 +100,67 @@ class AgentHelpTextTest {
         assertFalse(
             text.contains("Claude Code permissions"),
             "install should not contain permission setup details",
+        )
+    }
+
+    @Test
+    fun `install section emphasizes using cnav instead of grep`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        assertContains(text, "instead of grep")
+    }
+
+    @Test
+    fun `install section lists key use cases with task names`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        assertTrue(text.contains("cnavFindUsages"), "Should mention cnavFindUsages for type/class usage")
+        assertTrue(text.contains("cnavFindCallers"), "Should mention cnavFindCallers for call tracing")
+        assertTrue(text.contains("cnavFindInterfaces"), "Should mention cnavFindInterfaces for implementations")
+        assertTrue(text.contains("cnavPackageDeps"), "Should mention cnavPackageDeps for dependency analysis")
+        assertTrue(text.contains("cnavChangedSince"), "Should mention cnavChangedSince for impact analysis")
+    }
+
+    @Test
+    fun `install section explains why bytecode analysis is better than grep`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        assertTrue(text.contains("bytecode"), "Should mention bytecode analysis")
+        assertTrue(text.contains("single query"), "Should mention single query completeness")
+    }
+
+    @Test
+    fun `install section says when to use grep instead`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        assertTrue(text.contains("string literal"), "Should mention grep is for string literals")
+    }
+
+    @Test
+    fun `install section mentions cnavHelp for parameter docs`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        assertTrue(text.contains("cnavHelp"), "Should mention cnavHelp for full parameter documentation")
+    }
+
+    @Test
+    fun `Maven install section lists key use cases with Maven task names`() {
+        val text = AgentHelpText.generate(BuildTool.MAVEN, section = "install")
+
+        assertTrue(text.contains("cnav:find-usages"), "Should mention cnav:find-usages for type/class usage")
+        assertTrue(text.contains("cnav:find-callers"), "Should mention cnav:find-callers for call tracing")
+        assertTrue(text.contains("cnav:find-interfaces"), "Should mention cnav:find-interfaces for implementations")
+        assertTrue(text.contains("cnav:package-deps"), "Should mention cnav:package-deps for dependency analysis")
+        assertTrue(text.contains("cnav:changed-since"), "Should mention cnav:changed-since for impact analysis")
+    }
+
+    @Test
+    fun `install section mentions moving renaming deleting as a use case`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        assertTrue(
+            text.contains("moving") || text.contains("renaming") || text.contains("deleting"),
+            "Should mention moving/renaming/deleting as a key use case for cnavFindUsages",
         )
     }
 
@@ -349,8 +410,37 @@ class AgentHelpTextTest {
     fun `agent help text includes when-to-use guidance`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
 
-        assertTrue(text.contains("Use code-navigator when"), "Should have when-to-use-cnav section")
+        assertTrue(text.contains("Always use code-navigator instead of grep"), "Should emphasize cnav over grep")
         assertTrue(text.contains("Use grep"), "Should have when-to-use-grep section")
+    }
+
+    @Test
+    fun `default output mentions moving renaming deleting use case`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(
+            text.contains("moving/renaming/deleting"),
+            "Should mention moving/renaming/deleting as a key use case",
+        )
+    }
+
+    @Test
+    fun `default output mentions changed-since for impact assessment`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val whenToUseSection = text.substringAfter("When to Use What")
+            .substringBefore("--- Common Questions")
+
+        assertTrue(
+            whenToUseSection.contains(TaskRegistry.CHANGED_SINCE.taskName(BuildTool.GRADLE)),
+            "When to Use section should mention changed-since for impact assessment",
+        )
+    }
+
+    @Test
+    fun `default output explains bytecode analysis handles all syntax variants`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(text.contains("syntax variants"), "Should explain bytecode analysis completeness")
     }
 
     @Test
