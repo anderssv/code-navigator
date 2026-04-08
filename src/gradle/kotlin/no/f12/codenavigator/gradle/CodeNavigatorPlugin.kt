@@ -15,6 +15,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
         val openRewriteDeps = listOf(
             project.dependencies.create("org.openrewrite:rewrite-core:$OPENREWRITE_VERSION"),
             project.dependencies.create("org.openrewrite:rewrite-java:$OPENREWRITE_VERSION"),
+            project.dependencies.create("org.openrewrite:rewrite-java-21:$OPENREWRITE_VERSION"),
             project.dependencies.create("org.openrewrite:rewrite-kotlin:$OPENREWRITE_VERSION"),
         )
         val openRewriteConfig = project.configurations.detachedConfiguration(*openRewriteDeps.toTypedArray())
@@ -35,6 +36,9 @@ class CodeNavigatorPlugin : Plugin<Project> {
                     openRewriteClasspath.from(openRewriteConfig)
                 }
                 if (this is RenameMethodTask) {
+                    openRewriteClasspath.from(openRewriteConfig)
+                }
+                if (this is MoveClassTask) {
                     openRewriteClasspath.from(openRewriteConfig)
                 }
             }
@@ -98,6 +102,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "size" to SizeTask::class.java,
             "rename-param" to RenameParamTask::class.java,
             "rename-method" to RenameMethodTask::class.java,
+            "move-class" to MoveClassTask::class.java,
             "help" to CodeNavigatorHelpTask::class.java,
             "agent-help" to AgentHelpTask::class.java,
             "config-help" to ConfigHelpTask::class.java,

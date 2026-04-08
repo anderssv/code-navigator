@@ -44,6 +44,7 @@ dependencies {
     testImplementation("org.openrewrite:rewrite-core:8.78.6")
     testImplementation("org.openrewrite:rewrite-java:8.78.6")
     testImplementation("org.openrewrite:rewrite-kotlin:8.78.6")
+    testRuntimeOnly("org.openrewrite:rewrite-java-21:8.78.6")
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

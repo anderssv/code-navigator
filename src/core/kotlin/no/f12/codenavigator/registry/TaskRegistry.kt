@@ -215,6 +215,7 @@ object TaskRegistry {
     val RENAME_PARAM = ParamDef("param", "<name>", "Current parameter name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_NEW_NAME = ParamDef("new-name", "<name>", "New name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PREVIEW = ParamDef("preview", "true", "Preview changes without writing to source files", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
+    val MOVE_NEW_PACKAGE = ParamDef("new-package", "<pkg>", "Target package to move the class to", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
     val FORMAT_PARAMS = listOf(FORMAT, LLM)
     val SOURCE_SET_PARAMS = listOf(PROD_ONLY, TEST_ONLY)
@@ -521,6 +522,14 @@ object TaskRegistry {
         category = TaskCategory.SOURCE,
     )
 
+    val MOVE_CLASS_TASK = TaskDef(
+        goal = "move-class",
+        description = "Move a class to a different package and update all references",
+        params = FORMAT_PARAMS + listOf(RENAME_CLASS, MOVE_NEW_PACKAGE, PREVIEW),
+        requiresCompilation = true,
+        category = TaskCategory.SOURCE,
+    )
+
     val ALL_TASKS: List<TaskDef> = listOf(
         LIST_CLASSES,
         FIND_CLASS,
@@ -555,6 +564,7 @@ object TaskRegistry {
         SIZE,
         RENAME_PARAM_TASK,
         RENAME_METHOD_TASK,
+        MOVE_CLASS_TASK,
         HELP,
         AGENT_HELP,
         CONFIG_HELP,
