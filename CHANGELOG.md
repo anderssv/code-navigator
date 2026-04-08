@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.56
+
+- **New:** `cnavMoveClass` task / `cnav:move-class` goal — moves a Kotlin class to a different package and updates all references project-wide using OpenRewrite's `ChangeType` recipe with classpath-based type resolution. Handles package declaration, import updates, and type references (fields, parameters, return types, generics). File is relocated to the new package directory. Parameters: `-Ptarget-class=<FQN>` (required), `-Pnew-package=<pkg>` (required), `-Ppreview` (dry-run mode). Requires compilation (`requiresCompilation=true`). Both Gradle and Maven support. TEXT, JSON, and LLM output formats.
+- **Improved:** `cnavAgentHelp` install and compact sections now emphasize cnav over grep for code navigation.
+- **Improved:** `cnavAgentHelp` recommendations section added with guidance on coverage, TDD, commit cadence, and architecture conformance.
+
 ## 0.1.55
 
 - **New:** `cnavRenameMethod` task / `cnav:rename-method` goal — renames a method/function across a Kotlin codebase using OpenRewrite. Finds and updates the method declaration, all call sites, and interface/superclass implementor declarations (interface dispatch). Parameters: `-Ptarget-class=<FQN>` (required), `-Pmethod=<name>` (required), `-PnewName=<name>` (required), `-Ppreview` (dry-run mode). Both Gradle and Maven support. TEXT, JSON, and LLM output formats.
