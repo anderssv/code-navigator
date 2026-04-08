@@ -181,6 +181,34 @@ class MoveClassRewriterTest {
         assertTrue(orderContent.contains("import com.example.variants.moveclass.billing.PaymentService"), "Import should be updated on disk. Content:\n$orderContent")
     }
 
+    // [TEST] Moves an interface file to new package directory
+    @Test
+    fun `moves an interface file to new package directory`() {
+        val sourceDir = copySourcesToTemp("moveclass-interface",
+            "com/example/variants/moveclass/original",
+            "com/example/variants/moveclass/consumer",
+        )
+
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(sourceDir),
+            className = "com.example.variants.moveclass.original.Notifier",
+            newPackage = "com.example.variants.moveclass.events",
+            classpath = listOf(testProjectClasses),
+            preview = false,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should detect changes")
+        assertTrue(result.movedFilePath != null, "Should report moved file path")
+        assertTrue(result.newFilePath != null, "Should report new file path")
+
+        val newFile = File(result.newFilePath!!)
+        assertTrue(newFile.exists(), "Interface file should exist at new location: ${result.newFilePath}")
+        assertTrue(newFile.readText().contains("package com.example.variants.moveclass.events"), "New file should have updated package")
+
+        val oldFile = File(result.movedFilePath!!)
+        assertTrue(!oldFile.exists(), "Old interface file should no longer exist at: ${result.movedFilePath}")
+    }
+
     // [TEST] MoveClassResult JSON roundtrip preserves data
     @Test
     fun `MoveClassResult JSON roundtrip preserves empty changes`() {

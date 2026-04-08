@@ -6,7 +6,9 @@ import org.openrewrite.internal.InMemoryLargeSourceSet
 import org.openrewrite.java.ChangeType
 import org.openrewrite.kotlin.KotlinParser
 import java.io.File
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 
 data class MoveClassResult(
     val changes: List<RenameChange>,
@@ -79,9 +81,8 @@ object MoveClassRewriter {
         }
 
         for (sourceFile in parsed) {
-            val content = sourceFile.printAll()
-            if (isTargetClassFile(content, oldPackage, simpleClassName)) {
-                val filePath = resolveOriginalPath(sourceFile, sourceRoots)
+            val filePath = resolveOriginalPath(sourceFile, sourceRoots)
+            if (isTargetClassFile(filePath, oldPackage, simpleClassName)) {
                 movedFilePath = filePath
                 val newDir = newPackage.replace(".", File.separator)
                 for (root in sourceRoots) {
@@ -101,16 +102,15 @@ object MoveClassRewriter {
             if (movedFilePath != null && newFilePath != null && movedFilePath != newFilePath) {
                 val newFile = File(newFilePath)
                 newFile.parentFile.mkdirs()
-                File(movedFilePath).renameTo(newFile)
+                Files.move(File(movedFilePath).toPath(), newFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
             }
         }
 
         return MoveClassResult(changes, movedFilePath, newFilePath)
     }
 
-    private fun isTargetClassFile(source: String, oldPackage: String, simpleClassName: String): Boolean {
-        val packagePattern = Regex("""^package\s+(\S+)""", RegexOption.MULTILINE)
-        val pkgName = packagePattern.find(source)?.groupValues?.get(1)
-        return pkgName == oldPackage && source.contains("class $simpleClassName")
+    private fun isTargetClassFile(filePath: String, oldPackage: String, simpleClassName: String): Boolean {
+        val expectedSuffix = oldPackage.replace(".", File.separator) + File.separator + "$simpleClassName.kt"
+        return filePath.endsWith(expectedSuffix)
     }
 }
