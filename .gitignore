@@ -5,3 +5,4 @@ target/
 sonatype
 *.gpg
 server-config.xml
+org/
