@@ -378,9 +378,9 @@ All candidates below share the same properties:
 - **Verifiable**: Compile before and after to prove correctness.
 - **Known gaps addressed**: ~~Companion object methods~~ (DONE — v0.1.58), ~~constructor parameter warnings~~ (DONE — v0.1.58), ~~Maven mojo support~~ (DONE — all three tasks have mojos), ~~full constructor `val`/`var` property rename~~ (DONE — `cnavRenameProperty`).
 
-### ~~Rename class~~ — `cnavRenameClass`
+### ~~Rename class~~ — via `cnavMoveClass` DONE
 
-**PARKED** — OpenRewrite's `ChangeType` (used by `cnavMoveClass`) already handles class renaming when combined with package move. Evaluate if standalone rename-class (same package, different name) is needed separately.
+DONE — Added optional `-Pnew-name` parameter to `cnavMoveClass`. Class renaming is handled by OpenRewrite's `ChangeType` recipe. Can move, rename, or both in a single operation.
 
 ### ~~Move class to different package~~ — `cnavMoveClass` DONE
 
@@ -421,7 +421,7 @@ Add, remove, or reorder parameters on a method, updating all call sites with def
 ### Priority order
 
 1. ~~**Rename method**~~ — DONE (v0.1.55)
-2. ~~**Rename class**~~ — PARKED (covered by `cnavMoveClass` + `ChangeType`)
+2. ~~**Rename class**~~ — DONE (via `cnavMoveClass` `-Pnew-name`)
 3. ~~**Move class**~~ — DONE (v0.1.56)
 4. **Extract interface** — high value for architecture improvement workflows, but more complex.
 5. **Change signature** — medium value, complex parameter manipulation.

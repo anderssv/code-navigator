@@ -209,6 +209,113 @@ class MoveClassRewriterTest {
         assertTrue(!oldFile.exists(), "Old interface file should no longer exist at: ${result.movedFilePath}")
     }
 
+    // [TEST] Rename class in same package updates class declaration
+    @Test
+    fun `rename class in same package updates class declaration`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.PaymentService",
+            newPackage = "com.example.variants.moveclass.original",
+            newName = "BillingService",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should detect changes")
+        val paymentChange = result.changes.firstOrNull { it.filePath.endsWith("PaymentService.kt") }
+        assertTrue(paymentChange != null, "Should have a change for PaymentService.kt. Changed files: ${result.changes.map { it.filePath }}")
+        assertTrue(paymentChange.after.contains("class BillingService"), "Class declaration should be renamed. Content:\n${paymentChange.after}")
+        assertTrue(!paymentChange.after.contains("class PaymentService"), "Old class name should be gone. Content:\n${paymentChange.after}")
+        assertTrue(paymentChange.after.contains("package com.example.variants.moveclass.original"), "Package should remain unchanged. Content:\n${paymentChange.after}")
+    }
+
+    // [TEST] Rename class in same package updates import in consumer files
+    @Test
+    fun `rename class in same package updates import in consumer files`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.PaymentService",
+            newPackage = "com.example.variants.moveclass.original",
+            newName = "BillingService",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+        )
+
+        val orderChange = result.changes.firstOrNull { it.filePath.endsWith("OrderService.kt") }
+        assertTrue(orderChange != null, "Should have a change for OrderService.kt. Changed files: ${result.changes.map { it.filePath }}")
+        assertTrue(orderChange.after.contains("import com.example.variants.moveclass.original.BillingService"), "Import should use new class name. Content:\n${orderChange.after}")
+        assertTrue(!orderChange.after.contains("PaymentService"), "Old class name should be gone. Content:\n${orderChange.after}")
+    }
+
+    // [TEST] Rename class in same package renames file on disk
+    @Test
+    fun `rename class in same package renames file on disk`() {
+        val sourceDir = copySourcesToTemp("rename-class-apply",
+            "com/example/variants/moveclass/original",
+            "com/example/variants/moveclass/consumer",
+        )
+
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(sourceDir),
+            className = "com.example.variants.moveclass.original.PaymentService",
+            newPackage = "com.example.variants.moveclass.original",
+            newName = "BillingService",
+            classpath = listOf(testProjectClasses),
+            preview = false,
+        )
+
+        assertTrue(result.newFilePath != null, "Should report new file path")
+        val newFile = File(result.newFilePath!!)
+        assertTrue(newFile.exists(), "New file should exist: ${result.newFilePath}")
+        assertTrue(newFile.name == "BillingService.kt", "File should be renamed. Actual: ${newFile.name}")
+        assertTrue(newFile.readText().contains("class BillingService"), "File content should have new class name")
+
+        val oldFile = File(result.movedFilePath!!)
+        assertTrue(!oldFile.exists(), "Old file should no longer exist: ${result.movedFilePath}")
+    }
+
+    // [TEST] Move and rename updates package declaration and class name
+    @Test
+    fun `move and rename updates package declaration and class name`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.PaymentService",
+            newPackage = "com.example.variants.moveclass.billing",
+            newName = "BillingService",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should detect changes")
+        val paymentChange = result.changes.firstOrNull { it.filePath.endsWith("PaymentService.kt") }
+        assertTrue(paymentChange != null, "Should have a change for PaymentService.kt")
+        assertTrue(paymentChange.after.contains("package com.example.variants.moveclass.billing"), "Package should be updated. Content:\n${paymentChange.after}")
+        assertTrue(paymentChange.after.contains("class BillingService"), "Class should be renamed. Content:\n${paymentChange.after}")
+        assertTrue(!paymentChange.after.contains("class PaymentService"), "Old class name should be gone. Content:\n${paymentChange.after}")
+
+        val orderChange = result.changes.firstOrNull { it.filePath.endsWith("OrderService.kt") }
+        assertTrue(orderChange != null, "Consumer should be updated")
+        assertTrue(orderChange.after.contains("import com.example.variants.moveclass.billing.BillingService"), "Import should have new package + new name. Content:\n${orderChange.after}")
+    }
+
+    // [TEST] Null newName preserves existing move-only behavior
+    @Test
+    fun `null newName preserves existing move-only behavior`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.PaymentService",
+            newPackage = "com.example.variants.moveclass.billing",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should detect changes")
+        val paymentChange = result.changes.firstOrNull { it.filePath.endsWith("PaymentService.kt") }
+        assertTrue(paymentChange != null, "Should have a change for PaymentService.kt")
+        assertTrue(paymentChange.after.contains("class PaymentService"), "Class name should be preserved. Content:\n${paymentChange.after}")
+        assertTrue(paymentChange.after.contains("package com.example.variants.moveclass.billing"), "Package should be updated. Content:\n${paymentChange.after}")
+    }
+
     // [TEST] MoveClassResult JSON roundtrip preserves data
     @Test
     fun `MoveClassResult JSON roundtrip preserves empty changes`() {

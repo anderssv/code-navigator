@@ -39,6 +39,7 @@ object MoveClassRewriter {
         sourceRoots: List<File>,
         className: String,
         newPackage: String,
+        newName: String? = null,
         classpath: List<Path> = emptyList(),
         preview: Boolean = false,
     ): MoveClassResult {
@@ -47,7 +48,8 @@ object MoveClassRewriter {
 
         val oldPackage = className.substringBeforeLast(".")
         val simpleClassName = className.substringAfterLast(".")
-        val newFqcn = "$newPackage.$simpleClassName"
+        val targetName = newName ?: simpleClassName
+        val newFqcn = "$newPackage.$targetName"
 
         val parserBuilder = KotlinParser.builder()
         if (classpath.isNotEmpty()) {
@@ -87,7 +89,7 @@ object MoveClassRewriter {
                 val newDir = newPackage.replace(".", File.separator)
                 for (root in sourceRoots) {
                     if (filePath.startsWith(root.absolutePath)) {
-                        newFilePath = File(root, "$newDir/$simpleClassName.kt").absolutePath
+                        newFilePath = File(root, "$newDir/$targetName.kt").absolutePath
                         break
                     }
                 }

@@ -210,7 +210,7 @@ object TaskRegistry {
     val CONTEXT_MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth (default: 2)", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
     val LAYER_CONFIG = ParamDef("config", "<path>", "Path to layer config file", flag = false, defaultValue = ".cnav-layers.json", enhancePattern = false, type = ParamType.STRING)
     val INIT = ParamDef("init", "true", "Generate starter config file", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
-    val RENAME_CLASS = ParamDef("target-class", "<fqcn>", "Fully qualified class name containing the method", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val RENAME_CLASS = ParamDef("target-class", "<fqcn>", "Fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_METHOD = ParamDef("method", "<name>", "Method name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_PARAM = ParamDef("param", "<name>", "Current parameter name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_PROPERTY = ParamDef("property", "<name>", "Current property name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -525,8 +525,8 @@ object TaskRegistry {
 
     val MOVE_CLASS_TASK = TaskDef(
         goal = "move-class",
-        description = "Move a class to a different package and update all references",
-        params = FORMAT_PARAMS + listOf(RENAME_CLASS, MOVE_NEW_PACKAGE, PREVIEW),
+        description = "Move and/or rename a class, updating all references",
+        params = FORMAT_PARAMS + listOf(RENAME_CLASS, MOVE_NEW_PACKAGE, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
     )

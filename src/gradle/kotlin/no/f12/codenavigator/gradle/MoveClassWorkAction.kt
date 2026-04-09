@@ -11,6 +11,7 @@ import java.nio.file.Path
 interface MoveClassWorkParameters : WorkParameters {
     val className: Property<String>
     val newPackage: Property<String>
+    val newName: Property<String>
     val preview: Property<Boolean>
     val sourceRoots: ListProperty<String>
     val classpathDirs: ListProperty<String>
@@ -28,6 +29,7 @@ abstract class MoveClassWorkAction : WorkAction<MoveClassWorkParameters> {
             sourceRoots = sourceRootFiles,
             className = params.className.get(),
             newPackage = params.newPackage.get(),
+            newName = params.newName.orNull,
             classpath = classpath,
             preview = params.preview.get(),
         )

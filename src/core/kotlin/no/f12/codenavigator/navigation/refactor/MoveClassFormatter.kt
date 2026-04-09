@@ -13,11 +13,22 @@ object MoveClassFormatter {
             OutputFormat.LLM -> formatLlm(result, config)
         }
 
+    private fun operationDescription(config: MoveClassConfig): String {
+        val oldPackage = config.className.substringBeforeLast(".")
+        val isMove = config.newPackage != oldPackage
+        val isRename = config.newName != null
+        return when {
+            isMove && isRename -> "move+rename ${config.className} -> ${config.newPackage}.${config.newName}"
+            isRename -> "rename ${config.className} -> ${config.newName}"
+            else -> "move ${config.className} -> ${config.newPackage}"
+        }
+    }
+
     private fun formatText(result: MoveClassResult, config: MoveClassConfig): String {
         if (result.changes.isEmpty()) return "No changes needed."
 
         val mode = if (config.preview) "Preview" else "Applied"
-        val header = "$mode: move ${config.className} -> ${config.newPackage} (${result.changes.size} file${if (result.changes.size != 1) "s" else ""})"
+        val header = "$mode: ${operationDescription(config)} (${result.changes.size} file${if (result.changes.size != 1) "s" else ""})"
 
         return buildString {
             appendLine(header)
@@ -49,16 +60,16 @@ object MoveClassFormatter {
         }
         val movedJson = result.movedFilePath?.let { ""","movedFilePath":"${jsonEscape(it)}"""" } ?: ""
         val newFileJson = result.newFilePath?.let { ""","newFilePath":"${jsonEscape(it)}"""" } ?: ""
+        val newNameJson = config.newName?.let { ""","newName":"${jsonEscape(it)}"""" } ?: ""
         val recommendationJson = if (!config.preview) ""","recommendation":"${jsonEscape(COMPILE_RECOMMENDATION)}"""" else ""
-        return """{"preview":${config.preview},"className":"${jsonEscape(config.className)}","newPackage":"${jsonEscape(config.newPackage)}","changes":$changesJson$movedJson$newFileJson$recommendationJson}"""
+        return """{"preview":${config.preview},"className":"${jsonEscape(config.className)}","newPackage":"${jsonEscape(config.newPackage)}","changes":$changesJson$movedJson$newFileJson$newNameJson$recommendationJson}"""
     }
 
     private fun formatLlm(result: MoveClassResult, config: MoveClassConfig): String {
         if (result.changes.isEmpty()) return "No changes needed."
 
         val mode = if (config.preview) "preview" else "applied"
-        val simpleClassName = config.className.substringAfterLast(".")
-        val header = "move-class $simpleClassName -> ${config.newPackage} ($mode)"
+        val header = "move-class ${operationDescription(config)} ($mode)"
 
         return buildString {
             appendLine(header)

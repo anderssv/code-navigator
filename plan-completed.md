@@ -798,3 +798,9 @@ Full property rename task that handles what `cnavRenameParam` deferred: renaming
 **`cnavRenameParam` updated**: Constructor `val`/`var` warning now points to `rename-property` instead of recommending manual update or IDE refactoring.
 
 **Changes**: New files: `RenamePropertyRewriter.kt`, `RenamePropertyConfig.kt`, `RenamePropertyFormatter.kt`, `RenamePropertyTask.kt`, `RenamePropertyWorkAction.kt`, `RenamePropertyMojo.kt`, `RenamePropertyRewriterTest.kt` (11 tests), `RenamePropertyFormatterTest.kt` (11 tests). Test fixture: `test-project/src/main/kotlin/com/example/variants/property/UserProfile.kt`. Modified: `TaskRegistry.kt`, `CodeNavigatorPlugin.kt`, `HelpText.kt`, `AgentHelpText.kt`, `RenameParamRewriter.kt` (warning updated), `TaskRegistryTest.kt`, `FileSizeScannerTest.kt` (count 23→24), `README.md`, `CHANGELOG.md`.
+
+## ~~Class rename via `cnavMoveClass`~~ DONE
+
+Added optional `new-name` parameter to `cnavMoveClass`, enabling class renaming (same package, different name), package move, or both in a single operation. Uses the same OpenRewrite `ChangeType` recipe — the new FQN is constructed from `newPackage` + `newName` (or original name if not specified). `new-package` is now optional when `new-name` is provided.
+
+**Changes**: Modified: `MoveClassRewriter.kt` (added `newName` param, uses `targetName` for FQN and file path), `MoveClassConfig.kt` (added `newName` field, `new-package` now optional with validation), `MoveClassFormatter.kt` (operation description varies by move/rename/both), `TaskRegistry.kt` (added `RENAME_NEW_NAME` to `MOVE_CLASS_TASK` params, updated description), `MoveClassTask.kt`, `MoveClassWorkAction.kt`, `MoveClassMojo.kt` (pass `newName` through), `MoveClassRewriterTest.kt` (5 new tests), `MoveClassFormatterTest.kt` (3 new tests), `HelpText.kt`, `AgentHelpText.kt`, `README.md`, `CHANGELOG.md`, `plan.md`.

@@ -4,6 +4,7 @@
 
 - **New:** `cnavRenameProperty` task / `cnav:rename-property` goal — renames a Kotlin property (including `val`/`var` constructor parameters) and updates all access sites: constructor named arguments, `copy()` named arguments, direct property access, and getter/setter calls. Parameters: `-Ptarget-class=<FQN>` (required), `-Pproperty=<name>` (required), `-PnewName=<name>` (required), `-Ppreview` (dry-run mode). Both Gradle and Maven support. TEXT, JSON, and LLM output formats.
 - **Improved:** `cnavRenameParam` constructor `val`/`var` warning now points users to `cnavRenameProperty` instead of suggesting manual update or IDE refactoring.
+- **New:** `cnavMoveClass` now supports class renaming via optional `-Pnew-name=<name>` parameter. Can move, rename, or both in a single operation. `-Pnew-package` is now optional when `-Pnew-name` is specified.
 
 ## 0.1.58
 

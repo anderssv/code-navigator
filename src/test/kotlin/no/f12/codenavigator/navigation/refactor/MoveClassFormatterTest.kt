@@ -39,6 +39,7 @@ class MoveClassFormatterTest {
     private val previewConfig = MoveClassConfig(
         className = "com.example.services.UserService",
         newPackage = "com.example.domain",
+        newName = null,
         preview = true,
         format = OutputFormat.TEXT,
     )
@@ -119,5 +120,44 @@ class MoveClassFormatterTest {
         val output = MoveClassFormatter.format(multipleChanges, previewConfig)
 
         assertTrue(output.contains("2 files"), "Should show plural file count. Output:\n$output")
+    }
+
+    // [TEST] TEXT format shows rename header when newName is set
+    @Test
+    fun `TEXT format shows rename header when newName is set`() {
+        val renameConfig = previewConfig.copy(
+            newPackage = "com.example.services",
+            newName = "AccountService",
+        )
+        val output = MoveClassFormatter.format(singleChange, renameConfig)
+
+        assertTrue(output.contains("rename"), "Should indicate rename. Output:\n$output")
+        assertTrue(output.contains("AccountService"), "Should mention new name. Output:\n$output")
+    }
+
+    // [TEST] JSON format includes newName when set
+    @Test
+    fun `JSON format includes newName when set`() {
+        val renameConfig = previewConfig.copy(
+            newPackage = "com.example.services",
+            newName = "AccountService",
+            format = OutputFormat.JSON,
+        )
+        val output = MoveClassFormatter.format(singleChange, renameConfig)
+
+        assertTrue(output.contains("\"newName\":\"AccountService\""), "Should include newName. Output:\n$output")
+    }
+
+    // [TEST] LLM format shows rename info when newName is set
+    @Test
+    fun `LLM format shows rename info when newName is set`() {
+        val renameConfig = previewConfig.copy(
+            newPackage = "com.example.services",
+            newName = "AccountService",
+            format = OutputFormat.LLM,
+        )
+        val output = MoveClassFormatter.format(singleChange, renameConfig)
+
+        assertTrue(output.contains("AccountService"), "Should mention new name. Output:\n$output")
     }
 }

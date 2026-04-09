@@ -30,6 +30,9 @@ class MoveClassMojo : AbstractMojo() {
     @Parameter(property = "new-package")
     private var newPackage: String? = null
 
+    @Parameter(property = "new-name")
+    private var newName: String? = null
+
     @Parameter(property = "preview")
     private var preview: String? = null
 
@@ -49,6 +52,7 @@ class MoveClassMojo : AbstractMojo() {
             sourceRoots = sourceRoots,
             className = config.className,
             newPackage = config.newPackage,
+            newName = config.newName,
             classpath = classpath,
             preview = config.preview,
         )
@@ -76,6 +80,7 @@ class MoveClassMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         targetClass?.let { put("target-class", it) }
         newPackage?.let { put("new-package", it) }
+        newName?.let { put("new-name", it) }
         preview?.let { put("preview", it) }
     }
 }

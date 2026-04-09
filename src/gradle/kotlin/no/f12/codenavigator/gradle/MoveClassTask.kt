@@ -39,6 +39,7 @@ abstract class MoveClassTask @Inject constructor(
         workQueue.submit(MoveClassWorkAction::class.java) {
             className.set(config.className)
             newPackage.set(config.newPackage)
+            config.newName?.let { newName.set(it) }
             preview.set(config.preview)
             sourceRoots.set(sourceRootPaths)
             this.classpathDirs.set(classpathDirs)

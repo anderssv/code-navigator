@@ -95,7 +95,7 @@ All tasks support `-Pformat=json` / `-Dformat=json` and `-Pllm=true` / `-Dllm=tr
 | `cnavRenameParam` / `cnav:rename-param` | Rename a method parameter with cascade detection |
 | `cnavRenameMethod` / `cnav:rename-method` | Rename a method and update all call sites (including interface implementations) |
 | `cnavRenameProperty` / `cnav:rename-property` | Rename a property and update all access sites (constructor args, copy(), property access) |
-| `cnavMoveClass` / `cnav:move-class` | Move a class to a different package, updating all references |
+| `cnavMoveClass` / `cnav:move-class` | Move and/or rename a class, updating all references |
 
 ### Dead code detection and framework awareness
 
