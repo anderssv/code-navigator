@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.58
+
+- **New:** Companion object support in `cnavRenameMethod` and `cnavRenameParam` — both rename rewriters now match companion object methods when the user specifies the outer class FQN. Shared `matchesClassOrCompanion()` helper handles both `Foo.Companion` and `Foo$Companion` FQN forms.
+- **New:** Constructor `val`/`var` parameter warning in `cnavRenameParam` — detects when a renamed parameter is a constructor property and emits a warning explaining that property access sites need manual updating (full property rename deferred to future `cnavRenameProperty` task).
+- **New:** `RenameResult` now carries `warnings: List<String>` field, serialized in JSON output and displayed in all three formats (TEXT, JSON, LLM).
+- **Improved:** Refactoring recommendation messages across all three formatters (`cnavRenameParam`, `cnavRenameMethod`, `cnavMoveClass`) now warn that "refactorings are not always fully accurate" and recommend compiling to verify.
+- **Improved:** `cnavMoveClass` added to the README Refactoring task table.
+
 ## 0.1.57
 
 - **Fixed:** `cnavMoveClass` now correctly moves interfaces, objects, enums, and sealed classes — not just classes. The file detection used content-based matching (`class $name`) which missed all non-class types. Replaced with deterministic path-based detection.
