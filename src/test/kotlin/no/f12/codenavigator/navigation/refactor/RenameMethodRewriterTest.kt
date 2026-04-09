@@ -123,6 +123,38 @@ class RenameMethodRewriterTest {
     }
 
     @Test
+    fun `renames companion object method declaration using outer class name`() {
+        val result = RenameMethodRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.companion.UserFactory",
+            methodName = "create",
+            newName = "build",
+            preview = true,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should have changes for companion method. Changes: ${result.changes.map { it.filePath }}")
+        val factoryChange = result.changes.first { it.filePath.endsWith("UserFactory.kt") }
+        assertTrue(factoryChange.after.contains("fun build("), "Companion method declaration should be renamed. Content:\n${factoryChange.after}")
+        assertTrue(!factoryChange.after.contains("fun create("), "Old method name should be gone from companion. Content:\n${factoryChange.after}")
+    }
+
+    @Test
+    fun `renames companion object method at cross-file call site`() {
+        val result = RenameMethodRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.companion.UserFactory",
+            methodName = "create",
+            newName = "build",
+            preview = true,
+        )
+
+        val callerChange = result.changes.firstOrNull { it.filePath.endsWith("companion/UserService.kt") }
+        assertTrue(callerChange != null, "UserService call site should be updated. Changes: ${result.changes.map { it.filePath }}")
+        assertTrue(callerChange.after.contains(".build("), "Call site should use new name. Content:\n${callerChange.after}")
+        assertTrue(!callerChange.after.contains(".create("), "Old method name should be gone from call site. Content:\n${callerChange.after}")
+    }
+
+    @Test
     fun `RenameMethodResult JSON roundtrip preserves empty changes`() {
         val result = RenameMethodResult(emptyList())
 

@@ -23,6 +23,7 @@ data class CascadeCandidate(
 data class RenameResult(
     val changes: List<RenameChange>,
     val cascadeCandidates: List<CascadeCandidate> = emptyList(),
+    val warnings: List<String> = emptyList(),
 ) {
     fun toJson(): String {
         val cascadeJson = if (cascadeCandidates.isNotEmpty()) {
@@ -33,7 +34,13 @@ data class RenameResult(
         } else {
             ""
         }
-        return """{"changes":${changesToJson(changes)}$cascadeJson}"""
+        val warningsJson = if (warnings.isNotEmpty()) {
+            val items = warnings.joinToString(",", "[", "]") { "\"${jsonEscape(it)}\"" }
+            ""","warnings":$items"""
+        } else {
+            ""
+        }
+        return """{"changes":${changesToJson(changes)}$cascadeJson$warningsJson}"""
     }
 
     companion object {
@@ -50,12 +57,16 @@ data class RenameResult(
                     paramName = map["paramName"] as String,
                 )
             }
-            return RenameResult(changes, cascadeCandidates)
+            val warningsArr = obj["warnings"] as? List<*> ?: emptyList<Any>()
+            val warnings = warningsArr.map { it as String }
+            return RenameResult(changes, cascadeCandidates, warnings)
         }
     }
 }
 
 object RenameParamRewriter {
+
+    private val CONSTRUCTOR_METHOD_NAMES = setOf("<init>", "<constructor>")
 
     fun rename(
         sourceRoots: List<File>,
@@ -67,6 +78,24 @@ object RenameParamRewriter {
     ): RenameResult {
         val sourceFiles = collectSourceFiles(sourceRoots)
         if (sourceFiles.isEmpty()) return RenameResult(emptyList())
+
+        val warnings = mutableListOf<String>()
+
+        if (isConstructorMethod(methodName)) {
+            val simpleClassName = className.substringAfterLast(".")
+            val isValVar = sourceFiles.any { file ->
+                isValVarConstructorParam(file, simpleClassName, paramName)
+            }
+            if (isValVar) {
+                warnings.add(
+                    "WARNING: Parameter '$paramName' is a val/var constructor property on $simpleClassName. " +
+                        "Renaming it requires updating all property access sites (e.g., instance.$paramName) " +
+                        "throughout the project. This refactoring only renames the constructor parameter and " +
+                        "named arguments at constructor call sites. Compile to verify, and manually update " +
+                        "property access sites or use your IDE's rename refactoring for full property rename.",
+                )
+            }
+        }
 
         val parser = KotlinParser.builder().build()
         val ctx = InMemoryExecutionContext { it.printStackTrace() }
@@ -96,7 +125,18 @@ object RenameParamRewriter {
             }
         }
 
-        return RenameResult(changes, visitor.cascadeCandidates.toList())
+        return RenameResult(changes, visitor.cascadeCandidates.toList(), warnings)
+    }
+
+    private fun isConstructorMethod(methodName: String): Boolean =
+        methodName in CONSTRUCTOR_METHOD_NAMES
+
+    private fun isValVarConstructorParam(file: File, simpleClassName: String, paramName: String): Boolean {
+        val content = file.readText()
+        // Match class declaration with primary constructor containing val/var paramName
+        // Handles: class Foo(val paramName: Type, ...) and data class Foo(val paramName: Type, ...)
+        val classPattern = Regex("""(?:data\s+)?class\s+$simpleClassName\s*\([^)]*\b(val|var)\s+$paramName\s*:""")
+        return classPattern.containsMatchIn(content)
     }
 
 }
@@ -118,7 +158,7 @@ private class RenameParamVisitor(
     ): J.ClassDeclaration {
         val fqn = classDecl.type?.fullyQualifiedName
         val wasInTarget = inTargetClass
-        inTargetClass = fqn == className
+        inTargetClass = matchesClassOrCompanion(fqn, className)
         val result = super.visitClassDeclaration(classDecl, ctx)
         inTargetClass = wasInTarget
         return result
@@ -216,7 +256,7 @@ private class RenameParamVisitor(
             }
         }
 
-        if (targetType != className || targetMethod != methodName) return m
+        if (!matchesClassOrCompanion(targetType, className) || targetMethod != methodName) return m
 
         val newArgs = m.arguments.map { arg ->
             if (arg is J.Assignment) {

@@ -18,3 +18,16 @@ fun resolveOriginalPath(sourceFile: SourceFile, sourceRoots: List<File>): String
     }
     return relativePath
 }
+
+/**
+ * Checks if [fqn] matches [targetClassName] or its companion object.
+ * OpenRewrite represents companion objects as "Outer.Companion" (dot-separated).
+ * Bytecode uses "Outer$Companion" (dollar sign). We check both forms.
+ */
+fun matchesClassOrCompanion(fqn: String?, targetClassName: String): Boolean {
+    if (fqn == null) return false
+    if (fqn == targetClassName) return true
+    if (fqn == "$targetClassName.Companion") return true
+    if (fqn == "${targetClassName}\$Companion") return true
+    return false
+}

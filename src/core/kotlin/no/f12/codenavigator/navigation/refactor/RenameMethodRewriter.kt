@@ -87,7 +87,7 @@ private class RenameMethodVisitor(
 
     private fun isTargetOrImplementor(classDecl: J.ClassDeclaration): Boolean {
         val classType = classDecl.type ?: return false
-        if (classType.fullyQualifiedName == className) return true
+        if (matchesClassOrCompanion(classType.fullyQualifiedName, className)) return true
         return classType.interfaces.any { it.fullyQualifiedName == className }
             || classType.supertype?.fullyQualifiedName == className
     }
@@ -107,7 +107,7 @@ private class RenameMethodVisitor(
     ): J.MethodInvocation {
         val m = super.visitMethodInvocation(method, ctx)
         val targetType = m.methodType?.declaringType?.fullyQualifiedName
-        if (targetType != className || m.simpleName != methodName) return m
+        if (!matchesClassOrCompanion(targetType, className) || m.simpleName != methodName) return m
         return m.withName(m.name.withSimpleName(newName))
     }
 }

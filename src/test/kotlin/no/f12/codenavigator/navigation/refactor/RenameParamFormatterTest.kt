@@ -202,6 +202,11 @@ class RenameParamFormatterTest {
         assertTrue(output.contains("name"), "Should mention cascade param. Got:\n$output")
     }
 
+    private val resultWithWarning = RenameResult(
+        changes = singleChange.changes,
+        warnings = listOf("WARNING: Parameter 'name' is a val/var constructor property. Renaming requires updating all property access sites."),
+    )
+
     // [TEST] No recommendation in empty result
     @Test
     fun `no recommendation in empty result`() {
@@ -209,5 +214,39 @@ class RenameParamFormatterTest {
         val output = RenameParamFormatter.format(emptyResult, config)
 
         assertTrue(!output.contains("Compile"), "Empty result should not have recommendation")
+    }
+
+    @Test
+    fun `TEXT format shows warnings when present`() {
+        val output = RenameParamFormatter.format(resultWithWarning, config)
+
+        assertTrue(output.contains("WARNING"), "TEXT should show warning. Got:\n$output")
+        assertTrue(output.contains("property"), "Warning should mention property. Got:\n$output")
+    }
+
+    @Test
+    fun `JSON format includes warnings array when present`() {
+        val jsonConfig = config.copy(format = OutputFormat.JSON)
+        val output = RenameParamFormatter.format(resultWithWarning, jsonConfig)
+
+        assertTrue(output.contains("\"warnings\""), "JSON should contain warnings key. Got:\n$output")
+        assertTrue(output.contains("property"), "Warning should mention property. Got:\n$output")
+    }
+
+    @Test
+    fun `LLM format shows warnings when present`() {
+        val llmConfig = config.copy(format = OutputFormat.LLM)
+        val output = RenameParamFormatter.format(resultWithWarning, llmConfig)
+
+        assertTrue(output.contains("WARNING"), "LLM should show warning. Got:\n$output")
+        assertTrue(output.contains("property"), "Warning should mention property. Got:\n$output")
+    }
+
+    @Test
+    fun `JSON format omits warnings when empty`() {
+        val jsonConfig = config.copy(format = OutputFormat.JSON)
+        val output = RenameParamFormatter.format(singleChange, jsonConfig)
+
+        assertTrue(!output.contains("\"warnings\""), "JSON should not contain warnings when empty. Got:\n$output")
     }
 }

@@ -98,6 +98,25 @@ class RenameParamRewriterTest {
     }
 
     @Test
+    fun `RenameResult JSON roundtrip preserves warnings`() {
+        val result = RenameResult(
+            changes = listOf(
+                RenameChange(
+                    filePath = "/src/main/kotlin/com/example/Data.kt",
+                    before = "data class Data(val name: String)",
+                    after = "data class Data(val fullName: String)",
+                ),
+            ),
+            warnings = listOf("WARNING: Parameter 'name' is a val/var constructor property."),
+        )
+
+        val json = result.toJson()
+        val deserialized = RenameResult.fromJson(json)
+
+        assertEquals(result, deserialized)
+    }
+
+    @Test
     fun `renames parameter in method declaration`() {
         val result = RenameParamRewriter.rename(
             sourceRoots = listOf(testProjectSrc),
@@ -267,6 +286,68 @@ class RenameParamRewriterTest {
         )
 
         assertTrue(result.cascadeCandidates.isEmpty(), "Should NOT detect cascade candidate when param names differ. cascadeCandidates: ${result.cascadeCandidates}")
+    }
+
+    @Test
+    fun `renames companion object method param using outer class name`() {
+        val result = RenameParamRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.companion.UserFactory",
+            methodName = "create",
+            paramName = "name",
+            newName = "fullName",
+            preview = true,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should have changes for companion method param. Changes: ${result.changes.map { it.filePath }}")
+        val factoryChange = result.changes.first { it.filePath.endsWith("UserFactory.kt") }
+        assertTrue(factoryChange.after.contains("fullName: String"), "Companion method param should be renamed. Content:\n${factoryChange.after}")
+    }
+
+    @Test
+    fun `renames named argument at companion object call site`() {
+        val result = RenameParamRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.companion.UserFactory",
+            methodName = "create",
+            paramName = "name",
+            newName = "fullName",
+            preview = true,
+        )
+
+        val callerChange = result.changes.firstOrNull { it.filePath.endsWith("companion/UserService.kt") }
+        assertTrue(callerChange != null, "UserService should have changes. Changes: ${result.changes.map { it.filePath }}")
+        assertTrue(callerChange.after.contains("fullName = name"), "Named argument at call site should be renamed. Content:\n${callerChange.after}")
+        assertTrue(!callerChange.after.contains("name = name"), "Old named argument should be gone. Content:\n${callerChange.after}")
+    }
+
+    @Test
+    fun `returns warning for constructor val param rename`() {
+        val result = RenameParamRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.constructorparam.Registration",
+            methodName = "<constructor>",
+            paramName = "fullName",
+            newName = "displayName",
+            preview = true,
+        )
+
+        assertTrue(result.warnings.isNotEmpty(), "Should have a warning for val constructor param. Warnings: ${result.warnings}")
+        assertTrue(result.warnings.any { it.contains("property") }, "Warning should mention property access. Warnings: ${result.warnings}")
+    }
+
+    @Test
+    fun `no warning for regular method param rename`() {
+        val result = RenameParamRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.services.AuditService",
+            methodName = "formatAuditEntry",
+            paramName = "name",
+            newName = "userName",
+            preview = true,
+        )
+
+        assertTrue(result.warnings.isEmpty(), "Should have no warnings for regular method param. Warnings: ${result.warnings}")
     }
 
     private fun copySourcesToTemp(label: String, vararg packages: String): File {
