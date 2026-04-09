@@ -771,3 +771,30 @@ Changed `COMPILE_RECOMMENDATION` constants in `MoveClassFormatter`, `RenameMetho
 ### Added `cnavMoveClass` to README task table
 
 **Changes**: Modified: `RewriterSupport.kt` (shared `matchesClassOrCompanion()`), `RenameMethodRewriter.kt` (companion matching), `RenameParamRewriter.kt` (companion matching + constructor warning + warnings field), `RenameParamFormatter.kt` (warnings display + recommendation), `RenameMethodFormatter.kt` (recommendation), `MoveClassFormatter.kt` (recommendation), `README.md` (task table). Test files: `RenameMethodRewriterTest.kt` (2 tests), `RenameParamRewriterTest.kt` (5 tests), `RenameParamFormatterTest.kt` (4 tests), `MoveClassFormatterTest.kt` (assertion fix), `FileSizeScannerTest.kt` (count update). New test fixtures: `test-project/src/main/kotlin/com/example/variants/companion/` (2 files), `test-project/src/main/kotlin/com/example/variants/constructorparam/` (1 file).
+
+## ~~`cnavRenameProperty` — rename val/var property with full access site updates~~ DONE
+
+**Value: high** | **Effort: medium**
+
+Full property rename task that handles what `cnavRenameParam` deferred: renaming a Kotlin `val`/`var` constructor property and updating all access sites project-wide. Uses OpenRewrite for AST-based source transformation.
+
+**Parameters**: `-Ptarget-class=<FQN>` (required), `-Pproperty=<name>` (required), `-Pnew-name=<name>` (required), `-Ppreview` (dry-run mode).
+
+**Implementation**:
+- `RenamePropertyRewriter` — OpenRewrite-based rewriter using `KotlinParser` and `RenamePropertyVisitor` (`KotlinIsoVisitor<ExecutionContext>`). Handles four rename dimensions:
+  - `visitMethodDeclaration` — renames constructor parameter declarations (`val`/`var` in primary constructor)
+  - `visitNewClass` — renames named arguments at constructor call sites (discovered as `J.NewClass` in AST, not `J.MethodInvocation`)
+  - `visitMethodInvocation` — renames named arguments in `copy()` and other method calls
+  - `visitIdentifier` — renames property access sites via `fieldType.owner` (cast to `JavaType.FullyQualified`)
+- Returns `RenamePropertyResult` with `List<RenameChange>` diffs, `toJson()`/`fromJson()` serialization.
+- `RenamePropertyConfig` — config data class with `parse()` companion, validates all 3 required params.
+- `RenamePropertyFormatter` — TEXT/JSON/LLM formatting with `COMPILE_RECOMMENDATION`.
+- Gradle: `RenamePropertyTask` + `RenamePropertyWorkAction` (classloader isolation).
+- Maven: `RenamePropertyMojo`.
+- `requiresCompilation = false` (source-level AST transformation).
+
+**Key technical discovery**: Kotlin constructor calls are represented as `J.NewClass` in OpenRewrite's AST, not `J.MethodInvocation`. This required adding `visitNewClass()` to the visitor for named argument renaming at constructor call sites.
+
+**`cnavRenameParam` updated**: Constructor `val`/`var` warning now points to `rename-property` instead of recommending manual update or IDE refactoring.
+
+**Changes**: New files: `RenamePropertyRewriter.kt`, `RenamePropertyConfig.kt`, `RenamePropertyFormatter.kt`, `RenamePropertyTask.kt`, `RenamePropertyWorkAction.kt`, `RenamePropertyMojo.kt`, `RenamePropertyRewriterTest.kt` (11 tests), `RenamePropertyFormatterTest.kt` (11 tests). Test fixture: `test-project/src/main/kotlin/com/example/variants/property/UserProfile.kt`. Modified: `TaskRegistry.kt`, `CodeNavigatorPlugin.kt`, `HelpText.kt`, `AgentHelpText.kt`, `RenameParamRewriter.kt` (warning updated), `TaskRegistryTest.kt`, `FileSizeScannerTest.kt` (count 23→24), `README.md`, `CHANGELOG.md`.

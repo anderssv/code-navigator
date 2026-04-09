@@ -89,10 +89,9 @@ object RenameParamRewriter {
             if (isValVar) {
                 warnings.add(
                     "WARNING: Parameter '$paramName' is a val/var constructor property on $simpleClassName. " +
-                        "Renaming it requires updating all property access sites (e.g., instance.$paramName) " +
-                        "throughout the project. This refactoring only renames the constructor parameter and " +
-                        "named arguments at constructor call sites. Compile to verify, and manually update " +
-                        "property access sites or use your IDE's rename refactoring for full property rename.",
+                        "This refactoring only renames the constructor parameter and named arguments at " +
+                        "constructor call sites. For a full property rename (including all property access " +
+                        "sites, copy() calls, and constructor named arguments), use rename-property instead.",
                 )
             }
         }

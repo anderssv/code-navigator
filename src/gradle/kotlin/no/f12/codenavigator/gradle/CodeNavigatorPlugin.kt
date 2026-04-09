@@ -41,6 +41,9 @@ class CodeNavigatorPlugin : Plugin<Project> {
                 if (this is MoveClassTask) {
                     openRewriteClasspath.from(openRewriteConfig)
                 }
+                if (this is RenamePropertyTask) {
+                    openRewriteClasspath.from(openRewriteConfig)
+                }
             }
         }
 
@@ -103,6 +106,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "rename-param" to RenameParamTask::class.java,
             "rename-method" to RenameMethodTask::class.java,
             "move-class" to MoveClassTask::class.java,
+            "rename-property" to RenamePropertyTask::class.java,
             "help" to CodeNavigatorHelpTask::class.java,
             "agent-help" to AgentHelpTask::class.java,
             "config-help" to ConfigHelpTask::class.java,

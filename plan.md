@@ -376,7 +376,7 @@ All candidates below share the same properties:
 - **Deterministic**: Given input parameters, the output is fully determined — no heuristics, no AI judgment needed for the transformation itself.
 - **Whole-project**: Finds and updates all affected files (call sites, imports, string references) via bytecode analysis + OpenRewrite AST.
 - **Verifiable**: Compile before and after to prove correctness.
-- **Known gaps addressed**: ~~Companion object methods~~ (DONE — v0.1.58), ~~constructor parameter warnings~~ (DONE — v0.1.58), ~~Maven mojo support~~ (DONE — all three tasks have mojos). Remaining: full constructor `val`/`var` property rename (deferred to future `cnavRenameProperty` task).
+- **Known gaps addressed**: ~~Companion object methods~~ (DONE — v0.1.58), ~~constructor parameter warnings~~ (DONE — v0.1.58), ~~Maven mojo support~~ (DONE — all three tasks have mojos), ~~full constructor `val`/`var` property rename~~ (DONE — `cnavRenameProperty`).
 
 ### ~~Rename class~~ — `cnavRenameClass`
 
