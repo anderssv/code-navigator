@@ -739,3 +739,35 @@ Moves a Kotlin class to a different package and updates all references project-w
 **Output**: TEXT, JSON, and LLM formats. LLM output includes "Compile to verify all references were updated." recommendation.
 
 **Changes**: New files: `MoveClassConfig.kt`, `MoveClassRewriter.kt`, `MoveClassFormatter.kt`, `MoveClassTask.kt`, `MoveClassWorkAction.kt`, `MoveClassMojo.kt`, `MoveClassConfigTest.kt`, `MoveClassRewriterTest.kt`, `MoveClassFormatterTest.kt`. Modified: `build.gradle.kts`, `pom.xml`, `TaskRegistry.kt`, `CodeNavigatorPlugin.kt`, `HelpText.kt`, `AgentHelpText.kt`, `TaskRegistryTest.kt`, `FileSizeScannerTest.kt`. Test fixtures: 4 Kotlin files under `test-project/src/main/kotlin/com/example/variants/moveclass/`.
+
+## ~~Companion object support in rename rewriters + constructor val/var warnings~~ DONE
+
+**Value: medium** | **Effort: medium**
+
+Three improvements to the refactoring tasks:
+
+### Companion object support in `cnavRenameMethod` and `cnavRenameParam`
+
+Both rename rewriters now match companion object methods when the user specifies the outer class FQN. OpenRewrite represents companion objects as `Foo.Companion` (dot-separated) in its AST. A shared `matchesClassOrCompanion()` helper in `RewriterSupport.kt` checks both `.Companion` (dot) and `$Companion` (dollar sign) forms.
+
+- `RenameMethodVisitor.isTargetOrImplementor()` — matches companion class FQNs
+- `RenameMethodVisitor.visitMethodInvocation()` — matches companion call sites
+- `RenameParamVisitor.visitClassDeclaration()` — matches companion class FQNs
+- `RenameParamVisitor.visitMethodInvocation()` — matches companion call sites
+
+### Constructor val/var parameter warning in `cnavRenameParam`
+
+Renaming a `val`/`var` constructor parameter requires renaming the property, all `instance.property` access sites, and getters/setters project-wide — a fundamentally harder refactoring than method parameter renaming. Rather than implementing full property rename, the rewriter detects constructor val/var params via regex scan and emits a warning explaining the limitation. Full property rename deferred to future `cnavRenameProperty` task.
+
+- Added `warnings: List<String>` field to `RenameResult` data class
+- Updated `toJson()`/`fromJson()` to serialize/deserialize warnings
+- Added `isConstructorMethod()` and `isValVarConstructorParam()` detection
+- Warning displayed in all 3 formatter output formats (TEXT, JSON, LLM)
+
+### Updated recommendation messages across all formatters
+
+Changed `COMPILE_RECOMMENDATION` constants in `MoveClassFormatter`, `RenameMethodFormatter`, and `RenameParamFormatter` to warn that "refactorings are not always fully accurate" and recommend compiling to verify.
+
+### Added `cnavMoveClass` to README task table
+
+**Changes**: Modified: `RewriterSupport.kt` (shared `matchesClassOrCompanion()`), `RenameMethodRewriter.kt` (companion matching), `RenameParamRewriter.kt` (companion matching + constructor warning + warnings field), `RenameParamFormatter.kt` (warnings display + recommendation), `RenameMethodFormatter.kt` (recommendation), `MoveClassFormatter.kt` (recommendation), `README.md` (task table). Test files: `RenameMethodRewriterTest.kt` (2 tests), `RenameParamRewriterTest.kt` (5 tests), `RenameParamFormatterTest.kt` (4 tests), `MoveClassFormatterTest.kt` (assertion fix), `FileSizeScannerTest.kt` (count update). New test fixtures: `test-project/src/main/kotlin/com/example/variants/companion/` (2 files), `test-project/src/main/kotlin/com/example/variants/constructorparam/` (1 file).
