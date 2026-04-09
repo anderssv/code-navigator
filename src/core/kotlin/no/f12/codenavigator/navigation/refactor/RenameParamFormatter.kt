@@ -4,7 +4,7 @@ import no.f12.codenavigator.config.OutputFormat
 
 object RenameParamFormatter {
 
-    private const val COMPILE_RECOMMENDATION = "Compile to verify all call sites were updated."
+    private const val COMPILE_RECOMMENDATION = "IMPORTANT: Automated refactoring is not always fully accurate. Compile the project to verify all call sites were updated correctly."
 
     fun format(result: RenameResult, config: RenameParamConfig): String =
         when (config.format) {
@@ -29,6 +29,9 @@ object RenameParamFormatter {
                     appendLine(line)
                 }
                 appendLine()
+            }
+            for (warning in result.warnings) {
+                appendLine(warning)
             }
             if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)
@@ -59,7 +62,13 @@ object RenameParamFormatter {
         } else {
             ""
         }
-        return """{"preview":${config.preview},"param":"${jsonEscape(config.paramName)}","newName":"${jsonEscape(config.newName)}","changes":$changesJson$recommendationJson$cascadeJson}"""
+        val warningsJson = if (result.warnings.isNotEmpty()) {
+            val items = result.warnings.joinToString(",", "[", "]") { "\"${jsonEscape(it)}\"" }
+            ""","warnings":$items"""
+        } else {
+            ""
+        }
+        return """{"preview":${config.preview},"param":"${jsonEscape(config.paramName)}","newName":"${jsonEscape(config.newName)}","changes":$changesJson$recommendationJson$cascadeJson$warningsJson}"""
     }
 
     private fun formatLlm(result: RenameResult, config: RenameParamConfig): String {
@@ -74,6 +83,9 @@ object RenameParamFormatter {
                 val fileName = change.filePath.substringAfterLast("/")
                 val changedLineCount = computeDiff(change.before, change.after).size
                 appendLine("  $fileName name -> ${config.newName} lines=$changedLineCount")
+            }
+            for (warning in result.warnings) {
+                appendLine(warning)
             }
             if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)

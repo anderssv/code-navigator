@@ -60,7 +60,7 @@ class MoveClassFormatterTest {
         val output = MoveClassFormatter.format(singleChange, appliedConfig)
 
         assertTrue(output.contains("Applied:"), "Should show Applied header. Output:\n$output")
-        assertTrue(output.contains("Compile to verify"), "Should recommend compilation. Output:\n$output")
+        assertTrue(output.contains("Compile"), "Should recommend compilation. Output:\n$output")
     }
 
     @Test

@@ -4,7 +4,7 @@ import no.f12.codenavigator.config.OutputFormat
 
 object MoveClassFormatter {
 
-    private const val COMPILE_RECOMMENDATION = "Compile to verify all references were updated."
+    private const val COMPILE_RECOMMENDATION = "IMPORTANT: Automated refactoring is not always fully accurate. Compile the project to verify all references were updated correctly."
 
     fun format(result: MoveClassResult, config: MoveClassConfig): String =
         when (config.format) {

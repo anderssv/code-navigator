@@ -4,7 +4,7 @@ import no.f12.codenavigator.config.OutputFormat
 
 object RenameMethodFormatter {
 
-    private const val COMPILE_RECOMMENDATION = "Compile to verify all call sites were updated."
+    private const val COMPILE_RECOMMENDATION = "IMPORTANT: Automated refactoring is not always fully accurate. Compile the project to verify all call sites were updated correctly."
 
     fun format(result: RenameMethodResult, config: RenameMethodConfig): String =
         when (config.format) {
