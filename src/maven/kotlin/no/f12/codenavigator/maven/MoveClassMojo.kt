@@ -24,14 +24,11 @@ class MoveClassMojo : AbstractMojo() {
     @Parameter(property = "llm")
     private var llm: String? = null
 
-    @Parameter(property = "target-class")
-    private var targetClass: String? = null
+    @Parameter(property = "from")
+    private var from: String? = null
 
-    @Parameter(property = "new-package")
-    private var newPackage: String? = null
-
-    @Parameter(property = "new-name")
-    private var newName: String? = null
+    @Parameter(property = "to")
+    private var to: String? = null
 
     @Parameter(property = "preview")
     private var preview: String? = null
@@ -50,9 +47,8 @@ class MoveClassMojo : AbstractMojo() {
 
         val result = MoveClassRewriter.move(
             sourceRoots = sourceRoots,
-            className = config.className,
-            newPackage = config.newPackage,
-            newName = config.newName,
+            className = config.from,
+            newFqcn = config.to,
             classpath = classpath,
             preview = config.preview,
         )
@@ -71,16 +67,15 @@ class MoveClassMojo : AbstractMojo() {
 
     private fun noResultsHints(config: MoveClassConfig): List<String> = buildList {
         add("Ensure the class name is fully qualified (e.g., com.example.MyClass).")
-        add("Check that a class named '${config.className.substringAfterLast(".")}' exists in package '${config.className.substringBeforeLast(".")}'.")
+        add("Check that a class named '${config.fromSimpleName}' exists in package '${config.fromPackage}'.")
         add("Only Kotlin source files (.kt) are searched.")
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
-        targetClass?.let { put("target-class", it) }
-        newPackage?.let { put("new-package", it) }
-        newName?.let { put("new-name", it) }
+        from?.let { put("from", it) }
+        to?.let { put("to", it) }
         preview?.let { put("preview", it) }
     }
 }

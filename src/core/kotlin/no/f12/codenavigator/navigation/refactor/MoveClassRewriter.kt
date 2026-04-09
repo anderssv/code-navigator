@@ -38,8 +38,7 @@ object MoveClassRewriter {
     fun move(
         sourceRoots: List<File>,
         className: String,
-        newPackage: String,
-        newName: String? = null,
+        newFqcn: String,
         classpath: List<Path> = emptyList(),
         preview: Boolean = false,
     ): MoveClassResult {
@@ -48,8 +47,8 @@ object MoveClassRewriter {
 
         val oldPackage = className.substringBeforeLast(".")
         val simpleClassName = className.substringAfterLast(".")
-        val targetName = newName ?: simpleClassName
-        val newFqcn = "$newPackage.$targetName"
+        val newPackage = newFqcn.substringBeforeLast(".")
+        val targetName = newFqcn.substringAfterLast(".")
 
         val parserBuilder = KotlinParser.builder()
         if (classpath.isNotEmpty()) {

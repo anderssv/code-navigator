@@ -380,7 +380,7 @@ All candidates below share the same properties:
 
 ### ~~Rename class~~ — via `cnavMoveClass` DONE
 
-DONE — Added optional `-Pnew-name` parameter to `cnavMoveClass`. Class renaming is handled by OpenRewrite's `ChangeType` recipe. Can move, rename, or both in a single operation.
+DONE — `cnavMoveClass -Pfrom=<FQN> -Pto=<FQN>` supports renaming. Class renaming is handled by OpenRewrite's `ChangeType` recipe. Can move, rename, or both in a single operation.
 
 ### ~~Move class to different package~~ — `cnavMoveClass` DONE
 

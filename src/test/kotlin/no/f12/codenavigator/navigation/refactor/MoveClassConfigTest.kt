@@ -9,23 +9,36 @@ import kotlin.test.assertTrue
 class MoveClassConfigTest {
 
     @Test
-    fun `parses all required properties`() {
+    fun `parses from and to properties`() {
         val config = MoveClassConfig.parse(mapOf(
-            "target-class" to "com.example.MyService",
-            "new-package" to "com.example.newpkg",
+            "from" to "com.example.MyService",
+            "to" to "com.example.newpkg.MyService",
         ))
 
-        assertEquals("com.example.MyService", config.className)
-        assertEquals("com.example.newpkg", config.newPackage)
+        assertEquals("com.example.MyService", config.from)
+        assertEquals("com.example.newpkg.MyService", config.to)
         assertEquals(false, config.preview)
         assertEquals(OutputFormat.TEXT, config.format)
     }
 
     @Test
+    fun `derives package and simple name from FQN`() {
+        val config = MoveClassConfig.parse(mapOf(
+            "from" to "com.example.old.MyService",
+            "to" to "com.example.new.RenamedService",
+        ))
+
+        assertEquals("com.example.old", config.fromPackage)
+        assertEquals("MyService", config.fromSimpleName)
+        assertEquals("com.example.new", config.toPackage)
+        assertEquals("RenamedService", config.toSimpleName)
+    }
+
+    @Test
     fun `parses preview flag`() {
         val config = MoveClassConfig.parse(mapOf(
-            "target-class" to "com.example.MyService",
-            "new-package" to "com.example.newpkg",
+            "from" to "com.example.MyService",
+            "to" to "com.example.newpkg.MyService",
             "preview" to "true",
         ))
 
@@ -35,8 +48,8 @@ class MoveClassConfigTest {
     @Test
     fun `parses LLM format`() {
         val config = MoveClassConfig.parse(mapOf(
-            "target-class" to "com.example.MyService",
-            "new-package" to "com.example.newpkg",
+            "from" to "com.example.MyService",
+            "to" to "com.example.newpkg.MyService",
             "llm" to "true",
         ))
 
@@ -44,19 +57,19 @@ class MoveClassConfigTest {
     }
 
     @Test
-    fun `rejects missing target-class`() {
+    fun `rejects missing from`() {
         assertFailsWith<IllegalArgumentException> {
             MoveClassConfig.parse(mapOf(
-                "new-package" to "com.example.newpkg",
+                "to" to "com.example.newpkg.MyService",
             ))
         }
     }
 
     @Test
-    fun `rejects missing new-package`() {
+    fun `rejects missing to`() {
         assertFailsWith<IllegalArgumentException> {
             MoveClassConfig.parse(mapOf(
-                "target-class" to "com.example.MyService",
+                "from" to "com.example.MyService",
             ))
         }
     }

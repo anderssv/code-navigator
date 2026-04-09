@@ -919,7 +919,8 @@ class TaskRegistryTest {
             "target-class" to ParamType.STRING,
             "param" to ParamType.STRING,
             "new-name" to ParamType.STRING,
-            "new-package" to ParamType.STRING,
+            "from" to ParamType.STRING,
+            "to" to ParamType.STRING,
             "property" to ParamType.STRING,
             "preview" to ParamType.FLAG,
         )

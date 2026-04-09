@@ -37,9 +37,8 @@ abstract class MoveClassTask @Inject constructor(
         }
 
         workQueue.submit(MoveClassWorkAction::class.java) {
-            className.set(config.className)
-            newPackage.set(config.newPackage)
-            config.newName?.let { newName.set(it) }
+            from.set(config.from)
+            to.set(config.to)
             preview.set(config.preview)
             sourceRoots.set(sourceRootPaths)
             this.classpathDirs.set(classpathDirs)
@@ -64,7 +63,7 @@ abstract class MoveClassTask @Inject constructor(
 
     private fun noResultsHints(config: MoveClassConfig): List<String> = buildList {
         add("Ensure the class name is fully qualified (e.g., com.example.MyClass).")
-        add("Check that a class named '${config.className.substringAfterLast(".")}' exists in package '${config.className.substringBeforeLast(".")}'.")
+        add("Check that a class named '${config.fromSimpleName}' exists in package '${config.fromPackage}'.")
         add("Only Kotlin source files (.kt) are searched.")
     }
 }

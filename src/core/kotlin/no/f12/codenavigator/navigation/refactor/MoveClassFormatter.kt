@@ -14,13 +14,12 @@ object MoveClassFormatter {
         }
 
     private fun operationDescription(config: MoveClassConfig): String {
-        val oldPackage = config.className.substringBeforeLast(".")
-        val isMove = config.newPackage != oldPackage
-        val isRename = config.newName != null
+        val isMove = config.fromPackage != config.toPackage
+        val isRename = config.fromSimpleName != config.toSimpleName
         return when {
-            isMove && isRename -> "move+rename ${config.className} -> ${config.newPackage}.${config.newName}"
-            isRename -> "rename ${config.className} -> ${config.newName}"
-            else -> "move ${config.className} -> ${config.newPackage}"
+            isMove && isRename -> "move+rename ${config.from} -> ${config.to}"
+            isRename -> "rename ${config.from} -> ${config.toSimpleName}"
+            else -> "move ${config.from} -> ${config.toPackage}"
         }
     }
 
@@ -60,9 +59,8 @@ object MoveClassFormatter {
         }
         val movedJson = result.movedFilePath?.let { ""","movedFilePath":"${jsonEscape(it)}"""" } ?: ""
         val newFileJson = result.newFilePath?.let { ""","newFilePath":"${jsonEscape(it)}"""" } ?: ""
-        val newNameJson = config.newName?.let { ""","newName":"${jsonEscape(it)}"""" } ?: ""
         val recommendationJson = if (!config.preview) ""","recommendation":"${jsonEscape(COMPILE_RECOMMENDATION)}"""" else ""
-        return """{"preview":${config.preview},"className":"${jsonEscape(config.className)}","newPackage":"${jsonEscape(config.newPackage)}","changes":$changesJson$movedJson$newFileJson$newNameJson$recommendationJson}"""
+        return """{"preview":${config.preview},"from":"${jsonEscape(config.from)}","to":"${jsonEscape(config.to)}","changes":$changesJson$movedJson$newFileJson$recommendationJson}"""
     }
 
     private fun formatLlm(result: MoveClassResult, config: MoveClassConfig): String {

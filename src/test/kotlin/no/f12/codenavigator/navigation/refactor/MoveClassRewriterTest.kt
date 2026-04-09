@@ -11,26 +11,24 @@ class MoveClassRewriterTest {
     private val testProjectSrc = File("test-project/src/main/kotlin")
     private val testProjectClasses = File("test-project/build/classes/kotlin/main").toPath()
 
-    // [TEST] Empty source roots returns no changes
     @Test
     fun `empty source roots returns no changes`() {
         val result = MoveClassRewriter.move(
             sourceRoots = emptyList(),
             className = "com.example.Foo",
-            newPackage = "com.example.bar",
+            newFqcn = "com.example.bar.Foo",
             preview = true,
         )
 
         assertTrue(result.changes.isEmpty())
     }
 
-    // [TEST] Class not found returns no changes
     @Test
     fun `class not found returns no changes`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),
             className = "com.example.NonExistentClass",
-            newPackage = "com.example.newpkg",
+            newFqcn = "com.example.newpkg.NonExistentClass",
             classpath = listOf(testProjectClasses),
             preview = true,
         )
@@ -38,13 +36,12 @@ class MoveClassRewriterTest {
         assertTrue(result.changes.isEmpty())
     }
 
-    // [TEST] Updates package declaration of moved class
     @Test
     fun `updates package declaration of moved class`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.billing",
+            newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
         )
@@ -57,13 +54,12 @@ class MoveClassRewriterTest {
         assertTrue(!paymentChange.after.contains("package com.example.variants.moveclass.original"), "Old package declaration should be gone. Content:\n${paymentChange.after}")
     }
 
-    // [TEST] Updates import in a file that imports the moved class
     @Test
     fun `updates import in a file that imports the moved class`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.billing",
+            newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
         )
@@ -74,13 +70,12 @@ class MoveClassRewriterTest {
         assertTrue(!orderChange.after.contains("import com.example.variants.moveclass.original.PaymentService"), "Old import should be gone. Content:\n${orderChange.after}")
     }
 
-    // [TEST] Updates multiple files that import the moved class
     @Test
     fun `updates multiple files that import the moved class`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.billing",
+            newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
         )
@@ -94,13 +89,12 @@ class MoveClassRewriterTest {
         assertTrue(reportChange.after.contains("import com.example.variants.moveclass.billing.PaymentService"))
     }
 
-    // [TEST] Does not modify files that don't reference the moved class
     @Test
     fun `does not modify files that dont reference the moved class`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.billing",
+            newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
         )
@@ -109,7 +103,6 @@ class MoveClassRewriterTest {
         assertTrue(shippingChange == null, "ShippingService should NOT be changed. Changed files: ${result.changes.map { it.filePath }}")
     }
 
-    // [TEST] Preview mode does not write to disk or move files
     @Test
     fun `preview mode does not write to disk or move files`() {
         val sourceDir = copySourcesToTemp("moveclass-preview",
@@ -122,7 +115,7 @@ class MoveClassRewriterTest {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(sourceDir),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.billing",
+            newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
         )
@@ -132,7 +125,6 @@ class MoveClassRewriterTest {
         assertTrue(paymentFile.exists(), "Original file should still exist in preview mode")
     }
 
-    // [TEST] Non-preview mode moves the file to new package directory
     @Test
     fun `non-preview mode moves the file to new package directory`() {
         val sourceDir = copySourcesToTemp("moveclass-apply",
@@ -143,7 +135,7 @@ class MoveClassRewriterTest {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(sourceDir),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.billing",
+            newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = false,
         )
@@ -160,7 +152,6 @@ class MoveClassRewriterTest {
         assertTrue(!oldFile.exists(), "Old file should no longer exist at: ${result.movedFilePath}")
     }
 
-    // [TEST] Non-preview mode updates import in consumer files on disk
     @Test
     fun `non-preview mode updates import in consumer files on disk`() {
         val sourceDir = copySourcesToTemp("moveclass-apply-imports",
@@ -171,7 +162,7 @@ class MoveClassRewriterTest {
         MoveClassRewriter.move(
             sourceRoots = listOf(sourceDir),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.billing",
+            newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = false,
         )
@@ -181,7 +172,6 @@ class MoveClassRewriterTest {
         assertTrue(orderContent.contains("import com.example.variants.moveclass.billing.PaymentService"), "Import should be updated on disk. Content:\n$orderContent")
     }
 
-    // [TEST] Moves an interface file to new package directory
     @Test
     fun `moves an interface file to new package directory`() {
         val sourceDir = copySourcesToTemp("moveclass-interface",
@@ -192,7 +182,7 @@ class MoveClassRewriterTest {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(sourceDir),
             className = "com.example.variants.moveclass.original.Notifier",
-            newPackage = "com.example.variants.moveclass.events",
+            newFqcn = "com.example.variants.moveclass.events.Notifier",
             classpath = listOf(testProjectClasses),
             preview = false,
         )
@@ -209,14 +199,12 @@ class MoveClassRewriterTest {
         assertTrue(!oldFile.exists(), "Old interface file should no longer exist at: ${result.movedFilePath}")
     }
 
-    // [TEST] Rename class in same package updates class declaration
     @Test
     fun `rename class in same package updates class declaration`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.original",
-            newName = "BillingService",
+            newFqcn = "com.example.variants.moveclass.original.BillingService",
             classpath = listOf(testProjectClasses),
             preview = true,
         )
@@ -229,14 +217,12 @@ class MoveClassRewriterTest {
         assertTrue(paymentChange.after.contains("package com.example.variants.moveclass.original"), "Package should remain unchanged. Content:\n${paymentChange.after}")
     }
 
-    // [TEST] Rename class in same package updates import in consumer files
     @Test
     fun `rename class in same package updates import in consumer files`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.original",
-            newName = "BillingService",
+            newFqcn = "com.example.variants.moveclass.original.BillingService",
             classpath = listOf(testProjectClasses),
             preview = true,
         )
@@ -247,7 +233,6 @@ class MoveClassRewriterTest {
         assertTrue(!orderChange.after.contains("PaymentService"), "Old class name should be gone. Content:\n${orderChange.after}")
     }
 
-    // [TEST] Rename class in same package renames file on disk
     @Test
     fun `rename class in same package renames file on disk`() {
         val sourceDir = copySourcesToTemp("rename-class-apply",
@@ -258,8 +243,7 @@ class MoveClassRewriterTest {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(sourceDir),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.original",
-            newName = "BillingService",
+            newFqcn = "com.example.variants.moveclass.original.BillingService",
             classpath = listOf(testProjectClasses),
             preview = false,
         )
@@ -274,14 +258,12 @@ class MoveClassRewriterTest {
         assertTrue(!oldFile.exists(), "Old file should no longer exist: ${result.movedFilePath}")
     }
 
-    // [TEST] Move and rename updates package declaration and class name
     @Test
     fun `move and rename updates package declaration and class name`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.billing",
-            newName = "BillingService",
+            newFqcn = "com.example.variants.moveclass.billing.BillingService",
             classpath = listOf(testProjectClasses),
             preview = true,
         )
@@ -298,13 +280,12 @@ class MoveClassRewriterTest {
         assertTrue(orderChange.after.contains("import com.example.variants.moveclass.billing.BillingService"), "Import should have new package + new name. Content:\n${orderChange.after}")
     }
 
-    // [TEST] Null newName preserves existing move-only behavior
     @Test
-    fun `null newName preserves existing move-only behavior`() {
+    fun `move without rename preserves class name`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.moveclass.original.PaymentService",
-            newPackage = "com.example.variants.moveclass.billing",
+            newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
         )
@@ -316,7 +297,6 @@ class MoveClassRewriterTest {
         assertTrue(paymentChange.after.contains("package com.example.variants.moveclass.billing"), "Package should be updated. Content:\n${paymentChange.after}")
     }
 
-    // [TEST] MoveClassResult JSON roundtrip preserves data
     @Test
     fun `MoveClassResult JSON roundtrip preserves empty changes`() {
         val result = MoveClassResult(emptyList())

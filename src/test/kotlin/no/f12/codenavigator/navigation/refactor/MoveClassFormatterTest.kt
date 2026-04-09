@@ -37,9 +37,8 @@ class MoveClassFormatterTest {
     )
 
     private val previewConfig = MoveClassConfig(
-        className = "com.example.services.UserService",
-        newPackage = "com.example.domain",
-        newName = null,
+        from = "com.example.services.UserService",
+        to = "com.example.domain.UserService",
         preview = true,
         format = OutputFormat.TEXT,
     )
@@ -86,8 +85,8 @@ class MoveClassFormatterTest {
         val output = MoveClassFormatter.format(singleChange, previewConfig.copy(format = OutputFormat.JSON))
 
         assertTrue(output.contains("\"preview\":true"), "Should have preview flag. Output:\n$output")
-        assertTrue(output.contains("\"className\":\"com.example.services.UserService\""), "Should have class name. Output:\n$output")
-        assertTrue(output.contains("\"newPackage\":\"com.example.domain\""), "Should have new package. Output:\n$output")
+        assertTrue(output.contains("\"from\":\"com.example.services.UserService\""), "Should have from. Output:\n$output")
+        assertTrue(output.contains("\"to\":\"com.example.domain.UserService\""), "Should have to. Output:\n$output")
         assertTrue(output.contains("\"changes\":["), "Should have changes array. Output:\n$output")
     }
 
@@ -122,12 +121,13 @@ class MoveClassFormatterTest {
         assertTrue(output.contains("2 files"), "Should show plural file count. Output:\n$output")
     }
 
-    // [TEST] TEXT format shows rename header when newName is set
     @Test
-    fun `TEXT format shows rename header when newName is set`() {
-        val renameConfig = previewConfig.copy(
-            newPackage = "com.example.services",
-            newName = "AccountService",
+    fun `TEXT format shows rename header when class name changes`() {
+        val renameConfig = MoveClassConfig(
+            from = "com.example.services.UserService",
+            to = "com.example.services.AccountService",
+            preview = true,
+            format = OutputFormat.TEXT,
         )
         val output = MoveClassFormatter.format(singleChange, renameConfig)
 
@@ -135,29 +135,44 @@ class MoveClassFormatterTest {
         assertTrue(output.contains("AccountService"), "Should mention new name. Output:\n$output")
     }
 
-    // [TEST] JSON format includes newName when set
     @Test
-    fun `JSON format includes newName when set`() {
-        val renameConfig = previewConfig.copy(
-            newPackage = "com.example.services",
-            newName = "AccountService",
+    fun `JSON format includes from and to`() {
+        val renameConfig = MoveClassConfig(
+            from = "com.example.services.UserService",
+            to = "com.example.services.AccountService",
+            preview = true,
             format = OutputFormat.JSON,
         )
         val output = MoveClassFormatter.format(singleChange, renameConfig)
 
-        assertTrue(output.contains("\"newName\":\"AccountService\""), "Should include newName. Output:\n$output")
+        assertTrue(output.contains("\"from\":\"com.example.services.UserService\""), "Should include from. Output:\n$output")
+        assertTrue(output.contains("\"to\":\"com.example.services.AccountService\""), "Should include to. Output:\n$output")
     }
 
-    // [TEST] LLM format shows rename info when newName is set
     @Test
-    fun `LLM format shows rename info when newName is set`() {
-        val renameConfig = previewConfig.copy(
-            newPackage = "com.example.services",
-            newName = "AccountService",
+    fun `LLM format shows rename info when class name changes`() {
+        val renameConfig = MoveClassConfig(
+            from = "com.example.services.UserService",
+            to = "com.example.services.AccountService",
+            preview = true,
             format = OutputFormat.LLM,
         )
         val output = MoveClassFormatter.format(singleChange, renameConfig)
 
         assertTrue(output.contains("AccountService"), "Should mention new name. Output:\n$output")
+    }
+
+    @Test
+    fun `TEXT format shows move+rename when both package and name change`() {
+        val moveRenameConfig = MoveClassConfig(
+            from = "com.example.services.UserService",
+            to = "com.example.domain.AccountService",
+            preview = true,
+            format = OutputFormat.TEXT,
+        )
+        val output = MoveClassFormatter.format(singleChange, moveRenameConfig)
+
+        assertTrue(output.contains("move+rename"), "Should indicate move+rename. Output:\n$output")
+        assertTrue(output.contains("com.example.domain.AccountService"), "Should mention full target. Output:\n$output")
     }
 }

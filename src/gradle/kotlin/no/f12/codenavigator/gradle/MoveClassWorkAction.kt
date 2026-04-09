@@ -9,9 +9,8 @@ import org.gradle.workers.WorkParameters
 import java.nio.file.Path
 
 interface MoveClassWorkParameters : WorkParameters {
-    val className: Property<String>
-    val newPackage: Property<String>
-    val newName: Property<String>
+    val from: Property<String>
+    val to: Property<String>
     val preview: Property<Boolean>
     val sourceRoots: ListProperty<String>
     val classpathDirs: ListProperty<String>
@@ -27,9 +26,8 @@ abstract class MoveClassWorkAction : WorkAction<MoveClassWorkParameters> {
 
         val result = MoveClassRewriter.move(
             sourceRoots = sourceRootFiles,
-            className = params.className.get(),
-            newPackage = params.newPackage.get(),
-            newName = params.newName.orNull,
+            className = params.from.get(),
+            newFqcn = params.to.get(),
             classpath = classpath,
             preview = params.preview.get(),
         )

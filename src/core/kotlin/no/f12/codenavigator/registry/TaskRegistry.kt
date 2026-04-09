@@ -216,7 +216,8 @@ object TaskRegistry {
     val RENAME_PROPERTY = ParamDef("property", "<name>", "Current property name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_NEW_NAME = ParamDef("new-name", "<name>", "New name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PREVIEW = ParamDef("preview", "true", "Preview changes without writing to source files", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
-    val MOVE_NEW_PACKAGE = ParamDef("new-package", "<pkg>", "Target package to move the class to", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val MOVE_FROM = ParamDef("from", "<fqcn>", "Fully qualified class name to move/rename", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val MOVE_TO = ParamDef("to", "<fqcn>", "Target fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
     val FORMAT_PARAMS = listOf(FORMAT, LLM)
     val SOURCE_SET_PARAMS = listOf(PROD_ONLY, TEST_ONLY)
@@ -526,7 +527,7 @@ object TaskRegistry {
     val MOVE_CLASS_TASK = TaskDef(
         goal = "move-class",
         description = "Move and/or rename a class, updating all references",
-        params = FORMAT_PARAMS + listOf(RENAME_CLASS, MOVE_NEW_PACKAGE, RENAME_NEW_NAME, PREVIEW),
+        params = FORMAT_PARAMS + listOf(MOVE_FROM, MOVE_TO, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
     )
