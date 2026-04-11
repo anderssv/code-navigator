@@ -18,6 +18,22 @@ class MoveClassRewriterTest {
                 classpath = listOf(File("test-project/build/classes/kotlin/main").toPath()),
             )
         }
+
+        private val sharedTempDir by lazy {
+            val testProjectSrc = File("test-project/src/main/kotlin")
+            val tempDir = Files.createTempDirectory("cnav-test-moveclass-shared").toFile()
+            for (pkg in listOf("com/example/variants/moveclass/original", "com/example/variants/moveclass/consumer")) {
+                File(testProjectSrc, pkg).copyRecursively(File(tempDir, pkg))
+            }
+            tempDir
+        }
+
+        private val sharedTempParsedSources by lazy {
+            parseKotlinSources(
+                listOf(sharedTempDir),
+                classpath = listOf(File("test-project/build/classes/kotlin/main").toPath()),
+            )
+        }
     }
 
     @Test
@@ -119,19 +135,16 @@ class MoveClassRewriterTest {
 
     @Test
     fun `preview mode does not write to disk or move files`() {
-        val sourceDir = copySourcesToTemp("moveclass-preview",
-            "com/example/variants/moveclass/original",
-            "com/example/variants/moveclass/consumer",
-        )
-        val paymentFile = File(sourceDir, "com/example/variants/moveclass/original/PaymentService.kt")
+        val paymentFile = File(testProjectSrc, "com/example/variants/moveclass/original/PaymentService.kt")
         val originalContent = paymentFile.readText()
 
         val result = MoveClassRewriter.move(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.moveclass.original.PaymentService",
             newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should detect changes")
@@ -140,18 +153,14 @@ class MoveClassRewriterTest {
     }
 
     @Test
-    fun `non-preview mode moves the file to new package directory`() {
-        val sourceDir = copySourcesToTemp("moveclass-apply",
-            "com/example/variants/moveclass/original",
-            "com/example/variants/moveclass/consumer",
-        )
-
+    fun `non-preview mode moves file and updates imports on disk`() {
         val result = MoveClassRewriter.move(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(sharedTempDir),
             className = "com.example.variants.moveclass.original.PaymentService",
             newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = false,
+            parsedSources = sharedTempParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should detect changes")
@@ -164,41 +173,21 @@ class MoveClassRewriterTest {
 
         val oldFile = File(result.movedFilePath!!)
         assertTrue(!oldFile.exists(), "Old file should no longer exist at: ${result.movedFilePath}")
-    }
 
-    @Test
-    fun `non-preview mode updates import in consumer files on disk`() {
-        val sourceDir = copySourcesToTemp("moveclass-apply-imports",
-            "com/example/variants/moveclass/original",
-            "com/example/variants/moveclass/consumer",
-        )
-
-        MoveClassRewriter.move(
-            sourceRoots = listOf(sourceDir),
-            className = "com.example.variants.moveclass.original.PaymentService",
-            newFqcn = "com.example.variants.moveclass.billing.PaymentService",
-            classpath = listOf(testProjectClasses),
-            preview = false,
-        )
-
-        val orderFile = File(sourceDir, "com/example/variants/moveclass/consumer/OrderService.kt")
+        val orderFile = File(sharedTempDir, "com/example/variants/moveclass/consumer/OrderService.kt")
         val orderContent = orderFile.readText()
         assertTrue(orderContent.contains("import com.example.variants.moveclass.billing.PaymentService"), "Import should be updated on disk. Content:\n$orderContent")
     }
 
     @Test
     fun `moves an interface file to new package directory`() {
-        val sourceDir = copySourcesToTemp("moveclass-interface",
-            "com/example/variants/moveclass/original",
-            "com/example/variants/moveclass/consumer",
-        )
-
         val result = MoveClassRewriter.move(
-            sourceRoots = listOf(sourceDir),
+            sourceRoots = listOf(sharedTempDir),
             className = "com.example.variants.moveclass.original.Notifier",
             newFqcn = "com.example.variants.moveclass.events.Notifier",
             classpath = listOf(testProjectClasses),
             preview = false,
+            parsedSources = sharedTempParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should detect changes")
@@ -251,24 +240,20 @@ class MoveClassRewriterTest {
 
     @Test
     fun `rename class in same package renames file on disk`() {
-        val sourceDir = copySourcesToTemp("rename-class-apply",
-            "com/example/variants/moveclass/original",
-            "com/example/variants/moveclass/consumer",
-        )
-
         val result = MoveClassRewriter.move(
-            sourceRoots = listOf(sourceDir),
-            className = "com.example.variants.moveclass.original.PaymentService",
-            newFqcn = "com.example.variants.moveclass.original.BillingService",
+            sourceRoots = listOf(sharedTempDir),
+            className = "com.example.variants.moveclass.original.InventoryService",
+            newFqcn = "com.example.variants.moveclass.original.StockService",
             classpath = listOf(testProjectClasses),
             preview = false,
+            parsedSources = sharedTempParsedSources,
         )
 
         assertTrue(result.newFilePath != null, "Should report new file path")
         val newFile = File(result.newFilePath!!)
         assertTrue(newFile.exists(), "New file should exist: ${result.newFilePath}")
-        assertTrue(newFile.name == "BillingService.kt", "File should be renamed. Actual: ${newFile.name}")
-        assertTrue(newFile.readText().contains("class BillingService"), "File content should have new class name")
+        assertTrue(newFile.name == "StockService.kt", "File should be renamed. Actual: ${newFile.name}")
+        assertTrue(newFile.readText().contains("class StockService"), "File content should have new class name")
 
         val oldFile = File(result.movedFilePath!!)
         assertTrue(!oldFile.exists(), "Old file should no longer exist: ${result.movedFilePath}")
@@ -347,16 +332,5 @@ class MoveClassRewriterTest {
         assertEquals(result.newFilePath, deserialized.newFilePath)
     }
 
-    private fun copySourcesToTemp(label: String, vararg packages: String): File {
-        val testProjectSrc = File("test-project/src/main/kotlin")
-        val tempDir = Files.createTempDirectory("cnav-test-$label").toFile()
 
-        for (pkg in packages) {
-            val srcPkg = File(testProjectSrc, pkg)
-            val destPkg = File(tempDir, pkg)
-            srcPkg.copyRecursively(destPkg)
-        }
-
-        return tempDir
-    }
 }
