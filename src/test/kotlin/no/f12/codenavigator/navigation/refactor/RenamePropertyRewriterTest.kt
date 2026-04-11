@@ -10,6 +10,12 @@ class RenamePropertyRewriterTest {
 
     private val testProjectSrc = File("test-project/src/main/kotlin")
 
+    companion object {
+        private val cachedParsedSources by lazy {
+            parseKotlinSources(listOf(File("test-project/src/main/kotlin")))
+        }
+    }
+
     @Test
     fun `renames val constructor param declaration`() {
         val result = RenamePropertyRewriter.rename(
@@ -18,6 +24,7 @@ class RenamePropertyRewriterTest {
             propertyName = "fullName",
             newName = "displayName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have at least one change")
@@ -34,6 +41,7 @@ class RenamePropertyRewriterTest {
             propertyName = "fullName",
             newName = "displayName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have at least one change")
@@ -50,6 +58,7 @@ class RenamePropertyRewriterTest {
             propertyName = "fullName",
             newName = "displayName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have at least one change")
@@ -66,6 +75,7 @@ class RenamePropertyRewriterTest {
             propertyName = "fullName",
             newName = "displayName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have at least one change")
@@ -82,6 +92,7 @@ class RenamePropertyRewriterTest {
             propertyName = "fullName",
             newName = "displayName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty())
@@ -99,6 +110,7 @@ class RenamePropertyRewriterTest {
             propertyName = "fullName",
             newName = "displayName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         val changedFiles = result.changes.map { it.filePath }
@@ -134,6 +146,7 @@ class RenamePropertyRewriterTest {
             propertyName = "fullName",
             newName = "displayName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have changes for constructorparam fixture")
