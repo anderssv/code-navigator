@@ -11,6 +11,15 @@ class MoveClassRewriterTest {
     private val testProjectSrc = File("test-project/src/main/kotlin")
     private val testProjectClasses = File("test-project/build/classes/kotlin/main").toPath()
 
+    companion object {
+        private val cachedParsedSources by lazy {
+            parseKotlinSources(
+                listOf(File("test-project/src/main/kotlin")),
+                classpath = listOf(File("test-project/build/classes/kotlin/main").toPath()),
+            )
+        }
+    }
+
     @Test
     fun `empty source roots returns no changes`() {
         val result = MoveClassRewriter.move(
@@ -31,6 +40,7 @@ class MoveClassRewriterTest {
             newFqcn = "com.example.newpkg.NonExistentClass",
             classpath = listOf(testProjectClasses),
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isEmpty())
@@ -44,6 +54,7 @@ class MoveClassRewriterTest {
             newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should detect changes. Result has ${result.changes.size} changes. Moved: ${result.movedFilePath}")
@@ -62,6 +73,7 @@ class MoveClassRewriterTest {
             newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         val orderChange = result.changes.firstOrNull { it.filePath.endsWith("moveclass/consumer/OrderService.kt") }
@@ -78,6 +90,7 @@ class MoveClassRewriterTest {
             newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         val orderChange = result.changes.firstOrNull { it.filePath.endsWith("moveclass/consumer/OrderService.kt") }
@@ -97,6 +110,7 @@ class MoveClassRewriterTest {
             newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         val shippingChange = result.changes.firstOrNull { it.filePath.endsWith("ShippingService.kt") }
@@ -207,6 +221,7 @@ class MoveClassRewriterTest {
             newFqcn = "com.example.variants.moveclass.original.BillingService",
             classpath = listOf(testProjectClasses),
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should detect changes")
@@ -225,6 +240,7 @@ class MoveClassRewriterTest {
             newFqcn = "com.example.variants.moveclass.original.BillingService",
             classpath = listOf(testProjectClasses),
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         val orderChange = result.changes.firstOrNull { it.filePath.endsWith("OrderService.kt") }
@@ -266,6 +282,7 @@ class MoveClassRewriterTest {
             newFqcn = "com.example.variants.moveclass.billing.BillingService",
             classpath = listOf(testProjectClasses),
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should detect changes")
@@ -288,6 +305,7 @@ class MoveClassRewriterTest {
             newFqcn = "com.example.variants.moveclass.billing.PaymentService",
             classpath = listOf(testProjectClasses),
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should detect changes")
