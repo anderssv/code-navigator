@@ -1,11 +1,9 @@
 package no.f12.codenavigator.navigation.refactor
 
 import org.openrewrite.ExecutionContext
-import org.openrewrite.InMemoryExecutionContext
 import org.openrewrite.SourceFile
 import org.openrewrite.java.tree.J
 import org.openrewrite.kotlin.KotlinIsoVisitor
-import org.openrewrite.kotlin.KotlinParser
 import java.io.File
 
 data class RenameMethodResult(
@@ -29,28 +27,24 @@ object RenameMethodRewriter {
         methodName: String,
         newName: String,
         preview: Boolean = false,
+        parsedSources: ParsedSources? = null,
     ): RenameMethodResult {
-        val sourceFiles = collectSourceFiles(sourceRoots)
-        if (sourceFiles.isEmpty()) return RenameMethodResult(emptyList())
-
-        val parser = KotlinParser.builder().build()
-        val ctx = InMemoryExecutionContext { it.printStackTrace() }
-
-        val parsed = parser.parse(
-            sourceFiles.map { it.toPath() },
-            null,
-            ctx,
-        ).toList()
+        val ps = parsedSources ?: run {
+            val sourceFiles = collectSourceFiles(sourceRoots)
+            if (sourceFiles.isEmpty()) return RenameMethodResult(emptyList())
+            parseKotlinSources(sourceRoots)
+        }
+        if (ps.sources.isEmpty()) return RenameMethodResult(emptyList())
 
         val visitor = RenameMethodVisitor(className, methodName, newName)
 
         val changes = mutableListOf<RenameChange>()
-        for (sourceFile in parsed) {
+        for (sourceFile in ps.sources) {
             val before = sourceFile.printAll()
-            val modified = visitor.visit(sourceFile, ctx) as? SourceFile ?: continue
+            val modified = visitor.visit(sourceFile, ps.ctx) as? SourceFile ?: continue
             val after = modified.printAll()
             if (before != after) {
-                val filePath = resolveOriginalPath(sourceFile, sourceRoots)
+                val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
                 changes.add(RenameChange(filePath, before, after))
             }
         }
