@@ -10,6 +10,12 @@ class RenameParamRewriterTest {
 
     private val testProjectSrc = File("test-project/src/main/kotlin")
 
+    companion object {
+        private val cachedParsedSources by lazy {
+            parseKotlinSources(listOf(File("test-project/src/main/kotlin")))
+        }
+    }
+
     // [TEST] Renames parameter in method declaration
     // [TEST] Renames named argument at call site
     // [TEST] Does not rename positional arguments at call site
@@ -125,6 +131,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "userName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have at least one change")
@@ -142,6 +149,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "userName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have changes")
@@ -159,6 +167,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "userName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         val change = result.changes.first { it.filePath.endsWith("services/AuditService.kt") }
@@ -174,6 +183,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "userName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty())
@@ -192,6 +202,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "userName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         val changedFiles = result.changes.map { it.filePath }
@@ -229,6 +240,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "userName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have changes. Result: $result")
@@ -247,6 +259,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "userName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.size >= 2, "Should have changes in at least 2 files. Changes: ${result.changes.map { it.filePath }}")
@@ -266,6 +279,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "userName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.cascadeCandidates.isNotEmpty(), "Should detect cascade candidate. Changes: ${result.changes.map { it.filePath }}, cascadeCandidates: ${result.cascadeCandidates}")
@@ -283,6 +297,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "userName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.cascadeCandidates.isEmpty(), "Should NOT detect cascade candidate when param names differ. cascadeCandidates: ${result.cascadeCandidates}")
@@ -297,6 +312,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "fullName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have changes for companion method param. Changes: ${result.changes.map { it.filePath }}")
@@ -313,6 +329,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "fullName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         val callerChange = result.changes.firstOrNull { it.filePath.endsWith("companion/UserService.kt") }
@@ -330,6 +347,7 @@ class RenameParamRewriterTest {
             paramName = "fullName",
             newName = "displayName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.warnings.isNotEmpty(), "Should have a warning for val constructor param. Warnings: ${result.warnings}")
@@ -345,6 +363,7 @@ class RenameParamRewriterTest {
             paramName = "name",
             newName = "userName",
             preview = true,
+            parsedSources = cachedParsedSources,
         )
 
         assertTrue(result.warnings.isEmpty(), "Should have no warnings for regular method param. Warnings: ${result.warnings}")
