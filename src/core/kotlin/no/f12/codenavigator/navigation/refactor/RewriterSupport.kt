@@ -1,7 +1,36 @@
 package no.f12.codenavigator.navigation.refactor
 
+import org.openrewrite.ExecutionContext
+import org.openrewrite.InMemoryExecutionContext
 import org.openrewrite.SourceFile
+import org.openrewrite.kotlin.KotlinParser
 import java.io.File
+import java.nio.file.Path
+
+data class ParsedSources(
+    val sources: List<SourceFile>,
+    val sourceRoots: List<File>,
+    val ctx: ExecutionContext,
+)
+
+fun parseKotlinSources(
+    sourceRoots: List<File>,
+    classpath: List<Path> = emptyList(),
+): ParsedSources {
+    val sourceFiles = collectSourceFiles(sourceRoots)
+    val parserBuilder = KotlinParser.builder()
+    if (classpath.isNotEmpty()) {
+        parserBuilder.classpath(classpath)
+    }
+    val parser = parserBuilder.build()
+    val ctx = InMemoryExecutionContext { it.printStackTrace() }
+    val parsed = parser.parse(
+        sourceFiles.map { it.toPath() },
+        null,
+        ctx,
+    ).toList()
+    return ParsedSources(parsed, sourceRoots, ctx)
+}
 
 fun collectSourceFiles(sourceRoots: List<File>): List<File> =
     sourceRoots.flatMap { root ->

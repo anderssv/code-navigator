@@ -9,12 +9,47 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 **Value: high** | **Effort: medium**
 
-The test suite is growing and builds are slow. Investigate and improve:
+**Investigation results** (2,109 tests, 155 classes, 14.7s total):
 
-- **Measure coverage**: Identify which code paths lack tests and which have redundant coverage.
-- **Measure speed**: Find the slowest tests and root-cause them (e.g., repeated Gradle compilation in rewriter tests, unnecessary full-project copies).
+### Speed
+
+71% of execution time is in 5 test classes. The remaining 145 classes total 2.9s — not worth optimizing.
+
+| Test Class | Time | Root Cause |
+|---|---|---|
+| `MoveClassRewriterTest` | 6.5s | KotlinParser + classpath + ChangeType recipe, re-initialized per test (15 full parse cycles × 24 files) |
+| `RenameParamRewriterTest` | 1.4s | KotlinParser re-initialized per test (14 parse cycles × 24 files) |
+| `RenameMethodRewriterTest` | 0.95s | Same pattern (8 parse cycles) |
+| `GitLogRunnerTest` | 0.84s | ~40 real `git` subprocess spawns |
+| `RenamePropertyRewriterTest` | 0.70s | Same pattern (8 parse cycles) |
+
+- **Cache KotlinParser / parsed ASTs in rewriter tests**: Share a parsed AST across tests using the same source roots. Could cut top-5 test time from 10.4s to ~3-4s. Single biggest speed win available.
+
+### Coverage
+
+Overall: 84.2% instruction, 82.7% line, 73.6% branch. **Excluding Gradle task wrappers: 95.1%.**
+
+The 84% headline is misleading — the gap is almost entirely the Gradle task layer (63 classes, 7,553 uncovered instructions, all at 0%). These are thin wrappers around core logic, only exercisable via Gradle TestKit.
+
+Non-Gradle gaps to address:
+
+- **`FieldExtractor`** — 0% coverage, 114 instructions. Only non-Gradle core class at zero. **Add tests.** (low effort)
+- **`LlmFormatter`** — 80.2% (~500 uncovered instructions). Primary agent-facing formatter. **Investigate uncovered branches.** (medium effort)
+- **`JsonFormatter`** — 81.2% (~530 uncovered instructions). **Investigate uncovered branches.** (medium effort)
+- **`RenameMethodRewriter` / `RenamePropertyRewriter`** — 72.1% each. Some code paths untested. (low effort)
+- **`GitDiffRunner`** — 45.0%. Subprocess-based. (low effort)
+
+### kotlin-tdd alignment
+
+Already well-aligned: zero mock imports, tests operate on domain types, shared test utilities are well-organized (`TestClassWriter`, `FormatterTestFixtures`, `TestCallGraphBuilder`). TestContext pattern is not applicable — production code is stateless objects with explicit params. Main stylistic deviation: test data builders are top-level `aFoo()` functions rather than companion object extensions — not worth changing.
+
+### Remaining action items
+
+- **Cache KotlinParser in rewriter tests** (high impact, medium effort)
+- **Add `FieldExtractor` tests** (high impact, low effort)
+- **Cover `LlmFormatter` / `JsonFormatter` uncovered branches** (medium impact, medium effort)
 - ~~**Reduce duplication**: Simplify test data setup — extract shared helpers, use object mothers with `.copy()` for variations, avoid recreating identical fixtures across test classes.~~ **DONE** — see `plan-completed.md`.
-- **Align with kotlin-tdd**: Adopt TestContext/fakes patterns, extension functions on companion objects for test data, and Testing Through The Domain where applicable.
+- ~~**Align with kotlin-tdd**~~ **DONE** — already aligned. Fakes over mocks, Testing Through The Domain, well-organized shared fixtures. No action needed.
 
 ---
 
