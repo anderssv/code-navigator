@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.60
+
+- **Fixed:** Dead code detection no longer reports inherited/framework methods as dead. Methods like Exposed ORM's `Column.nullable()` were falsely attributed to the calling table class because the JVM bytecode dispatches on the subclass type. `CallGraphBuilder` now tracks which methods are actually declared in each class, and `DeadCodeFinder` uses this to filter out inherited methods. Fixes false positives on projects using Exposed, Spring Data, and similar frameworks with fluent builder APIs.
+- **Fixed:** `cnavFindUsages` now detects usages through INVOKEDYNAMIC instructions (lambdas and method references). Previously, lambda-based usages like `{ rowToPoll(it) }` and Java-style method references like `Service::process` were invisible to the usage scanner.
+- **Fixed:** `cnavDsm` / `cnavCycles` / `cnavPackageDeps` now detect dependencies through INVOKEDYNAMIC instructions. Lambda and method reference edges were previously missing from package dependency analysis.
+- **Refactoring:** Rewriter tests (`MoveClassRewriterTest`, `RenameMethodRewriterTest`, `RenamePropertyRewriterTest`, `RenameParamRewriterTest`) now cache `ParsedSources` across test methods for faster execution. Extracted shared `ParsedSources` data class and `parseKotlinSources()` into `RewriterSupport`.
+
 ## 0.1.59
 
 - **New:** `cnavRenameProperty` task / `cnav:rename-property` goal — renames a Kotlin property (including `val`/`var` constructor parameters) and updates all access sites: constructor named arguments, `copy()` named arguments, direct property access, and getter/setter calls. Parameters: `-Ptarget-class=<FQN>` (required), `-Pproperty=<name>` (required), `-PnewName=<name>` (required), `-Ppreview` (dry-run mode). Both Gradle and Maven support. TEXT, JSON, and LLM output formats.
