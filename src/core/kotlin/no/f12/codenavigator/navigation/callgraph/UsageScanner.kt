@@ -10,6 +10,7 @@ import no.f12.codenavigator.navigation.core.createClassReader
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
+import org.objectweb.asm.Handle
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -204,6 +205,36 @@ object UsageScanner {
                                         sourceSet = sourceSet,
                                     )
                                 )
+                            }
+                        }
+
+                        override fun visitInvokeDynamicInsn(
+                            name: String,
+                            descriptor: String,
+                            bootstrapMethodHandle: Handle,
+                            vararg bootstrapMethodArguments: Any,
+                        ) {
+                            for (arg in bootstrapMethodArguments) {
+                                if (arg is Handle) {
+                                    val instrOwnerClass = ClassName.fromInternal(arg.owner)
+                                    val ownerMatched = field == null && matchesOwner(instrOwnerClass, ownerRegex) && matchesMethod(arg.name, method)
+                                    val fieldMatched = field != null && matchesOwner(instrOwnerClass, ownerRegex) && matchesFieldAccessor(arg.name, field)
+                                    val typeMatched = typeRegex != null && instrOwnerClass.matches(typeRegex) && matchesMethod(arg.name, method)
+                                    if (ownerMatched || fieldMatched || typeMatched) {
+                                        usages.add(
+                                            UsageSite(
+                                                callerClass = callerClass,
+                                                callerMethod = callerMethod,
+                                                sourceFile = sourceFile,
+                                                targetOwner = instrOwnerClass,
+                                                targetName = arg.name,
+                                                targetDescriptor = arg.desc,
+                                                kind = UsageKind.METHOD_CALL,
+                                                sourceSet = sourceSet,
+                                            )
+                                        )
+                                    }
+                                }
                             }
                         }
 

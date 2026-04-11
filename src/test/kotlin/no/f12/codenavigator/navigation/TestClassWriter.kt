@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Handle
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -318,6 +319,141 @@ object TestClassWriter {
         writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
         writer.visitSource(sourceFile, null)
         writer.visitMethod(Opcodes.ACC_PUBLIC, methodName, "()V", null, arrayOf(exception))
+        writer.visitEnd()
+        return writeBytes(targetDir, className, writer)
+    }
+
+    /**
+     * Generates a class that models Kotlin's lambda compilation pattern:
+     * a method uses INVOKEDYNAMIC to reference a lambda method (on the same or different class),
+     * and that lambda method makes regular method calls.
+     *
+     * This models the bytecode for code like:
+     * ```kotlin
+     * fun getPoll(id: UUID): Poll =
+     *     transaction { rowToPoll(query(id).single()) }
+     * ```
+     * where the Kotlin compiler generates:
+     * 1. `getPoll` with an INVOKEDYNAMIC referencing `getPoll$lambda$0`
+     * 2. `getPoll$lambda$0` with a regular INVOKEVIRTUAL to `rowToPoll`
+     */
+    fun writeClassWithLambdaCall(
+        targetDir: File,
+        className: String,
+        sourceFile: String,
+        callerMethod: String,
+        lambdaMethodName: String,
+        lambdaTargetCalls: List<Call>,
+    ): File {
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visitSource(sourceFile, null)
+        writeDefaultConstructor(writer)
+
+        // The main method uses INVOKEDYNAMIC to reference the lambda method
+        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, callerMethod, "()V", null, null)
+        mv.visitCode()
+
+        val bootstrapHandle = Handle(
+            Opcodes.H_INVOKESTATIC,
+            "java/lang/invoke/LambdaMetafactory",
+            "metafactory",
+            "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;",
+            false,
+        )
+        val lambdaHandle = Handle(
+            Opcodes.H_INVOKESTATIC,
+            className,
+            lambdaMethodName,
+            "()V",
+            false,
+        )
+        mv.visitInvokeDynamicInsn(
+            "invoke",
+            "()Ljava/lang/Runnable;",
+            bootstrapHandle,
+            Type.getType("()V"),
+            lambdaHandle,
+            Type.getType("()V"),
+        )
+        mv.visitInsn(Opcodes.POP)
+        mv.visitInsn(Opcodes.RETURN)
+        mv.visitMaxs(1, 1)
+        mv.visitEnd()
+
+        // The lambda method makes regular calls
+        val lambdaMv = writer.visitMethod(
+            Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC or Opcodes.ACC_SYNTHETIC,
+            lambdaMethodName, "()V", null, null,
+        )
+        lambdaMv.visitCode()
+        for (call in lambdaTargetCalls) {
+            lambdaMv.visitMethodInsn(Opcodes.INVOKEVIRTUAL, call.owner, call.name, call.descriptor, false)
+        }
+        lambdaMv.visitInsn(Opcodes.RETURN)
+        lambdaMv.visitMaxs(1, 1)
+        lambdaMv.visitEnd()
+
+        writer.visitEnd()
+        return writeBytes(targetDir, className, writer)
+    }
+
+    /**
+     * Generates a class with a method that uses INVOKEDYNAMIC to directly reference a method
+     * on another class (modeling Kotlin's `::methodRef` syntax or a direct method reference).
+     *
+     * Unlike [writeClassWithLambdaCall], there is no intermediate lambda method —
+     * the INVOKEDYNAMIC bootstrap arg directly points to the target class and method.
+     *
+     * This models bytecode for code like:
+     * ```kotlin
+     * val ref = items.map(Service::process)
+     * ```
+     */
+    fun writeClassWithMethodRef(
+        targetDir: File,
+        className: String,
+        sourceFile: String,
+        callerMethod: String,
+        targetClass: String,
+        targetMethod: String,
+        targetDescriptor: String = "()V",
+    ): File {
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visitSource(sourceFile, null)
+        writeDefaultConstructor(writer)
+
+        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC, callerMethod, "()V", null, null)
+        mv.visitCode()
+
+        val bootstrapHandle = Handle(
+            Opcodes.H_INVOKESTATIC,
+            "java/lang/invoke/LambdaMetafactory",
+            "metafactory",
+            "(Ljava/lang/invoke/MethodHandles\$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;",
+            false,
+        )
+        val targetHandle = Handle(
+            Opcodes.H_INVOKEVIRTUAL,
+            targetClass,
+            targetMethod,
+            targetDescriptor,
+            false,
+        )
+        mv.visitInvokeDynamicInsn(
+            "apply",
+            "()Ljava/util/function/Function;",
+            bootstrapHandle,
+            Type.getType("(Ljava/lang/Object;)Ljava/lang/Object;"),
+            targetHandle,
+            Type.getType("(Ljava/lang/Object;)Ljava/lang/Object;"),
+        )
+        mv.visitInsn(Opcodes.POP)
+        mv.visitInsn(Opcodes.RETURN)
+        mv.visitMaxs(1, 1)
+        mv.visitEnd()
+
         writer.visitEnd()
         return writeBytes(targetDir, className, writer)
     }

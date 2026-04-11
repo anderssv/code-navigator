@@ -75,7 +75,11 @@ src/
 
 ### Tests (`src/test/kotlin/no/f12/codenavigator/`)
 
-Mirror the core structure. Each core class has a matching `*Test.kt`. Tests use ASM `ClassWriter` to generate synthetic `.class` files — no real compilation needed.
+Mirror the core structure. Each core class has a matching `*Test.kt`. Most tests use ASM `ClassWriter` to generate synthetic `.class` files for fine-grained control.
+
+### test-project (`test-project/`)
+
+A small Kotlin project compiled by Gradle, providing real `.class` files under `test-project/build/classes/kotlin/main/`. Prefer adding Kotlin source files here when a test needs bytecode patterns that are hard to reproduce synthetically (e.g. INVOKEDYNAMIC from lambdas/method-references, inline functions, coroutines). This ensures tests validate against what the Kotlin compiler actually produces rather than hand-crafted bytecode that may not match real-world output. Tests that use test-project classes call `buildTestProject()` to ensure compilation is up to date.
 
 ## Adding a New Feature
 

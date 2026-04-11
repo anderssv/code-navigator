@@ -13,7 +13,7 @@ class FileSizeScannerTest {
     fun `scans all source files in test-project`() {
         val result = FileSizeScanner.scan(listOf(testProjectSrc))
 
-        assertEquals(26, result.size)
+        assertEquals(28, result.size)
     }
 
     @Test
@@ -52,7 +52,7 @@ class FileSizeScannerTest {
         val result = FileSizeScanner.scan(listOf(testProjectSrc), over = 30)
 
         assertTrue(result.all { it.lines > 30 })
-        assertEquals(2, result.size) // UserService (61) and UserRoute (35)
+        assertEquals(3, result.size) // UserService (61), UserRoute (35), UserReportService (31)
     }
 
     @Test
@@ -67,7 +67,7 @@ class FileSizeScannerTest {
         val missing = File("test-project/src/test/kotlin")
         val result = FileSizeScanner.scan(listOf(testProjectSrc, missing))
 
-        assertEquals(26, result.size)
+        assertEquals(28, result.size)
     }
 
     @Test

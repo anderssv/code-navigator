@@ -8,6 +8,7 @@ import no.f12.codenavigator.navigation.core.createClassReader
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
+import org.objectweb.asm.Handle
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -174,6 +175,21 @@ private class DependencyCollector(private val rootPrefix: PackageName) : ClassVi
 
             override fun visitLdcInsn(value: Any?) {
                 if (value is Type) addType(value)
+            }
+
+            override fun visitInvokeDynamicInsn(
+                name: String?,
+                descriptor: String?,
+                bootstrapMethodHandle: Handle?,
+                vararg bootstrapMethodArguments: Any?,
+            ) {
+                descriptor?.let { addDescriptorTypes(it) }
+                for (arg in bootstrapMethodArguments) {
+                    if (arg is Handle) {
+                        addInternalName(arg.owner)
+                        addDescriptorTypes(arg.desc)
+                    }
+                }
             }
         }
     }

@@ -455,6 +455,22 @@ class DeadCodeFinderTest {
         assertTrue("com.example.Service.recurse" !in deadMethods, "recurse() is reachable from alive process()")
     }
 
+    @Test
+    fun `method called via lambda method within same class is not dead`() {
+        // Models Kotlin's lambda compilation: getPoll uses INVOKEDYNAMIC → getPoll$lambda$0 → rowToPoll
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Repo", "getPoll"),
+            method("com.example.Repo", "getPoll") to method("com.example.Repo", "getPoll\$lambda\$0"),
+            method("com.example.Repo", "getPoll\$lambda\$0") to method("com.example.Repo", "rowToPoll"),
+            projectClasses = setOf("com.example.Controller", "com.example.Repo"),
+        )
+
+        val dead = findDead(graph)
+
+        val deadMethods = dead.deadMethodNames()
+        assertTrue("com.example.Repo.rowToPoll" !in deadMethods, "rowToPoll() is called via lambda from alive getPoll() — should not be dead")
+    }
+
     // === Interface dispatch resolution tests ===
 
     @Test

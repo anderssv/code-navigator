@@ -442,6 +442,28 @@ class DsmDependencyExtractorTest {
         assertTrue(deps.isEmpty(), "Default filterTargets=true should filter out targets outside the filter (existing DSM behavior)")
     }
 
+    @Test
+    fun `detects dependency from INVOKEDYNAMIC method reference bootstrap args`() {
+        // Synthetic bytecode: models Java-style method reference (e.g. Service::process)
+        // where INVOKEDYNAMIC Handle directly points to a class in another package.
+        // Kotlin currently uses lambda trampolines instead, but Java produces this pattern.
+        TestClassWriter.writeClassWithMethodRef(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            callerMethod = "handle",
+            targetClass = "com/example/service/Service",
+            targetMethod = "process",
+        )
+        TestClassWriter.writeClassFile(classesDir, "com/example/service/Service", "Service.kt")
+
+        val deps = DsmDependencyExtractor.extract(listOf(classesDir), PackageName("com.example")).data
+
+        val dep = deps.find {
+            it.sourceClass == ClassName("com.example.api.Controller") &&
+                it.targetClass == ClassName("com.example.service.Service")
+        }
+        assertTrue(dep != null, "Expected dependency from INVOKEDYNAMIC method reference target")
+    }
+
     private fun buildTestProject() {
         val testProjectDir = File("test-project")
         val gradlew = File(testProjectDir.parentFile, "gradlew").absolutePath

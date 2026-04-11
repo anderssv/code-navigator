@@ -732,6 +732,88 @@ class UsageScannerTest {
         assertEquals(SourceSet.TEST, testUsage.sourceSet)
     }
 
+    // --- INVOKEDYNAMIC / lambda usages ---
+
+    @Test
+    fun `finds method call inside lambda body in real compiled Kotlin class`() {
+        val classesDir = File("test-project/build/classes/kotlin/main")
+        if (!classesDir.exists()) {
+            buildTestProject()
+        }
+
+        val usages = UsageScanner.scan(
+            listOf(classesDir),
+            ownerClass = "com.example.domain.UserFormatter",
+            method = "formatShort",
+        ).data
+
+        assertTrue(usages.isNotEmpty(), "Expected to find formatShort usage from UserReportService lambda")
+        val fromReportService = usages.filter { it.callerClass == ClassName("com.example.services.UserReportService") }
+        assertTrue(fromReportService.isNotEmpty(), "Expected usage from UserReportService (via lambda body)")
+    }
+
+    @Test
+    fun `finds method usage through INVOKEDYNAMIC lambda bootstrap args`() {
+        TestClassWriter.writeClassWithLambdaCall(
+            classesDir, "com/example/Caller", "Caller.kt",
+            callerMethod = "getPoll",
+            lambdaMethodName = "getPoll\$lambda\$0",
+            lambdaTargetCalls = listOf(Call("com/example/Target", "rowToPoll", "()V")),
+        )
+
+        val usages = UsageScanner.scan(
+            listOf(classesDir),
+            ownerClass = "com.example.Target",
+            method = "rowToPoll",
+        ).data
+
+        assertTrue(usages.isNotEmpty(), "Expected to find rowToPoll usage via lambda method")
+        assertEquals(ClassName("com.example.Target"), usages[0].targetOwner)
+        assertEquals("rowToPoll", usages[0].targetName)
+    }
+
+    @Test
+    fun `finds lambda method itself as usage via INVOKEDYNAMIC`() {
+        TestClassWriter.writeClassWithLambdaCall(
+            classesDir, "com/example/Caller", "Caller.kt",
+            callerMethod = "getPoll",
+            lambdaMethodName = "getPoll\$lambda\$0",
+            lambdaTargetCalls = listOf(Call("com/example/Target", "rowToPoll", "()V")),
+        )
+
+        val usages = UsageScanner.scan(
+            listOf(classesDir),
+            ownerClass = "com.example.Caller",
+            method = "getPoll\$lambda\$0",
+        ).data
+
+        assertTrue(usages.isNotEmpty(), "Expected to find lambda method usage from INVOKEDYNAMIC")
+        assertEquals(ClassName("com.example.Caller"), usages[0].targetOwner)
+        assertEquals("getPoll\$lambda\$0", usages[0].targetName)
+    }
+
+    @Test
+    fun `finds method usage through direct method reference INVOKEDYNAMIC`() {
+        // Synthetic bytecode: models Java-style method reference (e.g. Service::process)
+        // where INVOKEDYNAMIC Handle directly points to the target class and method.
+        TestClassWriter.writeClassWithMethodRef(
+            classesDir, "com/example/Caller", "Caller.kt",
+            callerMethod = "handle",
+            targetClass = "com/example/Target",
+            targetMethod = "process",
+        )
+
+        val usages = UsageScanner.scan(
+            listOf(classesDir),
+            ownerClass = "com.example.Target",
+            method = "process",
+        ).data
+
+        assertTrue(usages.isNotEmpty(), "Expected to find process usage via method reference")
+        assertEquals(ClassName("com.example.Target"), usages[0].targetOwner)
+        assertEquals("process", usages[0].targetName)
+    }
+
     @Test
     fun `scan without tags produces null source set`() {
         TestClassWriter.writeClassWithCalls(
@@ -747,5 +829,17 @@ class UsageScannerTest {
 
         assertEquals(1, usages.size)
         assertNull(usages[0].sourceSet)
+    }
+
+    private fun buildTestProject() {
+        val testProjectDir = File("test-project")
+        val gradlew = File(testProjectDir.parentFile, "gradlew").absolutePath
+        val process = ProcessBuilder(gradlew, "classes")
+            .directory(testProjectDir)
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputStream.bufferedReader().readText()
+        val exitCode = process.waitFor()
+        check(exitCode == 0) { "Failed to build test-project (exit $exitCode): $output" }
     }
 }

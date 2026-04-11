@@ -217,6 +217,20 @@ object CallGraphBuilder {
                             graph.getOrPut(caller) { mutableSetOf() }.add(callee)
                         }
 
+                        override fun visitInvokeDynamicInsn(
+                            name: String,
+                            descriptor: String,
+                            bootstrapMethodHandle: org.objectweb.asm.Handle,
+                            vararg bootstrapMethodArguments: Any,
+                        ) {
+                            for (arg in bootstrapMethodArguments) {
+                                if (arg is org.objectweb.asm.Handle) {
+                                    val callee = MethodRef(ClassName.fromInternal(arg.owner), arg.name)
+                                    graph.getOrPut(caller) { mutableSetOf() }.add(callee)
+                                }
+                            }
+                        }
+
                         override fun visitEnd() {
                             firstLineNumber?.let { lineNumbers[caller] = it }
                         }

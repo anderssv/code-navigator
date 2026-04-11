@@ -493,4 +493,23 @@ class CallGraphBuilderTest {
         assertEquals(SourceSet.MAIN, graph.sourceSetOf(ClassName("com.example.Service")))
         assertEquals(SourceSet.TEST, graph.sourceSetOf(ClassName("com.example.ServiceTest")))
     }
+
+    @Test
+    fun `detects call target from INVOKEDYNAMIC lambda bootstrap args`() {
+        TestClassWriter.writeClassWithLambdaCall(
+            classesDir, "com/example/Service", "Service.kt",
+            callerMethod = "getPoll",
+            lambdaMethodName = "getPoll\$lambda\$0",
+            lambdaTargetCalls = listOf(Call("com/example/Service", "rowToPoll", "()V")),
+        )
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        val callees = graph.calleesOf(ClassName("com.example.Service"), "getPoll")
+        val calleeNames = callees.map { it.methodName }.toSet()
+        assertTrue(
+            "getPoll\$lambda\$0" in calleeNames,
+            "getPoll should have an edge to getPoll\$lambda\$0 via INVOKEDYNAMIC, but callees were: $calleeNames",
+        )
+    }
 }
