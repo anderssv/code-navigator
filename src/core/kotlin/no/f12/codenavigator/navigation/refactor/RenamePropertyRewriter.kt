@@ -1,13 +1,11 @@
 package no.f12.codenavigator.navigation.refactor
 
 import org.openrewrite.ExecutionContext
-import org.openrewrite.InMemoryExecutionContext
 import org.openrewrite.SourceFile
 import org.openrewrite.java.tree.Expression
 import org.openrewrite.java.tree.J
 import org.openrewrite.java.tree.JavaType
 import org.openrewrite.kotlin.KotlinIsoVisitor
-import org.openrewrite.kotlin.KotlinParser
 import java.io.File
 
 data class RenamePropertyResult(
@@ -31,28 +29,24 @@ object RenamePropertyRewriter {
         propertyName: String,
         newName: String,
         preview: Boolean = false,
+        parsedSources: ParsedSources? = null,
     ): RenamePropertyResult {
-        val sourceFiles = collectSourceFiles(sourceRoots)
-        if (sourceFiles.isEmpty()) return RenamePropertyResult(emptyList())
-
-        val parser = KotlinParser.builder().build()
-        val ctx = InMemoryExecutionContext { it.printStackTrace() }
-
-        val parsed = parser.parse(
-            sourceFiles.map { it.toPath() },
-            null,
-            ctx,
-        ).toList()
+        val ps = parsedSources ?: run {
+            val sourceFiles = collectSourceFiles(sourceRoots)
+            if (sourceFiles.isEmpty()) return RenamePropertyResult(emptyList())
+            parseKotlinSources(sourceRoots)
+        }
+        if (ps.sources.isEmpty()) return RenamePropertyResult(emptyList())
 
         val visitor = RenamePropertyVisitor(className, propertyName, newName)
 
         val changes = mutableListOf<RenameChange>()
-        for (sourceFile in parsed) {
+        for (sourceFile in ps.sources) {
             val before = sourceFile.printAll()
-            val modified = visitor.visit(sourceFile, ctx) as? SourceFile ?: continue
+            val modified = visitor.visit(sourceFile, ps.ctx) as? SourceFile ?: continue
             val after = modified.printAll()
             if (before != after) {
-                val filePath = resolveOriginalPath(sourceFile, sourceRoots)
+                val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
                 changes.add(RenameChange(filePath, before, after))
             }
         }
