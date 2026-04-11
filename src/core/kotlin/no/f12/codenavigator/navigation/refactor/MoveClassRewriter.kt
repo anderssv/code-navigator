@@ -1,10 +1,8 @@
 package no.f12.codenavigator.navigation.refactor
 
-import org.openrewrite.InMemoryExecutionContext
 import org.openrewrite.SourceFile
 import org.openrewrite.internal.InMemoryLargeSourceSet
 import org.openrewrite.java.ChangeType
-import org.openrewrite.kotlin.KotlinParser
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -41,31 +39,23 @@ object MoveClassRewriter {
         newFqcn: String,
         classpath: List<Path> = emptyList(),
         preview: Boolean = false,
+        parsedSources: ParsedSources? = null,
     ): MoveClassResult {
-        val sourceFiles = collectSourceFiles(sourceRoots)
-        if (sourceFiles.isEmpty()) return MoveClassResult(emptyList())
+        val ps = parsedSources ?: run {
+            val sourceFiles = collectSourceFiles(sourceRoots)
+            if (sourceFiles.isEmpty()) return MoveClassResult(emptyList())
+            parseKotlinSources(sourceRoots, classpath)
+        }
+        if (ps.sources.isEmpty()) return MoveClassResult(emptyList())
 
         val oldPackage = className.substringBeforeLast(".")
         val simpleClassName = className.substringAfterLast(".")
         val newPackage = newFqcn.substringBeforeLast(".")
         val targetName = newFqcn.substringAfterLast(".")
 
-        val parserBuilder = KotlinParser.builder()
-        if (classpath.isNotEmpty()) {
-            parserBuilder.classpath(classpath)
-        }
-        val parser = parserBuilder.build()
-        val ctx = InMemoryExecutionContext { it.printStackTrace() }
-
-        val parsed = parser.parse(
-            sourceFiles.map { it.toPath() },
-            null,
-            ctx,
-        ).toList()
-
         val recipe = ChangeType(className, newFqcn, null)
-        val sourceSet = InMemoryLargeSourceSet(parsed)
-        val recipeRun = recipe.run(sourceSet, ctx)
+        val sourceSet = InMemoryLargeSourceSet(ps.sources)
+        val recipeRun = recipe.run(sourceSet, ps.ctx)
         val results = recipeRun.changeset.allResults
 
         val changes = mutableListOf<RenameChange>()
@@ -77,16 +67,16 @@ object MoveClassRewriter {
             val after = result.after?.printAll() ?: continue
             if (before == after) continue
 
-            val filePath = resolveOriginalPath(result.before!!, sourceRoots)
+            val filePath = resolveOriginalPath(result.before!!, ps.sourceRoots)
             changes.add(RenameChange(filePath, before, after))
         }
 
-        for (sourceFile in parsed) {
-            val filePath = resolveOriginalPath(sourceFile, sourceRoots)
+        for (sourceFile in ps.sources) {
+            val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
             if (isTargetClassFile(filePath, oldPackage, simpleClassName)) {
                 movedFilePath = filePath
                 val newDir = newPackage.replace(".", File.separator)
-                for (root in sourceRoots) {
+                for (root in ps.sourceRoots) {
                     if (filePath.startsWith(root.absolutePath)) {
                         newFilePath = File(root, "$newDir/$targetName.kt").absolutePath
                         break
