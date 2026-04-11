@@ -12,6 +12,7 @@ object CallGraphCache : FileCache<CallGraph>() {
     private const val SOURCES_HEADER = "[SOURCES]"
     private const val LINES_HEADER = "[LINES]"
     private const val SOURCE_SETS_HEADER = "[SOURCE_SETS]"
+    private const val DECLARED_METHODS_HEADER = "[DECLARED_METHODS]"
 
     override fun write(cacheFile: File, data: CallGraph) {
         writeLines(cacheFile) { writer ->
@@ -52,6 +53,14 @@ object CallGraphCache : FileCache<CallGraph>() {
                 )
                 writer.newLine()
             }
+            writer.write(DECLARED_METHODS_HEADER)
+            writer.newLine()
+            data.forEachDeclaredMethod { className, methods ->
+                writer.write(
+                    listOf(className.toString(), methods.joinToString(",")).joinToString(FIELD_SEPARATOR),
+                )
+                writer.newLine()
+            }
         }
     }
 
@@ -60,6 +69,7 @@ object CallGraphCache : FileCache<CallGraph>() {
         val sourceFiles = mutableMapOf<ClassName, String>()
         val lineNumbers = mutableMapOf<MethodRef, Int>()
         val sourceSets = mutableMapOf<ClassName, SourceSet>()
+        val declaredMethods = mutableMapOf<ClassName, Set<String>>()
 
         var section = ""
         cacheFile.useLines { lines ->
@@ -69,6 +79,7 @@ object CallGraphCache : FileCache<CallGraph>() {
                     line == SOURCES_HEADER -> section = SOURCES_HEADER
                     line == LINES_HEADER -> section = LINES_HEADER
                     line == SOURCE_SETS_HEADER -> section = SOURCE_SETS_HEADER
+                    line == DECLARED_METHODS_HEADER -> section = DECLARED_METHODS_HEADER
                     section == EDGES_HEADER -> {
                         val parts = line.split(FIELD_SEPARATOR)
                         val caller = MethodRef(ClassName(parts[0]), parts[1])
@@ -88,11 +99,18 @@ object CallGraphCache : FileCache<CallGraph>() {
                         val parts = line.split(FIELD_SEPARATOR)
                         sourceSets[ClassName(parts[0])] = SourceSet.valueOf(parts[1])
                     }
+                    section == DECLARED_METHODS_HEADER -> {
+                        val parts = line.split(FIELD_SEPARATOR)
+                        val methods = parts[1].split(",").filter { it.isNotEmpty() }.toSet()
+                        if (methods.isNotEmpty()) {
+                            declaredMethods[ClassName(parts[0])] = methods
+                        }
+                    }
                 }
             }
         }
 
-        return CallGraph(callerToCallees, sourceFiles, lineNumbers, sourceSets)
+        return CallGraph(callerToCallees, sourceFiles, lineNumbers, sourceSets, declaredMethods)
     }
 
     override fun build(classDirectories: List<File>): ScanResult<CallGraph> =

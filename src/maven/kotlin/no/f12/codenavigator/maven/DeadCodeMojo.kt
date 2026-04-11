@@ -123,6 +123,7 @@ class DeadCodeMojo : AbstractMojo() {
             testOnly = config.testOnly,
             delegationMethods = delegationMethods,
             bridgeMethods = bridgeMethods,
+            declaredMethods = graph.allDeclaredMethods(),
         )
 
         if (dead.isEmpty()) {

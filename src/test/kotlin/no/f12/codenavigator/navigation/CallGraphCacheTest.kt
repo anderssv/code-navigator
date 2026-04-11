@@ -269,6 +269,22 @@ class CallGraphCacheTest {
     }
 
     @Test
+    fun `writes and reads back declared methods`() {
+        val sourceFiles = mapOf(ClassName("com.example.Service") to "Service.kt")
+        val declaredMethods = mapOf(
+            ClassName("com.example.Service") to setOf("process", "validate", "<init>"),
+        )
+        val graph = CallGraph(emptyMap(), sourceFiles, emptyMap(), emptyMap(), declaredMethods)
+
+        CallGraphCache.write(cacheFile, graph)
+        val result = CallGraphCache.read(cacheFile)
+
+        val declared = result.declaredMethodsOf(ClassName("com.example.Service"))
+        assertEquals(setOf("process", "validate", "<init>"), declared)
+        assertTrue(result.declaredMethodsOf(ClassName("com.example.Missing")).isEmpty())
+    }
+
+    @Test
     fun `getOrBuildTagged builds graph with source set tags when cache is stale`() {
         val mainDir = tempDir.resolve("main-classes").toFile()
         mainDir.mkdirs()

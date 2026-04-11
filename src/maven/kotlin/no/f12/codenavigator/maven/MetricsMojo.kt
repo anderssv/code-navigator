@@ -141,6 +141,7 @@ class MetricsMojo : AbstractMojo() {
             classReceiverTypes = classReceiverTypes,
             delegationMethods = delegationMethods,
             bridgeMethods = bridgeMethods,
+            declaredMethods = graph.allDeclaredMethods(),
         )
 
         val projectClasses = scanProjectClasses(classDirectories)

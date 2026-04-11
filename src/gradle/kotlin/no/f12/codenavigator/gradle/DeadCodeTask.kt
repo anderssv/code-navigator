@@ -100,6 +100,7 @@ abstract class DeadCodeTask : DefaultTask() {
             testOnly = config.testOnly,
             delegationMethods = delegationMethods,
             bridgeMethods = bridgeMethods,
+            declaredMethods = graph.allDeclaredMethods(),
         )
 
         if (dead.isEmpty()) {

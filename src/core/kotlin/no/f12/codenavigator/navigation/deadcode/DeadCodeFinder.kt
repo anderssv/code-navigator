@@ -57,6 +57,7 @@ object DeadCodeFinder {
         testOnly: Boolean = false,
         delegationMethods: Set<MethodRef> = emptySet(),
         bridgeMethods: Set<MethodRef> = emptySet(),
+        declaredMethods: Map<ClassName, Set<String>> = emptyMap(),
     ): List<DeadCode> {
         val projectClasses = graph.projectClasses()
         if (projectClasses.isEmpty()) return emptyList()
@@ -168,7 +169,8 @@ object DeadCodeFinder {
                     !isPropertyAccessor(method, classFields) &&
                     method !in inlineMethods &&
                     method !in delegationMethods &&
-                    method !in bridgeMethods
+                    method !in bridgeMethods &&
+                    isDeclaredInClass(method, declaredMethods)
                 ) {
                     val referencedInTests = method in testCalledMethods
                     val reason = if (testGraph != null && referencedInTests) DeadCodeReason.TEST_ONLY else DeadCodeReason.NO_REFERENCES
@@ -245,6 +247,14 @@ object DeadCodeFinder {
     ): Boolean {
         val fields = classFields[method.className] ?: return false
         return KotlinMethodFilter.isAccessorForField(method.methodName, fields)
+    }
+
+    private fun isDeclaredInClass(
+        method: MethodRef,
+        declaredMethods: Map<ClassName, Set<String>>,
+    ): Boolean {
+        val declared = declaredMethods[method.className] ?: return true
+        return method.methodName in declared
     }
 
     private fun isExcludedByAnnotation(

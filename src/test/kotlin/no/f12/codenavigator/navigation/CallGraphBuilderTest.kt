@@ -512,4 +512,29 @@ class CallGraphBuilderTest {
             "getPoll should have an edge to getPoll\$lambda\$0 via INVOKEDYNAMIC, but callees were: $calleeNames",
         )
     }
+
+    @Test
+    fun `declaredMethodsOf returns methods defined in a class`() {
+        TestClassWriter.writeClassWithMultipleMethods(
+            classesDir, "com/example/Service", "Service.kt",
+            listOf(
+                MethodDef("process", emptyList()),
+                MethodDef("validate", emptyList()),
+            ),
+        )
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        val declared = graph.declaredMethodsOf(ClassName("com.example.Service"))
+        assertTrue("process" in declared, "process should be in declared methods")
+        assertTrue("validate" in declared, "validate should be in declared methods")
+    }
+
+    @Test
+    fun `declaredMethodsOf returns empty set for unknown class`() {
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        val declared = graph.declaredMethodsOf(ClassName("com.example.Missing"))
+        assertTrue(declared.isEmpty(), "Unknown class should have no declared methods")
+    }
 }

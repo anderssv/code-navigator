@@ -37,6 +37,7 @@ class DeadCodeFinderTest {
         receiverTypeEntryPoints: Set<ClassName> = emptySet(),
         delegationMethods: Set<MethodRef> = emptySet(),
         bridgeMethods: Set<MethodRef> = emptySet(),
+        declaredMethods: Map<ClassName, Set<String>> = emptyMap(),
     ): List<DeadCode> = DeadCodeFinder.find(
         graph = graph,
         filter = filter,
@@ -59,6 +60,7 @@ class DeadCodeFinderTest {
         receiverTypeEntryPoints = receiverTypeEntryPoints,
         delegationMethods = delegationMethods,
         bridgeMethods = bridgeMethods,
+        declaredMethods = declaredMethods,
     )
 
     private fun List<DeadCode>.deadClassNames(): List<String> =
@@ -1495,5 +1497,29 @@ class DeadCodeFinderTest {
 
         val deadClassNames = dead.deadClassNames()
         assertTrue("com.example.RoutesKt" in deadClassNames, "Without receiver type entry points, Kt class should be dead")
+    }
+
+    // === Inherited method filtering tests ===
+
+    @Test
+    fun `method invoked on inherited receiver type is not reported as dead`() {
+        // Models the Exposed ORM pattern: DevicesTable calls Column.nullable()
+        // The bytecode says INVOKEVIRTUAL DevicesTable.nullable, but nullable()
+        // is not declared in DevicesTable — it's inherited from Column.
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.DevicesTable", "getColumns"),
+            method("com.example.DevicesTable", "<clinit>") to method("com.example.DevicesTable", "nullable"),
+            projectClasses = setOf("com.example.Controller", "com.example.DevicesTable"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            declaredMethods = mapOf(
+                ClassName("com.example.DevicesTable") to setOf("<clinit>", "getColumns"),
+            ),
+        )
+
+        val deadMethods = dead.deadMethodNames()
+        assertTrue("com.example.DevicesTable.nullable" !in deadMethods, "nullable() is not declared in DevicesTable — inherited from Column — should not be reported as dead")
     }
 }
