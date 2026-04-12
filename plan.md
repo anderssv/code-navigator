@@ -167,21 +167,20 @@ From user feedback: a project had 19 silently skipped tests because test methods
 
 ---
 
-## `cnavJar` — inspect library class signatures
+## ~~`cnavJar` — inspect library class signatures~~ DONE
 
-**Value: high** | **Effort: medium**
+Implemented as `-Pjar=<path-or-artifact>` parameter on `list-classes`, `find-class`, `class-detail`, and `find-symbol`.
+See `plan-completed.md`.
 
-Inspect the methods and signatures of classes inside a JAR file, whether or not the JAR is on the project classpath.
+---
 
-```bash
-./gradlew cnavJar -Partifact=com.fasterxml.jackson.core:jackson-databind -Ppattern=ObjectMapper
-./gradlew cnavJar -Pjar=/path/to/some.jar -Ppattern=SomeClass
-```
+## Maven: `-Djar` support for Mojos
 
-- **Two modes**: `-Partifact=<group:name>` (resolve from runtime classpath) or `-Pjar=<path>` (arbitrary JAR)
-- **Implementation**: Reuse `ClassDetailExtractor` / `ClassDetailScanner` but feed entries from a `JarFile`. For `-Partifact`, resolve via Gradle's `configurations.runtimeClasspath.resolvedConfiguration` / Maven's `project.runtimeClasspathElements`.
-- **Why**: AI agents frequently need to check library API signatures. Bytecode gives ground-truth for the exact version in the project.
-- **Note**: This builds classpath resolution infrastructure reused by full classpath scanning and meta-annotation traversal.
+**Value: medium** | **Effort: low**
+
+The `-Pjar=<path-or-artifact>` parameter is implemented for Gradle tasks but not yet for Maven Mojos.
+Add `@Parameter(property = "jar")` to `ListClassesMojo`, `FindClassMojo`, `ClassDetailMojo`, and `FindSymbolMojo`,
+with Maven-native artifact resolution via `project.runtimeClasspathElements`.
 
 ---
 

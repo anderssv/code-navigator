@@ -1,6 +1,8 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.navigation.classinfo.ClassInfoExtractor
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import kotlin.test.Test
@@ -86,5 +88,25 @@ class ClassInfoExtractorTest {
         val result = ClassInfoExtractor.extract(classFile)
 
         assertTrue(result.isUserDefinedClass)
+    }
+
+    @Test
+    fun `extracts class info from ByteArray`() {
+        val bytes = syntheticClassBytes("com/example/JarClass", "JarClass.kt")
+
+        val result = ClassInfoExtractor.extract(bytes)
+
+        assertEquals("com.example.JarClass", result.className.value)
+        assertEquals("JarClass.kt", result.sourceFileName)
+        assertEquals("com/example/JarClass.kt", result.reconstructedSourcePath)
+        assertTrue(result.isUserDefinedClass)
+    }
+
+    private fun syntheticClassBytes(className: String, sourceFile: String): ByteArray {
+        val writer = ClassWriter(0)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visitSource(sourceFile, null)
+        writer.visitEnd()
+        return writer.toByteArray()
     }
 }

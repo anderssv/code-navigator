@@ -4,6 +4,7 @@ import no.f12.codenavigator.navigation.core.AnnotationName
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
 import no.f12.codenavigator.navigation.classinfo.ClassDetailExtractor
 import no.f12.codenavigator.navigation.classinfo.FieldDetail
+import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import org.junit.jupiter.api.io.TempDir
@@ -705,6 +706,16 @@ class ClassDetailExtractorTest {
     }
 
     @Test
+    fun `extracts class detail from ByteArray`() {
+        val bytes = syntheticClassBytes("com/example/JarDetail", "JarDetail.kt")
+
+        val detail = ClassDetailExtractor.extract(bytes)
+
+        assertEquals("com.example.JarDetail", detail.className.value)
+        assertEquals("JarDetail.kt", detail.sourceFile)
+    }
+
+    @Test
     fun `filters out Kotlin internal annotations from field-level annotations`() {
         val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/WithFieldMeta", "WithFieldMeta.kt") {
             val fv = visitField(Opcodes.ACC_PUBLIC, "name", "Ljava/lang/String;", null, null)
@@ -716,5 +727,13 @@ class ClassDetailExtractorTest {
 
         assertEquals(1, detail.fields.first().annotations.size)
         assertEquals(AnnotationName("jakarta.inject.Inject"), detail.fields.first().annotations.first().name)
+    }
+
+    private fun syntheticClassBytes(className: String, sourceFile: String): ByteArray {
+        val writer = ClassWriter(0)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visitSource(sourceFile, null)
+        writer.visitEnd()
+        return writer.toByteArray()
     }
 }

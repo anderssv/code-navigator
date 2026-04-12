@@ -17,8 +17,13 @@ data class ClassInfo(
 
 object ClassInfoExtractor {
 
-    fun extract(classFile: File): ClassInfo {
-        val reader = createClassReader(classFile)
+    fun extract(classFile: File): ClassInfo =
+        extract(createClassReader(classFile))
+
+    fun extract(bytes: ByteArray): ClassInfo =
+        extract(createClassReader(bytes))
+
+    private fun extract(reader: ClassReader): ClassInfo {
         var internalName = ""
         var sourceFile: String? = null
 

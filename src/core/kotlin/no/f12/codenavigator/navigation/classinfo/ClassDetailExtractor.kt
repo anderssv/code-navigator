@@ -45,8 +45,13 @@ data class ClassDetail(
 
 object ClassDetailExtractor {
 
-    fun extract(classFile: File): ClassDetail {
-        val reader = createClassReader(classFile)
+    fun extract(classFile: File): ClassDetail =
+        extract(createClassReader(classFile))
+
+    fun extract(bytes: ByteArray): ClassDetail =
+        extract(createClassReader(bytes))
+
+    private fun extract(reader: ClassReader): ClassDetail {
         var className = ClassName("")
         var sourceFile = "<unknown>"
         var superClass: ClassName? = null

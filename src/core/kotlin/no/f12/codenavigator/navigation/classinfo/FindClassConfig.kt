@@ -9,6 +9,7 @@ data class FindClassConfig(
     val prodOnly: Boolean,
     val testOnly: Boolean,
     val format: OutputFormat,
+    val jar: String?,
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): FindClassConfig = FindClassConfig(
@@ -16,6 +17,7 @@ data class FindClassConfig(
             prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
             testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
             format = ParamDef.parseFormat(properties),
+            jar = TaskRegistry.JAR.parseFrom(properties),
         )
     }
 }

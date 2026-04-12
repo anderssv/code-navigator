@@ -4,6 +4,7 @@ import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.symbol.SymbolExtractor
 import no.f12.codenavigator.navigation.symbol.SymbolInfo
 import no.f12.codenavigator.navigation.symbol.SymbolKind
+import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -194,5 +195,26 @@ class SymbolExtractorTest {
 
         assertEquals(1, symbols.size)
         assertEquals("create", symbols.first().symbolName)
+    }
+
+    @Test
+    fun `extracts symbols from ByteArray`() {
+        val bytes = syntheticClassBytes("com/example/JarSymbol", "JarSymbol.kt")
+
+        val symbols = SymbolExtractor.extract(bytes)
+
+        assertEquals(1, symbols.size)
+        assertEquals("doWork", symbols.first().symbolName)
+        assertEquals(SymbolKind.METHOD, symbols.first().kind)
+        assertEquals(ClassName("com.example.JarSymbol"), symbols.first().className)
+    }
+
+    private fun syntheticClassBytes(className: String, sourceFile: String): ByteArray {
+        val writer = ClassWriter(0)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visitSource(sourceFile, null)
+        writer.visitMethod(Opcodes.ACC_PUBLIC, "doWork", "()V", null, null)
+        writer.visitEnd()
+        return writer.toByteArray()
     }
 }

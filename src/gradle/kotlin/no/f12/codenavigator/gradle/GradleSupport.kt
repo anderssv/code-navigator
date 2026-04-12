@@ -3,6 +3,7 @@ package no.f12.codenavigator.gradle
 import no.f12.codenavigator.registry.TaskDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.core.SourceSet
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.tasks.SourceSetContainer
 import java.io.File
@@ -72,4 +73,54 @@ private fun Project.buildPropertyMap(
         }
     }
     return map
+}
+
+/**
+ * Resolves a `-Pjar` value to a [File].
+ *
+ * - If the value contains `:` and doesn't start with `/` or a drive letter → treat as artifact coordinate
+ *   (group:name), resolve the first matching JAR from the `runtimeClasspath` configuration.
+ * - Otherwise → treat as a file path.
+ */
+fun Project.resolveJar(jarValue: String): File {
+    if (isArtifactCoordinate(jarValue)) {
+        return resolveArtifactFromClasspath(jarValue)
+    }
+    val jarFile = file(jarValue)
+    if (!jarFile.exists()) {
+        throw GradleException("JAR file not found: $jarValue (resolved to ${jarFile.absolutePath})")
+    }
+    return jarFile
+}
+
+private fun isArtifactCoordinate(value: String): Boolean {
+    if (!value.contains(':')) return false
+    // Absolute paths on Unix start with /, on Windows with drive letter like C:
+    if (value.startsWith("/")) return false
+    if (value.length >= 2 && value[1] == ':' && value[0].isLetter()) return false
+    return true
+}
+
+private fun Project.resolveArtifactFromClasspath(coordinate: String): File {
+    val parts = coordinate.split(":")
+    if (parts.size < 2) {
+        throw GradleException("Invalid artifact coordinate: '$coordinate'. Expected format: group:name")
+    }
+    val group = parts[0]
+    val name = parts[1]
+
+    val runtimeClasspath = configurations.findByName("runtimeClasspath")
+        ?: throw GradleException("Cannot resolve artifact '$coordinate': no 'runtimeClasspath' configuration found.")
+
+    val resolvedFiles = runtimeClasspath.resolvedConfiguration.resolvedArtifacts
+        .filter { it.moduleVersion.id.group == group && it.moduleVersion.id.name == name }
+        .map { it.file }
+
+    if (resolvedFiles.isEmpty()) {
+        throw GradleException(
+            "Artifact '$coordinate' not found in runtimeClasspath. " +
+                "Make sure it is declared as a dependency in your build."
+        )
+    }
+    return resolvedFiles.first()
 }

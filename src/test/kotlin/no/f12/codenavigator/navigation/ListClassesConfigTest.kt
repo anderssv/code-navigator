@@ -69,4 +69,32 @@ class ListClassesConfigTest {
 
         assertTrue(config.testOnly)
     }
+
+    @Test
+    fun `jar defaults to null`() {
+        val config = ListClassesConfig.parse(emptyMap())
+
+        assertEquals(null, config.jar)
+    }
+
+    @Test
+    fun `parses jar parameter`() {
+        val config = ListClassesConfig.parse(mapOf("jar" to "/path/to/lib.jar"))
+
+        assertEquals("/path/to/lib.jar", config.jar)
+    }
+
+    @Test
+    fun `pattern defaults to null`() {
+        val config = ListClassesConfig.parse(emptyMap())
+
+        assertEquals(null, config.pattern)
+    }
+
+    @Test
+    fun `parses pattern parameter`() {
+        val config = ListClassesConfig.parse(mapOf("pattern" to "MyClass"))
+
+        assertEquals("MyClass", config.pattern)
+    }
 }

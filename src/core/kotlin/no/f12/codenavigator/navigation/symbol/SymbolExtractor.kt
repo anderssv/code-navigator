@@ -27,8 +27,13 @@ data class SymbolInfo(
 
 object SymbolExtractor {
 
-    fun extract(classFile: File): List<SymbolInfo> {
-        val reader = createClassReader(classFile)
+    fun extract(classFile: File): List<SymbolInfo> =
+        extract(createClassReader(classFile))
+
+    fun extract(bytes: ByteArray): List<SymbolInfo> =
+        extract(createClassReader(bytes))
+
+    private fun extract(reader: ClassReader): List<SymbolInfo> {
         val symbols = mutableListOf<SymbolInfo>()
         var internalName = ""
         var sourceFile: String? = null

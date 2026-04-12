@@ -74,4 +74,18 @@ class FindSymbolConfigTest {
 
         assertTrue(config.testOnly)
     }
+
+    @Test
+    fun `jar defaults to null`() {
+        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod"))
+
+        assertEquals(null, config.jar)
+    }
+
+    @Test
+    fun `parses jar parameter`() {
+        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod", "jar" to "/path/to/lib.jar"))
+
+        assertEquals("/path/to/lib.jar", config.jar)
+    }
 }

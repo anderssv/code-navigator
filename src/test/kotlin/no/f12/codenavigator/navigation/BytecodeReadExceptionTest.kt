@@ -61,6 +61,42 @@ class BytecodeReadExceptionTest {
     }
 
     @Test
+    fun `ByteArray overload returns ClassReader for valid bytecode`() {
+        val bytes = validClassBytes("com/example/ByteArrayClass")
+
+        val reader = createClassReader(bytes)
+
+        assertEquals("com/example/ByteArrayClass", reader.className)
+    }
+
+    @Test
+    fun `ByteArray overload throws for unsupported bytecode version`() {
+        val bytes = validClassBytes("com/example/FutureClass")
+        bytes[6] = (99 shr 8).toByte()
+        bytes[7] = (99 and 0xFF).toByte()
+
+        val exception = assertFailsWith<UnsupportedBytecodeVersionException> {
+            createClassReader(bytes, "my-lib.jar!/com/example/FutureClass.class")
+        }
+
+        assertContains(exception.message!!, "my-lib.jar!/com/example/FutureClass.class")
+        assertContains(exception.message!!, "newer JVM than the code-navigator plugin supports")
+    }
+
+    @Test
+    fun `ByteArray overload uses default label when none provided`() {
+        val bytes = validClassBytes("com/example/FutureClass")
+        bytes[6] = (99 shr 8).toByte()
+        bytes[7] = (99 and 0xFF).toByte()
+
+        val exception = assertFailsWith<UnsupportedBytecodeVersionException> {
+            createClassReader(bytes)
+        }
+
+        assertContains(exception.message!!, "<bytes>")
+    }
+
+    @Test
     fun `ClassScanner returns skipped files when class files are unsupported`() {
         writeClassFileWithVersion(99, "com/example/UnsupportedClass")
 
@@ -80,6 +116,13 @@ class BytecodeReadExceptionTest {
         assertEquals(1, result.data.size)
         assertEquals("com.example.ValidClass", result.data.first().className.value)
         assertEquals(1, result.skippedFiles.size)
+    }
+
+    private fun validClassBytes(className: String): ByteArray {
+        val writer = ClassWriter(0)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visitEnd()
+        return writer.toByteArray()
     }
 
     private fun writeClassFileWithVersion(majorVersion: Int, className: String): File {

@@ -1,5 +1,28 @@
 # Plan — Completed
 
+## ~~`cnavJar` — inspect library class signatures~~ DONE
+
+Implemented as `-Pjar=<path-or-artifact>` parameter on four bytecode inspection tasks: `list-classes`, `find-class`, `class-detail`, and `find-symbol`. When set, scans classes from a JAR file instead of project classes; `prod-only`/`test-only` are ignored.
+
+**Two modes**:
+- File path: `-Pjar=/path/to/lib.jar` — validates file exists.
+- Artifact coordinate: `-Pjar=com.example:library` — resolves from `runtimeClasspath` via Gradle's resolved artifacts.
+
+**Implementation**:
+- `JarClassScanner.kt` — New core class. Reads `.class` entries from JAR files, returns `List<JarClassEntry>` with `entryName`, `bytes`, and `label`.
+- `BytecodeReader.kt` — Added `createClassReader(ByteArray, label)` overload. `File` overload delegates to it.
+- `ClassInfoExtractor.extract(ByteArray)`, `ClassDetailExtractor.extract(ByteArray)`, `SymbolExtractor.extract(ByteArray)` — New overloads, each refactored to `extract(ClassReader)` internally.
+- `GradleSupport.kt` — Added `Project.resolveJar(jarValue)` with `isArtifactCoordinate()` heuristic and `resolveArtifactFromClasspath()`.
+- `ListClassesConfig`, `FindClassConfig`, `FindClassDetailConfig`, `FindSymbolConfig` — Added `jar: String?` field.
+- `ListClassesConfig` — Also added `pattern: String?` field (previously lacked pattern filter).
+- `TaskRegistry.kt` — Added `JAR` ParamDef. Added to `LIST_CLASSES`, `FIND_CLASS`, `CLASS_DETAIL`, `FIND_SYMBOL` task defs. Added `PATTERN` to `LIST_CLASSES`.
+- `ListClassesTask`, `FindClassTask`, `FindClassDetailTask`, `FindSymbolTask` — JAR scanning path using `JarClassScanner` + respective extractors.
+- `HelpText.kt`, `AgentHelpText.kt` — JAR parameter documentation with usage examples.
+
+**Tests**: `JarClassScannerTest` (5 tests), `BytecodeReadExceptionTest` (3 new), plus ByteArray overload tests in `ClassInfoExtractorTest`, `ClassDetailExtractorTest`, `SymbolExtractorTest`. Config tests updated for jar/pattern fields. `TaskRegistryTest` expectedTypes map updated. `HelpTextTest` updated.
+
+**Not implemented for Maven** — tracked as separate plan item.
+
 ## ~~`cnavLayerCheck` — architecture conformance via pattern-based layers~~ DONE
 
 Architecture conformance checking based on hexagonal architecture principles. Layers are defined by class naming patterns (globs) in `.cnav-layers.json`, not by listing packages. First matching pattern wins, enabling enforcement in feature-organized projects where controllers, services, and repositories share a package.

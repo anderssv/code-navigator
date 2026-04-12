@@ -204,6 +204,7 @@ object TaskRegistry {
     val MAX_CHANGESET_SIZE = ParamDef("max-changeset-size", "<N>", "Skip commits touching more files", flag = false, defaultValue = "30", enhancePattern = false, type = ParamType.INT)
     val METRICS_TOP = ParamDef("top", "<N>", "Max results per section", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
     val SECTION = ParamDef("section", "<name>", "Help section: install, workflow, interpretation, schemas, extraction", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val JAR = ParamDef("jar", "<path-or-artifact>", "Scan a JAR file instead of project classes. Value: file path or artifact coordinate (group:name)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val REF = ParamDef("ref", "<git-ref>", "Git ref to compare against (branch, tag, or commit SHA)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val STRING_PATTERN = ParamDef("pattern", "<regex>", "Regex to match against string constant values", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val METHODS = ParamDef("methods", "true", "Also search method-level annotations", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
@@ -227,7 +228,7 @@ object TaskRegistry {
     val LIST_CLASSES = TaskDef(
         goal = "list-classes",
         description = "List all classes in the project",
-        params = FORMAT_PARAMS + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(PATTERN, JAR) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -235,7 +236,7 @@ object TaskRegistry {
     val FIND_CLASS = TaskDef(
         goal = "find-class",
         description = "Find classes matching a regex pattern",
-        params = FORMAT_PARAMS + PATTERN + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + PATTERN + listOf(JAR) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -243,7 +244,7 @@ object TaskRegistry {
     val FIND_SYMBOL = TaskDef(
         goal = "find-symbol",
         description = "Find methods and fields matching a regex pattern",
-        params = FORMAT_PARAMS + listOf(PATTERN) + SOURCE_SET_PARAMS + listOf(INCLUDETEST),
+        params = FORMAT_PARAMS + listOf(PATTERN, JAR) + SOURCE_SET_PARAMS + listOf(INCLUDETEST),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -251,7 +252,7 @@ object TaskRegistry {
     val CLASS_DETAIL = TaskDef(
         goal = "class-detail",
         description = "Show detailed class information (methods, fields, interfaces)",
-        params = FORMAT_PARAMS + PATTERN + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + PATTERN + listOf(JAR) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavClass",

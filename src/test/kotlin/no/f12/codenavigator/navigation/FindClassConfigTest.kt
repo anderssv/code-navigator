@@ -74,4 +74,18 @@ class FindClassConfigTest {
 
         assertTrue(config.testOnly)
     }
+
+    @Test
+    fun `jar defaults to null`() {
+        val config = FindClassConfig.parse(mapOf("pattern" to "MyClass"))
+
+        assertEquals(null, config.jar)
+    }
+
+    @Test
+    fun `parses jar parameter`() {
+        val config = FindClassConfig.parse(mapOf("pattern" to "MyClass", "jar" to "/path/to/lib.jar"))
+
+        assertEquals("/path/to/lib.jar", config.jar)
+    }
 }

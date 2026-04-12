@@ -8,8 +8,10 @@ import no.f12.codenavigator.formatting.TableFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.SourceSetResolver
+import no.f12.codenavigator.navigation.core.JarClassScanner
 import no.f12.codenavigator.navigation.classinfo.ClassFilter
 import no.f12.codenavigator.navigation.classinfo.ClassIndexCache
+import no.f12.codenavigator.navigation.classinfo.ClassInfoExtractor
 import no.f12.codenavigator.navigation.classinfo.FindClassConfig
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 
@@ -34,18 +36,32 @@ abstract class FindClassTask : DefaultTask() {
             )
         }
 
-        val taggedDirs = project.taggedClassDirectories()
-        val resolver = SourceSetResolver.from(taggedDirs)
+        val allClasses = if (config.jar != null) {
+            val jarFile = project.resolveJar(config.jar)
+            val entries = JarClassScanner.scan(jarFile)
+            entries.mapNotNull { entry ->
+                try {
+                    val info = ClassInfoExtractor.extract(entry.bytes)
+                    if (info.isUserDefinedClass) info else null
+                } catch (_: Exception) {
+                    null
+                }
+            }.sortedBy { it.className }
+        } else {
+            val taggedDirs = project.taggedClassDirectories()
+            val resolver = SourceSetResolver.from(taggedDirs)
 
-        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/class-index-all.cache")
-        val result = ClassIndexCache.getOrBuild(cacheFile, resolver.classDirectories)
-        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val allClasses = when {
-            config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
-            config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
-            else -> result.data
+            val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/class-index-all.cache")
+            val result = ClassIndexCache.getOrBuild(cacheFile, resolver.classDirectories)
+            val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+            SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
+            when {
+                config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
+                config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
+                else -> result.data
+            }
         }
+
         val matches = ClassFilter.filter(allClasses, config.pattern)
         if (matches.isEmpty()) {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No classes matching '${config.pattern}' found."))

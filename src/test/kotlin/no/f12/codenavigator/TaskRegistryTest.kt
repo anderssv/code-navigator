@@ -908,6 +908,7 @@ class TaskRegistryTest {
             "max-changeset-size" to ParamType.INT,
             "collapse-lambdas" to ParamType.BOOLEAN,
             "section" to ParamType.STRING,
+            "jar" to ParamType.STRING,
             "ref" to ParamType.STRING,
             "treat-as-dead" to ParamType.LIST_STRING,
             "methods" to ParamType.BOOLEAN,

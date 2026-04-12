@@ -7,8 +7,11 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.SourceSetResolver
+import no.f12.codenavigator.navigation.core.JarClassScanner
+import no.f12.codenavigator.navigation.classinfo.ClassDetailExtractor
 import no.f12.codenavigator.navigation.classinfo.ClassDetailFormatter
 import no.f12.codenavigator.navigation.classinfo.ClassDetailScanner
+import no.f12.codenavigator.navigation.classinfo.ClassInfoExtractor
 import no.f12.codenavigator.navigation.classinfo.FindClassDetailConfig
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 
@@ -33,16 +36,35 @@ abstract class FindClassDetailTask : DefaultTask() {
             )
         }
 
-        val taggedDirs = project.taggedClassDirectories()
-        val resolver = SourceSetResolver.from(taggedDirs)
+        val regex = Regex(config.pattern, RegexOption.IGNORE_CASE)
 
-        val result = ClassDetailScanner.scan(resolver.classDirectories, config.pattern)
-        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val matchingDetails = when {
-            config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
-            config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
-            else -> result.data
+        val matchingDetails = if (config.jar != null) {
+            val jarFile = project.resolveJar(config.jar)
+            val entries = JarClassScanner.scan(jarFile)
+            entries.mapNotNull { entry ->
+                try {
+                    val info = ClassInfoExtractor.extract(entry.bytes)
+                    if (info.isUserDefinedClass && info.className.matches(regex)) {
+                        ClassDetailExtractor.extract(entry.bytes)
+                    } else {
+                        null
+                    }
+                } catch (_: Exception) {
+                    null
+                }
+            }.sortedBy { it.className }
+        } else {
+            val taggedDirs = project.taggedClassDirectories()
+            val resolver = SourceSetResolver.from(taggedDirs)
+
+            val result = ClassDetailScanner.scan(resolver.classDirectories, config.pattern)
+            val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+            SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
+            when {
+                config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
+                config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
+                else -> result.data
+            }
         }
 
         if (matchingDetails.isEmpty()) {
