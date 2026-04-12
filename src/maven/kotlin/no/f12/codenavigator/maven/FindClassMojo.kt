@@ -7,8 +7,10 @@ import no.f12.codenavigator.formatting.TableFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.SourceSetResolver
+import no.f12.codenavigator.navigation.core.JarClassScanner
 import no.f12.codenavigator.navigation.classinfo.ClassFilter
 import no.f12.codenavigator.navigation.classinfo.ClassIndexCache
+import no.f12.codenavigator.navigation.classinfo.ClassInfoExtractor
 import no.f12.codenavigator.navigation.classinfo.FindClassConfig
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
@@ -17,10 +19,11 @@ import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
 import org.apache.maven.plugins.annotations.Mojo
 import org.apache.maven.plugins.annotations.Parameter
+import org.apache.maven.plugins.annotations.ResolutionScope
 import org.apache.maven.project.MavenProject
 import java.io.File
 
-@Mojo(name = "find-class")
+@Mojo(name = "find-class", requiresDependencyResolution = ResolutionScope.RUNTIME)
 @Execute(phase = LifecyclePhase.COMPILE)
 class FindClassMojo : AbstractMojo() {
 
@@ -35,6 +38,9 @@ class FindClassMojo : AbstractMojo() {
 
     @Parameter(property = "pattern")
     private var pattern: String? = null
+
+    @Parameter(property = "jar")
+    private var jar: String? = null
 
     @Parameter(property = "prod-only")
     private var prodOnly: String? = null
@@ -51,22 +57,36 @@ class FindClassMojo : AbstractMojo() {
             )
         }
 
-        val taggedDirs = project.taggedClassDirectories()
-        val resolver = SourceSetResolver.from(taggedDirs)
+        val allClasses = if (config.jar != null) {
+            val jarFile = project.resolveJar(config.jar!!)
+            val entries = JarClassScanner.scan(jarFile)
+            entries.mapNotNull { entry ->
+                try {
+                    val info = ClassInfoExtractor.extract(entry.bytes)
+                    if (info.isUserDefinedClass) info else null
+                } catch (_: Exception) {
+                    null
+                }
+            }.sortedBy { it.className }
+        } else {
+            val taggedDirs = project.taggedClassDirectories()
+            val resolver = SourceSetResolver.from(taggedDirs)
 
-        if (resolver.classDirectories.isEmpty() || resolver.classDirectories.none { it.exists() }) {
-            log.warn("Classes directory does not exist — run 'mvn compile' first.")
-            return
+            if (resolver.classDirectories.isEmpty() || resolver.classDirectories.none { it.exists() }) {
+                log.warn("Classes directory does not exist — run 'mvn compile' first.")
+                return
+            }
+
+            val result = ClassIndexCache.getOrBuild(File(project.build.directory, "cnav/class-index-all.cache"), resolver.classDirectories)
+            val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
+            SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
+            when {
+                config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
+                config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
+                else -> result.data
+            }
         }
 
-        val result = ClassIndexCache.getOrBuild(File(project.build.directory, "cnav/class-index-all.cache"), resolver.classDirectories)
-        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
-        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
-        val allClasses = when {
-            config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
-            config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
-            else -> result.data
-        }
         val matches = ClassFilter.filter(allClasses, config.pattern)
 
         if (matches.isEmpty()) {
@@ -84,6 +104,7 @@ class FindClassMojo : AbstractMojo() {
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
+        jar?.let { put("jar", it) }
         prodOnly?.let { put("prod-only", it) }
         testOnly?.let { put("test-only", it) }
     }

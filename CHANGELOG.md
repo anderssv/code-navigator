@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.61
+
+- **New:** `-Pjar=<path-or-artifact>` parameter for `cnavListClasses`, `cnavFindClass`, `cnavClassDetail`, and `cnavFindSymbol`. Scans classes from a JAR file instead of project classes. Supports file paths (`-Pjar=/path/to/lib.jar`) and artifact coordinates (`-Pjar=com.example:library`) resolved from the project's `runtimeClasspath`. When `-Pjar` is set, `prod-only`/`test-only` filters are ignored.
+- **New:** `-Ppattern` filter added to `cnavListClasses` — previously the only bytecode inspection task without a pattern filter.
+- **New:** `ByteArray` overloads for `ClassInfoExtractor.extract()`, `ClassDetailExtractor.extract()`, and `SymbolExtractor.extract()` — enables extraction from in-memory class bytes (e.g. JAR entries) without writing to disk.
+- **New:** `JarClassScanner` — reads `.class` entries from JAR files, returning entry name, raw bytes, and a label for error messages.
+- **New:** `GradleSupport.resolveJar()` — resolves `-Pjar` values as either file paths or artifact coordinates via Gradle's `runtimeClasspath.resolvedConfiguration.resolvedArtifacts`.
+
 ## 0.1.60
 
 - **Fixed:** Dead code detection no longer reports inherited/framework methods as dead. Methods like Exposed ORM's `Column.nullable()` were falsely attributed to the calling table class because the JVM bytecode dispatches on the subclass type. `CallGraphBuilder` now tracks which methods are actually declared in each class, and `DeadCodeFinder` uses this to filter out inherited methods. Fixes false positives on projects using Exposed, Spring Data, and similar frameworks with fluent builder APIs.
