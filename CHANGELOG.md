@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.62
+
+- **Fixed:** Maven artifact coordinate resolution for `-Djar=group:name` — added `requiresDependencyResolution = ResolutionScope.RUNTIME` to `list-classes`, `find-class`, `class-detail`, and `find-symbol` mojos. Without this, `runtimeClasspathElements` was empty and artifact coordinates always failed to resolve. Direct JAR file paths were not affected.
+
 ## 0.1.61
 
 - **New:** `-Pjar=<path-or-artifact>` parameter for `cnavListClasses`, `cnavFindClass`, `cnavClassDetail`, and `cnavFindSymbol`. Scans classes from a JAR file instead of project classes. Supports file paths (`-Pjar=/path/to/lib.jar`) and artifact coordinates (`-Pjar=com.example:library`) resolved from the project's `runtimeClasspath`. When `-Pjar` is set, `prod-only`/`test-only` filters are ignored.
