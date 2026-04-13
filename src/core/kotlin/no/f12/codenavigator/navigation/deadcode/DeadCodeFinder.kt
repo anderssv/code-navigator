@@ -182,13 +182,14 @@ object DeadCodeFinder {
                 ) {
                     val referencedInTests = method in testCalledMethods
                     val reason = if (testGraph != null && referencedInTests) DeadCodeReason.TEST_ONLY else DeadCodeReason.NO_REFERENCES
+                    val conf = classConfidence(method.className, method, testGraph, referencedInTests, classAnnotations, methodAnnotations, classExternalInterfaces, modifierAnnotated)
                     results.add(
                         DeadCode(
                             className = method.className,
                             memberName = method.methodName,
                             kind = DeadCodeKind.METHOD,
                             sourceFile = graph.sourceFileOf(method.className),
-                            confidence = classConfidence(method.className, method, testGraph, referencedInTests, classAnnotations, methodAnnotations, classExternalInterfaces, modifierAnnotated),
+                            confidence = conf,
                             reason = reason,
                         )
                     )
@@ -223,9 +224,14 @@ object DeadCodeFinder {
 
         val hasClassAnnotations = classAnnotations.containsKey(className)
         val hasMethodAnnotations = method != null && methodAnnotations.containsKey(method)
-        if (hasClassAnnotations || hasMethodAnnotations) return DeadCodeConfidence.LOW
+        if (method == null && hasClassAnnotations) return DeadCodeConfidence.LOW
+        if (hasMethodAnnotations) {
+            return DeadCodeConfidence.LOW
+        }
 
-        if (method != null && classExternalInterfaces.containsKey(className)) return DeadCodeConfidence.LOW
+        if (method != null && classExternalInterfaces.containsKey(className)) {
+            return DeadCodeConfidence.LOW
+        }
 
         if (testGraph != null && referencedInTests) return DeadCodeConfidence.MEDIUM
 

@@ -120,6 +120,8 @@ value class AnnotationName(val value: String) : Comparable<AnnotationName> {
             "kotlin.Metadata",
             "kotlin.jvm.internal.SourceDebugExtension",
             "kotlin.coroutines.jvm.internal.DebugMetadata",
+            "org.jetbrains.annotations.NotNull",
+            "org.jetbrains.annotations.Nullable",
         )
     }
 }

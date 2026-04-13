@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.64
+
+- **Fixed:** Dead code confidence classification no longer downgrades methods to LOW confidence when the only annotations present are Kotlin compiler-generated nullability markers (`@org.jetbrains.annotations.NotNull`, `@Nullable`). These are now treated as internal annotations alongside `kotlin.Metadata` and filtered out during annotation collection.
+- **Fixed:** Dead code confidence for methods on annotated classes. Previously, any class-level annotation (including `kotlin.Metadata`) would downgrade dead *method* confidence to LOW. Now class-level annotations only affect class-level dead code confidence; method confidence is determined solely by method-level annotations.
+
 ## 0.1.63
 
 - **Fixed:** Dead code detection no longer reports classes used only via field access (e.g. `EnumType.SOME_VALUE`) as dead. `CallGraphBuilder` now handles `visitFieldInsn` (GETSTATIC, GETFIELD, etc.) to create type reference edges for cross-class field accesses.

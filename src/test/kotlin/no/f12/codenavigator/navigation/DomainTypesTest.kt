@@ -536,6 +536,16 @@ class AnnotationNameTest {
     }
 
     @Test
+    fun `isInternal returns true for jetbrains NotNull`() {
+        assertTrue(AnnotationName("org.jetbrains.annotations.NotNull").isInternal())
+    }
+
+    @Test
+    fun `isInternal returns true for jetbrains Nullable`() {
+        assertTrue(AnnotationName("org.jetbrains.annotations.Nullable").isInternal())
+    }
+
+    @Test
     fun `isInternal returns false for user annotations`() {
         assertFalse(AnnotationName("org.springframework.stereotype.Service").isInternal())
         assertFalse(AnnotationName("kotlin.Deprecated").isInternal())

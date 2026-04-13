@@ -631,6 +631,44 @@ class DeadCodeFinderTest {
     }
 
     @Test
+    fun `dead method on annotated class has HIGH confidence when method itself has no annotations`() {
+        val graph = testCallGraph(
+            method("com.example.Caller", "main") to method("com.example.Service", "process"),
+            method("com.example.Service", "helper") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Caller", "com.example.Service", "com.example.Repo"),
+        )
+
+        val dead = findDead(
+            graph = graph,
+            classAnnotations = mapOf(ClassName("com.example.Service") to setOf(AnnotationName("Component"))),
+        )
+
+        val helperDead = dead.first { it.memberName == "helper" }
+        assertEquals(DeadCodeConfidence.HIGH, helperDead.confidence, "Class annotation should not lower method confidence — only method annotations matter for dead methods")
+    }
+
+    @Test
+    fun `dead method on annotated class referenced in tests has MEDIUM confidence not LOW`() {
+        val prodGraph = testCallGraph(
+            method("com.example.Caller", "main") to method("com.example.Service", "process"),
+            method("com.example.Service", "helper") to method("com.example.Repo", "save"),
+            projectClasses = setOf("com.example.Caller", "com.example.Service", "com.example.Repo"),
+        )
+        val testGraph = testCallGraph(
+            method("com.example.ServiceTest", "testHelper") to method("com.example.Service", "helper"),
+        )
+
+        val dead = findDead(
+            graph = prodGraph,
+            testGraph = testGraph,
+            classAnnotations = mapOf(ClassName("com.example.Service") to setOf(AnnotationName("Component"))),
+        )
+
+        val helperDead = dead.first { it.memberName == "helper" }
+        assertEquals(DeadCodeConfidence.MEDIUM, helperDead.confidence, "Class annotation should not override test-graph MEDIUM for dead methods")
+    }
+
+    @Test
     fun `unreferenced method with annotations has LOW confidence`() {
         val graph = testCallGraph(
             method("com.example.Caller", "main") to method("com.example.Service", "process"),
