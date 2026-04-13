@@ -7,6 +7,7 @@ import no.f12.codenavigator.navigation.callgraph.CallDirection
 import no.f12.codenavigator.navigation.callgraph.CallTreeFormatter
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import no.f12.codenavigator.navigation.core.SourceSet
+import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -536,5 +537,76 @@ class CallGraphBuilderTest {
 
         val declared = graph.declaredMethodsOf(ClassName("com.example.Missing"))
         assertTrue(declared.isEmpty(), "Unknown class should have no declared methods")
+    }
+
+    @Test
+    fun `GETFIELD on another class creates a type reference edge`() {
+        TestClassWriter.writeClassWithFieldAccessAndCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
+            "readField", FieldAccess("com/example/Target", "someField", "Ljava/lang/String;", Opcodes.GETFIELD),
+        )
+        TestClassWriter.writeClassFile(classesDir, "com/example/Target", "Target.kt")
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        val callers = graph.callersOfClass(ClassName("com.example.Target"))
+        assertTrue(callers.isNotEmpty(), "GETFIELD should create a type reference edge")
+        assertEquals("com.example.Caller", callers.first().className.value)
+    }
+
+    @Test
+    fun `GETSTATIC on same class does not create cross-class edge`() {
+        TestClassWriter.writeClassWithFieldAccessAndCalls(
+            classesDir, "com/example/SelfRef", "SelfRef.kt",
+            "readOwn", FieldAccess("com/example/SelfRef", "MY_CONST", "I", Opcodes.GETSTATIC),
+        )
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        val callers = graph.callersOfClass(ClassName("com.example.SelfRef"))
+        assertTrue(callers.isEmpty(), "Same-class GETSTATIC should not create cross-class edge")
+    }
+
+    @Test
+    fun `LDC Type on same class does not create cross-class edge`() {
+        TestClassWriter.writeClassWithLdcType(
+            classesDir, "com/example/SelfLdc", "SelfLdc.kt",
+            "loadSelf", "com/example/SelfLdc",
+        )
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        val callers = graph.callersOfClass(ClassName("com.example.SelfLdc"))
+        assertTrue(callers.isEmpty(), "Same-class LDC Type should not create cross-class edge")
+    }
+
+    @Test
+    fun `GETSTATIC on another class creates a type reference edge`() {
+        TestClassWriter.writeClassWithFieldAccessAndCalls(
+            classesDir, "com/example/Caller", "Caller.kt",
+            "doWork", FieldAccess("com/example/EnumType", "SOME_VALUE", "Lcom/example/EnumType;", Opcodes.GETSTATIC),
+        )
+        TestClassWriter.writeClassFile(classesDir, "com/example/EnumType", "EnumType.kt")
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        val callers = graph.callersOfClass(ClassName("com.example.EnumType"))
+        assertTrue(callers.isNotEmpty(), "GETSTATIC should create a type reference edge")
+        assertEquals("com.example.Caller", callers.first().className.value)
+    }
+
+    @Test
+    fun `LDC Type on another class creates a type reference edge`() {
+        TestClassWriter.writeClassWithLdcType(
+            classesDir, "com/example/Caller", "Caller.kt",
+            "loadClass", "com/example/Anchor",
+        )
+        TestClassWriter.writeClassFile(classesDir, "com/example/Anchor", "Anchor.kt")
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        val callers = graph.callersOfClass(ClassName("com.example.Anchor"))
+        assertTrue(callers.isNotEmpty(), "LDC Type should create a type reference edge")
+        assertEquals("com.example.Caller", callers.first().className.value)
     }
 }

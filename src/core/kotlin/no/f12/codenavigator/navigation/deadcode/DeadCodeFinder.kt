@@ -130,6 +130,14 @@ object DeadCodeFinder {
             }
         }
 
+        // Reverse interface liveness: if an implementor is alive, its interfaces are alive too.
+        // This handles marker interfaces (no methods) that are only "used" via type declarations.
+        for ((interfaceName, implementors) in interfaceImplementors) {
+            if (interfaceName in projectClasses && implementors.any { it in calledTypes }) {
+                calledTypes.add(interfaceName)
+            }
+        }
+
         val testCalledTypes = mutableSetOf<ClassName>()
         val testCalledMethods = mutableSetOf<MethodRef>()
         if (testGraph != null) {

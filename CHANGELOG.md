@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.63
+
+- **Fixed:** Dead code detection no longer reports classes used only via field access (e.g. `EnumType.SOME_VALUE`) as dead. `CallGraphBuilder` now handles `visitFieldInsn` (GETSTATIC, GETFIELD, etc.) to create type reference edges for cross-class field accesses.
+- **Fixed:** Dead code detection no longer reports classes used only as classloader anchors (e.g. `MyClass::class.java.getResourceAsStream()`) as dead. `CallGraphBuilder` now handles `visitLdcInsn` for `LDC Type` instructions to create type reference edges for class literal references.
+- **Fixed:** Dead code detection no longer reports marker interfaces (interfaces with zero methods) as dead when implementors are alive. `DeadCodeFinder` now propagates liveness from alive implementors back to their interfaces after the BFS pass.
+
 ## 0.1.62
 
 - **Fixed:** Maven artifact coordinate resolution for `-Djar=group:name` — added `requiresDependencyResolution = ResolutionScope.RUNTIME` to `list-classes`, `find-class`, `class-detail`, and `find-symbol` mojos. Without this, `runtimeClasspathElements` was empty and artifact coordinates always failed to resolve. Direct JAR file paths were not affected.

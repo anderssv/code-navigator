@@ -1522,4 +1522,42 @@ class DeadCodeFinderTest {
         val deadMethods = dead.deadMethodNames()
         assertTrue("com.example.DevicesTable.nullable" !in deadMethods, "nullable() is not declared in DevicesTable — inherited from Column — should not be reported as dead")
     }
+
+    // === Marker interface liveness tests ===
+
+    @Test
+    fun `marker interface is alive when an implementor is alive`() {
+        // NinError is a marker interface (no methods) implemented by CheckConsentResult.InvalidNin
+        // InvalidNin is alive because Controller calls it. NinError should not be dead.
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "check"),
+            method("com.example.Service", "check") to method("com.example.CheckResult\$InvalidNin", "getMessage"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.NinError", "com.example.CheckResult\$InvalidNin"),
+        )
+        val interfaceImplementors = mapOf(
+            ClassName("com.example.NinError") to setOf(ClassName("com.example.CheckResult\$InvalidNin")),
+        )
+
+        val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
+
+        val deadClasses = dead.deadClassNames()
+        assertTrue("com.example.NinError" !in deadClasses, "Marker interface NinError should not be dead — it has an alive implementor")
+    }
+
+    @Test
+    fun `marker interface with no alive implementors is still dead`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "check"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.NinError", "com.example.DeadImpl"),
+        )
+        val interfaceImplementors = mapOf(
+            ClassName("com.example.NinError") to setOf(ClassName("com.example.DeadImpl")),
+        )
+
+        val dead = findDead(graph, interfaceImplementors = interfaceImplementors)
+
+        val deadClasses = dead.deadClassNames()
+        assertTrue("com.example.NinError" in deadClasses, "Marker interface should be dead if no implementors are alive")
+        assertTrue("com.example.DeadImpl" in deadClasses, "DeadImpl should be dead — no calls to it")
+    }
 }

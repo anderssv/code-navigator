@@ -244,6 +244,29 @@ object CallGraphBuilder {
                             }
                         }
 
+                        override fun visitFieldInsn(
+                            opcode: Int,
+                            owner: String,
+                            name: String,
+                            descriptor: String,
+                        ) {
+                            val fieldOwner = ClassName.fromInternal(owner)
+                            if (fieldOwner != ownerClassName) {
+                                val syntheticRef = MethodRef(fieldOwner, "<field:$name>")
+                                graph.getOrPut(caller) { mutableSetOf() }.add(syntheticRef)
+                            }
+                        }
+
+                        override fun visitLdcInsn(value: Any?) {
+                            if (value is org.objectweb.asm.Type && value.sort == org.objectweb.asm.Type.OBJECT) {
+                                val referencedClass = ClassName.fromInternal(value.internalName)
+                                if (referencedClass != ownerClassName) {
+                                    val syntheticRef = MethodRef(referencedClass, "<class-literal>")
+                                    graph.getOrPut(caller) { mutableSetOf() }.add(syntheticRef)
+                                }
+                            }
+                        }
+
                         override fun visitEnd() {
                             firstLineNumber?.let { lineNumbers[caller] = it }
                         }
