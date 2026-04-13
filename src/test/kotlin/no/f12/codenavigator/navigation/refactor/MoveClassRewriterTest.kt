@@ -332,5 +332,133 @@ class MoveClassRewriterTest {
         assertEquals(result.newFilePath, deserialized.newFilePath)
     }
 
+    @Test
+    fun `move Kt facade updates package declaration in file with top-level functions`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.CookieSupportKt",
+            newFqcn = "com.example.variants.moveclass.http.CookieSupportKt",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+            parsedSources = cachedParsedSources,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should detect changes when using Kt facade name. Result: $result")
+        val cookieChange = result.changes.firstOrNull { it.filePath.endsWith("CookieSupport.kt") }
+        assertTrue(cookieChange != null, "Should have a change for CookieSupport.kt. Changed files: ${result.changes.map { it.filePath }}")
+        assertTrue(cookieChange.after.contains("package com.example.variants.moveclass.http"), "Package declaration should be updated. Content:\n${cookieChange.after}")
+    }
+
+    @Test
+    fun `move Kt facade updates class imports in consumer files`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.CookieSupportKt",
+            newFqcn = "com.example.variants.moveclass.http.CookieSupportKt",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+            parsedSources = cachedParsedSources,
+        )
+
+        val consumerChange = result.changes.firstOrNull { it.filePath.endsWith("CookieConsumer.kt") }
+        assertTrue(consumerChange != null, "Should have a change for CookieConsumer.kt. Changed files: ${result.changes.map { it.filePath }}")
+        assertTrue(consumerChange.after.contains("import com.example.variants.moveclass.http.CookieConfig"), "Class import should be updated. Content:\n${consumerChange.after}")
+        assertTrue(!consumerChange.after.contains("import com.example.variants.moveclass.original.CookieConfig"), "Old class import should be gone. Content:\n${consumerChange.after}")
+    }
+
+    @Test
+    fun `move Kt facade updates top-level function imports in consumer files`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.CookieSupportKt",
+            newFqcn = "com.example.variants.moveclass.http.CookieSupportKt",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+            parsedSources = cachedParsedSources,
+        )
+
+        val consumerChange = result.changes.firstOrNull { it.filePath.endsWith("CookieConsumer.kt") }
+        assertTrue(consumerChange != null, "Should have a change for CookieConsumer.kt. Changed files: ${result.changes.map { it.filePath }}")
+        assertTrue(consumerChange.after.contains("import com.example.variants.moveclass.http.extractCookie"), "Function import should be updated. Content:\n${consumerChange.after}")
+        assertTrue(consumerChange.after.contains("import com.example.variants.moveclass.http.validateCookie"), "Function import should be updated. Content:\n${consumerChange.after}")
+        assertTrue(!consumerChange.after.contains("import com.example.variants.moveclass.original.extractCookie"), "Old function import should be gone. Content:\n${consumerChange.after}")
+        assertTrue(!consumerChange.after.contains("import com.example.variants.moveclass.original.validateCookie"), "Old function import should be gone. Content:\n${consumerChange.after}")
+    }
+
+    @Test
+    fun `move Kt facade reports correct moved and new file paths`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.CookieSupportKt",
+            newFqcn = "com.example.variants.moveclass.http.CookieSupportKt",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+            parsedSources = cachedParsedSources,
+        )
+
+        assertTrue(result.movedFilePath != null, "Should report moved file path")
+        assertTrue(result.movedFilePath!!.endsWith("CookieSupport.kt"), "Moved path should point to CookieSupport.kt, got: ${result.movedFilePath}")
+        assertTrue(result.newFilePath != null, "Should report new file path")
+        assertTrue(result.newFilePath!!.contains("moveclass/http/CookieSupport.kt".replace("/", File.separator)), "New path should be in http package. Got: ${result.newFilePath}")
+    }
+
+    @Test
+    fun `isKtFacadeName detects Kt suffix`() {
+        assertTrue(MoveClassRewriter.isKtFacadeName("com.example.FooKt"))
+        assertTrue(MoveClassRewriter.isKtFacadeName("com.example.CookieSupportKt"))
+    }
+
+    @Test
+    fun `isKtFacadeName rejects non-Kt names`() {
+        assertTrue(!MoveClassRewriter.isKtFacadeName("com.example.Foo"))
+        assertTrue(!MoveClassRewriter.isKtFacadeName("com.example.FooKtService"))
+    }
+
+    @Test
+    fun `isKtFacadeName rejects bare Kt`() {
+        assertTrue(!MoveClassRewriter.isKtFacadeName("com.example.Kt"))
+    }
+
+    @Test
+    fun `extractDeclaredClassNames finds classes interfaces and objects`() {
+        val source = """
+            package com.example
+            
+            data class CookieConfig(val name: String)
+            
+            sealed class NinExtraction {
+                data class Success(val nin: String) : NinExtraction()
+                object NotFound : NinExtraction()
+            }
+            
+            interface Validator
+            
+            fun topLevelFunction() {}
+        """.trimIndent()
+
+        val names = MoveClassRewriter.extractDeclaredClassNames(source)
+
+        assertTrue(names.contains("CookieConfig"), "Should find data class. Found: $names")
+        assertTrue(names.contains("NinExtraction"), "Should find sealed class. Found: $names")
+        assertTrue(names.contains("Success"), "Should find nested data class. Found: $names")
+        assertTrue(names.contains("NotFound"), "Should find object. Found: $names")
+        assertTrue(names.contains("Validator"), "Should find interface. Found: $names")
+        assertTrue(!names.contains("topLevelFunction"), "Should not include functions. Found: $names")
+    }
+
+    @Test
+    fun `move Kt facade does not modify files that dont reference the moved file`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.CookieSupportKt",
+            newFqcn = "com.example.variants.moveclass.http.CookieSupportKt",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+            parsedSources = cachedParsedSources,
+        )
+
+        val shippingChange = result.changes.firstOrNull { it.filePath.endsWith("ShippingService.kt") }
+        assertTrue(shippingChange == null, "ShippingService should NOT be changed. Changed files: ${result.changes.map { it.filePath }}")
+    }
 
 }

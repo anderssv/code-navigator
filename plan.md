@@ -460,3 +460,15 @@ Add, remove, or reorder parameters on a method, updating all call sites with def
 4. **Extract interface** — high value for architecture improvement workflows, but more complex.
 5. **Change signature** — medium value, complex parameter manipulation.
 6. **Extract function** — low priority, IDEs handle this well already.
+
+---
+
+## Code duplication detection
+
+**Value: high** | **Effort: high**
+
+Detect duplicated code blocks across the codebase. Identify similar or identical code segments that could be extracted into shared functions or classes.
+
+- **Approach**: TBD — token-based (PMD CPD style), AST-based, or bytecode-based comparison.
+- **Parameters**: `-Pmin-tokens=<n>` (minimum duplicated token count), `-Pformat=llm|json|text`
+- **Output**: Groups of duplicated code with file locations, line ranges, and similarity scores.

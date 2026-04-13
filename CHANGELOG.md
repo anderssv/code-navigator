@@ -4,6 +4,7 @@
 
 - **Fixed:** Dead code confidence classification no longer downgrades methods to LOW confidence when the only annotations present are Kotlin compiler-generated nullability markers (`@org.jetbrains.annotations.NotNull`, `@Nullable`). These are now treated as internal annotations alongside `kotlin.Metadata` and filtered out during annotation collection.
 - **Fixed:** Dead code confidence for methods on annotated classes. Previously, any class-level annotation (including `kotlin.Metadata`) would downgrade dead *method* confidence to LOW. Now class-level annotations only affect class-level dead code confidence; method confidence is determined solely by method-level annotations.
+- **New:** `cnavMoveClass` now supports Kotlin files with top-level declarations. When `-Pfrom` ends with `Kt` (the JVM facade class name, e.g. `com.example.CookieSupportKt`), the rewriter strips the suffix to find the source file (`CookieSupport.kt`), updates the package declaration, runs `ChangeType` for each class declared in the file, and rewrites imports for top-level functions and properties in all consumer files.
 
 ## 0.1.63
 
