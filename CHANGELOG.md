@@ -1,12 +1,10 @@
 # Changelog
 
-## 0.1.64
+## 0.1.65
 
-- **Fixed:** Dead code confidence classification no longer downgrades methods to LOW confidence when the only annotations present are Kotlin compiler-generated nullability markers (`@org.jetbrains.annotations.NotNull`, `@Nullable`). These are now treated as internal annotations alongside `kotlin.Metadata` and filtered out during annotation collection.
-- **Fixed:** Dead code confidence for methods on annotated classes. Previously, any class-level annotation (including `kotlin.Metadata`) would downgrade dead *method* confidence to LOW. Now class-level annotations only affect class-level dead code confidence; method confidence is determined solely by method-level annotations.
 - **New:** `cnavMoveClass` now supports Kotlin files with top-level declarations. When `-Pfrom` ends with `Kt` (the JVM facade class name, e.g. `com.example.CookieSupportKt`), the rewriter strips the suffix to find the source file (`CookieSupport.kt`), updates the package declaration, runs `ChangeType` for each class declared in the file, and rewrites imports for top-level functions and properties in all consumer files.
 
-## 0.1.63
+## 0.1.64
 
 - **Fixed:** Dead code detection no longer reports classes used only via field access (e.g. `EnumType.SOME_VALUE`) as dead. `CallGraphBuilder` now handles `visitFieldInsn` (GETSTATIC, GETFIELD, etc.) to create type reference edges for cross-class field accesses.
 - **Fixed:** Dead code detection no longer reports classes used only as classloader anchors (e.g. `MyClass::class.java.getResourceAsStream()`) as dead. `CallGraphBuilder` now handles `visitLdcInsn` for `LDC Type` instructions to create type reference edges for class literal references.
