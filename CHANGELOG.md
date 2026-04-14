@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.67
+
+- **Fixed:** `cnavFindCallers` / `cnavFindCallees` now match Kotlin companion object methods when the pattern uses the enclosing class name. For example, `-Ppattern=EventSender.load` now correctly matches `EventSender$Companion.load` in bytecode. Previously, the `$Companion` inner class was invisible to pattern matching, requiring users to know the bytecode-level class name.
+
 ## 0.1.66
 
 - **New:** `cnavFindUsages` now filters out synthetic/compiler-generated caller methods by default. Usages from Kotlin-generated methods like `copy`, `componentN`, `hashCode`, `equals`, `toString`, `copy$default`, `<init>`, `<clinit>`, `access$*`, and lambda methods are excluded from results. Opt out with `-Pfilter-synthetic=false` (Gradle) or `-Dfilter-synthetic=false` (Maven).

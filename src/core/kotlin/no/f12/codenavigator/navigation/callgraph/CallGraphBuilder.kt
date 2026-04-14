@@ -63,13 +63,37 @@ class CallGraph(
             .sortedBy { it.qualifiedName }
         if (directMatches.isNotEmpty()) return directMatches
 
+        val innerClassExpanded = expandInnerClassMethods(pattern)
+        if (innerClassExpanded != null) {
+            val innerMatches = allMethods
+                .filter { innerClassExpanded.containsMatchIn(it.qualifiedName) }
+                .sortedBy { it.qualifiedName }
+            if (innerMatches.isNotEmpty()) return innerMatches
+        }
+
         val expanded = expandPropertyAccessors(pattern) ?: return emptyList()
         return allMethods
             .filter { expanded.containsMatchIn(it.qualifiedName) }
             .sortedBy { it.qualifiedName }
     }
 
+    private fun expandInnerClassMethods(pattern: String): Regex? {
+        val (classPrefix, methodPart) = splitClassAndMethod(pattern) ?: return null
+        if (methodPart.isEmpty()) return null
+        val innerClassSegment = """(?:\$\w+)*\."""
+        return Regex("$classPrefix$innerClassSegment$methodPart", RegexOption.IGNORE_CASE)
+    }
+
     private fun expandPropertyAccessors(pattern: String): Regex? {
+        val (classPrefix, methodPart) = splitClassAndMethod(pattern) ?: return null
+        if (methodPart.isEmpty()) return null
+        val capitalized = methodPart.replaceFirstChar { it.uppercase() }
+        val innerClassSegment = """(?:\$\w+)*\."""
+        val accessorPattern = "$classPrefix$innerClassSegment(?:get$capitalized|set$capitalized|is$capitalized)"
+        return Regex(accessorPattern, RegexOption.IGNORE_CASE)
+    }
+
+    private fun splitClassAndMethod(pattern: String): Pair<String, String>? {
         val escapedDotIndex = pattern.lastIndexOf("\\.")
         val plainDotIndex = if (escapedDotIndex < 0) pattern.lastIndexOf('.') else -1
         val (classEnd, methodStart) = when {
@@ -77,13 +101,7 @@ class CallGraph(
             plainDotIndex >= 0 -> plainDotIndex to (plainDotIndex + 1)
             else -> return null
         }
-        val classPrefix = pattern.substring(0, classEnd)
-        val methodPart = pattern.substring(methodStart)
-        if (methodPart.isEmpty()) return null
-        val capitalized = methodPart.replaceFirstChar { it.uppercase() }
-        val innerClassSegment = """(?:\$\w+)*\."""
-        val accessorPattern = "$classPrefix$innerClassSegment(?:get$capitalized|set$capitalized|is$capitalized)"
-        return Regex(accessorPattern, RegexOption.IGNORE_CASE)
+        return pattern.substring(0, classEnd) to pattern.substring(methodStart)
     }
 
     fun sourceFileOf(className: ClassName): String {

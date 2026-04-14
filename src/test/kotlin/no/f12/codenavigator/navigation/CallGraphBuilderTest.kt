@@ -359,6 +359,47 @@ class CallGraphBuilderTest {
     }
 
     @Test
+    fun `findMethods matches companion object method with enclosing class pattern`() {
+        val companionMethod = MethodRef(ClassName("com.example.EventSender\$Companion"), "load")
+        val graph = CallGraph(
+            mapOf(companionMethod to emptySet()),
+        )
+
+        val result = graph.findMethods("EventSender.load")
+
+        assertEquals(1, result.size)
+        assertEquals("load", result[0].methodName)
+        assertEquals(ClassName("com.example.EventSender\$Companion"), result[0].className)
+    }
+
+    @Test
+    fun `findMethods still matches direct inner class pattern`() {
+        val companionMethod = MethodRef(ClassName("com.example.EventSender\$Companion"), "load")
+        val graph = CallGraph(
+            mapOf(companionMethod to emptySet()),
+        )
+
+        val result = graph.findMethods("EventSender\\\$Companion.load")
+
+        assertEquals(1, result.size)
+        assertEquals("load", result[0].methodName)
+    }
+
+    @Test
+    fun `findMethods prefers direct match over inner class expansion`() {
+        val directMethod = MethodRef(ClassName("com.example.EventSender"), "load")
+        val companionMethod = MethodRef(ClassName("com.example.EventSender\$Companion"), "load")
+        val graph = CallGraph(
+            mapOf(directMethod to emptySet(), companionMethod to emptySet()),
+        )
+
+        val result = graph.findMethods("EventSender.load")
+
+        assertEquals(1, result.size)
+        assertEquals(ClassName("com.example.EventSender"), result[0].className)
+    }
+
+    @Test
     fun `multiple methods on same class each have independent caller chains`() {
         TestClassWriter.writeClassWithMultipleMethods(
             classesDir, "com/example/UserService", "UserService.kt",
@@ -608,5 +649,52 @@ class CallGraphBuilderTest {
         val callers = graph.callersOfClass(ClassName("com.example.Anchor"))
         assertTrue(callers.isNotEmpty(), "LDC Type should create a type reference edge")
         assertEquals("com.example.Caller", callers.first().className.value)
+    }
+
+    // --- Real compiled Kotlin bytecode (test-project) ---
+
+    @Test
+    fun `findMethods matches companion object method in real compiled Kotlin class`() {
+        val testProjectClasses = File("test-project/build/classes/kotlin/main")
+        if (!testProjectClasses.exists()) buildTestProject()
+
+        val graph = CallGraphBuilder.build(listOf(testProjectClasses)).data
+
+        val result = graph.findMethods("EventSender.load")
+
+        assertTrue(result.isNotEmpty(), "Expected EventSender.load to match EventSender\$Companion.load")
+        assertTrue(
+            result.any { it.className.value.contains("EventSender") && it.methodName == "load" },
+            "Expected a match on EventSender\$Companion.load, got: $result",
+        )
+    }
+
+    @Test
+    fun `find-callers of companion method includes default bridge caller`() {
+        val testProjectClasses = File("test-project/build/classes/kotlin/main")
+        if (!testProjectClasses.exists()) buildTestProject()
+
+        val graph = CallGraphBuilder.build(listOf(testProjectClasses)).data
+        val methods = graph.findMethods("EventSender.load")
+
+        assertTrue(methods.isNotEmpty(), "Expected EventSender.load to resolve to methods")
+
+        val allCallers = methods.flatMap { graph.callersOf(it.className, it.methodName) }
+        assertTrue(allCallers.isNotEmpty(), "Expected at least one caller of EventSender\$Companion.load")
+
+        val callerNames = allCallers.map { it.methodName }.toSet()
+        assertTrue("load\$default" in callerNames, "Expected load\$default as caller of load (default param bridge), got: $callerNames")
+    }
+
+    private fun buildTestProject() {
+        val testProjectDir = File("test-project")
+        val gradlew = File(testProjectDir.parentFile, "gradlew").absolutePath
+        val process = ProcessBuilder(gradlew, "classes")
+            .directory(testProjectDir)
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputStream.bufferedReader().readText()
+        val exitCode = process.waitFor()
+        check(exitCode == 0) { "Failed to build test-project (exit $exitCode): $output" }
     }
 }
