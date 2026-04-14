@@ -516,7 +516,7 @@ object HelpText {
         appendLine("    Usage: ${u("rename-method", p("target-class", "com.example.UserService"), p("method", "findUsers"), p("new-name", "searchUsers"))}")
         appendLine("    Usage: ${u("rename-method", p("target-class", "com.example.UserService"), p("method", "findUsers"), p("new-name", "searchUsers"), pf("preview"))}")
         appendLine()
-        appendLine("  ${t("move-class")}")
+        appendLine("  ${t("move-class")} (alias: ${t("rename-class")})")
         appendLine("    Moves a class to a different package and/or renames it, updating all references.")
         appendLine("    Both ${p("from", "")} and ${p("to", "")} are required fully qualified class names.")
         appendLine("    Applies changes by default; use ${pf("preview")} to preview without writing.")

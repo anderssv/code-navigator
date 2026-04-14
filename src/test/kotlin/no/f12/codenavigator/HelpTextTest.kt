@@ -362,4 +362,18 @@ class HelpTextTest {
             "Rank section should still show 'default: 50' for top param, but was:\n$rankSection",
         )
     }
+
+    @Test
+    fun `help text mentions rename-class alias for move-class`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+
+        assertTrue(text.contains("cnavRenameClass"), "Help text should mention cnavRenameClass alias")
+    }
+
+    @Test
+    fun `Maven help text mentions rename-class alias for move-class`() {
+        val text = HelpText.generate(BuildTool.MAVEN)
+
+        assertTrue(text.contains("rename-class"), "Maven help text should mention rename-class alias")
+    }
 }

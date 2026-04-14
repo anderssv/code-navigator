@@ -1089,4 +1089,26 @@ class AgentHelpTextTest {
 
         assertContains(text, "recommendations")
     }
+
+    @Test
+    fun `rename-class alias appears in agent help`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "cnavRenameClass")
+    }
+
+    @Test
+    fun `rename a class question uses rename-class goal`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "Rename a class?")
+        assertContains(text, "cnavRenameClass")
+    }
+
+    @Test
+    fun `move-class schema section mentions rename-class alias`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "schemas")
+
+        assertContains(text, "cnavRenameClass")
+    }
 }

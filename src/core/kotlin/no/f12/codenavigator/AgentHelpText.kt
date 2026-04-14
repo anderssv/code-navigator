@@ -187,8 +187,9 @@ object AgentHelpText {
         appendLine("    # Moves file + updates package declaration + all imports; add ${pf("preview")} for dry-run")
         appendLine()
         appendLine("  \"Rename a class?\"")
-        appendLine("    → ${u("move-class", p("from", "com.example.services.UserService"), p("to", "com.example.services.AccountService"))}")
+        appendLine("    → ${u("rename-class", p("from", "com.example.services.UserService"), p("to", "com.example.services.AccountService"))}")
         appendLine("    # Renames class + updates all references; change package in 'to' to also move; add ${pf("preview")} for dry-run")
+        appendLine("    # Alias for ${t("move-class")} — both commands are identical")
         appendLine()
         appendLine("  \"Rename a property?\"")
         appendLine("    → ${u("rename-property", p("target-class", "com.example.UserProfile"), p("property", "fullName"), p("new-name", "displayName"))}")
@@ -685,7 +686,7 @@ object AgentHelpText {
         appendLine("  {\"preview\": false, \"method\": \"find\", \"newName\": \"search\",")
         appendLine("   \"changes\": [{\"filePath\": \"/src/main/kotlin/Service.kt\", \"diff\": [\"- fun find(\", \"+ fun search(\"]}]}")
         appendLine()
-        appendLine("${t("move-class")}:")
+        appendLine("${t("move-class")} / ${t("rename-class")}:")
         appendLine("  {\"preview\": false, \"from\": \"com.example.services.UserService\", \"to\": \"com.example.domain.AccountService\",")
         appendLine("   \"changes\": [{\"filePath\": \"/src/main/kotlin/Service.kt\", \"diff\": [\"- package com.example.services\", \"+ package com.example.domain\"]}]}")
         appendLine()
@@ -872,15 +873,20 @@ object AgentHelpText {
 
     private fun StringBuilder.appendTaskLine(task: TaskDef, tool: BuildTool) {
         val taskName = task.taskName(tool)
+        val aliasSuffix = if (task.aliases.isNotEmpty()) {
+            " (alias: ${task.aliases.joinToString(", ") { tool.taskName(it) }})"
+        } else {
+            ""
+        }
         val nonFormatParams = task.params.filter { it.name !in FORMAT_PARAM_NAMES }
         val paramStr = nonFormatParams.joinToString(" ") { param ->
             val rendered = param.render(tool)
             if (param.defaultValue != null) "[$rendered]" else rendered
         }
         val line = if (paramStr.isEmpty()) {
-            "  ${padTo(taskName, 22)}${task.description}"
+            "  ${padTo(taskName, 22)}${task.description}$aliasSuffix"
         } else {
-            "  ${padTo(taskName, 22)}${padTo(task.description, 36)}$paramStr"
+            "  ${padTo(taskName, 22)}${padTo(task.description, 36)}$paramStr$aliasSuffix"
         }
         appendLine(line)
     }

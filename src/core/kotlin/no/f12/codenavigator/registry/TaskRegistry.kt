@@ -101,8 +101,10 @@ data class TaskDef(
     val legacyGradleTaskName: String? = null,
     val requiresTestCompilation: Boolean = false,
     val paramDefaultOverrides: Map<String, String> = emptyMap(),
+    val aliases: List<String> = emptyList(),
 ) {
     val gradleTaskName: String = goalToGradleTaskName(goal)
+    val aliasGradleTaskNames: List<String> = aliases.map { goalToGradleTaskName(it) }
 
     fun effectiveDefault(param: ParamDef<*>): String? =
         paramDefaultOverrides[param.name] ?: param.defaultValue
@@ -531,6 +533,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(MOVE_FROM, MOVE_TO, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
+        aliases = listOf("rename-class"),
     )
 
     val RENAME_PROPERTY_TASK = TaskDef(

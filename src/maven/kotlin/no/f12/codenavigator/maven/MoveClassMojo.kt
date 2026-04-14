@@ -13,25 +13,25 @@ import java.io.File
 import java.nio.file.Path
 
 @Mojo(name = "move-class")
-class MoveClassMojo : AbstractMojo() {
+open class MoveClassMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
-    private lateinit var project: MavenProject
+    protected lateinit var project: MavenProject
 
     @Parameter(property = "format")
-    private var format: String? = null
+    protected var format: String? = null
 
     @Parameter(property = "llm")
-    private var llm: String? = null
+    protected var llm: String? = null
 
     @Parameter(property = "from")
-    private var from: String? = null
+    protected var from: String? = null
 
     @Parameter(property = "to")
-    private var to: String? = null
+    protected var to: String? = null
 
     @Parameter(property = "preview")
-    private var preview: String? = null
+    protected var preview: String? = null
 
     override fun execute() {
         val config = MoveClassConfig.parse(TaskRegistry.MOVE_CLASS_TASK.enhanceProperties(buildPropertyMap()))

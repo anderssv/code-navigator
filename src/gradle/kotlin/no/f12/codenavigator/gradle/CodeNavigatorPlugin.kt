@@ -5,6 +5,7 @@ import no.f12.codenavigator.registry.TaskRegistry
 import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 
 class CodeNavigatorPlugin : Plugin<Project> {
 
@@ -23,27 +24,9 @@ class CodeNavigatorPlugin : Plugin<Project> {
         for (taskDef in TaskRegistry.ALL_TASKS) {
             val taskClass = TASK_CLASSES[taskDef.goal]
                 ?: error("No Gradle task class registered for goal '${taskDef.goal}'")
-            project.tasks.register(taskDef.gradleTaskName, taskClass) {
-                description = taskDef.description
-                group = "code-navigator"
-                if (taskDef.requiresCompilation) {
-                    dependsOn("classes")
-                }
-                if (taskDef.requiresTestCompilation) {
-                    dependsOn("testClasses")
-                }
-                if (this is RenameParamTask) {
-                    openRewriteClasspath.from(openRewriteConfig)
-                }
-                if (this is RenameMethodTask) {
-                    openRewriteClasspath.from(openRewriteConfig)
-                }
-                if (this is MoveClassTask) {
-                    openRewriteClasspath.from(openRewriteConfig)
-                }
-                if (this is RenamePropertyTask) {
-                    openRewriteClasspath.from(openRewriteConfig)
-                }
+            registerTask(project, taskDef.gradleTaskName, taskClass, taskDef, openRewriteConfig)
+            for (aliasGradleName in taskDef.aliasGradleTaskNames) {
+                registerTask(project, aliasGradleName, taskClass, taskDef, openRewriteConfig)
             }
         }
 
@@ -70,6 +53,37 @@ class CodeNavigatorPlugin : Plugin<Project> {
 
     companion object {
         private const val OPENREWRITE_VERSION = "8.78.6"
+
+        private fun registerTask(
+            project: Project,
+            taskName: String,
+            taskClass: Class<out DefaultTask>,
+            taskDef: TaskDef,
+            openRewriteConfig: Configuration,
+        ) {
+            project.tasks.register(taskName, taskClass) {
+                description = taskDef.description
+                group = "code-navigator"
+                if (taskDef.requiresCompilation) {
+                    dependsOn("classes")
+                }
+                if (taskDef.requiresTestCompilation) {
+                    dependsOn("testClasses")
+                }
+                if (this is RenameParamTask) {
+                    openRewriteClasspath.from(openRewriteConfig)
+                }
+                if (this is RenameMethodTask) {
+                    openRewriteClasspath.from(openRewriteConfig)
+                }
+                if (this is MoveClassTask) {
+                    openRewriteClasspath.from(openRewriteConfig)
+                }
+                if (this is RenamePropertyTask) {
+                    openRewriteClasspath.from(openRewriteConfig)
+                }
+            }
+        }
 
         private val TASK_CLASSES: Map<String, Class<out DefaultTask>> = mapOf(
             "list-classes" to ListClassesTask::class.java,

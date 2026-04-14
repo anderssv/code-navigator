@@ -936,4 +936,69 @@ class TaskRegistryTest {
 
         assertEquals(expectedTypes.size, allParams.size, "expectedTypes count should match actual param count")
     }
+
+    @Test
+    fun `TaskDef aliases default to empty list`() {
+        val task = TaskDef(
+            goal = "test-task",
+            description = "A test task",
+            params = emptyList(),
+            requiresCompilation = false,
+            category = TaskCategory.NAVIGATION,
+        )
+
+        assertEquals(emptyList(), task.aliases)
+    }
+
+    @Test
+    fun `TaskDef aliases can be specified`() {
+        val task = TaskDef(
+            goal = "move-thing",
+            description = "Move a thing",
+            params = emptyList(),
+            requiresCompilation = false,
+            category = TaskCategory.NAVIGATION,
+            aliases = listOf("rename-thing"),
+        )
+
+        assertEquals(listOf("rename-thing"), task.aliases)
+    }
+
+    @Test
+    fun `alias Gradle task names are derived correctly`() {
+        val task = TaskDef(
+            goal = "move-thing",
+            description = "Move a thing",
+            params = emptyList(),
+            requiresCompilation = false,
+            category = TaskCategory.NAVIGATION,
+            aliases = listOf("rename-thing"),
+        )
+
+        assertEquals(listOf("cnavRenameThing"), task.aliasGradleTaskNames)
+    }
+
+    @Test
+    fun `MOVE_CLASS_TASK has rename-class alias`() {
+        assertEquals(listOf("rename-class"), TaskRegistry.MOVE_CLASS_TASK.aliases)
+        assertEquals(listOf("cnavRenameClass"), TaskRegistry.MOVE_CLASS_TASK.aliasGradleTaskNames)
+    }
+
+    @Test
+    fun `alias Gradle task names do not collide with existing task names`() {
+        val existingNames = TaskRegistry.ALL_TASKS.map { it.gradleTaskName }.toSet()
+        val aliasNames = TaskRegistry.ALL_TASKS.flatMap { it.aliasGradleTaskNames }
+
+        for (alias in aliasNames) {
+            assertTrue(alias !in existingNames, "Alias '$alias' collides with an existing task name")
+        }
+    }
+
+    @Test
+    fun `most tasks have no aliases`() {
+        val tasksWithAliases = TaskRegistry.ALL_TASKS.filter { it.aliases.isNotEmpty() }
+
+        assertEquals(1, tasksWithAliases.size, "Only move-class should have aliases")
+        assertEquals("move-class", tasksWithAliases.first().goal)
+    }
 }
