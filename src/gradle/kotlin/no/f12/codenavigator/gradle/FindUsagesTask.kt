@@ -40,7 +40,8 @@ abstract class FindUsagesTask : DefaultTask() {
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val afterPackageFilter = UsageScanner.filterOutsidePackage(result.data, config.outsidePackage)
-        val usages = config.filterBySourceSet(afterPackageFilter)
+        val afterSyntheticFilter = config.filterSyntheticCallers(afterPackageFilter)
+        val usages = config.filterBySourceSet(afterSyntheticFilter)
 
         if (usages.isEmpty()) {
             val target = UsageFormatter.noResultsTarget(config.ownerClass, config.method, config.field, config.type)

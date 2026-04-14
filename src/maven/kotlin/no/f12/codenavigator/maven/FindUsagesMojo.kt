@@ -51,6 +51,9 @@ class FindUsagesMojo : AbstractMojo() {
     @Parameter(property = "test-only")
     private var testOnly: String? = null
 
+    @Parameter(property = "filter-synthetic")
+    private var filterSynthetic: String? = null
+
     override fun execute() {
         val config = try {
             FindUsagesConfig.parse(TaskRegistry.FIND_USAGES.enhanceProperties(buildPropertyMap()))
@@ -72,7 +75,8 @@ class FindUsagesMojo : AbstractMojo() {
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val afterPackageFilter = UsageScanner.filterOutsidePackage(result.data, config.outsidePackage)
-        val usages = config.filterBySourceSet(afterPackageFilter)
+        val afterSyntheticFilter = config.filterSyntheticCallers(afterPackageFilter)
+        val usages = config.filterBySourceSet(afterSyntheticFilter)
 
         if (usages.isEmpty()) {
             val target = UsageFormatter.noResultsTarget(config.ownerClass, config.method, config.field, config.type)
@@ -98,5 +102,6 @@ class FindUsagesMojo : AbstractMojo() {
         outsidePackage?.let { put("outside-package", it) }
         prodOnly?.let { put("prod-only", it) }
         testOnly?.let { put("test-only", it) }
+        filterSynthetic?.let { put("filter-synthetic", it) }
     }
 }

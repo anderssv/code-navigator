@@ -3,6 +3,7 @@ package no.f12.codenavigator.navigation.callgraph
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.KotlinMethodFilter
 import no.f12.codenavigator.navigation.core.SourceSet
 
 data class FindUsagesConfig(
@@ -11,6 +12,7 @@ data class FindUsagesConfig(
     val field: String?,
     val type: String?,
     val outsidePackage: String?,
+    val filterSynthetic: Boolean,
     val prodOnly: Boolean,
     val testOnly: Boolean,
     val format: OutputFormat,
@@ -21,6 +23,11 @@ data class FindUsagesConfig(
             if (prodOnly) usage.sourceSet == SourceSet.MAIN
             else usage.sourceSet == SourceSet.TEST
         }
+    }
+
+    fun filterSyntheticCallers(usages: List<UsageSite>): List<UsageSite> {
+        if (!filterSynthetic) return usages
+        return usages.filter { it.callerMethod == "<field>" || !KotlinMethodFilter.isGenerated(it.callerMethod) }
     }
 
     companion object {
@@ -50,6 +57,7 @@ data class FindUsagesConfig(
                 field = field,
                 type = type,
                 outsidePackage = TaskRegistry.OUTSIDE_PACKAGE.parseFrom(properties),
+                filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
                 prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
                 testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),

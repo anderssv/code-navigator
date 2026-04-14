@@ -2,9 +2,11 @@ package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
 import no.f12.codenavigator.navigation.callgraph.UsageKind
 import no.f12.codenavigator.navigation.callgraph.UsageScanner
 import no.f12.codenavigator.navigation.callgraph.UsageSite
+import no.f12.codenavigator.config.OutputFormat
 import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
@@ -829,6 +831,80 @@ class UsageScannerTest {
 
         assertEquals(1, usages.size)
         assertNull(usages[0].sourceSet)
+    }
+
+    // --- Synthetic caller filtering ---
+
+    @Test
+    fun `filterSyntheticCallers removes usages from generated caller methods`() {
+        TestClassWriter.writeClassWithMultipleMethods(
+            classesDir, "com/example/Caller", "Caller.kt",
+            listOf(
+                MethodDef("doWork", listOf(Call("com/example/Target", "process", "()V"))),
+                MethodDef("copy", listOf(Call("com/example/Target", "process", "()V"))),
+                MethodDef("component1", listOf(Call("com/example/Target", "process", "()V"))),
+                MethodDef("hashCode", listOf(Call("com/example/Target", "process", "()V"))),
+                MethodDef("toString", listOf(Call("com/example/Target", "process", "()V"))),
+                MethodDef("copy\$default", listOf(Call("com/example/Target", "process", "()V"))),
+            ),
+        )
+
+        val allUsages = UsageScanner.scan(
+            listOf(classesDir),
+            ownerClass = "com.example.Target",
+            method = "process",
+        ).data
+
+        assertTrue(allUsages.size > 1, "Expected multiple raw usages including synthetic callers")
+
+        val config = FindUsagesConfig(
+            ownerClass = "com.example.Target",
+            method = "process",
+            field = null,
+            type = null,
+            outsidePackage = null,
+            filterSynthetic = true,
+            prodOnly = false,
+            testOnly = false,
+            format = OutputFormat.TEXT,
+        )
+        val filtered = config.filterSyntheticCallers(allUsages)
+
+        assertEquals(1, filtered.size)
+        assertEquals("doWork", filtered[0].callerMethod)
+    }
+
+    @Test
+    fun `filterSyntheticCallers with filterSynthetic false keeps all usages`() {
+        TestClassWriter.writeClassWithMultipleMethods(
+            classesDir, "com/example/Caller", "Caller.kt",
+            listOf(
+                MethodDef("doWork", listOf(Call("com/example/Target", "process", "()V"))),
+                MethodDef("copy", listOf(Call("com/example/Target", "process", "()V"))),
+                MethodDef("component1", listOf(Call("com/example/Target", "process", "()V"))),
+            ),
+        )
+
+        val allUsages = UsageScanner.scan(
+            listOf(classesDir),
+            ownerClass = "com.example.Target",
+            method = "process",
+        ).data
+
+        val config = FindUsagesConfig(
+            ownerClass = "com.example.Target",
+            method = "process",
+            field = null,
+            type = null,
+            outsidePackage = null,
+            filterSynthetic = false,
+            prodOnly = false,
+            testOnly = false,
+            format = OutputFormat.TEXT,
+        )
+        val filtered = config.filterSyntheticCallers(allUsages)
+
+        assertEquals(allUsages.size, filtered.size)
     }
 
     private fun buildTestProject() {

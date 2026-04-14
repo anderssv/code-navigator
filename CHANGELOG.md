@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.66
+
+- **New:** `cnavFindUsages` now filters out synthetic/compiler-generated caller methods by default. Usages from Kotlin-generated methods like `copy`, `componentN`, `hashCode`, `equals`, `toString`, `copy$default`, `<init>`, `<clinit>`, `access$*`, and lambda methods are excluded from results. Opt out with `-Pfilter-synthetic=false` (Gradle) or `-Dfilter-synthetic=false` (Maven).
+
 ## 0.1.65
 
 - **New:** `cnavMoveClass` now supports Kotlin files with top-level declarations. When `-Pfrom` ends with `Kt` (the JVM facade class name, e.g. `com.example.CookieSupportKt`), the rewriter strips the suffix to find the source file (`CookieSupport.kt`), updates the package declaration, runs `ChangeType` for each class declared in the file, and rewrites imports for top-level functions and properties in all consumer files.

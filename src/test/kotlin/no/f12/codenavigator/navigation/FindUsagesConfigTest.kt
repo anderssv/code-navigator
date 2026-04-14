@@ -10,6 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class FindUsagesConfigTest {
 
@@ -159,9 +160,25 @@ class FindUsagesConfigTest {
         assertEquals(false, config.testOnly)
     }
 
-    private fun usageSite(callerClass: String, sourceSet: SourceSet?) = UsageSite(
+    @Test
+    fun `defaults filterSynthetic to true when not provided`() {
+        val config = FindUsagesConfig.parse(mapOf("owner-class" to "com.example.Foo"))
+
+        assertEquals(true, config.filterSynthetic)
+    }
+
+    @Test
+    fun `parses filter-synthetic as false when explicitly set`() {
+        val config = FindUsagesConfig.parse(
+            mapOf("owner-class" to "com.example.Foo", "filter-synthetic" to "false"),
+        )
+
+        assertEquals(false, config.filterSynthetic)
+    }
+
+    private fun usageSite(callerClass: String, sourceSet: SourceSet?, callerMethod: String = "doWork") = UsageSite(
         callerClass = ClassName(callerClass),
-        callerMethod = "doWork",
+        callerMethod = callerMethod,
         sourceFile = "Test.kt",
         targetOwner = ClassName("com.example.Target"),
         targetName = "handle",
@@ -176,6 +193,7 @@ class FindUsagesConfigTest {
         field = null,
         type = null,
         outsidePackage = null,
+        filterSynthetic = true,
         prodOnly = prodOnly,
         testOnly = testOnly,
         format = OutputFormat.TEXT,
@@ -230,5 +248,92 @@ class FindUsagesConfigTest {
 
         assertEquals(1, filtered.size)
         assertEquals(ClassName("com.example.ProdCaller"), filtered[0].callerClass)
+    }
+
+    // --- filterSyntheticCallers ---
+
+    @Test
+    fun `filterSyntheticCallers removes usages where caller is a generated method`() {
+        val usages = listOf(
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "doWork"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "copy"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "component1"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "hashCode"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "equals"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "toString"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "copy\$default"),
+        )
+
+        val cfg = config(prodOnly = false, testOnly = false)
+        val filtered = cfg.filterSyntheticCallers(usages)
+
+        assertEquals(1, filtered.size)
+        assertEquals("doWork", filtered[0].callerMethod)
+    }
+
+    @Test
+    fun `filterSyntheticCallers returns all usages when filterSynthetic is false`() {
+        val usages = listOf(
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "doWork"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "copy"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "component1"),
+        )
+
+        val cfg = FindUsagesConfig(
+            ownerClass = "com.example.Target",
+            method = null,
+            field = null,
+            type = null,
+            outsidePackage = null,
+            filterSynthetic = false,
+            prodOnly = false,
+            testOnly = false,
+            format = OutputFormat.TEXT,
+        )
+        val filtered = cfg.filterSyntheticCallers(usages)
+
+        assertEquals(3, filtered.size)
+    }
+
+    @Test
+    fun `filterSyntheticCallers keeps field declarations`() {
+        val usages = listOf(
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "<field>"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "doWork"),
+        )
+
+        val cfg = config(prodOnly = false, testOnly = false)
+        val filtered = cfg.filterSyntheticCallers(usages)
+
+        assertEquals(2, filtered.size)
+    }
+
+    @Test
+    fun `filterSyntheticCallers removes init and clinit`() {
+        val usages = listOf(
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "<init>"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "<clinit>"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "doWork"),
+        )
+
+        val cfg = config(prodOnly = false, testOnly = false)
+        val filtered = cfg.filterSyntheticCallers(usages)
+
+        assertEquals(1, filtered.size)
+        assertEquals("doWork", filtered[0].callerMethod)
+    }
+
+    @Test
+    fun `filterSyntheticCallers removes accessor methods`() {
+        val usages = listOf(
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "access\$doWork"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "doWork"),
+        )
+
+        val cfg = config(prodOnly = false, testOnly = false)
+        val filtered = cfg.filterSyntheticCallers(usages)
+
+        assertEquals(1, filtered.size)
+        assertEquals("doWork", filtered[0].callerMethod)
     }
 }

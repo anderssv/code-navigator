@@ -165,6 +165,7 @@ object HelpText {
         appendLine("      ${pd(TaskRegistry.FIND_USAGES.paramByName("field"), "Field/property name — also matches getter/setter/is-prefixed accessors")}")
         appendLine("      ${pd(TaskRegistry.FIND_USAGES.paramByName("type"))}")
         appendLine("      ${pd(TaskRegistry.FIND_USAGES.paramByName("outside-package"), "Exclude callers inside this package (show only external usages)")}")
+        appendLine("      ${pd(TaskRegistry.FILTER_SYNTHETIC)}")
         appendLine("      ${pd(TaskRegistry.PROD_ONLY, "Show only usages from production source set")}")
         appendLine("      ${pd(TaskRegistry.TEST_ONLY, "Show only usages from test source set")}")
         appendLine("      * Provide either 'owner-class' or 'type'. Use 'type' for comprehensive search.")

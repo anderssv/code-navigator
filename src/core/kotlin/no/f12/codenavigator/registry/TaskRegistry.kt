@@ -321,7 +321,7 @@ object TaskRegistry {
     val FIND_USAGES = TaskDef(
         goal = "find-usages",
         description = "Find project references to types, methods, and fields/properties",
-        params = FORMAT_PARAMS + listOf(OWNER_CLASS, METHOD, FIELD, TYPE, OUTSIDE_PACKAGE, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(OWNER_CLASS, METHOD, FIELD, TYPE, OUTSIDE_PACKAGE, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavUsages",
