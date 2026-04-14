@@ -53,6 +53,29 @@ Already well-aligned: zero mock imports, tests operate on domain types, shared t
 
 ---
 
+## `cnavFindUsages` summary mode — group by file instead of listing every bytecode reference
+
+**Value: high** | **Effort: low**
+
+From user feedback: `cnavFindUsages -Ptype=SignatureContext` returned 40+ lines of data class boilerplate (`copy`, `copy$default`, `component3`, `getSignatureContext`, field references). For a "where is this type used?" question, the user wanted "which files/classes reference it" — not every bytecode instruction that touches it.
+
+- **Approach**: Add `-Pgroup-by=file` (or `-Psummary=true`) parameter that collapses results to one line per file/class with a reference count. Default behavior unchanged.
+- **Alternative**: A separate `-Pby-class` mode that shows `ClassName (N references)` instead of individual method-level hits.
+- **Affects**: `UsageFormatter` (TEXT/LLM/JSON output), `UsageScanner` (aggregation logic).
+
+---
+
+## Consistent `-Pproject-only` support across all tasks
+
+**Value: medium** | **Effort: low**
+
+From user feedback: `cnavFindUsages -Ptype=SignatureContext` failed with a short name because `-Pproject-only` isn't supported on that task. The error message was clear, but it cost a round-trip. Users expect consistent parameter support across tasks.
+
+- **Approach**: Audit all tasks for `-Pproject-only` / `-Pprod-only` / `-Ptest-only` support. Add missing support where it makes sense. Document which tasks support which filters in `cnavAgentHelp`.
+- **Note**: Some tasks may intentionally not support certain filters — document why.
+
+---
+
 ## Filter non-source files from git analysis recommendations
 
 **Value: medium** | **Effort: low**
