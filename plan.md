@@ -76,7 +76,7 @@ From field test: moving `Metrics.kt` (which contains class `Metrics` plus top-le
 
 v0.1.65 added `*Kt` facade class support (when `-Pfrom` ends with `Kt`), but that only handles the case where the *entire file* is top-level declarations. When a file has both a named class and top-level declarations, moving the named class doesn't update the top-level declaration references.
 
-Related: `RetryKt` (synthetic class for `Retry.kt` with only top-level functions) couldn't be found by cnav on v0.1.64. This was likely fixed in v0.1.65 which added `*Kt` facade class support — needs verification.
+Related: `RetryKt` (synthetic class for `Retry.kt` with only top-level functions) couldn't be found by cnav on v0.1.64. Already fixed in v0.1.65 which added `*Kt` facade class support.
 
 - **Approach**: When moving a class from a file, also detect top-level declarations in the same file and update their `*Kt` facade references in consumer files. May need to run `ChangeType` for both the named class and the `*Kt` facade class in a single operation.
 - **Relates to**: Multi-class file handling (above) and `cnavMoveFile` (below).
@@ -110,18 +110,6 @@ May not be worth automating — manual merge with cnav handling the reference up
 
 ---
 
-## `cnavCycles`: add `-Pprod-only` support to distinguish prod vs test edges
-
-**Value: high** | **Effort: low**
-
-From field test: after completing all production-code moves to break a package cycle, `cnavCycles` still reported the cycle because test-only dependency edges were included. The user couldn't tell from the output whether the production cycle was actually broken — `testutil` was still listed because of test edges.
-
-- **Approach**: Add `-Pprod-only=true` / `-Ptest-only=true` support to `cnavCycles`, `cnavDsm`, and `cnavPackageDeps`. Filter classes by source set before building the dependency graph.
-- **Relates to**: "Consistent `-Pproject-only` support across all tasks" (below) — same family of filtering parameters.
-- **Note**: Source set detection is already implemented for `cnavDead`. Reuse `SourceSetResolver` to classify classes before feeding them to `DsmDependencyExtractor`.
-
----
-
 ## `cnavFindUsages` summary mode — group by file instead of listing every bytecode reference
 
 **Value: high** | **Effort: low**
@@ -134,13 +122,37 @@ From user feedback: `cnavFindUsages -Ptype=SignatureContext` returned 40+ lines 
 
 ---
 
+## Replace `-Pprod-only` / `-Ptest-only` with `-Pscope=all|prod|test`
+
+**Value: high** | **Effort: medium**
+
+The current two-boolean approach (`-Pprod-only=true`, `-Ptest-only=true`) has problems: they're mutually exclusive but nothing enforces that, two params to remember instead of one, and the naming doesn't clearly convey what they do. Replace with a single `-Pscope=all|prod|test` parameter (default: `all`).
+
+**Semantics across tasks:**
+- **Most tasks** (cycles, dsm, find-usages, list-classes, etc.): `scope` controls which source set classes to include — either as a directory pre-filter or a result post-filter, depending on the task's filtering pattern.
+- **`dead` with `scope=prod`**: "find code dead from a production perspective" — test references don't count as keeping things alive. Maps to current `prod-only` behavior.
+- **`dead` with `scope=test`**: find dead test infrastructure (unused test helpers/utilities).
+- **`dead` with `scope=all`**: current default — show all dead code regardless of source set.
+
+**Implementation:**
+1. Add `Scope` enum (`ALL`, `PROD`, `TEST`) in `DomainTypes.kt` alongside `SourceSet`.
+2. Add `SCOPE` as a new `ParamDef` with `type = STRING`, `defaultValue = "all"`, valid values `all|prod|test`.
+3. Replace `SOURCE_SET_PARAMS` with `listOf(SCOPE)`.
+4. Update all 22 config classes: replace `prodOnly: Boolean` / `testOnly: Boolean` with `scope: Scope`.
+5. Update all 4 filtering patterns (directory pre-filter, SourceSetResolver post-filter, CallGraph post-filter, domain-specific) to use `scope`.
+6. Keep `prod-only` / `test-only` working but deprecated — map them to `scope` internally during config parsing. Log a deprecation warning.
+7. Fix `METRICS` TaskDef to declare the scope param (currently missing from its param list but parsed in config).
+8. Update `AgentHelpText` and `HelpText` to document `scope`.
+
+**Relates to**: "Consistent `-Pproject-only` support across all tasks" — same family of filtering parameters.
+
 ## Consistent `-Pproject-only` support across all tasks
 
 **Value: medium** | **Effort: low**
 
 From user feedback: `cnavFindUsages -Ptype=SignatureContext` failed with a short name because `-Pproject-only` isn't supported on that task. The error message was clear, but it cost a round-trip. Users expect consistent parameter support across tasks.
 
-- **Approach**: Audit all tasks for `-Pproject-only` / `-Pprod-only` / `-Ptest-only` support. Add missing support where it makes sense. Document which tasks support which filters in `cnavAgentHelp`.
+- **Approach**: Audit all tasks for `-Pproject-only` / `-Pscope` support. Add missing support where it makes sense. Document which tasks support which filters in `cnavAgentHelp`.
 - **Note**: Some tasks may intentionally not support certain filters — document why.
 
 ---
