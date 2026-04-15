@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.68
+
+- **New:** `cnavRenameClass` — non-deprecated alias for `cnavMoveClass`. Agents looking for a "rename class" command now find it directly. In Gradle, `cnavRenameClass` is a full task (not deprecated). In Maven, `mvn cnav:rename-class` works identically to `mvn cnav:move-class`. TaskDef gains an `aliases` field for future aliases.
+- **Improved:** Agent help (`cnavAgentHelp`) restructured with action-oriented workflow sections: "When Refactoring" (preview before rename/move, find-usages before delete, grep after delete), "When Exploring" (decision tree for find-usages vs find-callers vs context), and "cnav vs grep" (strengthened with same-package references as the primary differentiator).
+
 ## 0.1.67
 
 - **Fixed:** `cnavFindCallers` / `cnavFindCallees` now match Kotlin companion object methods when the pattern uses the enclosing class name. For example, `-Ppattern=EventSender.load` now correctly matches `EventSender$Companion.load` in bytecode. Previously, the `$Companion` inner class was invisible to pattern matching, requiring users to know the bytecode-level class name.
