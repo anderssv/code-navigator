@@ -68,6 +68,60 @@ Needs investigation to determine the right behavior for each scenario before imp
 
 ---
 
+## `cnavMoveClass`: top-level Kotlin declarations not updated when moving a file with a named class
+
+**Value: high** | **Effort: medium**
+
+From field test: moving `Metrics.kt` (which contains class `Metrics` plus top-level `val metricsRegistry`) correctly updated the class and its references, but the top-level `metricsRegistry` property was ignored. Files referencing `no.bankid.selvbetjening.metricsRegistry` still had stale imports after the move.
+
+v0.1.65 added `*Kt` facade class support (when `-Pfrom` ends with `Kt`), but that only handles the case where the *entire file* is top-level declarations. When a file has both a named class and top-level declarations, moving the named class doesn't update the top-level declaration references.
+
+Related: `RetryKt` (synthetic class for `Retry.kt` with only top-level functions) couldn't be found by cnav on v0.1.64. This was likely fixed in v0.1.65 which added `*Kt` facade class support — needs verification.
+
+- **Approach**: When moving a class from a file, also detect top-level declarations in the same file and update their `*Kt` facade references in consumer files. May need to run `ChangeType` for both the named class and the `*Kt` facade class in a single operation.
+- **Relates to**: Multi-class file handling (above) and `cnavMoveFile` (below).
+
+---
+
+## `cnavMoveFile` — file-level move for Kotlin files with mixed declarations
+
+**Value: high** | **Effort: medium**
+
+From field test: a common Kotlin pattern is a `.kt` file containing a class plus top-level functions/properties. Currently you'd need to run `cnavMoveClass` for the class and then manually handle the top-level declarations. A file-level move command would handle both in one operation.
+
+- **Parameters**: `-Pfrom-file=<relative-path>` (e.g., `src/main/kotlin/com/example/Metrics.kt`), `-Pto-package=<package>` (target package).
+- **Behavior**: Move the file, update package declaration, run `ChangeType` for every class in the file AND the `*Kt` facade class, rewrite imports in all consumer files.
+- **Relates to**: Top-level declaration handling (above) and multi-class file handling. Could subsume both if designed as the primary move mechanism, with `cnavMoveClass` as the single-class shorthand.
+
+---
+
+## `cnavMoveClass`: no support for merging into an existing file
+
+**Value: medium** | **Effort: high**
+
+From field test: moving `CryptoProvider` object to `selvbetjening.di` package failed because `CryptoProvider.kt` already existed in the target package (containing a `createCryptoProvider()` function that called the object being moved). `cnavMoveClass` only creates new files — it has no concept of merging a class into an existing file.
+
+This is an inherently complex operation:
+- Import deduplication between the moved class and the existing file.
+- Handling conflicts (e.g., both files define a class with the same name).
+- Deciding placement within the target file.
+
+May not be worth automating — manual merge with cnav handling the reference updates could be the pragmatic answer. Consider adding detection: if the target file already exists, warn and suggest manual merge rather than silently failing or overwriting.
+
+---
+
+## `cnavCycles`: add `-Pprod-only` support to distinguish prod vs test edges
+
+**Value: high** | **Effort: low**
+
+From field test: after completing all production-code moves to break a package cycle, `cnavCycles` still reported the cycle because test-only dependency edges were included. The user couldn't tell from the output whether the production cycle was actually broken — `testutil` was still listed because of test edges.
+
+- **Approach**: Add `-Pprod-only=true` / `-Ptest-only=true` support to `cnavCycles`, `cnavDsm`, and `cnavPackageDeps`. Filter classes by source set before building the dependency graph.
+- **Relates to**: "Consistent `-Pproject-only` support across all tasks" (below) — same family of filtering parameters.
+- **Note**: Source set detection is already implemented for `cnavDead`. Reuse `SourceSetResolver` to classify classes before feeding them to `DsmDependencyExtractor`.
+
+---
+
 ## `cnavFindUsages` summary mode — group by file instead of listing every bytecode reference
 
 **Value: high** | **Effort: low**
