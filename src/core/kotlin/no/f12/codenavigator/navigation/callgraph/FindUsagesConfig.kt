@@ -4,7 +4,7 @@ import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.core.KotlinMethodFilter
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.Scope
 
 data class FindUsagesConfig(
     val ownerClass: String?,
@@ -13,16 +13,12 @@ data class FindUsagesConfig(
     val type: String?,
     val outsidePackage: String?,
     val filterSynthetic: Boolean,
-    val prodOnly: Boolean,
-    val testOnly: Boolean,
+    val scope: Scope,
     val format: OutputFormat,
 ) {
     fun filterBySourceSet(usages: List<UsageSite>): List<UsageSite> {
-        if (!prodOnly && !testOnly) return usages
-        return usages.filter { usage ->
-            if (prodOnly) usage.sourceSet == SourceSet.MAIN
-            else usage.sourceSet == SourceSet.TEST
-        }
+        if (scope == Scope.ALL) return usages
+        return usages.filter { usage -> usage.sourceSet == null || scope.matchesSourceSet(usage.sourceSet) }
     }
 
     fun filterSyntheticCallers(usages: List<UsageSite>): List<UsageSite> {
@@ -58,8 +54,7 @@ data class FindUsagesConfig(
                 type = type,
                 outsidePackage = TaskRegistry.OUTSIDE_PACKAGE.parseFrom(properties),
                 filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
-                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
-                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
+                scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
                 format = ParamDef.parseFormat(properties),
             )
         }

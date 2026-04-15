@@ -2,6 +2,7 @@ package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.complexity.ComplexityConfig
+import no.f12.codenavigator.navigation.core.Scope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -90,30 +91,23 @@ class ComplexityConfigTest {
     }
 
     @Test
-    fun `parses prod-only from properties`() {
-        val config = ComplexityConfig.parse(mapOf("pattern" to "Foo", "prod-only" to "true"))
+    fun `parses scope prod`() {
+        val config = ComplexityConfig.parse(mapOf("pattern" to "Foo", "scope" to "prod"))
 
-        assertEquals(true, config.prodOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses test-only from properties`() {
-        val config = ComplexityConfig.parse(mapOf("pattern" to "Foo", "test-only" to "true"))
+    fun `parses scope test`() {
+        val config = ComplexityConfig.parse(mapOf("pattern" to "Foo", "scope" to "test"))
 
-        assertEquals(true, config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 
     @Test
-    fun `defaults prodOnly to false when absent`() {
+    fun `scope defaults to ALL when absent`() {
         val config = ComplexityConfig.parse(mapOf("pattern" to "Foo"))
 
-        assertEquals(false, config.prodOnly)
-    }
-
-    @Test
-    fun `defaults testOnly to false when absent`() {
-        val config = ComplexityConfig.parse(mapOf("pattern" to "Foo"))
-
-        assertEquals(false, config.testOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 }

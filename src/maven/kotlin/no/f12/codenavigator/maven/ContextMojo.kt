@@ -49,11 +49,8 @@ class ContextMojo : AbstractMojo() {
     @Parameter(property = "filter-synthetic")
     private var filterSynthetic: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     override fun execute() {
         val config = try {
@@ -152,7 +149,6 @@ class ContextMojo : AbstractMojo() {
         maxdepth?.let { put("maxdepth", it) }
         projectOnly?.let { put("project-only", it) }
         filterSynthetic?.let { put("filter-synthetic", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
     }
 }

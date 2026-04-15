@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.rank.RankConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -65,30 +66,23 @@ class RankConfigTest {
     }
 
     @Test
-    fun `parses prod-only from properties`() {
-        val config = RankConfig.parse(mapOf("prod-only" to "true"))
+    fun `parses scope prod`() {
+        val config = RankConfig.parse(mapOf("scope" to "prod"))
 
-        assertEquals(true, config.prodOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses test-only from properties`() {
-        val config = RankConfig.parse(mapOf("test-only" to "true"))
+    fun `parses scope test`() {
+        val config = RankConfig.parse(mapOf("scope" to "test"))
 
-        assertEquals(true, config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 
     @Test
-    fun `defaults prodOnly to false when absent`() {
+    fun `scope defaults to ALL when absent`() {
         val config = RankConfig.parse(emptyMap())
 
-        assertEquals(false, config.prodOnly)
-    }
-
-    @Test
-    fun `defaults testOnly to false when absent`() {
-        val config = RankConfig.parse(emptyMap())
-
-        assertEquals(false, config.testOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 }

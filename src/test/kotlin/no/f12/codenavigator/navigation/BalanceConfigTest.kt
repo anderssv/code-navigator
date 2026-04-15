@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.dsm.BalanceConfig
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -18,7 +19,7 @@ class BalanceConfigTest {
                 "include-external" to "true",
                 "dsm-depth" to "5",
                 "top" to "10",
-                "prod-only" to "true",
+                "scope" to "prod",
                 "format" to "json",
                 "after" to "2024-01-01",
                 "min-revs" to "3",
@@ -30,7 +31,7 @@ class BalanceConfigTest {
         assertTrue(config.includeExternal)
         assertEquals(5, config.depth)
         assertEquals(10, config.top)
-        assertTrue(config.prodOnly)
+        assertEquals(Scope.PROD, config.scope)
         assertEquals(OutputFormat.JSON, config.format)
         assertEquals(LocalDate.of(2024, 1, 1), config.after)
         assertEquals(3, config.minRevs)
@@ -44,8 +45,7 @@ class BalanceConfigTest {
         assertNull(config.packageFilter)
         assertEquals(false, config.includeExternal)
         assertEquals(Int.MAX_VALUE, config.top)
-        assertEquals(false, config.prodOnly)
-        assertEquals(false, config.testOnly)
+        assertEquals(Scope.ALL, config.scope)
         assertEquals(OutputFormat.TEXT, config.format)
         assertTrue(config.followRenames)
     }

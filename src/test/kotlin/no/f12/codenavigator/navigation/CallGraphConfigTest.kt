@@ -5,6 +5,7 @@ import no.f12.codenavigator.navigation.callgraph.CallGraph
 import no.f12.codenavigator.navigation.callgraph.CallGraphConfig
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.SourceSet
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -123,14 +124,13 @@ class CallGraphConfigTest {
         sourceFiles = mapOf(projectClass to "MyClass.kt"),
     )
 
-    private fun config(projectOnly: Boolean = false, filterSynthetic: Boolean = false, prodOnly: Boolean = false, testOnly: Boolean = false) =
+    private fun config(projectOnly: Boolean = false, filterSynthetic: Boolean = false, scope: Scope = Scope.ALL) =
         CallGraphConfig(
             method = ".*",
             maxDepth = 3,
             projectOnly = projectOnly,
             filterSynthetic = filterSynthetic,
-            prodOnly = prodOnly,
-            testOnly = testOnly,
+            scope = scope,
             format = OutputFormat.TEXT,
         )
 
@@ -168,43 +168,34 @@ class CallGraphConfigTest {
     }
 
     @Test
-    fun `parses prod-only from properties`() {
+    fun `parses scope prod from properties`() {
         val config = CallGraphConfig.parse(
-            mapOf("pattern" to "MyClass.doWork", "prod-only" to "true"),
+            mapOf("pattern" to "MyClass.doWork", "scope" to "prod"),
         )
 
-        assertEquals(true, config.prodOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses test-only from properties`() {
+    fun `parses scope test from properties`() {
         val config = CallGraphConfig.parse(
-            mapOf("pattern" to "MyClass.doWork", "test-only" to "true"),
+            mapOf("pattern" to "MyClass.doWork", "scope" to "test"),
         )
 
-        assertEquals(true, config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 
     @Test
-    fun `defaults prodOnly to false when not provided`() {
-        val config = CallGraphConfig.parse(
-            mapOf("pattern" to "MyClass.doWork"),
-        )
-
-        assertEquals(false, config.prodOnly)
-    }
-
-    @Test
-    fun `defaults testOnly to false when not provided`() {
+    fun `scope defaults to ALL when not provided`() {
         val config = CallGraphConfig.parse(
             mapOf("pattern" to "MyClass.doWork"),
         )
 
-        assertEquals(false, config.testOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `buildFilter with prodOnly filters out test source set classes`() {
+    fun `buildFilter with scope PROD filters out test source set classes`() {
         val prodClass = ClassName("com.example.Service")
         val testClass = ClassName("com.example.ServiceTest")
         val graphWithSets = CallGraph(
@@ -221,7 +212,7 @@ class CallGraphConfigTest {
             ),
         )
 
-        val filter = config(prodOnly = true).buildFilter(graphWithSets)
+        val filter = config(scope = Scope.PROD).buildFilter(graphWithSets)
 
         assertNotNull(filter)
         assertTrue(filter(MethodRef(prodClass, "doWork")))
@@ -229,7 +220,7 @@ class CallGraphConfigTest {
     }
 
     @Test
-    fun `buildFilter with testOnly filters out prod source set classes`() {
+    fun `buildFilter with scope TEST filters out prod source set classes`() {
         val prodClass = ClassName("com.example.Service")
         val testClass = ClassName("com.example.ServiceTest")
         val graphWithSets = CallGraph(
@@ -246,7 +237,7 @@ class CallGraphConfigTest {
             ),
         )
 
-        val filter = config(testOnly = true).buildFilter(graphWithSets)
+        val filter = config(scope = Scope.TEST).buildFilter(graphWithSets)
 
         assertNotNull(filter)
         assertTrue(!filter(MethodRef(prodClass, "doWork")))

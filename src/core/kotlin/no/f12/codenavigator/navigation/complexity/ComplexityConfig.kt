@@ -3,6 +3,7 @@ package no.f12.codenavigator.navigation.complexity
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.Scope
 
 data class ComplexityConfig(
     val classPattern: String,
@@ -10,8 +11,7 @@ data class ComplexityConfig(
     val detail: Boolean,
     val collapseLambdas: Boolean,
     val top: Int,
-    val prodOnly: Boolean,
-    val testOnly: Boolean,
+    val scope: Scope,
     val format: OutputFormat,
 ) {
     companion object {
@@ -21,8 +21,7 @@ data class ComplexityConfig(
             detail = TaskRegistry.DETAIL.parseFrom(properties),
             collapseLambdas = TaskRegistry.COLLAPSE_LAMBDAS.parseFrom(properties),
             top = TaskRegistry.TOP.parseFrom(properties),
-            prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
-            testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
+            scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
             format = ParamDef.parseFormat(properties),
         )
     }

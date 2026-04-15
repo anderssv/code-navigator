@@ -4,7 +4,6 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.SourceSetResolver
 import no.f12.codenavigator.navigation.annotation.AnnotationQueryBuilder
 import no.f12.codenavigator.navigation.annotation.AnnotationQueryConfig
@@ -40,11 +39,8 @@ class AnnotationsMojo : AbstractMojo() {
     @Parameter(property = "include-test")
     private var includeTest: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     override fun execute() {
         val config = try {
@@ -64,11 +60,7 @@ class AnnotationsMojo : AbstractMojo() {
         }
 
         val allMatches = AnnotationQueryBuilder.query(resolver.classDirectories, config.pattern, config.methods)
-        val matches = when {
-            config.prodOnly -> allMatches.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
-            config.testOnly -> allMatches.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
-            else -> allMatches
-        }
+        val matches = allMatches.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         println(OutputWrapper.formatAndWrap(config.format,
             text = { AnnotationQueryFormatter.format(matches) },
@@ -83,7 +75,6 @@ class AnnotationsMojo : AbstractMojo() {
         pattern?.let { put("pattern", it) }
         methods?.let { put("methods", it) }
         includeTest?.let { put("include-test", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
     }
 }

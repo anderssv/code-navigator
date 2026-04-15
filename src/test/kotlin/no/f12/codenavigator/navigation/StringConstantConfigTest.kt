@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.navigation.stringconstant.StringConstantConfig
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.config.OutputFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -46,30 +47,23 @@ class StringConstantConfigTest {
     }
 
     @Test
-    fun `prodOnly defaults to false`() {
+    fun `scope defaults to ALL`() {
         val config = StringConstantConfig.parse(mapOf("pattern" to "test"))
 
-        assertFalse(config.prodOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `testOnly defaults to false`() {
-        val config = StringConstantConfig.parse(mapOf("pattern" to "test"))
+    fun `parses scope prod`() {
+        val config = StringConstantConfig.parse(mapOf("pattern" to "test", "scope" to "prod"))
 
-        assertFalse(config.testOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses prodOnly=true`() {
-        val config = StringConstantConfig.parse(mapOf("pattern" to "test", "prod-only" to "true"))
+    fun `parses scope test`() {
+        val config = StringConstantConfig.parse(mapOf("pattern" to "test", "scope" to "test"))
 
-        assertTrue(config.prodOnly)
-    }
-
-    @Test
-    fun `parses testOnly=true`() {
-        val config = StringConstantConfig.parse(mapOf("pattern" to "test", "test-only" to "true"))
-
-        assertTrue(config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 }

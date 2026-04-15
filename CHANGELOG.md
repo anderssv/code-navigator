@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.69
+
+- **Breaking:** Replaced `-Pprod-only=true` / `-Ptest-only=true` with a single `-Pscope=all|prod|test` parameter (default: `all`). The old parameters are removed entirely — passing them has no effect (they are treated as unknown Gradle properties). All tasks that previously accepted `prod-only`/`test-only` now accept `scope`. Affects all 22 config classes, all Gradle tasks, and all Maven mojos.
+- **Improved:** `warnUnsupportedProperties` now includes the task's usage help in the warning message when an unsupported cnav parameter is detected.
+- **Improved:** `INCLUDETEST` deprecation message updated to reference `scope=prod` instead of `prod-only`.
+
 ## 0.1.68
 
 - **New:** `cnavRenameClass` — non-deprecated alias for `cnavMoveClass`. Agents looking for a "rename class" command now find it directly. In Gradle, `cnavRenameClass` is a full task (not deprecated). In Maven, `mvn cnav:rename-class` works identically to `mvn cnav:move-class`. TaskDef gains an `aliases` field for future aliases.

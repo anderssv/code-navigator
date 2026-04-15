@@ -4,7 +4,6 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.SourceSetResolver
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyBuilder
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyConfig
@@ -36,11 +35,8 @@ class TypeHierarchyMojo : AbstractMojo() {
     @Parameter(property = "project-only")
     private var projectOnly: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     override fun execute() {
         val config = try {
@@ -62,11 +58,7 @@ class TypeHierarchyMojo : AbstractMojo() {
             config.pattern,
             config.projectOnly,
         )
-        val results = when {
-            config.prodOnly -> allResults.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
-            config.testOnly -> allResults.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
-            else -> allResults
-        }
+        val results = allResults.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         if (results.isEmpty()) {
             println("No classes found matching '${config.pattern}'")
@@ -85,7 +77,6 @@ class TypeHierarchyMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         projectOnly?.let { put("project-only", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
     }
 }

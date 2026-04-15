@@ -6,7 +6,7 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.core.RootPackageDetector
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
@@ -32,11 +32,7 @@ abstract class PackageDistanceTask : DefaultTask() {
         val config = PackageDistanceConfig.parse(props)
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = when {
-            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
-            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
-            else -> taggedDirs
-        }
+        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
         val classDirectories = filteredDirs.map { it.first }
 
         val projectClasses = scanProjectClasses(classDirectories)

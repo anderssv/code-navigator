@@ -5,7 +5,6 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.formatting.TableFormatter
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.SourceSetResolver
 import no.f12.codenavigator.navigation.core.JarClassScanner
 import no.f12.codenavigator.navigation.classinfo.ClassFilter
@@ -42,11 +41,8 @@ class FindClassMojo : AbstractMojo() {
     @Parameter(property = "jar")
     private var jar: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     override fun execute() {
         val config = try {
@@ -80,11 +76,7 @@ class FindClassMojo : AbstractMojo() {
             val result = ClassIndexCache.getOrBuild(File(project.build.directory, "cnav/class-index-all.cache"), resolver.classDirectories)
             val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
             SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
-            when {
-                config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
-                config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
-                else -> result.data
-            }
+            result.data.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
         }
 
         val matches = ClassFilter.filter(allClasses, config.pattern)
@@ -105,7 +97,6 @@ class FindClassMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         jar?.let { put("jar", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
     }
 }

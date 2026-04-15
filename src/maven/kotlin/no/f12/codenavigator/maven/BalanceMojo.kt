@@ -10,7 +10,6 @@ import no.f12.codenavigator.navigation.annotation.FrameworkPresets
 import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.core.RootPackageDetector
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
-import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.BalanceBuilder
 import no.f12.codenavigator.navigation.dsm.BalanceConfig
@@ -55,11 +54,8 @@ class BalanceMojo : AbstractMojo() {
     @Parameter(property = "top")
     private var top: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     @Parameter(property = "after")
     private var after: String? = null
@@ -76,11 +72,7 @@ class BalanceMojo : AbstractMojo() {
         // --- Bytecode analysis (strength + distance) ---
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = when {
-            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
-            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
-            else -> taggedDirs
-        }
+        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
         val classDirectories = filteredDirs.map { it.first }
 
         if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
@@ -141,8 +133,7 @@ class BalanceMojo : AbstractMojo() {
         includeExternal?.let { put("include-external", it) }
         dsmDepth?.let { put("dsm-depth", it) }
         top?.let { put("top", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
         after?.let { put("after", it) }
         minRevs?.let { put("min-revs", it) }
         if (noFollow) put("no-follow", null)

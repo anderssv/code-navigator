@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.symbol.FindSymbolConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -48,31 +49,24 @@ class FindSymbolConfigTest {
     }
 
     @Test
-    fun `prodOnly defaults to false`() {
+    fun `scope defaults to ALL`() {
         val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod"))
 
-        assertFalse(config.prodOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `testOnly defaults to false`() {
-        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod"))
+    fun `parses scope prod`() {
+        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod", "scope" to "prod"))
 
-        assertFalse(config.testOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses prodOnly=true`() {
-        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod", "prod-only" to "true"))
+    fun `parses scope test`() {
+        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod", "scope" to "test"))
 
-        assertTrue(config.prodOnly)
-    }
-
-    @Test
-    fun `parses testOnly=true`() {
-        val config = FindSymbolConfig.parse(mapOf("pattern" to "myMethod", "test-only" to "true"))
-
-        assertTrue(config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 
     @Test

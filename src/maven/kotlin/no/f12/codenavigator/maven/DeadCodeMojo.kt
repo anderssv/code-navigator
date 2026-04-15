@@ -50,14 +50,11 @@ class DeadCodeMojo : AbstractMojo() {
     @Parameter(property = "exclude-annotated")
     private var excludeAnnotated: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     @Parameter(property = "treat-as-dead")
     private var treatAsDead: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
 
     override fun execute() {
         val classesDir = File(project.build.outputDirectory)
@@ -114,13 +111,12 @@ class DeadCodeMojo : AbstractMojo() {
             classFields = classFields,
             inlineMethods = inlineMethods,
             classExternalInterfaces = classExternalInterfaces,
-            prodOnly = config.prodOnly,
+            scope = config.scope,
             modifierAnnotated = config.modifierAnnotated.toSet(),
             supertypeEntryPoints = config.supertypeEntryPoints,
             testClasses = testGraph?.projectClasses() ?: emptySet(),
             classReceiverTypes = classReceiverTypes,
             receiverTypeEntryPoints = config.receiverTypeEntryPoints,
-            testOnly = config.testOnly,
             delegationMethods = delegationMethods,
             bridgeMethods = bridgeMethods,
             declaredMethods = graph.allDeclaredMethods(),
@@ -145,8 +141,7 @@ class DeadCodeMojo : AbstractMojo() {
         exclude?.let { put("exclude", it) }
         classesOnly?.let { put("classes-only", it) }
         excludeAnnotated?.let { put("exclude-annotated", it) }
-        prodOnly?.let { put("prod-only", it) }
+        scope?.let { put("scope", it) }
         treatAsDead?.let { put("treat-as-dead", it) }
-        testOnly?.let { put("test-only", it) }
     }
 }

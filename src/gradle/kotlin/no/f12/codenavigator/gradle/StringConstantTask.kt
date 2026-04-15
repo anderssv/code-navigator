@@ -4,7 +4,7 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.formatting.OutputWrapper
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.SourceSetResolver
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.stringconstant.StringConstantConfig
@@ -31,11 +31,7 @@ abstract class StringConstantTask : DefaultTask() {
         val result = StringConstantScanner.scan(resolver.classDirectories, config.pattern)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val matches = when {
-            config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
-            config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
-            else -> result.data
-        }
+        val matches = result.data.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         if (matches.isEmpty()) {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No string constants matching '${config.pattern.pattern}' found."))

@@ -5,6 +5,7 @@ import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.callgraph.CallGraph
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import no.f12.codenavigator.navigation.context.ContextConfig
+import no.f12.codenavigator.navigation.core.Scope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -70,17 +71,17 @@ class ContextConfigTest {
     }
 
     @Test
-    fun `parses prod-only from property map`() {
-        val config = ContextConfig.parse(mapOf("pattern" to "Foo", "prod-only" to "true"))
+    fun `parses scope prod from property map`() {
+        val config = ContextConfig.parse(mapOf("pattern" to "Foo", "scope" to "prod"))
 
-        assertEquals(true, config.prodOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses test-only from property map`() {
-        val config = ContextConfig.parse(mapOf("pattern" to "Foo", "test-only" to "true"))
+    fun `parses scope test from property map`() {
+        val config = ContextConfig.parse(mapOf("pattern" to "Foo", "scope" to "test"))
 
-        assertEquals(true, config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 
     @Test

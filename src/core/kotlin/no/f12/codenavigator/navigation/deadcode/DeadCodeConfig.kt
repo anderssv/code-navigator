@@ -2,6 +2,7 @@ package no.f12.codenavigator.navigation.deadcode
 
 import no.f12.codenavigator.navigation.annotation.FrameworkPresets
 import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
@@ -14,8 +15,7 @@ data class DeadCodeConfig(
     val modifierAnnotated: List<String>,
     val supertypeEntryPoints: Set<ClassName>,
     val receiverTypeEntryPoints: Set<ClassName>,
-    val prodOnly: Boolean,
-    val testOnly: Boolean,
+    val scope: Scope,
     val format: OutputFormat,
 ) {
     companion object {
@@ -37,8 +37,7 @@ data class DeadCodeConfig(
                 modifierAnnotated = mergedModifiers,
                 supertypeEntryPoints = supertypes,
                 receiverTypeEntryPoints = receiverTypes,
-                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
-                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
+                scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
                 format = ParamDef.parseFormat(properties),
             )
         }

@@ -6,7 +6,7 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.formatting.TableFormatter
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.SourceSetResolver
 import no.f12.codenavigator.navigation.core.JarClassScanner
 import no.f12.codenavigator.navigation.classinfo.ClassFilter
@@ -55,11 +55,7 @@ abstract class FindClassTask : DefaultTask() {
             val result = ClassIndexCache.getOrBuild(cacheFile, resolver.classDirectories)
             val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
             SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
-            when {
-                config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
-                config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
-                else -> result.data
-            }
+            result.data.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
         }
 
         val matches = ClassFilter.filter(allClasses, config.pattern)

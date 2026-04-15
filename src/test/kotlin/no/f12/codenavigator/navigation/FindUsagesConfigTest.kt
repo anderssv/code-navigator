@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
 import no.f12.codenavigator.navigation.callgraph.UsageKind
@@ -135,29 +136,28 @@ class FindUsagesConfigTest {
     }
 
     @Test
-    fun `parses prod-only flag`() {
+    fun `parses scope prod`() {
         val config = FindUsagesConfig.parse(
-            mapOf("owner-class" to "com.example.Foo", "prod-only" to "true"),
+            mapOf("owner-class" to "com.example.Foo", "scope" to "prod"),
         )
 
-        assertEquals(true, config.prodOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses test-only flag`() {
+    fun `parses scope test`() {
         val config = FindUsagesConfig.parse(
-            mapOf("owner-class" to "com.example.Foo", "test-only" to "true"),
+            mapOf("owner-class" to "com.example.Foo", "scope" to "test"),
         )
 
-        assertEquals(true, config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 
     @Test
-    fun `defaults prod-only and test-only to false`() {
+    fun `defaults scope to ALL`() {
         val config = FindUsagesConfig.parse(mapOf("owner-class" to "com.example.Foo"))
 
-        assertEquals(false, config.prodOnly)
-        assertEquals(false, config.testOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
@@ -187,67 +187,65 @@ class FindUsagesConfigTest {
         sourceSet = sourceSet,
     )
 
-    private fun config(prodOnly: Boolean, testOnly: Boolean) = FindUsagesConfig(
+    private fun config(scope: Scope) = FindUsagesConfig(
         ownerClass = "com.example.Target",
         method = null,
         field = null,
         type = null,
         outsidePackage = null,
         filterSynthetic = true,
-        prodOnly = prodOnly,
-        testOnly = testOnly,
+        scope = scope,
         format = OutputFormat.TEXT,
     )
 
     @Test
-    fun `filterBySourceSet returns all usages when neither prodOnly nor testOnly set`() {
+    fun `filterBySourceSet returns all usages when scope is ALL`() {
         val usages = listOf(
             usageSite("com.example.ProdCaller", SourceSet.MAIN),
             usageSite("com.example.TestCaller", SourceSet.TEST),
         )
 
-        val filtered = config(prodOnly = false, testOnly = false).filterBySourceSet(usages)
+        val filtered = config(scope = Scope.ALL).filterBySourceSet(usages)
 
         assertEquals(2, filtered.size)
     }
 
     @Test
-    fun `filterBySourceSet with prodOnly keeps only MAIN source set usages`() {
+    fun `filterBySourceSet with scope PROD keeps only MAIN source set usages`() {
         val usages = listOf(
             usageSite("com.example.ProdCaller", SourceSet.MAIN),
             usageSite("com.example.TestCaller", SourceSet.TEST),
         )
 
-        val filtered = config(prodOnly = true, testOnly = false).filterBySourceSet(usages)
+        val filtered = config(scope = Scope.PROD).filterBySourceSet(usages)
 
         assertEquals(1, filtered.size)
         assertEquals(ClassName("com.example.ProdCaller"), filtered[0].callerClass)
     }
 
     @Test
-    fun `filterBySourceSet with testOnly keeps only TEST source set usages`() {
+    fun `filterBySourceSet with scope TEST keeps only TEST source set usages`() {
         val usages = listOf(
             usageSite("com.example.ProdCaller", SourceSet.MAIN),
             usageSite("com.example.TestCaller", SourceSet.TEST),
         )
 
-        val filtered = config(prodOnly = false, testOnly = true).filterBySourceSet(usages)
+        val filtered = config(scope = Scope.TEST).filterBySourceSet(usages)
 
         assertEquals(1, filtered.size)
         assertEquals(ClassName("com.example.TestCaller"), filtered[0].callerClass)
     }
 
     @Test
-    fun `filterBySourceSet with prodOnly excludes usages with null source set`() {
+    fun `filterBySourceSet with scope PROD keeps usages with null source set`() {
         val usages = listOf(
             usageSite("com.example.ProdCaller", SourceSet.MAIN),
             usageSite("com.example.UnknownCaller", null),
         )
 
-        val filtered = config(prodOnly = true, testOnly = false).filterBySourceSet(usages)
+        val filtered = config(scope = Scope.PROD).filterBySourceSet(usages)
 
-        assertEquals(1, filtered.size)
-        assertEquals(ClassName("com.example.ProdCaller"), filtered[0].callerClass)
+        assertEquals(2, filtered.size)
     }
 
     // --- filterSyntheticCallers ---
@@ -264,7 +262,7 @@ class FindUsagesConfigTest {
             usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "copy\$default"),
         )
 
-        val cfg = config(prodOnly = false, testOnly = false)
+        val cfg = config(scope = Scope.ALL)
         val filtered = cfg.filterSyntheticCallers(usages)
 
         assertEquals(1, filtered.size)
@@ -286,8 +284,7 @@ class FindUsagesConfigTest {
             type = null,
             outsidePackage = null,
             filterSynthetic = false,
-            prodOnly = false,
-            testOnly = false,
+            scope = Scope.ALL,
             format = OutputFormat.TEXT,
         )
         val filtered = cfg.filterSyntheticCallers(usages)
@@ -302,7 +299,7 @@ class FindUsagesConfigTest {
             usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "doWork"),
         )
 
-        val cfg = config(prodOnly = false, testOnly = false)
+        val cfg = config(scope = Scope.ALL)
         val filtered = cfg.filterSyntheticCallers(usages)
 
         assertEquals(2, filtered.size)
@@ -316,7 +313,7 @@ class FindUsagesConfigTest {
             usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "doWork"),
         )
 
-        val cfg = config(prodOnly = false, testOnly = false)
+        val cfg = config(scope = Scope.ALL)
         val filtered = cfg.filterSyntheticCallers(usages)
 
         assertEquals(1, filtered.size)
@@ -330,7 +327,7 @@ class FindUsagesConfigTest {
             usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "doWork"),
         )
 
-        val cfg = config(prodOnly = false, testOnly = false)
+        val cfg = config(scope = Scope.ALL)
         val filtered = cfg.filterSyntheticCallers(usages)
 
         assertEquals(1, filtered.size)

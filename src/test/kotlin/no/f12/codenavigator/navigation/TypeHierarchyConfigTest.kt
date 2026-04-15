@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -57,30 +58,23 @@ class TypeHierarchyConfigTest {
     }
 
     @Test
-    fun `prodOnly defaults to false`() {
+    fun `scope defaults to ALL`() {
         val config = TypeHierarchyConfig.parse(mapOf("pattern" to "MyService"))
 
-        assertFalse(config.prodOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `testOnly defaults to false`() {
-        val config = TypeHierarchyConfig.parse(mapOf("pattern" to "MyService"))
+    fun `parses scope prod`() {
+        val config = TypeHierarchyConfig.parse(mapOf("pattern" to "MyService", "scope" to "prod"))
 
-        assertFalse(config.testOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses prodOnly=true`() {
-        val config = TypeHierarchyConfig.parse(mapOf("pattern" to "MyService", "prod-only" to "true"))
+    fun `parses scope test`() {
+        val config = TypeHierarchyConfig.parse(mapOf("pattern" to "MyService", "scope" to "test"))
 
-        assertTrue(config.prodOnly)
-    }
-
-    @Test
-    fun `parses testOnly=true`() {
-        val config = TypeHierarchyConfig.parse(mapOf("pattern" to "MyService", "test-only" to "true"))
-
-        assertTrue(config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 }

@@ -4,7 +4,6 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
@@ -41,21 +40,14 @@ class PackageDepsMojo : AbstractMojo() {
     @Parameter(property = "reverse")
     private var reverse: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     override fun execute() {
         val config = PackageDepsConfig.parse(TaskRegistry.PACKAGE_DEPS.enhanceProperties(buildPropertyMap()))
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = when {
-            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
-            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
-            else -> taggedDirs
-        }
+        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
         val classDirectories = filteredDirs.map { it.first }
 
         if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
@@ -104,7 +96,6 @@ class PackageDepsMojo : AbstractMojo() {
         packagePattern?.let { put("package", it) }
         projectOnly?.let { put("project-only", it) }
         reverse?.let { put("reverse", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
     }
 }

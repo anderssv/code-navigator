@@ -3,6 +3,8 @@ package no.f12.codenavigator.navigation
 import no.f12.codenavigator.navigation.core.AnnotationName
 import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.core.PackageName
+import no.f12.codenavigator.navigation.core.Scope
+import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -573,5 +575,61 @@ class MethodRefTest {
         val ref = MethodRef(ClassName("com.example.Service"), "doWork")
 
         assertFalse(ref.isGenerated())
+    }
+}
+
+class ScopeTest {
+
+    @Test
+    fun `parse returns ALL for all`() {
+        assertEquals(Scope.ALL, Scope.parse("all"))
+    }
+
+    @Test
+    fun `parse returns PROD for prod`() {
+        assertEquals(Scope.PROD, Scope.parse("prod"))
+    }
+
+    @Test
+    fun `parse returns TEST for test`() {
+        assertEquals(Scope.TEST, Scope.parse("test"))
+    }
+
+    @Test
+    fun `parse returns ALL for null`() {
+        assertEquals(Scope.ALL, Scope.parse(null))
+    }
+
+    @Test
+    fun `parse is case-insensitive`() {
+        assertEquals(Scope.PROD, Scope.parse("PROD"))
+        assertEquals(Scope.TEST, Scope.parse("Test"))
+        assertEquals(Scope.ALL, Scope.parse("ALL"))
+    }
+
+    @Test
+    fun `matchesSourceSet returns true for ALL regardless of source set`() {
+        assertTrue(Scope.ALL.matchesSourceSet(SourceSet.MAIN))
+        assertTrue(Scope.ALL.matchesSourceSet(SourceSet.TEST))
+    }
+
+    @Test
+    fun `matchesSourceSet returns true for PROD with MAIN`() {
+        assertTrue(Scope.PROD.matchesSourceSet(SourceSet.MAIN))
+    }
+
+    @Test
+    fun `matchesSourceSet returns false for PROD with TEST`() {
+        assertFalse(Scope.PROD.matchesSourceSet(SourceSet.TEST))
+    }
+
+    @Test
+    fun `matchesSourceSet returns true for TEST with TEST`() {
+        assertTrue(Scope.TEST.matchesSourceSet(SourceSet.TEST))
+    }
+
+    @Test
+    fun `matchesSourceSet returns false for TEST with MAIN`() {
+        assertFalse(Scope.TEST.matchesSourceSet(SourceSet.MAIN))
     }
 }

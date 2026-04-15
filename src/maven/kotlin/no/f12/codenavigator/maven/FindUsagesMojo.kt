@@ -45,11 +45,8 @@ class FindUsagesMojo : AbstractMojo() {
     @Parameter(property = "outside-package")
     private var outsidePackage: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     @Parameter(property = "filter-synthetic")
     private var filterSynthetic: String? = null
@@ -100,8 +97,7 @@ class FindUsagesMojo : AbstractMojo() {
         field?.let { put("field", it) }
         type?.let { put("type", it) }
         outsidePackage?.let { put("outside-package", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
         filterSynthetic?.let { put("filter-synthetic", it) }
     }
 }

@@ -4,7 +4,7 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
@@ -27,11 +27,7 @@ abstract class PackageDepsTask : DefaultTask() {
         )
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = when {
-            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
-            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
-            else -> taggedDirs
-        }
+        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
         val classDirectories = filteredDirs.map { it.first }
 
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/call-graph.cache")

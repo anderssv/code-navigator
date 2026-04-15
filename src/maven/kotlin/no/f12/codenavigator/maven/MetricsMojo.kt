@@ -7,7 +7,6 @@ import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.navigation.core.RootPackageDetector
-import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.scanProjectClasses
 import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
@@ -74,22 +73,15 @@ class MetricsMojo : AbstractMojo() {
     @Parameter(property = "treat-as-dead")
     private var treatAsDead: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     override fun execute() {
         val config = MetricsConfig.parse(TaskRegistry.METRICS.enhanceProperties(buildPropertyMap()))
         config.deprecations().forEach { log.warn(it) }
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = when {
-            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
-            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
-            else -> taggedDirs
-        }
+        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
         val classDirectories = filteredDirs.map { it.first }
 
         if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
@@ -180,7 +172,6 @@ class MetricsMojo : AbstractMojo() {
         excludeAnnotated?.let { put("exclude-annotated", it) }
         treatAsDead?.let { put("treat-as-dead", it) }
         if (noFollow) put("no-follow", null)
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
     }
 }

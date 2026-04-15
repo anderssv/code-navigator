@@ -4,6 +4,7 @@ import no.f12.codenavigator.navigation.core.AnnotationName
 import no.f12.codenavigator.navigation.callgraph.CallGraph
 import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.core.KotlinMethodFilter
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.callgraph.MethodRef
 
 enum class DeadCodeKind {
@@ -48,13 +49,12 @@ object DeadCodeFinder {
         classFields: Map<ClassName, Set<String>> = emptyMap(),
         inlineMethods: Set<MethodRef> = emptySet(),
         classExternalInterfaces: Map<ClassName, Set<ClassName>> = emptyMap(),
-        prodOnly: Boolean = false,
+        scope: Scope = Scope.ALL,
         modifierAnnotated: Set<String> = emptySet(),
         supertypeEntryPoints: Set<ClassName> = emptySet(),
         testClasses: Set<ClassName> = emptySet(),
         classReceiverTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
         receiverTypeEntryPoints: Set<ClassName> = emptySet(),
-        testOnly: Boolean = false,
         delegationMethods: Set<MethodRef> = emptySet(),
         bridgeMethods: Set<MethodRef> = emptySet(),
         declaredMethods: Map<ClassName, Set<String>> = emptyMap(),
@@ -203,8 +203,8 @@ object DeadCodeFinder {
             .filter { item -> !isExcludedByAnnotation(item, excludeAnnotated, classAnnotations, methodAnnotations) }
             .filter { item -> !isExcludedBySupertype(item, classExternalInterfaces, supertypeEntryPoints) }
             .filter { item -> !isExcludedByReceiverType(item, classReceiverTypes, receiverTypeEntryPoints) }
-            .filter { item -> !prodOnly || (item.reason == DeadCodeReason.NO_REFERENCES && item.className !in testClasses) }
-            .filter { item -> !testOnly || item.reason == DeadCodeReason.TEST_ONLY }
+            .filter { item -> scope != Scope.PROD || (item.reason == DeadCodeReason.NO_REFERENCES && item.className !in testClasses) }
+            .filter { item -> scope != Scope.TEST || item.reason == DeadCodeReason.TEST_ONLY }
             .sortedWith(compareBy({ it.kind }, { it.className }, { it.memberName ?: "" }))
     }
 

@@ -5,6 +5,27 @@ enum class SourceSet(val label: String) {
     TEST("test"),
 }
 
+enum class Scope {
+    ALL,
+    PROD,
+    TEST,
+    ;
+
+    fun matchesSourceSet(sourceSet: SourceSet): Boolean = when (this) {
+        ALL -> true
+        PROD -> sourceSet == SourceSet.MAIN
+        TEST -> sourceSet == SourceSet.TEST
+    }
+
+    companion object {
+        fun parse(value: String?): Scope = when (value?.lowercase()) {
+            "prod" -> PROD
+            "test" -> TEST
+            else -> ALL
+        }
+    }
+}
+
 @JvmInline
 value class ClassName(val value: String) : Comparable<ClassName> {
     fun packageName(): PackageName =

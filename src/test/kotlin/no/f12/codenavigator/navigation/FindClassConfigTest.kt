@@ -2,6 +2,7 @@ package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.classinfo.FindClassConfig
+import no.f12.codenavigator.navigation.core.Scope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -48,31 +49,24 @@ class FindClassConfigTest {
     }
 
     @Test
-    fun `prodOnly defaults to false`() {
+    fun `scope defaults to ALL`() {
         val config = FindClassConfig.parse(mapOf("pattern" to "MyClass"))
 
-        assertFalse(config.prodOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `testOnly defaults to false`() {
-        val config = FindClassConfig.parse(mapOf("pattern" to "MyClass"))
+    fun `parses scope prod`() {
+        val config = FindClassConfig.parse(mapOf("pattern" to "MyClass", "scope" to "prod"))
 
-        assertFalse(config.testOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses prodOnly=true`() {
-        val config = FindClassConfig.parse(mapOf("pattern" to "MyClass", "prod-only" to "true"))
+    fun `parses scope test`() {
+        val config = FindClassConfig.parse(mapOf("pattern" to "MyClass", "scope" to "test"))
 
-        assertTrue(config.prodOnly)
-    }
-
-    @Test
-    fun `parses testOnly=true`() {
-        val config = FindClassConfig.parse(mapOf("pattern" to "MyClass", "test-only" to "true"))
-
-        assertTrue(config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 
     @Test

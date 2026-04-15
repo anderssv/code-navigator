@@ -5,7 +5,7 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.SourceSetResolver
 import no.f12.codenavigator.navigation.core.JarClassScanner
 import no.f12.codenavigator.navigation.classinfo.ClassDetailExtractor
@@ -60,11 +60,7 @@ abstract class FindClassDetailTask : DefaultTask() {
             val result = ClassDetailScanner.scan(resolver.classDirectories, config.pattern)
             val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
             SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
-            when {
-                config.prodOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
-                config.testOnly -> result.data.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
-                else -> result.data
-            }
+            result.data.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
         }
 
         if (matchingDetails.isEmpty()) {

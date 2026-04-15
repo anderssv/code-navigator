@@ -135,7 +135,7 @@ data class TaskDef(
             .filter { it in allCnavParamNames && it !in myParamNames }
             .sorted()
         return unsupported.map { name ->
-            "Parameter '$name' is not supported by task '$goal'. Supported: ${myParamNames.sorted()}"
+            "Parameter '$name' is not supported by task '$goal'.\n${usageHint(BuildTool.GRADLE)}"
         }
     }
 
@@ -178,7 +178,7 @@ object TaskRegistry {
 
     // --- Task-specific parameter definitions ---
 
-    val INCLUDETEST = ParamDef("include-test", "true", "Deprecated: test sources are now included by default. Use prod-only to see only production code.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'include-test' is deprecated. Test sources are now included by default. Use 'prod-only=true' to see only production code.")
+    val INCLUDETEST = ParamDef("include-test", "true", "Deprecated: test sources are now included by default. Use scope=prod to see only production code.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'include-test' is deprecated. Test sources are now included by default. Use 'scope=prod' to see only production code.")
     val PACKAGE = ParamDef("package", "<regex>", "Filter packages by regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val REVERSE = ParamDef("reverse", "true", "Show reverse dependencies", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Deprecated: use package-filter instead. Only include packages under this prefix", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'root-package' is deprecated. Results are now automatically limited to classes in the project source sets. Use 'package-filter' to narrow further.")
@@ -196,8 +196,7 @@ object TaskRegistry {
     val EXCLUDE = ParamDef("exclude", "<regex>", "Exclude results matching this regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val CLASSES_ONLY = ParamDef("classes-only", "true", "Show only unreferenced classes, skip dead methods", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val EXCLUDE_ANNOTATED = ParamDef("exclude-annotated", "<ann1>,<ann2>", "Exclude classes/methods bearing these annotations (simple names, comma-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
-    val PROD_ONLY = ParamDef("prod-only", "true", "Show only items from production source set", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
-    val TEST_ONLY = ParamDef("test-only", "true", "Show only items from test source set", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
+    val SCOPE = ParamDef("scope", "all|prod|test", "Filter by source set: all (default), prod (production only), test (test only)", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING)
     val TREAT_AS_DEAD = ParamDef("treat-as-dead", "<name>", "Treat framework-annotated code as potentially dead (all frameworks protected by default). Available: ${FrameworkPresets.availablePresets().sorted().joinToString(", ")}. Use ALL to remove all framework protections.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
     val DETAIL = ParamDef("detail", "true", "Show individual call details", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val COLLAPSE_LAMBDAS = ParamDef("collapse-lambdas", "false", "Set false to show lambda classes separately", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
@@ -223,7 +222,7 @@ object TaskRegistry {
     val MOVE_TO = ParamDef("to", "<fqcn>", "Target fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
     val FORMAT_PARAMS = listOf(FORMAT, LLM)
-    val SOURCE_SET_PARAMS = listOf(PROD_ONLY, TEST_ONLY)
+    val SOURCE_SET_PARAMS = listOf(SCOPE)
 
     // --- Task definitions ---
 
@@ -263,7 +262,7 @@ object TaskRegistry {
     val FIND_CALLERS = TaskDef(
         goal = "find-callers",
         description = "Find callers of a method (call tree)",
-        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallers",
@@ -272,7 +271,7 @@ object TaskRegistry {
     val FIND_CALLEES = TaskDef(
         goal = "find-callees",
         description = "Find methods called by a method (call tree)",
-        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallees",
@@ -323,7 +322,7 @@ object TaskRegistry {
     val FIND_USAGES = TaskDef(
         goal = "find-usages",
         description = "Find project references to types, methods, and fields/properties",
-        params = FORMAT_PARAMS + listOf(OWNER_CLASS, METHOD, FIELD, TYPE, OUTSIDE_PACKAGE, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(OWNER_CLASS, METHOD, FIELD, TYPE, OUTSIDE_PACKAGE, FILTER_SYNTHETIC, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavUsages",
@@ -332,7 +331,7 @@ object TaskRegistry {
     val RANK = TaskDef(
         goal = "rank",
         description = "Rank types by importance (PageRank on call graph)",
-        params = FORMAT_PARAMS + listOf(TOP, PROJECTONLY, COLLAPSE_LAMBDAS, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(TOP, PROJECTONLY, COLLAPSE_LAMBDAS, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -340,7 +339,7 @@ object TaskRegistry {
     val DEAD = TaskDef(
         goal = "dead",
         description = "Detect dead code (unreferenced classes and methods)",
-        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, PROD_ONLY, TEST_ONLY, TREAT_AS_DEAD),
+        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, SCOPE, TREAT_AS_DEAD),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         requiresTestCompilation = true,
@@ -390,7 +389,7 @@ object TaskRegistry {
     val COMPLEXITY = TaskDef(
         goal = "complexity",
         description = "Show fan-in/fan-out complexity per class",
-        params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY, DETAIL, COLLAPSE_LAMBDAS, TOP, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY, DETAIL, COLLAPSE_LAMBDAS, TOP, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -398,7 +397,7 @@ object TaskRegistry {
     val METRICS = TaskDef(
         goal = "metrics",
         description = "Quick project health snapshot: classes, packages, fan-in/out, cycles, dead code, hotspots",
-        params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, PACKAGE_FILTER, INCLUDE_EXTERNAL, EXCLUDE_ANNOTATED, TREAT_AS_DEAD, ROOT_PACKAGE),
+        params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, PACKAGE_FILTER, INCLUDE_EXTERNAL, EXCLUDE_ANNOTATED, TREAT_AS_DEAD, ROOT_PACKAGE) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )
@@ -455,7 +454,7 @@ object TaskRegistry {
     val CONTEXT = TaskDef(
         goal = "context",
         description = "Gather full context for a class: detail, callers, callees, interfaces",
-        params = FORMAT_PARAMS + listOf(PATTERN, CONTEXT_MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, PROD_ONLY, TEST_ONLY),
+        params = FORMAT_PARAMS + listOf(PATTERN, CONTEXT_MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
     )

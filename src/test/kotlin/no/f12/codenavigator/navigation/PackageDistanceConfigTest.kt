@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.dsm.PackageDistanceConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -18,8 +19,7 @@ class PackageDistanceConfigTest {
             "include-external" to "true",
             "dsm-depth" to "3",
             "top" to "10",
-            "prod-only" to "true",
-            "test-only" to "false",
+            "scope" to "prod",
             "format" to "json",
             "llm" to "false",
         )
@@ -30,8 +30,7 @@ class PackageDistanceConfigTest {
         assertTrue(config.includeExternal)
         assertEquals(3, config.depth)
         assertEquals(10, config.top)
-        assertTrue(config.prodOnly)
-        assertFalse(config.testOnly)
+        assertEquals(Scope.PROD, config.scope)
         assertEquals(OutputFormat.JSON, config.format)
     }
 
@@ -64,17 +63,10 @@ class PackageDistanceConfigTest {
     }
 
     @Test
-    fun `defaults prodOnly to false`() {
+    fun `scope defaults to ALL`() {
         val config = PackageDistanceConfig.parse(emptyMap())
 
-        assertFalse(config.prodOnly)
-    }
-
-    @Test
-    fun `defaults testOnly to false`() {
-        val config = PackageDistanceConfig.parse(emptyMap())
-
-        assertFalse(config.testOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test

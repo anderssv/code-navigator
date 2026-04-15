@@ -4,7 +4,7 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.complexity.ClassComplexityAnalyzer
 import no.f12.codenavigator.navigation.complexity.ComplexityConfig
@@ -40,11 +40,7 @@ abstract class ComplexityTask : DefaultTask() {
             projectOnly = config.projectOnly,
         )
         val collapsed = if (config.collapseLambdas) LambdaCollapser.collapseComplexity(rawResults) else rawResults
-        val filtered = when {
-            config.prodOnly -> collapsed.filter { graph.sourceSetOf(it.className) == SourceSet.MAIN }
-            config.testOnly -> collapsed.filter { graph.sourceSetOf(it.className) == SourceSet.TEST }
-            else -> collapsed
-        }
+        val filtered = collapsed.filter { graph.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
         val truncated = filtered.take(config.top)
 
         if (truncated.isEmpty()) {

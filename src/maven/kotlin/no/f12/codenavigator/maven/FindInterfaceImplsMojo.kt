@@ -4,7 +4,6 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.SourceSetResolver
 import no.f12.codenavigator.navigation.interfaces.FindInterfaceImplsConfig
 import no.f12.codenavigator.navigation.interfaces.InterfaceFormatter
@@ -38,11 +37,8 @@ class FindInterfaceImplsMojo : AbstractMojo() {
     @Parameter(property = "include-test")
     private var includeTest: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     override fun execute() {
         val config = try {
@@ -64,11 +60,7 @@ class FindInterfaceImplsMojo : AbstractMojo() {
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
 
-        val registry = when {
-            config.prodOnly -> result.data.filteredByImplementor { resolver.sourceSetOf(it) == SourceSet.MAIN }
-            config.testOnly -> result.data.filteredByImplementor { resolver.sourceSetOf(it) == SourceSet.TEST }
-            else -> result.data
-        }
+        val registry = result.data.filteredByImplementor { resolver.sourceSetOf(it)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
         val matchingInterfaces = registry.findInterfaces(config.pattern)
 
         if (matchingInterfaces.isEmpty()) {
@@ -88,7 +80,6 @@ class FindInterfaceImplsMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         includeTest?.let { put("include-test", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
     }
 }

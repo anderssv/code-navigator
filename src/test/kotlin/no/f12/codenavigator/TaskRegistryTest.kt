@@ -833,19 +833,22 @@ class TaskRegistryTest {
     }
 
     @Test
-    fun `warnUnsupportedProperties returns warning for known cnav param not in this task`() {
+    fun `warnUnsupportedProperties returns warning with usage hint for known cnav param not in this task`() {
         val task = TaskRegistry.DEAD
 
-        val warnings = task.warnUnsupportedProperties(setOf("test-only", "filter", "maxdepth"))
+        val warnings = task.warnUnsupportedProperties(setOf("scope", "filter", "maxdepth"))
 
-        assertEquals(listOf("Parameter 'maxdepth' is not supported by task 'dead'. Supported: [classes-only, exclude, exclude-annotated, filter, format, llm, prod-only, test-only, treat-as-dead]"), warnings)
+        assertEquals(1, warnings.size)
+        assertTrue(warnings[0].contains("maxdepth"))
+        assertTrue(warnings[0].contains("dead"))
+        assertTrue(warnings[0].contains("Usage:"))
     }
 
     @Test
     fun `warnUnsupportedProperties returns empty for supported params`() {
         val task = TaskRegistry.DEAD
 
-        val warnings = task.warnUnsupportedProperties(setOf("test-only", "filter", "prod-only"))
+        val warnings = task.warnUnsupportedProperties(setOf("scope", "filter"))
 
         assertEquals(emptyList<String>(), warnings)
     }
@@ -900,9 +903,7 @@ class TaskRegistryTest {
             "exclude" to ParamType.STRING,
             "classes-only" to ParamType.BOOLEAN,
             "exclude-annotated" to ParamType.LIST_STRING,
-            "prod-only" to ParamType.BOOLEAN,
-            "test-only" to ParamType.BOOLEAN,
-            "detail" to ParamType.BOOLEAN,
+            "scope" to ParamType.STRING,            "detail" to ParamType.BOOLEAN,
             "min-shared-revs" to ParamType.INT,
             "min-coupling" to ParamType.INT,
             "max-changeset-size" to ParamType.INT,
@@ -992,6 +993,11 @@ class TaskRegistryTest {
         for (alias in aliasNames) {
             assertTrue(alias !in existingNames, "Alias '$alias' collides with an existing task name")
         }
+    }
+
+    @Test
+    fun `SCOPE param has default value of all`() {
+        assertEquals("all", TaskRegistry.SCOPE.defaultValue)
     }
 
     @Test

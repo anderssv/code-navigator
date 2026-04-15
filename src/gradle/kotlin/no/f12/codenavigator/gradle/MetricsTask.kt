@@ -7,7 +7,7 @@ import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.navigation.core.RootPackageDetector
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.scanProjectClasses
 import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
@@ -48,11 +48,7 @@ abstract class MetricsTask : DefaultTask() {
         config.deprecations().forEach { logger.warn(it) }
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = when {
-            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
-            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
-            else -> taggedDirs
-        }
+        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
         val classDirectories = filteredDirs.map { it.first }
 
         val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/call-graph.cache")

@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
 import no.f12.codenavigator.navigation.callgraph.UsageKind
@@ -864,8 +865,7 @@ class UsageScannerTest {
             type = null,
             outsidePackage = null,
             filterSynthetic = true,
-            prodOnly = false,
-            testOnly = false,
+            scope = Scope.ALL,
             format = OutputFormat.TEXT,
         )
         val filtered = config.filterSyntheticCallers(allUsages)
@@ -898,8 +898,7 @@ class UsageScannerTest {
             type = null,
             outsidePackage = null,
             filterSynthetic = false,
-            prodOnly = false,
-            testOnly = false,
+            scope = Scope.ALL,
             format = OutputFormat.TEXT,
         )
         val filtered = config.filterSyntheticCallers(allUsages)

@@ -4,7 +4,6 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.rank.RankConfig
@@ -40,11 +39,8 @@ class RankMojo : AbstractMojo() {
     @Parameter(property = "collapse-lambdas")
     private var collapseLambdas: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     override fun execute() {
         val taggedDirs = project.taggedClassDirectories()
@@ -61,11 +57,7 @@ class RankMojo : AbstractMojo() {
         val graph = result.data
 
         val ranked = TypeRanker.rank(graph, top = config.top, projectOnly = config.projectOnly, collapseLambdas = config.collapseLambdas)
-        val filtered = when {
-            config.prodOnly -> ranked.filter { graph.sourceSetOf(it.className) == SourceSet.MAIN }
-            config.testOnly -> ranked.filter { graph.sourceSetOf(it.className) == SourceSet.TEST }
-            else -> ranked
-        }
+        val filtered = ranked.filter { graph.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         if (filtered.isEmpty()) {
             println("No ranked types found.")
@@ -85,7 +77,6 @@ class RankMojo : AbstractMojo() {
         top?.let { put("top", it) }
         projectOnly?.let { put("project-only", it) }
         collapseLambdas?.let { put("collapse-lambdas", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
     }
 }

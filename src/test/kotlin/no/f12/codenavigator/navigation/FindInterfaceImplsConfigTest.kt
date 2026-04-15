@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation.interfaces
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.Scope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -13,7 +14,7 @@ class FindInterfaceImplsConfigTest {
     fun `parses all properties from map`() {
         val props = mapOf(
             "pattern" to "MyInterface",
-            "prod-only" to "true",
+            "scope" to "prod",
             "format" to "json",
             "llm" to "false",
         )
@@ -21,7 +22,7 @@ class FindInterfaceImplsConfigTest {
         val config = FindInterfaceImplsConfig.parse(props)
 
         assertEquals("MyInterface", config.pattern)
-        assertTrue(config.prodOnly)
+        assertEquals(Scope.PROD, config.scope)
         assertEquals(OutputFormat.JSON, config.format)
     }
 
@@ -35,31 +36,24 @@ class FindInterfaceImplsConfigTest {
     }
 
     @Test
-    fun `prodOnly defaults to false`() {
+    fun `scope defaults to ALL`() {
         val config = FindInterfaceImplsConfig.parse(mapOf("pattern" to "MyInterface"))
 
-        assertFalse(config.prodOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `testOnly defaults to false`() {
-        val config = FindInterfaceImplsConfig.parse(mapOf("pattern" to "MyInterface"))
+    fun `parses scope prod`() {
+        val config = FindInterfaceImplsConfig.parse(mapOf("pattern" to "MyInterface", "scope" to "prod"))
 
-        assertFalse(config.testOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses prodOnly=true`() {
-        val config = FindInterfaceImplsConfig.parse(mapOf("pattern" to "MyInterface", "prod-only" to "true"))
+    fun `parses scope test`() {
+        val config = FindInterfaceImplsConfig.parse(mapOf("pattern" to "MyInterface", "scope" to "test"))
 
-        assertTrue(config.prodOnly)
-    }
-
-    @Test
-    fun `parses testOnly=true`() {
-        val config = FindInterfaceImplsConfig.parse(mapOf("pattern" to "MyInterface", "test-only" to "true"))
-
-        assertTrue(config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 
     @Test

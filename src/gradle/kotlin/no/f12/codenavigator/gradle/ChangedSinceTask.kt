@@ -4,7 +4,7 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.SourceSetResolver
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.changedsince.ChangedSinceBuilder
@@ -68,11 +68,7 @@ abstract class ChangedSinceTask : DefaultTask() {
             graph = graph,
             projectOnly = config.projectOnly,
         )
-        val impacts = when {
-            config.prodOnly -> allImpacts.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
-            config.testOnly -> allImpacts.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
-            else -> allImpacts
-        }
+        val impacts = allImpacts.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         logger.lifecycle(
             OutputWrapper.formatAndWrap(

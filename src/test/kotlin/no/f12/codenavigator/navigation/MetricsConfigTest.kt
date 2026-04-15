@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.navigation.core.PackageName
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.metrics.MetricsConfig
 import java.time.LocalDate
@@ -185,33 +186,26 @@ class MetricsConfigTest {
         assertEquals(emptyList<String>(), config.deprecations())
     }
 
-    // === prodOnly / testOnly ===
+    // === scope ===
 
     @Test
-    fun `prodOnly defaults to false`() {
+    fun `scope defaults to ALL`() {
         val config = MetricsConfig.parse(emptyMap())
 
-        assertFalse(config.prodOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `testOnly defaults to false`() {
-        val config = MetricsConfig.parse(emptyMap())
+    fun `parses scope prod`() {
+        val config = MetricsConfig.parse(mapOf("scope" to "prod"))
 
-        assertFalse(config.testOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses prodOnly=true`() {
-        val config = MetricsConfig.parse(mapOf("prod-only" to "true"))
+    fun `parses scope test`() {
+        val config = MetricsConfig.parse(mapOf("scope" to "test"))
 
-        assertTrue(config.prodOnly)
-    }
-
-    @Test
-    fun `parses testOnly=true`() {
-        val config = MetricsConfig.parse(mapOf("test-only" to "true"))
-
-        assertTrue(config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 }

@@ -5,7 +5,7 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.SourceSetResolver
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyBuilder
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyConfig
@@ -39,11 +39,7 @@ abstract class TypeHierarchyTask : DefaultTask() {
             config.pattern,
             config.projectOnly,
         )
-        val results = when {
-            config.prodOnly -> allResults.filter { resolver.sourceSetOf(it.className) == SourceSet.MAIN }
-            config.testOnly -> allResults.filter { resolver.sourceSetOf(it.className) == SourceSet.TEST }
-            else -> allResults
-        }
+        val results = allResults.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         if (results.isEmpty()) {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No classes found matching '${config.pattern}'"))

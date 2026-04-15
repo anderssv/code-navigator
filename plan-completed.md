@@ -1,5 +1,28 @@
 # Plan — Completed
 
+## ~~Replace `-Pprod-only` / `-Ptest-only` with `-Pscope=all|prod|test`~~ DONE
+
+Replaced the two mutually-exclusive boolean parameters (`-Pprod-only=true`, `-Ptest-only=true`) with a single `-Pscope=all|prod|test` parameter (default: `all`). **Breaking change** — the old parameters are removed entirely, not deprecated.
+
+**Scope semantics:**
+- **Most tasks**: `scope` controls which source set classes to include (directory pre-filter or result post-filter).
+- **`dead` with `scope=prod`**: test references don't count as keeping things alive.
+- **`dead` with `scope=test`**: find dead test infrastructure (unused test helpers).
+- **`dead` with `scope=all`**: current default — show all dead code.
+
+**Implementation:**
+1. Added `Scope` enum (`ALL`, `PROD`, `TEST`) in `DomainTypes.kt` with `matchesSourceSet(SourceSet)` and `parse(String?)`.
+2. Added `SCOPE` ParamDef in `TaskRegistry.kt`, removed `PROD_ONLY` and `TEST_ONLY` entirely.
+3. Updated all 22 config classes: `prodOnly: Boolean` / `testOnly: Boolean` → `scope: Scope`.
+4. Updated all 4 filtering patterns (directory pre-filter, SourceSetResolver post-filter, CallGraph.sourceSetOf post-filter, domain-specific in DeadCodeFinder).
+5. Updated all ~19 Gradle task classes and ~23 Maven Mojo classes.
+6. Updated `AgentHelpText.kt`, `HelpText.kt`, `INCLUDETEST` deprecation message.
+7. Updated `warnUnsupportedProperties` to include usage hint in error message.
+8. All 22 config test files and `DeadCodeFinderTest` updated.
+9. 2188+ tests green.
+
+**Tested on:** greitt and bass-ra-backend projects with all three scope values (`prod`, `test`, `all`).
+
 ## ~~`cnavJar` — inspect library class signatures~~ DONE
 
 Implemented as `-Pjar=<path-or-artifact>` parameter on four bytecode inspection tasks: `list-classes`, `find-class`, `class-detail`, and `find-symbol`. When set, scans classes from a JAR file instead of project classes; `prod-only`/`test-only` are ignored.

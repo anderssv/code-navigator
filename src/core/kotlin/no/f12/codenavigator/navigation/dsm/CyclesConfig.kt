@@ -4,14 +4,14 @@ import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.core.PackageName
+import no.f12.codenavigator.navigation.core.Scope
 
 data class CyclesConfig(
     val rootPackage: PackageName,
     val packageFilter: PackageName,
     val includeExternal: Boolean,
     val depth: Int,
-    val prodOnly: Boolean,
-    val testOnly: Boolean,
+    val scope: Scope,
     val format: OutputFormat,
 ) {
     fun deprecations(): List<String> = buildList {
@@ -31,8 +31,7 @@ data class CyclesConfig(
                 packageFilter = PackageName(resolvedFilter),
                 includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
                 depth = TaskRegistry.DSM_DEPTH.parseFrom(properties),
-                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
-                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
+                scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
                 format = ParamDef.parseFormat(properties),
             )
         }

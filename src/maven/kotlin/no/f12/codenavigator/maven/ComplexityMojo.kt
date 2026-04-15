@@ -4,7 +4,6 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.complexity.ClassComplexityAnalyzer
 import no.f12.codenavigator.navigation.complexity.ComplexityConfig
@@ -48,11 +47,8 @@ class ComplexityMojo : AbstractMojo() {
     @Parameter(property = "collapse-lambdas")
     private var collapseLambdas: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     override fun execute() {
         val taggedDirs = project.taggedClassDirectories()
@@ -78,11 +74,7 @@ class ComplexityMojo : AbstractMojo() {
             projectOnly = config.projectOnly,
         )
         val collapsed = if (config.collapseLambdas) LambdaCollapser.collapseComplexity(rawResults) else rawResults
-        val filtered = when {
-            config.prodOnly -> collapsed.filter { graph.sourceSetOf(it.className) == SourceSet.MAIN }
-            config.testOnly -> collapsed.filter { graph.sourceSetOf(it.className) == SourceSet.TEST }
-            else -> collapsed
-        }
+        val filtered = collapsed.filter { graph.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
         val truncated = filtered.take(config.top)
 
         if (truncated.isEmpty()) {
@@ -105,7 +97,6 @@ class ComplexityMojo : AbstractMojo() {
         collapseLambdas?.let { put("collapse-lambdas", it) }
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
     }
 }

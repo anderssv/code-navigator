@@ -5,7 +5,6 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.core.RootPackageDetector
-import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmConfig
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
@@ -55,22 +54,15 @@ class DsmMojo : AbstractMojo() {
     @Parameter(property = "cycle")
     private var cycle: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     override fun execute() {
         val config = DsmConfig.parse(TaskRegistry.DSM.enhanceProperties(buildPropertyMap()))
         config.deprecations().forEach { log.warn(it) }
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = when {
-            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
-            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
-            else -> taggedDirs
-        }
+        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
         val classDirectories = filteredDirs.map { it.first }
 
         if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
@@ -119,7 +111,6 @@ class DsmMojo : AbstractMojo() {
         dsmHtml?.let { put("dsm-html", it) }
         cycles?.let { put("cycles", it) }
         cycle?.let { put("cycle", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
     }
 }

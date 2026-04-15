@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.navigation.annotation.AnnotationQueryConfig
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.config.OutputFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -53,30 +54,23 @@ class AnnotationQueryConfigTest {
     }
 
     @Test
-    fun `prodOnly defaults to false`() {
+    fun `scope defaults to ALL`() {
         val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test"))
 
-        assertFalse(config.prodOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `testOnly defaults to false`() {
-        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test"))
+    fun `parses scope prod`() {
+        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test", "scope" to "prod"))
 
-        assertFalse(config.testOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses prodOnly=true`() {
-        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test", "prod-only" to "true"))
+    fun `parses scope test`() {
+        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test", "scope" to "test"))
 
-        assertTrue(config.prodOnly)
-    }
-
-    @Test
-    fun `parses testOnly=true`() {
-        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Test", "test-only" to "true"))
-
-        assertTrue(config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 }

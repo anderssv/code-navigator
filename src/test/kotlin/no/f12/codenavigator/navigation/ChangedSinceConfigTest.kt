@@ -2,6 +2,7 @@ package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.changedsince.ChangedSinceConfig
+import no.f12.codenavigator.navigation.core.Scope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -60,30 +61,23 @@ class ChangedSinceConfigTest {
     }
 
     @Test
-    fun `prodOnly defaults to false`() {
+    fun `scope defaults to ALL`() {
         val config = ChangedSinceConfig.parse(emptyMap())
 
-        assertFalse(config.prodOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `testOnly defaults to false`() {
-        val config = ChangedSinceConfig.parse(emptyMap())
+    fun `parses scope prod`() {
+        val config = ChangedSinceConfig.parse(mapOf("scope" to "prod"))
 
-        assertFalse(config.testOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses prodOnly=true`() {
-        val config = ChangedSinceConfig.parse(mapOf("prod-only" to "true"))
+    fun `parses scope test`() {
+        val config = ChangedSinceConfig.parse(mapOf("scope" to "test"))
 
-        assertTrue(config.prodOnly)
-    }
-
-    @Test
-    fun `parses testOnly=true`() {
-        val config = ChangedSinceConfig.parse(mapOf("test-only" to "true"))
-
-        assertTrue(config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 }

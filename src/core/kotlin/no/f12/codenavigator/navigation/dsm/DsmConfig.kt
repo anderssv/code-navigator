@@ -4,6 +4,7 @@ import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.core.PackageName
+import no.f12.codenavigator.navigation.core.Scope
 
 data class DsmConfig(
     val rootPackage: PackageName,
@@ -14,8 +15,7 @@ data class DsmConfig(
     val format: OutputFormat,
     val cyclesOnly: Boolean,
     val cycleFilter: Pair<PackageName, PackageName>?,
-    val prodOnly: Boolean,
-    val testOnly: Boolean,
+    val scope: Scope,
 ) {
     fun deprecations(): List<String> = buildList {
         if (rootPackage.value.isNotEmpty() && packageFilter == rootPackage) {
@@ -38,8 +38,7 @@ data class DsmConfig(
                 format = ParamDef.parseFormat(properties),
                 cyclesOnly = TaskRegistry.CYCLES.parseFrom(properties),
                 cycleFilter = parseCycleFilter(TaskRegistry.CYCLE.parseFrom(properties)),
-                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
-                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
+                scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
             )
         }
 

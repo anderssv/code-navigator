@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.navigation.core.PackageName
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.dsm.CyclesConfig
 import kotlin.test.Test
@@ -107,30 +108,23 @@ class CyclesConfigTest {
     }
 
     @Test
-    fun `prodOnly defaults to false`() {
+    fun `scope defaults to ALL`() {
         val config = CyclesConfig.parse(emptyMap())
 
-        assertFalse(config.prodOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `testOnly defaults to false`() {
-        val config = CyclesConfig.parse(emptyMap())
+    fun `parses scope prod`() {
+        val config = CyclesConfig.parse(mapOf("scope" to "prod"))
 
-        assertFalse(config.testOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
-    fun `parses prodOnly=true`() {
-        val config = CyclesConfig.parse(mapOf("prod-only" to "true"))
+    fun `parses scope test`() {
+        val config = CyclesConfig.parse(mapOf("scope" to "test"))
 
-        assertTrue(config.prodOnly)
-    }
-
-    @Test
-    fun `parses testOnly=true`() {
-        val config = CyclesConfig.parse(mapOf("test-only" to "true"))
-
-        assertTrue(config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 }

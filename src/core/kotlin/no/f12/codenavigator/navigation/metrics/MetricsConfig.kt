@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation.metrics
 
 import no.f12.codenavigator.navigation.core.PackageName
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.annotation.FrameworkPresets
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
@@ -16,8 +17,7 @@ data class MetricsConfig(
     val includeExternal: Boolean,
     val excludeAnnotated: List<String>,
     val format: OutputFormat,
-    val prodOnly: Boolean,
-    val testOnly: Boolean,
+    val scope: Scope,
 ) {
     fun deprecations(): List<String> = buildList {
         if (rootPackage.value.isNotEmpty() && packageFilter == rootPackage) {
@@ -46,8 +46,7 @@ data class MetricsConfig(
                 includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
                 excludeAnnotated = merged,
                 format = ParamDef.parseFormat(properties),
-                prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
-                testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
+                scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
             )
         }
     }

@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -116,38 +117,24 @@ class DeadCodeConfigTest {
     }
 
     @Test
-    fun `parses testOnly as true`() {
-        val config = DeadCodeConfig.parse(mapOf("test-only" to "true"))
+    fun `parses scope test`() {
+        val config = DeadCodeConfig.parse(mapOf("scope" to "test"))
 
-        assertTrue(config.testOnly)
+        assertEquals(Scope.TEST, config.scope)
     }
 
     @Test
-    fun `defaults testOnly to false when absent`() {
+    fun `scope defaults to ALL when absent`() {
         val config = DeadCodeConfig.parse(emptyMap())
 
-        assertFalse(config.testOnly)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `defaults prodOnly to false when absent`() {
-        val config = DeadCodeConfig.parse(emptyMap())
+    fun `parses scope prod`() {
+        val config = DeadCodeConfig.parse(mapOf("scope" to "prod"))
 
-        assertFalse(config.prodOnly)
-    }
-
-    @Test
-    fun `parses prodOnly as true`() {
-        val config = DeadCodeConfig.parse(mapOf("prod-only" to "true"))
-
-        assertTrue(config.prodOnly)
-    }
-
-    @Test
-    fun `parses prodOnly as false`() {
-        val config = DeadCodeConfig.parse(mapOf("prod-only" to "false"))
-
-        assertFalse(config.prodOnly)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test

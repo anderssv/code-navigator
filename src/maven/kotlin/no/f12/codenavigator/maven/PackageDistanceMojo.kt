@@ -6,7 +6,6 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.core.RootPackageDetector
-import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
@@ -48,21 +47,14 @@ class PackageDistanceMojo : AbstractMojo() {
     @Parameter(property = "top")
     private var top: String? = null
 
-    @Parameter(property = "prod-only")
-    private var prodOnly: String? = null
-
-    @Parameter(property = "test-only")
-    private var testOnly: String? = null
+    @Parameter(property = "scope")
+    private var scope: String? = null
 
     override fun execute() {
         val config = PackageDistanceConfig.parse(TaskRegistry.DISTANCE.enhanceProperties(buildPropertyMap()))
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = when {
-            config.prodOnly -> taggedDirs.filter { it.second == SourceSet.MAIN }
-            config.testOnly -> taggedDirs.filter { it.second == SourceSet.TEST }
-            else -> taggedDirs
-        }
+        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
         val classDirectories = filteredDirs.map { it.first }
 
         if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
@@ -111,7 +103,6 @@ class PackageDistanceMojo : AbstractMojo() {
         includeExternal?.let { put("include-external", it) }
         dsmDepth?.let { put("dsm-depth", it) }
         top?.let { put("top", it) }
-        prodOnly?.let { put("prod-only", it) }
-        testOnly?.let { put("test-only", it) }
+        scope?.let { put("scope", it) }
     }
 }

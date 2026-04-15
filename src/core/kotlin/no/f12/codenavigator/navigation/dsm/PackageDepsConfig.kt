@@ -3,13 +3,13 @@ package no.f12.codenavigator.navigation.dsm
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.Scope
 
 data class PackageDepsConfig(
     val packagePattern: String?,
     val projectOnly: Boolean,
     val reverse: Boolean,
-    val prodOnly: Boolean,
-    val testOnly: Boolean,
+    val scope: Scope,
     val format: OutputFormat,
 ) {
     companion object {
@@ -17,8 +17,7 @@ data class PackageDepsConfig(
             packagePattern = TaskRegistry.PACKAGE.parseFrom(properties),
             projectOnly = TaskRegistry.PROJECTONLY.parseFrom(properties),
             reverse = TaskRegistry.REVERSE.parseFrom(properties),
-            prodOnly = TaskRegistry.PROD_ONLY.parseFrom(properties),
-            testOnly = TaskRegistry.TEST_ONLY.parseFrom(properties),
+            scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
             format = ParamDef.parseFormat(properties),
         )
     }

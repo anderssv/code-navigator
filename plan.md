@@ -122,30 +122,6 @@ From user feedback: `cnavFindUsages -Ptype=SignatureContext` returned 40+ lines 
 
 ---
 
-## Replace `-Pprod-only` / `-Ptest-only` with `-Pscope=all|prod|test`
-
-**Value: high** | **Effort: medium**
-
-The current two-boolean approach (`-Pprod-only=true`, `-Ptest-only=true`) has problems: they're mutually exclusive but nothing enforces that, two params to remember instead of one, and the naming doesn't clearly convey what they do. Replace with a single `-Pscope=all|prod|test` parameter (default: `all`).
-
-**Semantics across tasks:**
-- **Most tasks** (cycles, dsm, find-usages, list-classes, etc.): `scope` controls which source set classes to include — either as a directory pre-filter or a result post-filter, depending on the task's filtering pattern.
-- **`dead` with `scope=prod`**: "find code dead from a production perspective" — test references don't count as keeping things alive. Maps to current `prod-only` behavior.
-- **`dead` with `scope=test`**: find dead test infrastructure (unused test helpers/utilities).
-- **`dead` with `scope=all`**: current default — show all dead code regardless of source set.
-
-**Implementation:**
-1. Add `Scope` enum (`ALL`, `PROD`, `TEST`) in `DomainTypes.kt` alongside `SourceSet`.
-2. Add `SCOPE` as a new `ParamDef` with `type = STRING`, `defaultValue = "all"`, valid values `all|prod|test`.
-3. Replace `SOURCE_SET_PARAMS` with `listOf(SCOPE)`.
-4. Update all 22 config classes: replace `prodOnly: Boolean` / `testOnly: Boolean` with `scope: Scope`.
-5. Update all 4 filtering patterns (directory pre-filter, SourceSetResolver post-filter, CallGraph post-filter, domain-specific) to use `scope`.
-6. Keep `prod-only` / `test-only` working but deprecated — map them to `scope` internally during config parsing. Log a deprecation warning.
-7. Fix `METRICS` TaskDef to declare the scope param (currently missing from its param list but parsed in config).
-8. Update `AgentHelpText` and `HelpText` to document `scope`.
-
-**Relates to**: "Consistent `-Pproject-only` support across all tasks" — same family of filtering parameters.
-
 ## Consistent `-Pproject-only` support across all tasks
 
 **Value: medium** | **Effort: low**
@@ -491,7 +467,7 @@ Items below are low-priority or may not be worth building. Revisit if demand eme
 - **`cnavFindCallees` callee explosion**: `CallTreeBuilder` expands ALL polymorphic implementors as separate children with no collapsing. Default maxdepth=3 causes >51KB output for methods touching deep hierarchies. Root cause: `resolveInterfaceDispatch` adds every implementor, no deduplication of identical subtrees, no output truncation anywhere. Solutions: collapse dispatch groups into a single "N implementors" node with expand-on-demand, add a max-children limit per node, lower default depth for callees. v0.1.47 field test.
 - **`cnavFindCallers` class-match UX hint**: `CallGraph.findMethods()` uses `Regex.containsMatchIn` on `qualifiedName` (className.methodName). Pattern "Parser" matches every method in `Parser` class, producing separate caller trees per method. User expected "who references Parser as a type" which is `cnavFindUsages -Ptype=Parser`. Fix: when pattern matches only class-name portions of multiple methods in the same class, add a hint suggesting `cnavFindUsages -Ptype=`. v0.1.47 field test.
 - **Improve `cnavAnnotations` discoverability**: Field test (v0.1.44) reported "no inverse annotation search" but the feature exists — `cnavAnnotations -Ppattern=Serializable` finds all classes with that annotation. The task name is ambiguous. Consider a task alias (`cnavFindByAnnotation`), better no-results guidance mentioning retention policy / `methods` flags, or more prominent placement in `cnavAgentHelp`. v0.1.45 re-test clarified: `cnavAnnotations` only finds RUNTIME and CLASS retention annotations present in bytecode. SOURCE retention annotations (e.g. `@Suppress`) are invisible — this is inherent to bytecode analysis, but should be documented in no-results guidance. v0.1.46: no-results hint now suggests `-Pmethods=true` and retention policy (bug #8 FIXED). Remaining: task alias and retention policy documentation in help text.
-- **`cnavDead -Pprod-only` no-visible-effect guidance**: v0.1.46 field test showed `-Pprod-only=true` had no effect on TAC (146→146) because dead items are test classes tagged `NO_REFERENCES`. This is now tracked as a top-level plan item ("Dead code: test source classes should be tagged TEST_ONLY"). Separate improvement: when `prod-only` is set and filtering has no effect, add a note to output explaining why.
+- **`cnavDead -Pscope=prod` no-visible-effect guidance**: v0.1.46 field test showed `-Pprod-only=true` (now `-Pscope=prod`) had no effect on TAC (146→146) because dead items are test classes tagged `NO_REFERENCES`. This is now tracked as a top-level plan item ("Dead code: test source classes should be tagged TEST_ONLY"). Separate improvement: when `scope=prod` is set and filtering has no effect, add a note to output explaining why.
 - **Remove `junit` from `FrameworkPresets` or document it's a no-op for `cnavDead`**: v0.1.45 analysis suite reported `-Ptreat-as-dead=junit` has no observable effect. Root cause: dead code analysis scans both source sets by default now, but JUnit annotations on test classes are typically excluded from dead code results because test classes are considered live (they have callers from the test runner). The junit preset may still be useful for edge cases. Options: (a) remove `junit` from presets (it's misleading), (b) document in help that `treat-as-dead` only applies to production-class annotations, (c) keep as-is.
 - **`cnavChangedSince` parameter naming**: v0.1.45 analysis suite noted `-Pref=<git-ref>` is unintuitive — users expect `-Psince=<date>`. Low priority, but a `-Psince` alias or date-to-ref conversion would improve ergonomics.
 - **Kotlin name-mangled method display**: Methods like `validateAndParse-IoAF18A` are Kotlin inline class return types. Low priority but a note in output (e.g. `[inline-class-mangled]`) would reduce confusion.
