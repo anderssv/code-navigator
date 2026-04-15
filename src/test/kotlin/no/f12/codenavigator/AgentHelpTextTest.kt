@@ -419,20 +419,24 @@ class AgentHelpTextTest {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
 
         assertTrue(
-            text.contains("moving/renaming/deleting"),
-            "Should mention moving/renaming/deleting as a key use case",
+            text.contains("Before renaming/moving"),
+            "Should mention renaming/moving as a key use case in refactoring section",
+        )
+        assertTrue(
+            text.contains("Before deleting"),
+            "Should mention deleting as a key use case in refactoring section",
         )
     }
 
     @Test
     fun `default output mentions changed-since for impact assessment`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
-        val whenToUseSection = text.substringAfter("When to Use What")
+        val cnavSection = text.substringAfter("cnav vs grep")
             .substringBefore("--- Common Questions")
 
         assertTrue(
-            whenToUseSection.contains(TaskRegistry.CHANGED_SINCE.taskName(BuildTool.GRADLE)),
-            "When to Use section should mention changed-since for impact assessment",
+            cnavSection.contains(TaskRegistry.CHANGED_SINCE.taskName(BuildTool.GRADLE)),
+            "cnav vs grep section should mention changed-since for impact assessment",
         )
     }
 
@@ -440,7 +444,8 @@ class AgentHelpTextTest {
     fun `default output explains bytecode analysis handles all syntax variants`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
 
-        assertTrue(text.contains("syntax variants"), "Should explain bytecode analysis completeness")
+        assertTrue(text.contains("companion objects"), "Should explain bytecode analysis completeness")
+        assertTrue(text.contains("extension functions"), "Should mention extension functions")
     }
 
     @Test
@@ -1110,5 +1115,62 @@ class AgentHelpTextTest {
         val text = AgentHelpText.generate(BuildTool.GRADLE, section = "schemas")
 
         assertContains(text, "cnavRenameClass")
+    }
+
+    // --- Refactoring workflow section ---
+
+    @Test
+    fun `agent help has refactoring workflow section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "When Refactoring")
+    }
+
+    @Test
+    fun `refactoring workflow mentions preview before renaming`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "preview")
+        assertContains(text, "cnavMoveClass")
+        assertContains(text, "cnavRenameMethod")
+    }
+
+    @Test
+    fun `refactoring workflow mentions find-usages before deleting`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "Before deleting")
+        assertContains(text, "cnavFindUsages")
+    }
+
+    @Test
+    fun `refactoring workflow mentions grep after deleting`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "After deleting")
+        assertContains(text, "grep")
+    }
+
+    @Test
+    fun `agent help has exploration section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "When Exploring")
+    }
+
+    @Test
+    fun `agent help explains why cnav over grep`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "same-package")
+    }
+
+    @Test
+    fun `agent help has decision tree for usages vs callers vs context`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "Who uses this type")
+        assertContains(text, "Who calls this method")
+        assertContains(text, "full picture")
     }
 }
