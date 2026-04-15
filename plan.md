@@ -53,6 +53,21 @@ Already well-aligned: zero mock imports, tests operate on domain types, shared t
 
 ---
 
+## `cnavMoveClass` / `cnavRenameClass`: handle files with multiple class declarations
+
+**Value: high** | **Effort: medium**
+
+When a Kotlin file contains multiple class declarations (e.g., a sealed class hierarchy, or a class with closely related types), `cnavMoveClass` currently only handles the single class specified in `-Pfrom`. The other classes in the file are left behind or not updated correctly.
+
+Scenarios to handle:
+- **Moving one class out of a multi-class file**: Should the other classes stay? Should the file be split? What happens to imports that referenced both classes?
+- **Renaming a class in a multi-class file**: Other classes in the same file may reference the renamed class by simple name (no import needed since they're in the same file). These references need updating.
+- **File naming**: Kotlin convention is that a file with a single public class is named after that class. If a class is moved out, should the remaining file be renamed?
+
+Needs investigation to determine the right behavior for each scenario before implementation.
+
+---
+
 ## `cnavFindUsages` summary mode — group by file instead of listing every bytecode reference
 
 **Value: high** | **Effort: low**
