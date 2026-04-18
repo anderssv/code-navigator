@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.70
+
+- **New:** `cnavDuplicates` — detect duplicate code blocks across source files using token-based matching (Rabin-Karp rolling hash). Supports `-Pscope=prod|test|all`, `-Pmin-tokens=<N>` (default 50), `-Ptop=<N>`, and all output formats (text/json/llm). No compilation required.
+- **Improved:** Usage examples in help text are now generated from `TaskDef.examples` definitions in `TaskRegistry`, eliminating hand-written duplication. Examples reference `ParamDef` instances directly — `TaskDef` validates at construction time that all referenced params exist, preventing drift between examples and actual parameters.
+
 ## 0.1.69
 
 - **Breaking:** Replaced `-Pprod-only=true` / `-Ptest-only=true` with a single `-Pscope=all|prod|test` parameter (default: `all`). The old parameters are removed entirely — passing them has no effect (they are treated as unknown Gradle properties). All tasks that previously accepted `prod-only`/`test-only` now accept `scope`. Affects all 22 config classes, all Gradle tasks, and all Maven mojos.
