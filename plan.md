@@ -5,6 +5,35 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
+## Stale class file warning and drop forced compilation
+
+**Value: high** | **Effort: low**
+
+### Stale class file detection
+
+On every bytecode-based task, compare the newest source file timestamp against the newest class file timestamp. If source is newer than classes, print a warning:
+
+```
+⚠ Class files may be stale: newest source file is 2026-04-15 14:34:12, newest class file is 2026-04-15 14:22:03. Changes after 14:22:03 are not reflected.
+```
+
+If classes are up to date, say nothing. Applies to all bytecode tasks in both Gradle and Maven. Low cost — just `max(mtime)` over source and class directories. If no class files exist, error with "no class files found — run a successful build first."
+
+### Gradle: remove `dependsOn(compileKotlin)`
+
+Currently Gradle tasks have `dependsOn(compileKotlin)`, so a compilation failure prevents cnav from running — even though old class files are still present. With the staleness warning in place, the forced compilation is just a convenience that becomes an obstacle when compilation is broken. Remove it entirely. Maven mojos already work this way (no forced compilation) and it's fine.
+
+The staleness warning replaces the safety net that forced compilation was providing. No new parameters needed.
+
+### Agent help documentation
+
+Update `cnavAgentHelp` with guidance on compilation and staleness:
+- Cnav analyzes compiled bytecode, not source. Run a build first.
+- If the staleness warning appears, rebuild to get current results.
+- If compilation is broken mid-refactoring, cnav still works against the last successful build — the warning tells you the cutoff.
+
+---
+
 ## Test suite health: coverage, speed, and duplication
 
 **Value: high** | **Effort: medium**
