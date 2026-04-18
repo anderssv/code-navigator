@@ -92,6 +92,17 @@ data class ParamDef<T>(
     }
 }
 
+data class UsageExample(
+    val params: List<Pair<ParamDef<*>, String?>>,
+) {
+    fun render(goal: String, tool: BuildTool): String {
+        val parts = params.map { (param, value) ->
+            if (value == null) tool.paramFlag(param.name) else tool.param(param.name, value)
+        }
+        return (listOf(tool.command, tool.taskName(goal)) + parts).joinToString(" ")
+    }
+}
+
 data class TaskDef(
     val goal: String,
     val description: String,
@@ -102,7 +113,18 @@ data class TaskDef(
     val requiresTestCompilation: Boolean = false,
     val paramDefaultOverrides: Map<String, String> = emptyMap(),
     val aliases: List<String> = emptyList(),
+    val examples: List<UsageExample> = emptyList(),
 ) {
+    init {
+        val paramNames = params.map { it.name }.toSet()
+        for ((index, example) in examples.withIndex()) {
+            val unknownParams = example.params.map { it.first.name }.filter { it !in paramNames }
+            require(unknownParams.isEmpty()) {
+                "Task '$goal' example #${index + 1} references unknown params: $unknownParams. Known: ${paramNames.sorted()}"
+            }
+        }
+    }
+
     val gradleTaskName: String = goalToGradleTaskName(goal)
     val aliasGradleTaskNames: List<String> = aliases.map { goalToGradleTaskName(it) }
 
@@ -122,6 +144,9 @@ data class TaskDef(
 
     fun paramByName(name: String): ParamDef<*> =
         params.first { it.name == name }
+
+    fun renderExamples(tool: BuildTool): List<String> =
+        examples.map { "Usage: ${it.render(goal, tool)}" }
 
     fun deprecations(properties: Map<String, String?>): List<String> =
         params
@@ -218,6 +243,7 @@ object TaskRegistry {
     val RENAME_PROPERTY = ParamDef("property", "<name>", "Current property name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_NEW_NAME = ParamDef("new-name", "<name>", "New name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PREVIEW = ParamDef("preview", "true", "Preview changes without writing to source files", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
+    val MIN_TOKENS = ParamDef("min-tokens", "<N>", "Minimum duplicate token sequence length", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
     val MOVE_FROM = ParamDef("from", "<fqcn>", "Fully qualified class name to move/rename", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MOVE_TO = ParamDef("to", "<fqcn>", "Target fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
@@ -232,6 +258,12 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(PATTERN, JAR) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(PATTERN to "Service")),
+            UsageExample(listOf(JAR to "/path/to/lib.jar")),
+            UsageExample(listOf(JAR to "com.example:my-lib")),
+        ),
     )
 
     val FIND_CLASS = TaskDef(
@@ -240,6 +272,12 @@ object TaskRegistry {
         params = FORMAT_PARAMS + PATTERN + listOf(JAR) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(listOf(PATTERN to "Service")),
+            UsageExample(listOf(PATTERN to "\".*Reset.*\"")),
+            UsageExample(listOf(PATTERN to "\"domain\\\\..*\"")),
+            UsageExample(listOf(PATTERN to "Service", JAR to "/path/to/lib.jar")),
+        ),
     )
 
     val FIND_SYMBOL = TaskDef(
@@ -248,6 +286,12 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(PATTERN, JAR) + SOURCE_SET_PARAMS + listOf(INCLUDETEST),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(listOf(PATTERN to "resetPassword")),
+            UsageExample(listOf(PATTERN to "\".*Service.*\"")),
+            UsageExample(listOf(PATTERN to "\"find.*\"")),
+            UsageExample(listOf(PATTERN to "find", JAR to "com.example:my-lib")),
+        ),
     )
 
     val CLASS_DETAIL = TaskDef(
@@ -257,6 +301,12 @@ object TaskRegistry {
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavClass",
+        examples = listOf(
+            UsageExample(listOf(PATTERN to "ResetPasswordService")),
+            UsageExample(listOf(PATTERN to "\".*Client\"")),
+            UsageExample(listOf(PATTERN to "\"domain\\\\.DomainError\"")),
+            UsageExample(listOf(PATTERN to "MyClient", JAR to "com.example:client-sdk")),
+        ),
     )
 
     val FIND_CALLERS = TaskDef(
@@ -266,6 +316,11 @@ object TaskRegistry {
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallers",
+        examples = listOf(
+            UsageExample(listOf(CALL_PATTERN to "resetPassword", MAXDEPTH to "3")),
+            UsageExample(listOf(CALL_PATTERN to "\".*Service\\\\.find.*\"", MAXDEPTH to "5")),
+            UsageExample(listOf(CALL_PATTERN to "\"Repo\\\\.save\"", MAXDEPTH to "5", PROJECTONLY to "true")),
+        ),
     )
 
     val FIND_CALLEES = TaskDef(
@@ -275,6 +330,11 @@ object TaskRegistry {
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallees",
+        examples = listOf(
+            UsageExample(listOf(CALL_PATTERN to "resetPassword", MAXDEPTH to "3")),
+            UsageExample(listOf(CALL_PATTERN to "\".*Controller\\\\.handle.*\"", MAXDEPTH to "5")),
+            UsageExample(listOf(CALL_PATTERN to "\"Service\\\\.create\"", MAXDEPTH to "5", PROJECTONLY to "true")),
+        ),
     )
 
     val FIND_INTERFACES = TaskDef(
@@ -284,6 +344,12 @@ object TaskRegistry {
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavInterfaces",
+        examples = listOf(
+            UsageExample(listOf(PATTERN to "Repository")),
+            UsageExample(listOf(PATTERN to "\".*Client\"")),
+            UsageExample(listOf(PATTERN to "\"services\\\\.interfaces\\\\..*\"")),
+            UsageExample(listOf(PATTERN to "Repository", SCOPE to "test")),
+        ),
     )
 
     val TYPE_HIERARCHY = TaskDef(
@@ -292,6 +358,11 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(listOf(PATTERN to "Service")),
+            UsageExample(listOf(PATTERN to "\".*Repository\"")),
+            UsageExample(listOf(PATTERN to "\"domain\\\\..*\"", PROJECTONLY to "true")),
+        ),
     )
 
     val PACKAGE_DEPS = TaskDef(
@@ -301,6 +372,14 @@ object TaskRegistry {
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavDeps",
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(PACKAGE to "services")),
+            UsageExample(listOf(PACKAGE to "\"ktor\\\\.routes\"")),
+            UsageExample(listOf(REVERSE to "true")),
+            UsageExample(listOf(PACKAGE to "domain", REVERSE to "true")),
+            UsageExample(listOf(PROJECTONLY to "true")),
+        ),
     )
 
     val DSM = TaskDef(
@@ -309,6 +388,14 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE, ROOT_PACKAGE) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(PACKAGE_FILTER to "com.example.api", DSM_DEPTH to "3")),
+            UsageExample(listOf(INCLUDE_EXTERNAL to "true", PACKAGE_FILTER to "com.example")),
+            UsageExample(listOf(DSM_HTML to "build/dsm.html")),
+            UsageExample(listOf(CYCLES to "true")),
+            UsageExample(listOf(CYCLE to "api,service")),
+        ),
     )
 
     val CYCLE_DETECTION = TaskDef(
@@ -317,6 +404,10 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(PACKAGE_FILTER to "com.example", DSM_DEPTH to "3")),
+        ),
     )
 
     val FIND_USAGES = TaskDef(
@@ -326,6 +417,13 @@ object TaskRegistry {
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavUsages",
+        examples = listOf(
+            UsageExample(listOf(OWNER_CLASS to "kotlinx.datetime.LocalDate", METHOD to "getMonthNumber")),
+            UsageExample(listOf(OWNER_CLASS to "kotlinx.datetime.Clock")),
+            UsageExample(listOf(OWNER_CLASS to "com.example.Config", FIELD to "timeout")),
+            UsageExample(listOf(TYPE to "kotlinx.datetime.Instant")),
+            UsageExample(listOf(TYPE to "kotlinx.datetime.Instant", OUTSIDE_PACKAGE to "com.example.datetime")),
+        ),
     )
 
     val RANK = TaskDef(
@@ -334,6 +432,11 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(TOP, PROJECTONLY, COLLAPSE_LAMBDAS, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(TOP to "20")),
+            UsageExample(listOf(PROJECTONLY to "false")),
+        ),
     )
 
     val DEAD = TaskDef(
@@ -343,6 +446,17 @@ object TaskRegistry {
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         requiresTestCompilation = true,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(FILTER to "\"service\"")),
+            UsageExample(listOf(EXCLUDE to "\"Main|Test|Application\"")),
+            UsageExample(listOf(EXCLUDE to "\"com\\\\.example\\\\.grpc\"")),
+            UsageExample(listOf(CLASSES_ONLY to "true")),
+            UsageExample(listOf(EXCLUDE_ANNOTATED to "\"RestController,Scheduled\"")),
+            UsageExample(listOf(SCOPE to "prod")),
+            UsageExample(listOf(TREAT_AS_DEAD to "spring")),
+            UsageExample(listOf(TREAT_AS_DEAD to "ALL")),
+        ),
     )
 
     val HOTSPOTS = TaskDef(
@@ -351,6 +465,10 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(AFTER, MIN_REVS, TOP, NO_FOLLOW),
         requiresCompilation = false,
         category = TaskCategory.GIT_HISTORY,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(AFTER to "2024-01-01", MIN_REVS to "5", TOP to "20")),
+        ),
     )
 
     val CHURN = TaskDef(
@@ -359,6 +477,10 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(AFTER, TOP, NO_FOLLOW),
         requiresCompilation = false,
         category = TaskCategory.GIT_HISTORY,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(AFTER to "2024-06-01", TOP to "30")),
+        ),
     )
 
     val CODE_AGE = TaskDef(
@@ -368,6 +490,10 @@ object TaskRegistry {
         requiresCompilation = false,
         category = TaskCategory.GIT_HISTORY,
         legacyGradleTaskName = "cnavAge",
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(AFTER to "2023-01-01", TOP to "20")),
+        ),
     )
 
     val AUTHORS = TaskDef(
@@ -376,6 +502,10 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(AFTER, MIN_REVS, TOP, NO_FOLLOW),
         requiresCompilation = false,
         category = TaskCategory.GIT_HISTORY,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(MIN_REVS to "3", TOP to "20")),
+        ),
     )
 
     val COUPLING = TaskDef(
@@ -384,6 +514,10 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(AFTER, MIN_SHARED_REVS, MIN_COUPLING, MAX_CHANGESET_SIZE, TOP, NO_FOLLOW),
         requiresCompilation = false,
         category = TaskCategory.GIT_HISTORY,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(MIN_SHARED_REVS to "10", MIN_COUPLING to "50")),
+        ),
     )
 
     val COMPLEXITY = TaskDef(
@@ -392,6 +526,12 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY, DETAIL, COLLAPSE_LAMBDAS, TOP, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(PATTERN to "Service")),
+            UsageExample(listOf(PATTERN to "\".*Controller\"", PROJECTONLY to "false")),
+            UsageExample(listOf(PATTERN to "\"domain\\\\..*\"", DETAIL to "true")),
+        ),
     )
 
     val METRICS = TaskDef(
@@ -400,6 +540,11 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, PACKAGE_FILTER, INCLUDE_EXTERNAL, EXCLUDE_ANNOTATED, TREAT_AS_DEAD, ROOT_PACKAGE) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(METRICS_TOP to "10", AFTER to "2024-01-01")),
+            UsageExample(listOf(PACKAGE_FILTER to "com.example")),
+        ),
     )
 
     val HELP = TaskDef(
@@ -408,6 +553,9 @@ object TaskRegistry {
         params = emptyList(),
         requiresCompilation = false,
         category = TaskCategory.HELP,
+        examples = listOf(
+            UsageExample(emptyList()),
+        ),
     )
 
     val AGENT_HELP = TaskDef(
@@ -416,6 +564,9 @@ object TaskRegistry {
         params = listOf(SECTION),
         requiresCompilation = false,
         category = TaskCategory.HELP,
+        examples = listOf(
+            UsageExample(emptyList()),
+        ),
     )
 
     val FIND_STRING_CONSTANT = TaskDef(
@@ -424,6 +575,11 @@ object TaskRegistry {
         params = FORMAT_PARAMS + STRING_PATTERN + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(listOf(STRING_PATTERN to "\"http://\"")),
+            UsageExample(listOf(STRING_PATTERN to "\"SELECT.*FROM\"")),
+            UsageExample(listOf(STRING_PATTERN to "\"password|secret|key\"")),
+        ),
     )
 
     val ANNOTATIONS = TaskDef(
@@ -432,6 +588,11 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(PATTERN, METHODS) + SOURCE_SET_PARAMS + listOf(INCLUDETEST),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(listOf(PATTERN to "RestController")),
+            UsageExample(listOf(PATTERN to "\".*Mapping\"", METHODS to "true")),
+            UsageExample(listOf(PATTERN to "Scheduled", METHODS to "true")),
+        ),
     )
 
     val CONFIG_HELP = TaskDef(
@@ -441,6 +602,9 @@ object TaskRegistry {
         requiresCompilation = false,
         category = TaskCategory.HELP,
         legacyGradleTaskName = "cnavHelpConfig",
+        examples = listOf(
+            UsageExample(emptyList()),
+        ),
     )
 
     val CHANGED_SINCE = TaskDef(
@@ -449,6 +613,11 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(REF, PROJECTONLY) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.HYBRID,
+        examples = listOf(
+            UsageExample(listOf(REF to "main")),
+            UsageExample(listOf(REF to "v1.2.0")),
+            UsageExample(listOf(REF to "HEAD~5")),
+        ),
     )
 
     val CONTEXT = TaskDef(
@@ -457,6 +626,11 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(PATTERN, CONTEXT_MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(listOf(PATTERN to "ResetPasswordService")),
+            UsageExample(listOf(PATTERN to "\".*Controller\"", CONTEXT_MAXDEPTH to "3")),
+            UsageExample(listOf(PATTERN to "MyService", FORMAT to "json")),
+        ),
     )
 
     val DISTANCE = TaskDef(
@@ -466,6 +640,11 @@ object TaskRegistry {
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         paramDefaultOverrides = mapOf("top" to "all"),
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(TOP to "20")),
+            UsageExample(listOf(PACKAGE_FILTER to "com.example")),
+        ),
     )
 
     val STRENGTH = TaskDef(
@@ -475,6 +654,11 @@ object TaskRegistry {
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         paramDefaultOverrides = mapOf("top" to "all"),
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(TOP to "20")),
+            UsageExample(listOf(PACKAGE_FILTER to "com.example")),
+        ),
     )
 
     val VOLATILITY = TaskDef(
@@ -483,6 +667,10 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(AFTER, MIN_REVS, TOP, NO_FOLLOW),
         requiresCompilation = false,
         category = TaskCategory.GIT_HISTORY,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(AFTER to "2024-01-01", TOP to "20")),
+        ),
     )
 
     val BALANCE = TaskDef(
@@ -492,6 +680,11 @@ object TaskRegistry {
         requiresCompilation = true,
         category = TaskCategory.COMPOSITE,
         paramDefaultOverrides = mapOf("top" to "all"),
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(PACKAGE_FILTER to "com.example")),
+            UsageExample(listOf(TOP to "20")),
+        ),
     )
 
     val LAYER_CHECK = TaskDef(
@@ -500,6 +693,11 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(LAYER_CONFIG, INIT),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(INIT to "true")),
+            UsageExample(listOf(LAYER_CONFIG to "custom-layers.json")),
+        ),
     )
 
     val SIZE = TaskDef(
@@ -508,6 +706,25 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(TOP, OVER),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(OVER to "100")),
+            UsageExample(listOf(OVER to "200", TOP to "10")),
+        ),
+    )
+
+    val DUPLICATES = TaskDef(
+        goal = "duplicates",
+        description = "Detect duplicate code blocks across source files",
+        params = FORMAT_PARAMS + listOf(TOP, MIN_TOKENS, SCOPE),
+        requiresCompilation = false,
+        category = TaskCategory.SOURCE,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(SCOPE to "prod")),
+            UsageExample(listOf(MIN_TOKENS to "100")),
+            UsageExample(listOf(MIN_TOKENS to "30", TOP to "20")),
+        ),
     )
 
     val RENAME_PARAM_TASK = TaskDef(
@@ -516,6 +733,10 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, RENAME_PARAM, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        examples = listOf(
+            UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", RENAME_PARAM to "limit", RENAME_NEW_NAME to "maxResults")),
+            UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", RENAME_PARAM to "limit", RENAME_NEW_NAME to "maxResults", PREVIEW to null)),
+        ),
     )
 
     val RENAME_METHOD_TASK = TaskDef(
@@ -524,6 +745,10 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        examples = listOf(
+            UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", RENAME_NEW_NAME to "searchUsers")),
+            UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", RENAME_NEW_NAME to "searchUsers", PREVIEW to null)),
+        ),
     )
 
     val MOVE_CLASS_TASK = TaskDef(
@@ -533,6 +758,11 @@ object TaskRegistry {
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
         aliases = listOf("rename-class"),
+        examples = listOf(
+            UsageExample(listOf(MOVE_FROM to "com.example.services.UserService", MOVE_TO to "com.example.domain.UserService")),
+            UsageExample(listOf(MOVE_FROM to "com.example.services.UserService", MOVE_TO to "com.example.services.AccountService")),
+            UsageExample(listOf(MOVE_FROM to "com.example.services.UserService", MOVE_TO to "com.example.domain.AccountService", PREVIEW to null)),
+        ),
     )
 
     val RENAME_PROPERTY_TASK = TaskDef(
@@ -541,6 +771,10 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_PROPERTY, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        examples = listOf(
+            UsageExample(listOf(RENAME_CLASS to "com.example.UserProfile", RENAME_PROPERTY to "fullName", RENAME_NEW_NAME to "displayName")),
+            UsageExample(listOf(RENAME_CLASS to "com.example.UserProfile", RENAME_PROPERTY to "fullName", RENAME_NEW_NAME to "displayName", PREVIEW to null)),
+        ),
     )
 
     val ALL_TASKS: List<TaskDef> = listOf(
@@ -575,6 +809,7 @@ object TaskRegistry {
         BALANCE,
         LAYER_CHECK,
         SIZE,
+        DUPLICATES,
         RENAME_PARAM_TASK,
         RENAME_METHOD_TASK,
         MOVE_CLASS_TASK,

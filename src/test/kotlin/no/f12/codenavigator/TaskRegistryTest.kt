@@ -6,6 +6,7 @@ import no.f12.codenavigator.registry.ParamType
 import no.f12.codenavigator.registry.TaskCategory
 import no.f12.codenavigator.registry.TaskDef
 import no.f12.codenavigator.registry.TaskRegistry
+import no.f12.codenavigator.registry.UsageExample
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -543,13 +544,114 @@ class TaskDefTest {
     }
 }
 
+class UsageExampleTest {
+
+    private val pattern = ParamDef("pattern", "<regex>", "Pattern", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
+    private val maxdepth = ParamDef("maxdepth", "<N>", "Max depth", flag = false, defaultValue = "3", enhancePattern = false, type = ParamType.INT)
+    private val preview = ParamDef("preview", "true", "Preview", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
+    private val method = ParamDef("method", "<name>", "Method", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    private val targetClass = ParamDef("target-class", "<fqcn>", "Class", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    private val newName = ParamDef("new-name", "<name>", "New name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+
+    @Test
+    fun `renders as build tool usage line with params`() {
+        val example = UsageExample(listOf(pattern to "Service", maxdepth to "3"))
+
+        val rendered = example.render("find-callers", BuildTool.GRADLE)
+
+        assertEquals("./gradlew cnavFindCallers -Ppattern=Service -Pmaxdepth=3", rendered)
+    }
+
+    @Test
+    fun `renders with no params as just command and task`() {
+        val example = UsageExample(emptyList())
+
+        val rendered = example.render("hotspots", BuildTool.GRADLE)
+
+        assertEquals("./gradlew cnavHotspots", rendered)
+    }
+
+    @Test
+    fun `renders flag params without value`() {
+        val example = UsageExample(listOf(targetClass to "com.example.UserService", method to "find", newName to "search", preview to null))
+
+        val rendered = example.render("rename-method", BuildTool.GRADLE)
+
+        assertEquals("./gradlew cnavRenameMethod -Ptarget-class=com.example.UserService -Pmethod=find -Pnew-name=search -Ppreview", rendered)
+    }
+
+    @Test
+    fun `renders for Maven build tool`() {
+        val example = UsageExample(listOf(pattern to "Service"))
+
+        val rendered = example.render("find-class", BuildTool.MAVEN)
+
+        assertEquals("mvn cnav:find-class -Dpattern=Service", rendered)
+    }
+
+    @Test
+    fun `TaskDef renderExamples returns formatted usage lines`() {
+        val task = TaskDef(
+            goal = "find-class",
+            description = "Find classes",
+            params = listOf(pattern),
+            requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
+            examples = listOf(
+                UsageExample(listOf(pattern to "Service")),
+                UsageExample(listOf(pattern to "\".*Reset.*\"")),
+            ),
+        )
+
+        val lines = task.renderExamples(BuildTool.GRADLE)
+
+        assertEquals(2, lines.size)
+        assertEquals("Usage: ./gradlew cnavFindClass -Ppattern=Service", lines[0])
+        assertEquals("Usage: ./gradlew cnavFindClass -Ppattern=\".*Reset.*\"", lines[1])
+    }
+
+    @Test
+    fun `TaskDef examples defaults to empty list`() {
+        val task = TaskDef(
+            goal = "test",
+            description = "Test",
+            params = emptyList(),
+            requiresCompilation = false,
+            category = TaskCategory.NAVIGATION,
+        )
+
+        assertEquals(emptyList(), task.examples)
+    }
+
+    @Test
+    fun `TaskDef rejects example with param not in task params`() {
+        val unknownParam = ParamDef("unknown", "<v>", "Unknown", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+
+        val exception = assertFailsWith<IllegalArgumentException> {
+            TaskDef(
+                goal = "test",
+                description = "Test",
+                params = listOf(pattern),
+                requiresCompilation = false,
+                category = TaskCategory.NAVIGATION,
+                examples = listOf(
+                    UsageExample(listOf(unknownParam to "value")),
+                ),
+            )
+        }
+
+        assertTrue(exception.message!!.contains("unknown"))
+        assertTrue(exception.message!!.contains("test"))
+    }
+}
+
 class TaskRegistryTest {
 
     @Test
-    fun `contains all 38 goals`() {
+    fun `contains all 39 goals`() {
         val goals = TaskRegistry.ALL_TASKS.map { it.goal }.toSet()
 
-        assertEquals(38, goals.size)
+        assertEquals(39, goals.size)
         assertTrue(goals.contains("find-class"))
         assertTrue(goals.contains("hotspots"))
         assertTrue(goals.contains("complexity"))
@@ -565,6 +667,7 @@ class TaskRegistryTest {
         assertTrue(goals.contains("volatility"))
         assertTrue(goals.contains("balance"))
         assertTrue(goals.contains("size"))
+        assertTrue(goals.contains("duplicates"))
         assertTrue(goals.contains("layer-check"))
         assertTrue(goals.contains("rename-param"))
         assertTrue(goals.contains("rename-method"))
@@ -580,7 +683,7 @@ class TaskRegistryTest {
             val gradleName = task.taskName(BuildTool.GRADLE)
             assertNotNull(gradleName, "Goal '${task.goal}' should resolve to a Gradle task name")
         }
-        assertEquals(38, registryGoals.size)
+        assertEquals(39, registryGoals.size)
     }
 
     @Test
@@ -887,6 +990,7 @@ class TaskRegistryTest {
             "after" to ParamType.DATE,
             "no-follow" to ParamType.FLAG,
             "min-revs" to ParamType.INT,
+            "min-tokens" to ParamType.INT,
             "include-test" to ParamType.BOOLEAN,
             "package" to ParamType.STRING,
             "reverse" to ParamType.BOOLEAN,
@@ -998,6 +1102,17 @@ class TaskRegistryTest {
     @Test
     fun `SCOPE param has default value of all`() {
         assertEquals("all", TaskRegistry.SCOPE.defaultValue)
+    }
+
+    @Test
+    fun `every task has at least one usage example`() {
+        val tasksWithoutExamples = TaskRegistry.ALL_TASKS.filter { it.examples.isEmpty() }
+
+        assertEquals(
+            emptyList(),
+            tasksWithoutExamples.map { it.goal },
+            "All tasks should have at least one usage example",
+        )
     }
 
     @Test

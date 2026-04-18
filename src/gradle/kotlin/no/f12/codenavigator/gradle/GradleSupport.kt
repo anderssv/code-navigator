@@ -59,6 +59,23 @@ fun Project.sourceDirectories(): List<File> {
     return dirs
 }
 
+fun Project.taggedSourceDirectories(): List<Pair<File, SourceSet>> {
+    val sourceSets = extensions.getByType(SourceSetContainer::class.java)
+    val result = mutableListOf<Pair<File, SourceSet>>()
+
+    val mainSourceSet = sourceSets.getByName("main")
+    for (dir in mainSourceSet.allSource.srcDirs) {
+        if (dir.exists()) result.add(dir to SourceSet.MAIN)
+    }
+
+    val testSourceSet = sourceSets.findByName("test")
+    testSourceSet?.allSource?.srcDirs
+        ?.filter { it.exists() }
+        ?.forEach { dir -> result.add(dir to SourceSet.TEST) }
+
+    return result
+}
+
 private fun Project.buildPropertyMap(
     propertyNames: List<String>,
     flagNames: List<String>,

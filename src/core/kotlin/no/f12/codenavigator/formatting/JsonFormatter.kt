@@ -1,6 +1,7 @@
 package no.f12.codenavigator.formatting
 
 import no.f12.codenavigator.analysis.CoupledPair
+import no.f12.codenavigator.analysis.DuplicateGroup
 import no.f12.codenavigator.analysis.FileAge
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.FileSizeEntry
@@ -142,6 +143,20 @@ object JsonFormatter {
             jsonObject(
                 "file" to e.file,
                 "lines" to e.lines,
+            )
+        }
+
+    fun formatDuplicates(groups: List<DuplicateGroup>): String =
+        jsonArray(groups) { g ->
+            jsonObject(
+                "tokenCount" to g.tokenCount,
+                "locations" to JsonRaw(jsonArray(g.locations) { loc ->
+                    jsonObject(
+                        "file" to loc.file,
+                        "startLine" to loc.startLine,
+                        "endLine" to loc.endLine,
+                    )
+                }),
             )
         }
 

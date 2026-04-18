@@ -1,6 +1,7 @@
 package no.f12.codenavigator.formatting
 
 import no.f12.codenavigator.analysis.CoupledPair
+import no.f12.codenavigator.analysis.DuplicateGroup
 import no.f12.codenavigator.analysis.FileAge
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.FileSizeEntry
@@ -110,6 +111,11 @@ object LlmFormatter {
 
     fun formatSize(entries: List<FileSizeEntry>): String =
         entries.joinToString("\n") { "${it.file} lines=${it.lines}" }
+
+    fun formatDuplicates(groups: List<DuplicateGroup>): String =
+        groups.joinToString("\n\n") { group ->
+            "tokens=${group.tokenCount}\n" + group.locations.joinToString("\n") { "  ${it.file}:${it.startLine}-${it.endLine}" }
+        }
 
     fun formatLayerCheck(result: LayerCheckResult): String = buildString {
         if (result.violations.isEmpty()) {

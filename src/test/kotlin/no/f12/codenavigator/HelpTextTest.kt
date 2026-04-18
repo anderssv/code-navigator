@@ -67,6 +67,20 @@ class HelpTextTest {
     }
 
     @Test
+    fun `help text usage examples are generated from TaskDef examples`() {
+        val text = HelpText.generate(BuildTool.GRADLE)
+
+        for (task in TaskRegistry.ALL_TASKS) {
+            for (example in task.renderExamples(BuildTool.GRADLE)) {
+                assertTrue(
+                    text.contains(example),
+                    "Help text should contain example '$example' for task '${task.goal}'",
+                )
+            }
+        }
+    }
+
+    @Test
     fun `help text documents cycles parameter for DSM`() {
         val gradleText = HelpText.generate(BuildTool.GRADLE)
         val mavenText = HelpText.generate(BuildTool.MAVEN)

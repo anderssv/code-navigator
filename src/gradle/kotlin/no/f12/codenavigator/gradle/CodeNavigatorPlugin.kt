@@ -117,6 +117,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "balance" to BalanceTask::class.java,
             "layer-check" to LayerCheckTask::class.java,
             "size" to SizeTask::class.java,
+            "duplicates" to DuplicatesTask::class.java,
             "rename-param" to RenameParamTask::class.java,
             "rename-method" to RenameMethodTask::class.java,
             "move-class" to MoveClassTask::class.java,
