@@ -850,3 +850,36 @@ Full property rename task that handles what `cnavRenameParam` deferred: renaming
 Added optional `new-name` parameter to `cnavMoveClass`, enabling class renaming (same package, different name), package move, or both in a single operation. Uses the same OpenRewrite `ChangeType` recipe — the new FQN is constructed from `newPackage` + `newName` (or original name if not specified). `new-package` is now optional when `new-name` is provided.
 
 **Changes**: Modified: `MoveClassRewriter.kt` (added `newName` param, uses `targetName` for FQN and file path), `MoveClassConfig.kt` (added `newName` field, `new-package` now optional with validation), `MoveClassFormatter.kt` (operation description varies by move/rename/both), `TaskRegistry.kt` (added `RENAME_NEW_NAME` to `MOVE_CLASS_TASK` params, updated description), `MoveClassTask.kt`, `MoveClassWorkAction.kt`, `MoveClassMojo.kt` (pass `newName` through), `MoveClassRewriterTest.kt` (5 new tests), `MoveClassFormatterTest.kt` (3 new tests), `HelpText.kt`, `AgentHelpText.kt`, `README.md`, `CHANGELOG.md`, `plan.md`.
+
+## ~~`cnavDuplicates` — source-level code duplication detection~~ DONE
+
+**Value: high** | **Effort: high**
+
+New source-level task detecting duplicate code blocks across the codebase using token-based matching (Rabin-Karp rolling hash). Zero external dependencies — uses a simple regex-based tokenizer (~150 lines) instead of ANTLR.
+
+**Algorithm**: `SourceTokenizer` tokenizes Kotlin/Java source into normalized tokens (identifiers → `ID`, string literals → `STR`, etc.). `DuplicateDetector` uses Rabin-Karp rolling hash over token windows of `minTokens` size, extends matches to maximum length, then deduplicates overlapping groups using a coverage set (sort by length descending, skip if both locations already subsumed). Same-file duplicates require an overlap check.
+
+**Parameters**: `-Pmin-tokens=<n>` (default 50), `-Ptop=<n>` (default 50), `-Pscope=all|prod|test`, `-Pformat=text|json|llm`.
+
+**Performance**: ~20k LOC projects in <1 second. `scope=prod` cleanly separates production duplicates from test boilerplate.
+
+**Implementation**:
+- `SourceTokenizer.kt` — regex-based tokenizer for Kotlin/Java source
+- `DuplicateDetector.kt` — Rabin-Karp rolling hash algorithm
+- `DuplicateScanner.kt` — walks tagged source directories, tokenizes, detects
+- `DuplicateConfig.kt` — config with minTokens, top, scope, format
+- `DuplicateFormatter.kt` — text output formatter
+- `DuplicatesTask.kt` (Gradle) — uses `taggedSourceDirectories()` for scope support
+- `DuplicatesMojo.kt` (Maven) — full scope support
+- `JsonFormatter.formatDuplicates()` and `LlmFormatter.formatDuplicates()`
+- Tests: `SourceTokenizerTest` (12 tests), `DuplicateDetectorTest` (6 tests), `DuplicateConfigTest` (2 tests), `DuplicateFormatterTest` (2 tests)
+
+## ~~Migrate usage examples into TaskDef definitions~~ DONE
+
+**Value: medium** | **Effort: medium**
+
+Migrated all hand-written usage examples from `HelpText.kt` into `TaskDef` definitions in `TaskRegistry.kt`, making examples part of the CLI definitions rather than duplicated across help text files.
+
+**Design**: `UsageExample` data class with `List<Pair<ParamDef<*>, String?>>` params (not string names). `TaskDef.init` block validates at construction time that every `ParamDef` in examples is in the task's `params` list — impossible to reference a wrong/removed param. `TaskDef.renderExamples(tool: BuildTool)` generates formatted usage strings.
+
+**Changes**: Added `UsageExample` data class, `examples` field on `TaskDef`, `renderExamples()` method, init validation. Populated examples for all 39 tasks. Updated `HelpText.kt` to generate `Usage:` lines via `examples(task)` helper. Removed unused `u()` helper. Tests: `UsageExampleTest` (7 tests including validation), `every task has at least one usage example` test, `help text usage examples are generated from TaskDef examples` test.
