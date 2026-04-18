@@ -3,6 +3,7 @@ package no.f12.codenavigator.navigation.callgraph
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.core.GroupBy
 import no.f12.codenavigator.navigation.core.KotlinMethodFilter
 import no.f12.codenavigator.navigation.core.Scope
 
@@ -14,6 +15,7 @@ data class FindUsagesConfig(
     val outsidePackage: String?,
     val filterSynthetic: Boolean,
     val scope: Scope,
+    val groupBy: GroupBy,
     val format: OutputFormat,
 ) {
     fun filterBySourceSet(usages: List<UsageSite>): List<UsageSite> {
@@ -55,6 +57,7 @@ data class FindUsagesConfig(
                 outsidePackage = TaskRegistry.OUTSIDE_PACKAGE.parseFrom(properties),
                 filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
                 scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
+                groupBy = GroupBy.parse(TaskRegistry.GROUP_BY.parseFrom(properties)),
                 format = ParamDef.parseFormat(properties),
             )
         }

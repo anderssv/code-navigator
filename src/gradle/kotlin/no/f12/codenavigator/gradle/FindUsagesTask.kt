@@ -6,6 +6,7 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
+import no.f12.codenavigator.navigation.core.GroupBy
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.callgraph.UsageScanner
@@ -51,9 +52,24 @@ abstract class FindUsagesTask : DefaultTask() {
         }
 
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { UsageFormatter.format(usages) },
-            json = { JsonFormatter.formatUsages(usages) },
-            llm = { LlmFormatter.formatUsages(usages) },
+            text = {
+                when (config.groupBy) {
+                    GroupBy.FILE -> UsageFormatter.formatSummary(usages)
+                    GroupBy.NONE -> UsageFormatter.format(usages)
+                }
+            },
+            json = {
+                when (config.groupBy) {
+                    GroupBy.FILE -> JsonFormatter.formatUsagesSummary(usages)
+                    GroupBy.NONE -> JsonFormatter.formatUsages(usages)
+                }
+            },
+            llm = {
+                when (config.groupBy) {
+                    GroupBy.FILE -> LlmFormatter.formatUsagesSummary(usages)
+                    GroupBy.NONE -> LlmFormatter.formatUsages(usages)
+                }
+            },
         ))
     }
 }

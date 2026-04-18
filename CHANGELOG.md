@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.71
+
+- **New:** `cnavFindUsages` summary mode — add `-Pgroup-by=file` to collapse results to one line per source file with a reference count, instead of listing every individual bytecode reference. Supported in all output formats: TEXT (`Caller.kt (3 references)`), JSON (`[{"sourceFile":"Caller.kt","referenceCount":3}]`), and LLM (`Caller.kt 3`). Useful for data-class-heavy types where the default output produces 40+ lines of boilerplate (`copy`, `componentN`, getters, field refs) from a handful of actual usages. Default behavior unchanged.
+
 ## 0.1.70
 
 - **New:** `cnavDuplicates` — detect duplicate code blocks across source files using token-based matching (Rabin-Karp rolling hash). Supports `-Pscope=prod|test|all`, `-Pmin-tokens=<N>` (default 50), `-Ptop=<N>`, and all output formats (text/json/llm). No compilation required.

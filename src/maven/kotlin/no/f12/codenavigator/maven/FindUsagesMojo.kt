@@ -5,6 +5,7 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
+import no.f12.codenavigator.navigation.core.GroupBy
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.callgraph.UsageScanner
@@ -51,6 +52,9 @@ class FindUsagesMojo : AbstractMojo() {
     @Parameter(property = "filter-synthetic")
     private var filterSynthetic: String? = null
 
+    @Parameter(property = "group-by")
+    private var groupBy: String? = null
+
     override fun execute() {
         val config = try {
             FindUsagesConfig.parse(TaskRegistry.FIND_USAGES.enhanceProperties(buildPropertyMap()))
@@ -83,9 +87,24 @@ class FindUsagesMojo : AbstractMojo() {
         }
 
         println(OutputWrapper.formatAndWrap(config.format,
-            text = { UsageFormatter.format(usages) },
-            json = { JsonFormatter.formatUsages(usages) },
-            llm = { LlmFormatter.formatUsages(usages) },
+            text = {
+                when (config.groupBy) {
+                    GroupBy.FILE -> UsageFormatter.formatSummary(usages)
+                    GroupBy.NONE -> UsageFormatter.format(usages)
+                }
+            },
+            json = {
+                when (config.groupBy) {
+                    GroupBy.FILE -> JsonFormatter.formatUsagesSummary(usages)
+                    GroupBy.NONE -> JsonFormatter.formatUsages(usages)
+                }
+            },
+            llm = {
+                when (config.groupBy) {
+                    GroupBy.FILE -> LlmFormatter.formatUsagesSummary(usages)
+                    GroupBy.NONE -> LlmFormatter.formatUsages(usages)
+                }
+            },
         ))
     }
 
@@ -99,5 +118,6 @@ class FindUsagesMojo : AbstractMojo() {
         outsidePackage?.let { put("outside-package", it) }
         scope?.let { put("scope", it) }
         filterSynthetic?.let { put("filter-synthetic", it) }
+        groupBy?.let { put("group-by", it) }
     }
 }

@@ -26,6 +26,19 @@ enum class Scope {
     }
 }
 
+enum class GroupBy {
+    NONE,
+    FILE,
+    ;
+
+    companion object {
+        fun parse(value: String?): GroupBy = when (value?.lowercase()) {
+            "file" -> FILE
+            else -> NONE
+        }
+    }
+}
+
 @JvmInline
 value class ClassName(val value: String) : Comparable<ClassName> {
     fun packageName(): PackageName =

@@ -1,5 +1,28 @@
 # Plan — Completed
 
+## ~~`cnavFindUsages` summary mode — group by file~~ DONE
+
+Added `-Pgroup-by=file` parameter that collapses results to one line per source file with a reference count. Motivated by user feedback that `cnavFindUsages -Ptype=SignatureContext` returned 40+ lines of data class boilerplate (`copy`, `copy$default`, `componentN`, `getSignatureContext`, field refs) when the user really wanted to know which files reference the type.
+
+**Shape:**
+- `-Pgroup-by=none` (default): unchanged per-reference listing.
+- `-Pgroup-by=file`: one line per file with reference count.
+  - TEXT: `Caller.kt (3 references)` (alphabetically sorted, singular/plural respected)
+  - JSON: `[{"sourceFile": "Caller.kt", "referenceCount": 3}, ...]`
+  - LLM: `Caller.kt 3` (terse, alphabetically sorted)
+
+**Implementation:**
+1. `GroupBy` enum (`NONE`, `FILE`) in `DomainTypes.kt` with `parse(String?)` mirroring `Scope`.
+2. `GROUP_BY` ParamDef in `TaskRegistry.kt`, added to `FIND_USAGES.params` + new `UsageExample`.
+3. `FindUsagesConfig.groupBy: GroupBy` field, parsed via `GroupBy.parse(TaskRegistry.GROUP_BY.parseFrom(...))`.
+4. Aggregation lives in the formatters (post-processing), keeping `UsageScanner` untouched — aligns with three-layer architecture.
+5. `UsageFormatter.formatSummary()`, `JsonFormatter.formatUsagesSummary()`, `LlmFormatter.formatUsagesSummary()`.
+6. `FindUsagesTask` (Gradle) and `FindUsagesMojo` (Maven) dispatch on `config.groupBy`. Maven added `@Parameter(property = "group-by")`.
+7. `HelpText` and `AgentHelpText` updated (parameter listing, JSON schema variant, exploration hint).
+8. Chose enum shape (`-Pgroup-by=file`) over boolean flag for extensibility (future `-Pgroup-by=class`).
+
+**Tests:** 12 new tests (5 TEXT formatter, 2 JSON formatter, 2 LLM formatter, 3 config parse). Full suite 2,226 tests green.
+
 ## ~~Replace `-Pprod-only` / `-Ptest-only` with `-Pscope=all|prod|test`~~ DONE
 
 Replaced the two mutually-exclusive boolean parameters (`-Pprod-only=true`, `-Ptest-only=true`) with a single `-Pscope=all|prod|test` parameter (default: `all`). **Breaking change** — the old parameters are removed entirely, not deprecated.

@@ -154,6 +154,12 @@ object LlmFormatter {
                 "${it.callerClass}.${it.callerMethod} -> ${it.targetOwner}.${it.targetName}${it.targetDescriptor} ${it.kind.name.lowercase()} ${it.sourceFile}$sourceSetTag"
             }
 
+    fun formatUsagesSummary(usages: List<UsageSite>): String =
+        usages.groupBy { it.sourceFile }
+            .toSortedMap()
+            .entries
+            .joinToString("\n") { (sourceFile, sites) -> "$sourceFile ${sites.size}" }
+
     fun formatRank(ranked: List<RankedType>): String =
         ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }
 

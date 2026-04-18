@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.GroupBy
 import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
@@ -168,6 +169,31 @@ class FindUsagesConfigTest {
     }
 
     @Test
+    fun `defaults groupBy to NONE`() {
+        val config = FindUsagesConfig.parse(mapOf("owner-class" to "com.example.Foo"))
+
+        assertEquals(GroupBy.NONE, config.groupBy)
+    }
+
+    @Test
+    fun `parses group-by=file as GroupBy FILE`() {
+        val config = FindUsagesConfig.parse(
+            mapOf("owner-class" to "com.example.Foo", "group-by" to "file"),
+        )
+
+        assertEquals(GroupBy.FILE, config.groupBy)
+    }
+
+    @Test
+    fun `defaults groupBy to NONE for unknown group-by value`() {
+        val config = FindUsagesConfig.parse(
+            mapOf("owner-class" to "com.example.Foo", "group-by" to "bogus"),
+        )
+
+        assertEquals(GroupBy.NONE, config.groupBy)
+    }
+
+    @Test
     fun `parses filter-synthetic as false when explicitly set`() {
         val config = FindUsagesConfig.parse(
             mapOf("owner-class" to "com.example.Foo", "filter-synthetic" to "false"),
@@ -195,6 +221,7 @@ class FindUsagesConfigTest {
         outsidePackage = null,
         filterSynthetic = true,
         scope = scope,
+        groupBy = GroupBy.NONE,
         format = OutputFormat.TEXT,
     )
 
@@ -285,6 +312,7 @@ class FindUsagesConfigTest {
             outsidePackage = null,
             filterSynthetic = false,
             scope = Scope.ALL,
+            groupBy = GroupBy.NONE,
             format = OutputFormat.TEXT,
         )
         val filtered = cfg.filterSyntheticCallers(usages)

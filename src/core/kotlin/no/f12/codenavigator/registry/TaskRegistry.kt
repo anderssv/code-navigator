@@ -222,6 +222,7 @@ object TaskRegistry {
     val CLASSES_ONLY = ParamDef("classes-only", "true", "Show only unreferenced classes, skip dead methods", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val EXCLUDE_ANNOTATED = ParamDef("exclude-annotated", "<ann1>,<ann2>", "Exclude classes/methods bearing these annotations (simple names, comma-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
     val SCOPE = ParamDef("scope", "all|prod|test", "Filter by source set: all (default), prod (production only), test (test only)", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING)
+    val GROUP_BY = ParamDef("group-by", "none|file", "Group results: none (default, per-reference) or file (collapse to one line per source file with count)", flag = false, defaultValue = "none", enhancePattern = false, type = ParamType.STRING)
     val TREAT_AS_DEAD = ParamDef("treat-as-dead", "<name>", "Treat framework-annotated code as potentially dead (all frameworks protected by default). Available: ${FrameworkPresets.availablePresets().sorted().joinToString(", ")}. Use ALL to remove all framework protections.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
     val DETAIL = ParamDef("detail", "true", "Show individual call details", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val COLLAPSE_LAMBDAS = ParamDef("collapse-lambdas", "false", "Set false to show lambda classes separately", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
@@ -413,7 +414,7 @@ object TaskRegistry {
     val FIND_USAGES = TaskDef(
         goal = "find-usages",
         description = "Find project references to types, methods, and fields/properties",
-        params = FORMAT_PARAMS + listOf(OWNER_CLASS, METHOD, FIELD, TYPE, OUTSIDE_PACKAGE, FILTER_SYNTHETIC, SCOPE),
+        params = FORMAT_PARAMS + listOf(OWNER_CLASS, METHOD, FIELD, TYPE, OUTSIDE_PACKAGE, FILTER_SYNTHETIC, SCOPE, GROUP_BY),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavUsages",
@@ -423,6 +424,7 @@ object TaskRegistry {
             UsageExample(listOf(OWNER_CLASS to "com.example.Config", FIELD to "timeout")),
             UsageExample(listOf(TYPE to "kotlinx.datetime.Instant")),
             UsageExample(listOf(TYPE to "kotlinx.datetime.Instant", OUTSIDE_PACKAGE to "com.example.datetime")),
+            UsageExample(listOf(TYPE to "com.example.SignatureContext", GROUP_BY to "file")),
         ),
     )
 

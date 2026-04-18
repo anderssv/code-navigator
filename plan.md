@@ -215,16 +215,6 @@ When `include-external=true`, `ClassTypeCollector` only scans project class dire
 
 Improvements to task output, discoverability, and agent experience.
 
-### `cnavFindUsages` summary mode — group by file instead of listing every bytecode reference
-
-**Value: high** | **Effort: low**
-
-From user feedback: `cnavFindUsages -Ptype=SignatureContext` returned 40+ lines of data class boilerplate (`copy`, `copy$default`, `component3`, `getSignatureContext`, field references). For a "where is this type used?" question, the user wanted "which files/classes reference it" — not every bytecode instruction that touches it.
-
-- **Approach**: Add `-Pgroup-by=file` (or `-Psummary=true`) parameter that collapses results to one line per file/class with a reference count. Default behavior unchanged.
-- **Alternative**: A separate `-Pby-class` mode that shows `ClassName (N references)` instead of individual method-level hits.
-- **Affects**: `UsageFormatter` (TEXT/LLM/JSON output), `UsageScanner` (aggregation logic).
-
 ### Consistent `-Pproject-only` support across all tasks
 
 **Value: medium** | **Effort: low**

@@ -1008,6 +1008,7 @@ class TaskRegistryTest {
             "classes-only" to ParamType.BOOLEAN,
             "exclude-annotated" to ParamType.LIST_STRING,
             "scope" to ParamType.STRING,            "detail" to ParamType.BOOLEAN,
+            "group-by" to ParamType.STRING,
             "min-shared-revs" to ParamType.INT,
             "min-coupling" to ParamType.INT,
             "max-changeset-size" to ParamType.INT,

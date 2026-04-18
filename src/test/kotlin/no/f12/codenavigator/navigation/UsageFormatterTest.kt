@@ -128,6 +128,106 @@ class UsageFormatterTest {
     // [TEST] noResultsTarget includes ownerClass.method
 
     @Test
+    fun `TEXT summary shows single file with 1 reference for single usage`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+        )
+
+        val result = UsageFormatter.formatSummary(usages)
+
+        assertEquals("Caller.kt (1 reference)", result)
+    }
+
+    @Test
+    fun `TEXT summary shows no-usages message when list is empty`() {
+        val result = UsageFormatter.formatSummary(emptyList())
+
+        assertEquals("No usages found.", result)
+    }
+
+    @Test
+    fun `TEXT summary collapses multiple usages from same file into one line with total count`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+            UsageSite(ClassName("com.example.Caller"), "other", "Caller.kt", ClassName("com.example.Target"), "name", "Ljava/lang/String;", UsageKind.FIELD_ACCESS, null),
+            UsageSite(ClassName("com.example.Caller"), "third", "Caller.kt", ClassName("com.example.Target"), "run", "()V", UsageKind.METHOD_CALL, null),
+        )
+
+        val result = UsageFormatter.formatSummary(usages)
+
+        assertEquals("Caller.kt (3 references)", result)
+    }
+
+    @Test
+    fun `TEXT summary shows one line per distinct source file`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.A"), "a", "A.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+            UsageSite(ClassName("com.example.B"), "b", "B.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+        )
+
+        val result = UsageFormatter.formatSummary(usages)
+
+        assertEquals("A.kt (1 reference)\nB.kt (1 reference)", result)
+    }
+
+    @Test
+    fun `TEXT summary sorts files alphabetically`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.Z"), "z", "Zebra.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+            UsageSite(ClassName("com.example.A"), "a", "Apple.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+            UsageSite(ClassName("com.example.M"), "m", "Mango.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+        )
+
+        val result = UsageFormatter.formatSummary(usages)
+
+        assertEquals("Apple.kt (1 reference)\nMango.kt (1 reference)\nZebra.kt (1 reference)", result)
+    }
+
+    @Test
+    fun `JSON summary returns empty array for empty list`() {
+        val json = JsonFormatter.formatUsagesSummary(emptyList())
+
+        assertEquals("[]", json)
+    }
+
+    @Test
+    fun `JSON summary returns array of sourceFile and referenceCount objects`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.A"), "a", "A.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+            UsageSite(ClassName("com.example.A"), "b", "A.kt", ClassName("com.example.Target"), "name", "Ljava/lang/String;", UsageKind.FIELD_ACCESS, null),
+            UsageSite(ClassName("com.example.C"), "c", "Beta.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+        )
+
+        val json = JsonFormatter.formatUsagesSummary(usages)
+
+        assertTrue(json.contains("\"sourceFile\":\"A.kt\""), "Expected A.kt entry in: $json")
+        assertTrue(json.contains("\"sourceFile\":\"Beta.kt\""), "Expected Beta.kt entry in: $json")
+        assertTrue(json.contains("\"referenceCount\":2"), "Expected referenceCount 2 in: $json")
+        assertTrue(json.contains("\"referenceCount\":1"), "Expected referenceCount 1 in: $json")
+        assertTrue(json.indexOf("A.kt") < json.indexOf("Beta.kt"), "Expected alphabetical ordering in: $json")
+    }
+
+    @Test
+    fun `LLM summary returns empty string for empty list`() {
+        val result = LlmFormatter.formatUsagesSummary(emptyList())
+
+        assertEquals("", result)
+    }
+
+    @Test
+    fun `LLM summary returns one line per file with count`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.A"), "a", "Apple.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+            UsageSite(ClassName("com.example.A"), "b", "Apple.kt", ClassName("com.example.Target"), "name", "Ljava/lang/String;", UsageKind.FIELD_ACCESS, null),
+            UsageSite(ClassName("com.example.C"), "c", "Beta.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+        )
+
+        val result = LlmFormatter.formatUsagesSummary(usages)
+
+        assertEquals("Apple.kt 2\nBeta.kt 1", result)
+    }
+
+    @Test
     fun `noResultsTarget includes ownerClass and method`() {
         val target = UsageFormatter.noResultsTarget(ownerClass = "com.example.Target", method = "process", field = null, type = null)
 

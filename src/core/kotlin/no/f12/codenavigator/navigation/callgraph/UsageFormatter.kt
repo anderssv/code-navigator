@@ -12,6 +12,19 @@ object UsageFormatter {
             }
     }
 
+    fun formatSummary(usages: List<UsageSite>): String {
+        if (usages.isEmpty()) return "No usages found."
+        return usages
+            .groupBy { it.sourceFile }
+            .toSortedMap()
+            .entries
+            .joinToString("\n") { (sourceFile, sites) ->
+                val count = sites.size
+                val noun = if (count == 1) "reference" else "references"
+                "$sourceFile ($count $noun)"
+            }
+    }
+
     fun noResultsTarget(ownerClass: String?, method: String?, field: String?, type: String?): String = buildString {
         if (ownerClass != null) {
             append(ownerClass)

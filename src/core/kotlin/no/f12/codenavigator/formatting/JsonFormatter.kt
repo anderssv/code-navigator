@@ -290,6 +290,16 @@ object JsonFormatter {
             )
         }
 
+    fun formatUsagesSummary(usages: List<UsageSite>): String {
+        val sorted = usages.groupBy { it.sourceFile }.toSortedMap().entries.toList()
+        return jsonArray(sorted) { (sourceFile, sites) ->
+            jsonObject(
+                "sourceFile" to sourceFile,
+                "referenceCount" to sites.size,
+            )
+        }
+    }
+
     fun formatRank(ranked: List<RankedType>): String =
         jsonArray(ranked) { r ->
             jsonObject(
