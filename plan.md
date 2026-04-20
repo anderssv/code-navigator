@@ -165,6 +165,28 @@ The DSM tells you which cycles exist, but not how to fix them. When `-Pcycles=tr
 - **Prerequisite**: Benefits from `cnavWhyDepends` infrastructure — same edge-explanation logic.
 - **Separate from DSM what-if**: What-if simulation is a distinct, higher-effort feature. Evaluate need after cycle fix suggestions ship.
 
+### `cnavFileDeps` — file-level dependency tree
+
+**Value: high** | **Effort: medium**
+
+Current dependency analysis works at package granularity (`cnavPackageDeps`, `cnavDsm`) or method/symbol granularity (`cnavFindCallers`, `cnavFindUsages`). There is no file-level view, which is the granularity humans and agents actually navigate at. File-level deps also capture type references (field types, parameters, return types, generics, annotations) that call graphs miss.
+
+- **Builder**: Aggregate class-level bytecode references up to `UsageSite.sourceFile`. One edge = "file A references file B." Kotlin files with multiple top-level classes map all classes to the same file node.
+- **Single-file mode**: `-Pfile=OrderService.kt` — direct deps (files this file uses). `-Preverse=true` — files that depend on this one. `-Pdepth=N` — transitive tree with cycle-collapse (reuse `CallTreeBuilder` cycle handling).
+- **All-files mode**: `-Pall=true` — emit the full file-dep graph, no root.
+- **Parameters**: `-Pproject-only=true`, `-Ppattern=<regex>`, `-Pformat=text|llm|json`.
+
+Use cases for all-files mode:
+- **Architecture overview / DSM at file granularity** — spot tangles and highly-coupled files across the whole project.
+- **Fan-in/fan-out ranking** — rank files by incoming deps (coupling hotspots, risky to change) or outgoing deps (files doing too much).
+- **File-level cycle detection** — file cycles are more actionable refactoring targets than package cycles.
+- **Orphan detection** — files with zero incoming and zero outgoing project deps (likely dead or misplaced).
+- **Graph export** — JSON feed for visualization tools (Gephi, d3), LLM context selection, or trend analysis over time (combine with git history: "coupling growing").
+- **Batch impact queries** — "which files depend on anything in package X?" in one pass instead of N per-file queries.
+
+- **Alternative framing**: Extend `cnavDsm` with `-Pgranularity=file|package|class` instead of a separate task. Worth evaluating — same matrix/cycle infrastructure, same what-if semantics.
+- **Overlap**: `cnavFindUsages -Pgroup-by=file` (v0.1.71) gives file-level reverse deps for a single symbol. `cnavFileDeps -Pfile=X -Preverse=true` gives file-level reverse deps for all symbols in a file. Complementary.
+
 ### DSM what-if simulation
 
 **Value: medium** | **Effort: high**
@@ -214,6 +236,39 @@ When `include-external=true`, `ClassTypeCollector` only scans project class dire
 ## Output & UX improvements
 
 Improvements to task output, discoverability, and agent experience.
+
+### Refactoring task discoverability
+
+**Value: high** | **Effort: low**
+
+From field test: agent ran `cnavFindUsages` at the start of a class move and missed that `cnavMoveClass` exists — would have done the entire refactor in one call. The help text lists `cnavMoveClass` parameters but doesn't position it as the right tool for class moves. Agents read parameter tables linearly and miss intent-oriented guidance.
+
+Partial progress (v0.1.72):
+- ✅ "Common Refactoring Tasks" section added to `cnavAgentHelp` compact output (parallel to "Common Questions → Which Task").
+- ✅ Install section (`-Psection=install`) upgraded to name write commands first (`cnavMoveClass`, `cnavRenameMethod`), followed by the read commands. "Do not manually edit imports" warning added.
+- ✅ Task descriptions in `cnavHelp` already state outcomes (verified in `TaskRegistry`: `MOVE_CLASS_TASK`, `RENAME_METHOD_TASK`, etc.).
+
+Remaining:
+- Audit whether `cnavAgentHelp` mentions refactoring outcomes in other sections (`workflow`, `interpretation`) — currently they focus on analysis flow.
+- Consider a short "refactoring cheat sheet" as its own section (see "Goal-oriented task discovery" below).
+
+### Goal-oriented task discovery — `cnavDiscoverTasks` or `-Psection=refactor`
+
+**Value: medium** | **Effort: low**
+
+Current `cnavAgentHelp` sections (`install`, `workflow`, `interpretation`, `schemas`, `extraction`) are oriented around analysis flow. There is no "I want to do X, which command?" reverse lookup for refactoring actions. Add either a new `-Psection=refactor` or a dedicated `cnavDiscoverTasks` task that lists tasks grouped by intent (explore, analyze, refactor, measure).
+
+- **Relates to**: Refactoring task discoverability above — same problem, broader solution.
+
+### Preview-by-default for write commands
+
+**Value: medium** | **Effort: low**
+
+From field test feedback: safer default for agents would be preview mode on by default with explicit `-Papply=true` to commit. Currently `cnavMoveClass` / `cnavRenameMethod` / etc. apply changes unless `-Ppreview` is passed.
+
+- **Breaking change**: flips the default. Mitigate with a deprecation cycle: warn loudly when apply-mode is invoked without explicit `-Papply=true` for one release, then flip.
+- **Alternative**: keep current default, but `cnavAgentHelp` examples always show `-Ppreview` first and recommend running preview → review → re-run with apply. Less safe, non-breaking.
+- **Decide**: breaking flip vs. doc-only nudge. Breaking flip aligns with the "agents should not surprise users" principle.
 
 ### Consistent `-Pproject-only` support across all tasks
 

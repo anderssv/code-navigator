@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.72-SNAPSHOT
+
+- **Improved:** `cnavAgentHelp` now surfaces refactoring tasks by intent. The compact output has a new "Common Refactoring Tasks" section listing `cnavMoveClass`, `cnavRenameMethod`, `cnavRenameProperty`, `cnavRenameParam` as the answer to "I want to move/rename X" rather than requiring agents to find them in a parameter table. The `install` section (recommended paste target for project AGENTS.md files) now names write commands first and warns against manually editing imports after a refactor.
+
 ## 0.1.71
 
 - **New:** `cnavFindUsages` summary mode — add `-Pgroup-by=file` to collapse results to one line per source file with a reference count, instead of listing every individual bytecode reference. Supported in all output formats: TEXT (`Caller.kt (3 references)`), JSON (`[{"sourceFile":"Caller.kt","referenceCount":3}]`), and LLM (`Caller.kt 3`). Useful for data-class-heavy types where the default output produces 40+ lines of boilerplate (`copy`, `componentN`, getters, field refs) from a handful of actual usages. Default behavior unchanged.

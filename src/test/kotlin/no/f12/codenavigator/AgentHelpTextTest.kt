@@ -165,6 +165,55 @@ class AgentHelpTextTest {
     }
 
     @Test
+    fun `install section recommends cnavMoveClass for moving a class`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        assertContains(text, "cnavMoveClass")
+    }
+
+    @Test
+    fun `install section recommends cnavRenameMethod for renaming a method`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        assertContains(text, "cnavRenameMethod")
+    }
+
+    @Test
+    fun `install section warns against manual import edits after refactoring`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        assertTrue(
+            text.contains("manually edit") || text.contains("don't manually") || text.contains("Do not manually"),
+            "Should warn agents not to manually edit imports after moving/renaming",
+        )
+    }
+
+    @Test
+    fun `Maven install section recommends move-class goal`() {
+        val text = AgentHelpText.generate(BuildTool.MAVEN, section = "install")
+
+        assertContains(text, "cnav:move-class")
+    }
+
+    @Test
+    fun `compact section has a Common Refactoring Tasks section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "Common Refactoring Tasks")
+    }
+
+    @Test
+    fun `Common Refactoring Tasks section lists all refactoring commands`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val refactorSection = text.substringAfter("--- Common Refactoring Tasks ---").substringBefore("--- Common Questions")
+
+        assertContains(refactorSection, "cnavMoveClass")
+        assertContains(refactorSection, "cnavRenameMethod")
+        assertContains(refactorSection, "cnavRenameProperty")
+        assertContains(refactorSection, "cnavRenameParam")
+    }
+
+    @Test
     fun `Maven install section references Maven agent-help goal`() {
         val text = AgentHelpText.generate(BuildTool.MAVEN, section = "install")
 
