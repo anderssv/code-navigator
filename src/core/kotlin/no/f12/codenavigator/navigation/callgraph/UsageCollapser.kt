@@ -16,6 +16,9 @@ object UsageCollapser {
 
     private val INSTANTIATION_TARGETS = setOf("new", "<init>", "checkcast")
 
+    /** Coroutine continuation methods that should collapse to the enclosing source method. */
+    private val COROUTINE_METHODS = setOf("invoke", "invokeSuspend", "create")
+
     fun collapse(usages: List<UsageSite>): List<CollapsedUsage> {
         data class GroupKey(
             val callerClass: ClassName,
@@ -24,7 +27,7 @@ object UsageCollapser {
         )
 
         return usages
-            .groupBy { GroupKey(it.callerClass.collapseLambda(), collapseCallerMethod(it), it.targetOwner) }
+            .groupBy { GroupKey(it.callerClass.collapseLambda(), collapseCallerMethod(it), it.targetOwner.collapseLambda()) }
             .map { (key, sites) ->
                 val kinds = mutableSetOf<String>()
                 for (site in sites) {
@@ -43,6 +46,8 @@ object UsageCollapser {
                     sourceSet = sites.first().sourceSet,
                 )
             }
+            // Filter self-referential: caller top-level class == target top-level class
+            .filter { it.callerClass.topLevelClass() != it.targetOwner.topLevelClass() }
             .sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))
     }
 
@@ -58,6 +63,10 @@ object UsageCollapser {
         val method = site.callerMethod
         if (method == "<field>") return "<field>"
         if (method.contains("\$lambda\$")) return method.substringBefore("\$lambda\$")
+        // Collapse coroutine continuation methods — the real source method is encoded
+        // in the inner class name segments, but we can't reliably extract it.
+        // Collapse to a generic marker so they group together.
+        if (method in COROUTINE_METHODS && site.callerClass.isSynthetic()) return "<coroutine>"
         return method
     }
 }

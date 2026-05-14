@@ -8,7 +8,6 @@ import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
 import no.f12.codenavigator.navigation.callgraph.SmartUsageResult
 import no.f12.codenavigator.navigation.callgraph.UsageCollapser
-import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.core.GroupBy
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.callgraph.UsageFormatter
@@ -56,9 +55,12 @@ abstract class FindUsagesTask : DefaultTask() {
             InterfaceRegistryCache.getOrBuild(cacheFile, classDirectories).data
         } else null
 
-        val implementations = if (interfaceRegistry != null && targetType != null) {
-            interfaceRegistry.implementorsOf(ClassName(targetType))
+        // Use findInterfaces() — same regex-based containsMatchIn resolution as all other commands
+        val matchedInterfaces = if (interfaceRegistry != null && targetType != null) {
+            interfaceRegistry.findInterfaces(targetType)
         } else emptyList()
+
+        val implementations = matchedInterfaces.flatMap { interfaceRegistry!!.implementorsOf(it) }
 
         // When include-impls is set and target is an interface, also scan usages of implementors
         if (config.includeImpls && implementations.isNotEmpty()) {

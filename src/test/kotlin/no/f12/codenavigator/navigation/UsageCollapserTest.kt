@@ -156,4 +156,59 @@ class UsageCollapserTest {
         assertEquals(ClassName("com.example.A"), collapsed[0].callerClass)
         assertEquals(ClassName("com.example.Z"), collapsed[1].callerClass)
     }
+
+    @Test
+    fun `self-referential entries are filtered out`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.Target"), "doWork", "Target.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+            UsageSite(ClassName("com.example.Caller"), "run", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+        )
+
+        val collapsed = UsageCollapser.collapse(usages)
+
+        assertEquals(1, collapsed.size)
+        assertEquals(ClassName("com.example.Caller"), collapsed[0].callerClass)
+    }
+
+    @Test
+    fun `inner class self-referential entries are filtered`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.Target\$Inner"), "getField", "Target.kt", ClassName("com.example.Target\$Inner"), "field", "", UsageKind.FIELD_ACCESS, SourceSet.MAIN),
+            UsageSite(ClassName("com.example.Caller"), "run", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+        )
+
+        val collapsed = UsageCollapser.collapse(usages)
+
+        assertEquals(1, collapsed.size)
+        assertEquals(ClassName("com.example.Caller"), collapsed[0].callerClass)
+    }
+
+    @Test
+    fun `coroutine methods collapse to coroutine marker`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.Service\$getCurrentStatus\$2"), "invoke", "Service.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+            UsageSite(ClassName("com.example.Service\$getCurrentStatus\$2"), "invokeSuspend", "Service.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+            UsageSite(ClassName("com.example.Service\$getCurrentStatus\$2"), "create", "Service.kt", ClassName("com.example.Target"), "new", "", UsageKind.TYPE_REFERENCE, SourceSet.MAIN),
+        )
+
+        val collapsed = UsageCollapser.collapse(usages)
+
+        assertEquals(1, collapsed.size)
+        assertEquals(ClassName("com.example.Service"), collapsed[0].callerClass)
+        assertEquals("<coroutine>", collapsed[0].callerMethod)
+    }
+
+    @Test
+    fun `target owner lambda classes collapse via collapseLambda`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.Caller"), "run", "Caller.kt", ClassName("com.example.Target\$doWork\$1"), "process", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+            UsageSite(ClassName("com.example.Caller"), "run", "Caller.kt", ClassName("com.example.Target"), "other", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+        )
+
+        val collapsed = UsageCollapser.collapse(usages)
+
+        // Target$doWork$1 collapses via collapseLambda to Target, merging with Target
+        assertEquals(1, collapsed.size)
+        assertEquals(ClassName("com.example.Target"), collapsed[0].targetOwner)
+    }
 }
