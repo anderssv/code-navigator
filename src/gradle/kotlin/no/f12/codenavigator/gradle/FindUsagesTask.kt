@@ -12,6 +12,7 @@ import no.f12.codenavigator.navigation.core.GroupBy
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.callgraph.UsageScanner
+import no.f12.codenavigator.navigation.core.TypeMatcher
 import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
 
 import org.gradle.api.DefaultTask
@@ -40,7 +41,10 @@ abstract class FindUsagesTask : DefaultTask() {
 
         val taggedDirs = project.taggedClassDirectories()
 
-        val result = UsageScanner.scanWithExactFallback(taggedDirs, ownerClass = config.ownerClass, method = config.method, field = config.field, type = config.type)
+        val ownerMatcher = config.ownerClass?.let { TypeMatcher.fromPattern(it) }
+        val typeMatcher = config.type?.let { TypeMatcher.fromPattern(it) }
+
+        val result = UsageScanner.scanTagged(taggedDirs, ownerMatcher = ownerMatcher, method = config.method, field = config.field, typeMatcher = typeMatcher)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val afterPackageFilter = UsageScanner.filterOutsidePackage(result.data, config.outsidePackage)
