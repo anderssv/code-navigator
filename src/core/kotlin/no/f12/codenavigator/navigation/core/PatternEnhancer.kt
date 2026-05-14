@@ -18,14 +18,6 @@ object PatternEnhancer {
     fun looksLikeFqn(pattern: String): Boolean =
         pattern.contains('.') && !REGEX_META_NO_DOT.containsMatchIn(pattern)
 
-    /**
-     * Escapes a pattern for exact (literal) matching as a regex.
-     * Anchored so that "com.example.Foo" matches exactly that class
-     * and its inner classes (com.example.Foo$Bar) but not com.example.FooBar.
-     */
-    fun escapeForExactMatch(pattern: String): String =
-        Regex.escape(pattern) + "(\\\$.*)?$"
-
     fun enhance(pattern: String): String {
         if (REGEX_META.containsMatchIn(pattern) || pattern.contains('.')) return pattern
 

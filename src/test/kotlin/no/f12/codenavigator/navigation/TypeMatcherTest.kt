@@ -1,0 +1,84 @@
+package no.f12.codenavigator.navigation
+
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.TypeMatcher
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+
+class TypeMatcherTest {
+
+    @Test
+    fun `fromPattern produces ExactMatcher for FQN patterns`() {
+        val matcher = TypeMatcher.fromPattern("com.example.Service")
+
+        assertIs<TypeMatcher.ExactMatcher>(matcher)
+    }
+
+    @Test
+    fun `fromPattern produces RegexMatcher for short name patterns`() {
+        val matcher = TypeMatcher.fromPattern("Service")
+
+        assertIs<TypeMatcher.RegexMatcher>(matcher)
+    }
+
+    @Test
+    fun `fromPattern produces RegexMatcher for patterns with regex metacharacters`() {
+        val matcher = TypeMatcher.fromPattern("com.example.*Service")
+
+        assertIs<TypeMatcher.RegexMatcher>(matcher)
+    }
+
+    @Test
+    fun `ExactMatcher matches exact class name`() {
+        val matcher = TypeMatcher.ExactMatcher(ClassName("com.example.Service"))
+
+        assertEquals(true, matcher.matches(ClassName("com.example.Service")))
+    }
+
+    @Test
+    fun `ExactMatcher matches inner classes`() {
+        val matcher = TypeMatcher.ExactMatcher(ClassName("com.example.Service"))
+
+        assertEquals(true, matcher.matches(ClassName("com.example.Service\$Inner")))
+        assertEquals(true, matcher.matches(ClassName("com.example.Service\$Companion")))
+    }
+
+    @Test
+    fun `ExactMatcher does not match longer class names`() {
+        val matcher = TypeMatcher.ExactMatcher(ClassName("com.example.Service"))
+
+        assertEquals(false, matcher.matches(ClassName("com.example.ServiceImpl")))
+        assertEquals(false, matcher.matches(ClassName("com.example.ServiceResult")))
+    }
+
+    @Test
+    fun `ExactMatcher does not match different packages`() {
+        val matcher = TypeMatcher.ExactMatcher(ClassName("com.example.Service"))
+
+        assertEquals(false, matcher.matches(ClassName("com.other.Service")))
+    }
+
+    @Test
+    fun `RegexMatcher matches substring with containsMatchIn`() {
+        val matcher = TypeMatcher.RegexMatcher(Regex("Service", RegexOption.IGNORE_CASE))
+
+        assertEquals(true, matcher.matches(ClassName("com.example.Service")))
+        assertEquals(true, matcher.matches(ClassName("com.example.ServiceImpl")))
+        assertEquals(true, matcher.matches(ClassName("com.example.MyService")))
+    }
+
+    @Test
+    fun `RegexMatcher is case-insensitive`() {
+        val matcher = TypeMatcher.RegexMatcher(Regex("service", RegexOption.IGNORE_CASE))
+
+        assertEquals(true, matcher.matches(ClassName("com.example.Service")))
+    }
+
+    @Test
+    fun `RegexMatcher does not match unrelated classes`() {
+        val matcher = TypeMatcher.RegexMatcher(Regex("Service", RegexOption.IGNORE_CASE))
+
+        assertEquals(false, matcher.matches(ClassName("com.example.Repository")))
+    }
+}
