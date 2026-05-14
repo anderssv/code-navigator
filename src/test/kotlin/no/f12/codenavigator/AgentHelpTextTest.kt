@@ -107,7 +107,8 @@ class AgentHelpTextTest {
     fun `install section emphasizes using cnav instead of grep`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
 
-        assertContains(text, "instead of grep")
+        assertContains(text, "NEVER")
+        assertContains(text, "grep")
     }
 
     @Test
@@ -126,7 +127,7 @@ class AgentHelpTextTest {
         val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
 
         assertTrue(text.contains("bytecode"), "Should mention bytecode analysis")
-        assertTrue(text.contains("single query"), "Should mention single query completeness")
+        assertTrue(text.contains("grep misses") || text.contains("grep miss"), "Should explain what grep misses")
     }
 
     @Test
@@ -161,6 +162,26 @@ class AgentHelpTextTest {
         assertTrue(
             text.contains("moving") || text.contains("renaming") || text.contains("deleting"),
             "Should mention moving/renaming/deleting as a key use case for cnavFindUsages",
+        )
+    }
+
+    @Test
+    fun `install section has prohibition against grep for code references`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "install")
+
+        assertTrue(
+            text.contains("NEVER") && text.contains("grep"),
+            "Install section should have a NEVER prohibition for grep on code references",
+        )
+    }
+
+    @Test
+    fun `Maven install section has prohibition against grep for code references`() {
+        val text = AgentHelpText.generate(BuildTool.MAVEN, section = "install")
+
+        assertTrue(
+            text.contains("NEVER") && text.contains("grep"),
+            "Maven install section should have a NEVER prohibition for grep on code references",
         )
     }
 
@@ -459,7 +480,7 @@ class AgentHelpTextTest {
     fun `agent help text includes when-to-use guidance`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
 
-        assertTrue(text.contains("Always use code-navigator instead of grep"), "Should emphasize cnav over grep")
+        assertTrue(text.contains("NEVER use grep"), "Should prohibit grep for code references")
         assertTrue(text.contains("Use grep"), "Should have when-to-use-grep section")
     }
 
