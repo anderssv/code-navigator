@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.1.72-SNAPSHOT
+## 0.1.72
 
 - **Improved:** `cnavAgentHelp` now surfaces refactoring tasks by intent. The compact output has a new "Common Refactoring Tasks" section listing `cnavMoveClass`, `cnavRenameMethod`, `cnavRenameProperty`, `cnavRenameParam` as the answer to "I want to move/rename X" rather than requiring agents to find them in a parameter table. The `install` section (recommended paste target for project AGENTS.md files) now names write commands first and warns against manually editing imports after a refactor.
+- **Improved:** Both the `install` and compact `cnavAgentHelp` outputs now use prohibition framing (NEVER/ALWAYS) instead of suggestion framing (IMPORTANT/Always) for grep vs. cnav tool routing. This is the single highest-leverage change for preventing agents from defaulting to grep for code references.
 
 ## 0.1.71
 
