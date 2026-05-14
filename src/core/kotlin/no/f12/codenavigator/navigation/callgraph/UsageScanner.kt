@@ -64,10 +64,20 @@ object UsageScanner {
         field: String? = null,
         type: String? = null,
     ): ScanResult<List<UsageSite>> {
-        val usages = mutableSetOf<UsageSite>()
-        val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
         val ownerMatcher = ownerClass?.let { TypeMatcher.RegexMatcher(Regex(it, RegexOption.IGNORE_CASE)) }
         val typeMatcher = type?.let { TypeMatcher.RegexMatcher(Regex(it, RegexOption.IGNORE_CASE)) }
+        return scanTagged(taggedDirectories, ownerMatcher = ownerMatcher, method = method, field = field, typeMatcher = typeMatcher)
+    }
+
+    fun scanTagged(
+        taggedDirectories: List<Pair<File, SourceSet?>>,
+        ownerMatcher: TypeMatcher? = null,
+        method: String? = null,
+        field: String? = null,
+        typeMatcher: TypeMatcher? = null,
+    ): ScanResult<List<UsageSite>> {
+        val usages = mutableSetOf<UsageSite>()
+        val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
 
         taggedDirectories
             .filter { it.first.exists() }
