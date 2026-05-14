@@ -2,7 +2,6 @@ package no.f12.codenavigator.navigation.callgraph
 
 import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.core.PackageName
-import no.f12.codenavigator.navigation.core.PatternEnhancer
 import no.f12.codenavigator.navigation.core.ScanResult
 import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.core.TypeMatcher
@@ -94,31 +93,6 @@ object UsageScanner {
             }
 
         return ScanResult(usages.toList(), skipped)
-    }
-
-    /**
-     * Two-pass scan: when ownerClass or type looks like a FQN, first try an exact
-     * (escaped) match. Only fall back to the original regex-based fuzzy match if
-     * the exact pass finds no results.
-     */
-    fun scanWithExactFallback(
-        taggedDirectories: List<Pair<File, SourceSet?>>,
-        ownerClass: String? = null,
-        method: String? = null,
-        field: String? = null,
-        type: String? = null,
-    ): ScanResult<List<UsageSite>> {
-        val ownerIsFqn = ownerClass != null && PatternEnhancer.looksLikeFqn(ownerClass)
-        val typeIsFqn = type != null && PatternEnhancer.looksLikeFqn(type)
-
-        if (ownerIsFqn || typeIsFqn) {
-            val exactOwner = if (ownerIsFqn) PatternEnhancer.escapeForExactMatch(ownerClass!!) else ownerClass
-            val exactType = if (typeIsFqn) PatternEnhancer.escapeForExactMatch(type!!) else type
-            val exactResult = scanTagged(taggedDirectories, ownerClass = exactOwner, method = method, field = field, type = exactType)
-            if (exactResult.data.isNotEmpty()) return exactResult
-        }
-
-        return scanTagged(taggedDirectories, ownerClass = ownerClass, method = method, field = field, type = type)
     }
 
     private fun extractUsages(
