@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.73-SNAPSHOT
+
+- **New:** `cnavFindUsages` now collapses bytecode noise by default. Constructor patterns (`new` + `<init>` + `checkcast`) are merged into a single `instantiation` entry. Lambda caller classes (e.g., `Service$getCurrentStatus$2$deferred$1`) collapse to their enclosing class (`Service`). Multiple reference kinds from the same caller/target pair merge into one line with combined kind tags (e.g., `instantiation,method-call`). The flat output format is preserved — each line is self-contained with file name and scope tag. Use `-Praw=true` to get the previous bytecode-level output.
+
 ## 0.1.72
 
 - **Improved:** `cnavAgentHelp` now surfaces refactoring tasks by intent. The compact output has a new "Common Refactoring Tasks" section listing `cnavMoveClass`, `cnavRenameMethod`, `cnavRenameProperty`, `cnavRenameParam` as the answer to "I want to move/rename X" rather than requiring agents to find them in a parameter table. The `install` section (recommended paste target for project AGENTS.md files) now names write commands first and warns against manually editing imports after a refactor.

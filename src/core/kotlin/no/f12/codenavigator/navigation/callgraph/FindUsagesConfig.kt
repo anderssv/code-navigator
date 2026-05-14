@@ -16,6 +16,7 @@ data class FindUsagesConfig(
     val filterSynthetic: Boolean,
     val scope: Scope,
     val groupBy: GroupBy,
+    val raw: Boolean,
     val format: OutputFormat,
 ) {
     fun filterBySourceSet(usages: List<UsageSite>): List<UsageSite> {
@@ -58,6 +59,7 @@ data class FindUsagesConfig(
                 filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
                 scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
                 groupBy = GroupBy.parse(TaskRegistry.GROUP_BY.parseFrom(properties)),
+                raw = TaskRegistry.RAW.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
             )
         }

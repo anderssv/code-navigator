@@ -12,6 +12,16 @@ object UsageFormatter {
             }
     }
 
+    fun formatCollapsed(usages: List<CollapsedUsage>): String {
+        if (usages.isEmpty()) return "No usages found."
+
+        return usages
+            .joinToString("\n") { u ->
+                val sourceSetTag = u.sourceSet?.let { " [${it.label}]" } ?: ""
+                "${u.callerClass}.${u.callerMethod} → ${u.targetOwner} (${u.sourceFile}) [${u.kinds.sorted().joinToString(", ")}]$sourceSetTag"
+            }
+    }
+
     fun formatSummary(usages: List<UsageSite>): String {
         if (usages.isEmpty()) return "No usages found."
         return usages

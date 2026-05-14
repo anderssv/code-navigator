@@ -233,6 +233,48 @@ When `include-external=true`, `ClassTypeCollector` only scans project class dire
 
 ---
 
+## Find-usages output quality
+
+From field test (v0.1.72): `cnavFindUsages` output is noisy at bytecode level. A single logical call site (e.g., constructing `RAClientImpl`) produces 3-4 lines (`.new` type ref + `.<init>` method call + `.checkcast` + field access). Lambda classes like `MonitorService$getCurrentStatus$2$raClientStatusDeferred$1` obscure the actual caller. Users pipe through `grep -v` to find meaningful results.
+
+Ordered by dependency — collapsing enables the summary mode, and smart usages builds on the cleaner output.
+
+### ~~Collapse bytecode noise in find-usages output~~ — DONE (v0.1.73)
+
+Implemented in `UsageCollapser`. Collapsed output is the default; `-Praw=true` for bytecode-level detail.
+
+### ~~Call-site summary mode for find-usages~~ — DONE (v0.1.73)
+
+Merged into the collapsing step. Each line is flat and self-contained with combined kind tags.
+
+### Smart usages — auto-include interface implementations
+
+**Value: high** | **Effort: medium**
+
+From field test: when asking "where is `RAClient` used?", the most useful answer combines:
+1. What implements `RAClient` (the interface)
+2. Where `RAClient` and its implementations are referenced
+
+Currently these are two separate commands (`cnavFindInterfaces` + `cnavFindUsages`) that must be mentally combined.
+
+- **Approach**: When `cnavFindUsages -Ptype=X` targets a type that is an interface (detectable from bytecode flags), automatically:
+  1. Load `InterfaceRegistry` (infrastructure already exists in `interfaces/` package)
+  2. Include an "Implementations" section in output listing concrete classes
+  3. Optionally expand the usage search to include references to implementors (`-Pinclude-impls=true`)
+- **Output shape** (flat, each line self-contained):
+  ```
+  [impl] RAClientImpl ra/RAClientImpl.kt [prod]
+  [impl] CachingRAClient ra/CachingRAClient.kt [prod]
+  [impl] RAClientFake services/interfaces/RAClientFake.kt [test]
+  [ref] AppDependencies.create -> RAClient instantiation,field-access AppDependencies.kt [prod]
+  [ref] MonitorService.getCurrentStatus -> RAClient method-call MonitorService.kt [prod]
+  [ref] MetricsTest.setup -> RAClient instantiation,method-call MetricsTest.kt [test]
+  ```
+- **Relates to**: `cnavContext` already combines class detail + callers + interfaces. Smart usages is lighter — just usage list + implementations, no full class detail.
+- **Infrastructure**: `InterfaceRegistry` + `InterfaceRegistryCache` exist. `FindUsagesTask` needs to optionally load the registry and check if the target is an interface. `ContextTask` already does similar wiring.
+
+---
+
 ## Output & UX improvements
 
 Improvements to task output, discoverability, and agent experience.

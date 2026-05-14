@@ -143,6 +143,7 @@ object HelpText {
         appendLine("      ${pd(TaskRegistry.FILTER_SYNTHETIC)}")
         appendLine("      ${pd(TaskRegistry.SCOPE, "Show only usages from production or test source set")}")
         appendLine("      ${pd(TaskRegistry.GROUP_BY, "Collapse results to one line per source file with a reference count")}")
+        appendLine("      ${pd(TaskRegistry.RAW, "Show raw bytecode-level output without collapsing")}")
         appendLine("      * Provide either 'owner-class' or 'type'. Use 'type' for comprehensive search.")
         appendLine("      * 'method' and 'field' are mutually exclusive. 'field' requires 'owner-class'.")
         examples(TaskRegistry.FIND_USAGES)

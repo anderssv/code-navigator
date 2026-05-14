@@ -222,6 +222,7 @@ class FindUsagesConfigTest {
         filterSynthetic = true,
         scope = scope,
         groupBy = GroupBy.NONE,
+        raw = false,
         format = OutputFormat.TEXT,
     )
 
@@ -313,6 +314,7 @@ class FindUsagesConfigTest {
             filterSynthetic = false,
             scope = Scope.ALL,
             groupBy = GroupBy.NONE,
+            raw = false,
             format = OutputFormat.TEXT,
         )
         val filtered = cfg.filterSyntheticCallers(usages)

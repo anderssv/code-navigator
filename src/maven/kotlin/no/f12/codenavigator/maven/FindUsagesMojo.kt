@@ -5,6 +5,7 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
+import no.f12.codenavigator.navigation.callgraph.UsageCollapser
 import no.f12.codenavigator.navigation.core.GroupBy
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.callgraph.UsageFormatter
@@ -55,6 +56,9 @@ class FindUsagesMojo : AbstractMojo() {
     @Parameter(property = "group-by")
     private var groupBy: String? = null
 
+    @Parameter(property = "raw")
+    private var raw: String? = null
+
     override fun execute() {
         val config = try {
             FindUsagesConfig.parse(TaskRegistry.FIND_USAGES.enhanceProperties(buildPropertyMap()))
@@ -88,21 +92,24 @@ class FindUsagesMojo : AbstractMojo() {
 
         println(OutputWrapper.formatAndWrap(config.format,
             text = {
-                when (config.groupBy) {
-                    GroupBy.FILE -> UsageFormatter.formatSummary(usages)
-                    GroupBy.NONE -> UsageFormatter.format(usages)
+                when {
+                    config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummary(usages)
+                    config.raw -> UsageFormatter.format(usages)
+                    else -> UsageFormatter.formatCollapsed(UsageCollapser.collapse(usages))
                 }
             },
             json = {
-                when (config.groupBy) {
-                    GroupBy.FILE -> JsonFormatter.formatUsagesSummary(usages)
-                    GroupBy.NONE -> JsonFormatter.formatUsages(usages)
+                when {
+                    config.groupBy == GroupBy.FILE -> JsonFormatter.formatUsagesSummary(usages)
+                    config.raw -> JsonFormatter.formatUsages(usages)
+                    else -> JsonFormatter.formatCollapsedUsages(UsageCollapser.collapse(usages))
                 }
             },
             llm = {
-                when (config.groupBy) {
-                    GroupBy.FILE -> LlmFormatter.formatUsagesSummary(usages)
-                    GroupBy.NONE -> LlmFormatter.formatUsages(usages)
+                when {
+                    config.groupBy == GroupBy.FILE -> LlmFormatter.formatUsagesSummary(usages)
+                    config.raw -> LlmFormatter.formatUsages(usages)
+                    else -> LlmFormatter.formatCollapsedUsages(UsageCollapser.collapse(usages))
                 }
             },
         ))
@@ -119,5 +126,6 @@ class FindUsagesMojo : AbstractMojo() {
         scope?.let { put("scope", it) }
         filterSynthetic?.let { put("filter-synthetic", it) }
         groupBy?.let { put("group-by", it) }
+        raw?.let { put("raw", it) }
     }
 }

@@ -31,6 +31,7 @@ import no.f12.codenavigator.navigation.hierarchy.SupertypeInfo
 import no.f12.codenavigator.navigation.hierarchy.SupertypeKind
 import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyResult
+import no.f12.codenavigator.navigation.callgraph.CollapsedUsage
 import no.f12.codenavigator.navigation.callgraph.UsageSite
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.callgraph.AnnotationTag
@@ -159,6 +160,12 @@ object LlmFormatter {
             .toSortedMap()
             .entries
             .joinToString("\n") { (sourceFile, sites) -> "$sourceFile ${sites.size}" }
+
+    fun formatCollapsedUsages(usages: List<CollapsedUsage>): String =
+        usages.joinToString("\n") { u ->
+            val sourceSetTag = u.sourceSet?.let { " [${it.label}]" } ?: ""
+            "${u.callerClass}.${u.callerMethod} -> ${u.targetOwner} ${u.kinds.sorted().joinToString(",")} ${u.sourceFile}$sourceSetTag"
+        }
 
     fun formatRank(ranked: List<RankedType>): String =
         ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }

@@ -5,6 +5,7 @@ import no.f12.codenavigator.navigation.core.SourceSet
 import no.f12.codenavigator.navigation.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.callgraph.UsageKind
 import no.f12.codenavigator.navigation.callgraph.UsageSite
+import no.f12.codenavigator.navigation.callgraph.CollapsedUsage
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import kotlin.test.Test
@@ -328,5 +329,79 @@ class UsageFormatterTest {
         val json = JsonFormatter.formatUsages(usages)
 
         assertFalse(json.contains("sourceSet"))
+    }
+
+    // --- Collapsed usage formatting ---
+
+    @Test
+    fun `LLM formats collapsed usage with single kind`() {
+        val collapsed = listOf(
+            CollapsedUsage(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), setOf("method-call"), SourceSet.MAIN),
+        )
+
+        val result = LlmFormatter.formatCollapsedUsages(collapsed)
+
+        assertEquals("com.example.Caller.doWork -> com.example.Target method-call Caller.kt [prod]", result)
+    }
+
+    @Test
+    fun `LLM formats collapsed usage with multiple kinds`() {
+        val collapsed = listOf(
+            CollapsedUsage(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), setOf("instantiation", "method-call"), SourceSet.MAIN),
+        )
+
+        val result = LlmFormatter.formatCollapsedUsages(collapsed)
+
+        assertEquals("com.example.Caller.doWork -> com.example.Target instantiation,method-call Caller.kt [prod]", result)
+    }
+
+    @Test
+    fun `TEXT formats collapsed usages`() {
+        val collapsed = listOf(
+            CollapsedUsage(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), setOf("instantiation"), SourceSet.MAIN),
+        )
+
+        val result = UsageFormatter.formatCollapsed(collapsed)
+
+        assertTrue(result.contains("com.example.Caller.doWork"))
+        assertTrue(result.contains("com.example.Target"))
+        assertTrue(result.contains("instantiation"))
+        assertTrue(result.contains("Caller.kt"))
+    }
+
+    @Test
+    fun `JSON formats collapsed usages`() {
+        val collapsed = listOf(
+            CollapsedUsage(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), setOf("instantiation", "method-call"), SourceSet.TEST),
+        )
+
+        val json = JsonFormatter.formatCollapsedUsages(collapsed)
+
+        assertTrue(json.contains("\"callerClass\":\"com.example.Caller\""))
+        assertTrue(json.contains("\"callerMethod\":\"doWork\""))
+        assertTrue(json.contains("\"targetOwner\":\"com.example.Target\""))
+        assertTrue(json.contains("\"kinds\":[\"instantiation\",\"method-call\"]"))
+        assertTrue(json.contains("\"sourceSet\":\"test\""))
+    }
+
+    @Test
+    fun `LLM collapsed formats empty list as empty string`() {
+        val result = LlmFormatter.formatCollapsedUsages(emptyList())
+
+        assertEquals("", result)
+    }
+
+    @Test
+    fun `TEXT collapsed formats empty list as no usages message`() {
+        val result = UsageFormatter.formatCollapsed(emptyList())
+
+        assertEquals("No usages found.", result)
+    }
+
+    @Test
+    fun `JSON collapsed formats empty list as empty array`() {
+        val result = JsonFormatter.formatCollapsedUsages(emptyList())
+
+        assertEquals("[]", result)
     }
 }

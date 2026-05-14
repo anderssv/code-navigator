@@ -29,6 +29,7 @@ import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.stringconstant.StringConstantMatch
 import no.f12.codenavigator.navigation.hierarchy.SupertypeInfo
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyResult
+import no.f12.codenavigator.navigation.callgraph.CollapsedUsage
 import no.f12.codenavigator.navigation.callgraph.UsageSite
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
@@ -299,6 +300,18 @@ object JsonFormatter {
             )
         }
     }
+
+    fun formatCollapsedUsages(usages: List<CollapsedUsage>): String =
+        jsonArray(usages) { u ->
+            jsonObject(
+                "callerClass" to u.callerClass.toString(),
+                "callerMethod" to u.callerMethod,
+                "sourceFile" to u.sourceFile,
+                "targetOwner" to u.targetOwner.toString(),
+                "kinds" to JsonRaw(jsonStringArray(u.kinds.sorted())),
+                "sourceSet" to u.sourceSet?.label,
+            )
+        }
 
     fun formatRank(ranked: List<RankedType>): String =
         jsonArray(ranked) { r ->

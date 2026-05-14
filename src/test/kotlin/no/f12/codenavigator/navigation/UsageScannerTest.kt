@@ -868,6 +868,7 @@ class UsageScannerTest {
             filterSynthetic = true,
             scope = Scope.ALL,
             groupBy = GroupBy.NONE,
+            raw = false,
             format = OutputFormat.TEXT,
         )
         val filtered = config.filterSyntheticCallers(allUsages)
@@ -902,6 +903,7 @@ class UsageScannerTest {
             filterSynthetic = false,
             scope = Scope.ALL,
             groupBy = GroupBy.NONE,
+            raw = false,
             format = OutputFormat.TEXT,
         )
         val filtered = config.filterSyntheticCallers(allUsages)

@@ -1030,6 +1030,7 @@ class TaskRegistryTest {
             "to" to ParamType.STRING,
             "property" to ParamType.STRING,
             "preview" to ParamType.FLAG,
+            "raw" to ParamType.FLAG,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }
