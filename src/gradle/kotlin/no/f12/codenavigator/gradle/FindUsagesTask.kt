@@ -71,8 +71,6 @@ abstract class FindUsagesTask : DefaultTask() {
             }
         }
 
-        val smartResult = SmartUsageResult(implementations, usages)
-
         if (usages.isEmpty() && implementations.isEmpty()) {
             val target = UsageFormatter.noResultsTarget(config.ownerClass, config.method, config.field, config.type)
             val hints = UsageFormatter.noResultsHints(config.ownerClass, config.method, config.field, config.type)
@@ -81,30 +79,36 @@ abstract class FindUsagesTask : DefaultTask() {
         }
 
         val hasImpls = implementations.isNotEmpty()
+        val interfaceTypeSet = matchedInterfaces.toSet()
+        val collapsed = if (!config.raw) UsageCollapser.collapse(usages, interfaceTypeSet) else emptyList()
+
+        // Derive matched types from collapsed output — use topLevelClass to merge inner classes
+        val matchedTypes = collapsed.map { it.targetOwner.topLevelClass() }.distinct().sorted()
+        val smartResult = SmartUsageResult(implementations, usages, matchedTypes, interfaceTypeSet)
 
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
             text = {
                 when {
                     config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummary(usages)
                     config.raw -> UsageFormatter.format(usages)
-                    hasImpls -> UsageFormatter.formatSmartUsages(smartResult, UsageCollapser.collapse(usages))
-                    else -> UsageFormatter.formatCollapsed(UsageCollapser.collapse(usages))
+                    hasImpls -> UsageFormatter.formatSmartUsages(smartResult, collapsed)
+                    else -> UsageFormatter.formatCollapsed(collapsed)
                 }
             },
             json = {
                 when {
                     config.groupBy == GroupBy.FILE -> JsonFormatter.formatUsagesSummary(usages)
                     config.raw -> JsonFormatter.formatUsages(usages)
-                    hasImpls -> JsonFormatter.formatSmartUsages(smartResult, UsageCollapser.collapse(usages))
-                    else -> JsonFormatter.formatCollapsedUsages(UsageCollapser.collapse(usages))
+                    hasImpls -> JsonFormatter.formatSmartUsages(smartResult, collapsed)
+                    else -> JsonFormatter.formatCollapsedUsages(collapsed)
                 }
             },
             llm = {
                 when {
                     config.groupBy == GroupBy.FILE -> LlmFormatter.formatUsagesSummary(usages)
                     config.raw -> LlmFormatter.formatUsages(usages)
-                    hasImpls -> LlmFormatter.formatSmartUsages(smartResult, UsageCollapser.collapse(usages))
-                    else -> LlmFormatter.formatCollapsedUsages(UsageCollapser.collapse(usages))
+                    hasImpls -> LlmFormatter.formatSmartUsages(smartResult, collapsed)
+                    else -> LlmFormatter.formatCollapsedUsages(collapsed)
                 }
             },
         ))

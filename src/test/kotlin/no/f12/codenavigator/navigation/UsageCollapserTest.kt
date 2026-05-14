@@ -211,4 +211,33 @@ class UsageCollapserTest {
         assertEquals(1, collapsed.size)
         assertEquals(ClassName("com.example.Target"), collapsed[0].targetOwner)
     }
+
+    @Test
+    fun `interface targets sort before non-interface targets`() {
+        val interfaceType = ClassName("com.example.MyInterface")
+        val usages = listOf(
+            UsageSite(ClassName("com.example.Caller"), "a", "Caller.kt", ClassName("com.example.MyImpl"), "run", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+            UsageSite(ClassName("com.example.Caller"), "b", "Caller.kt", interfaceType, "process", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+        )
+
+        val collapsed = UsageCollapser.collapse(usages, interfaceTypes = setOf(interfaceType))
+
+        assertEquals(2, collapsed.size)
+        assertEquals(interfaceType, collapsed[0].targetOwner)
+        assertEquals(ClassName("com.example.MyImpl"), collapsed[1].targetOwner)
+    }
+
+    @Test
+    fun `without interface types falls back to target owner then caller sorting`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.Z"), "z", "Z.kt", ClassName("com.example.TargetB"), "run", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+            UsageSite(ClassName("com.example.A"), "a", "A.kt", ClassName("com.example.TargetA"), "run", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+        )
+
+        val collapsed = UsageCollapser.collapse(usages)
+
+        assertEquals(2, collapsed.size)
+        assertEquals(ClassName("com.example.TargetA"), collapsed[0].targetOwner)
+        assertEquals(ClassName("com.example.TargetB"), collapsed[1].targetOwner)
+    }
 }

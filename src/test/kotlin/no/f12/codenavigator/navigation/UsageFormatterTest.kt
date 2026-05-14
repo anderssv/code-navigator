@@ -456,4 +456,83 @@ class UsageFormatterTest {
         assertFalse(result.contains("[impl]"))
         assertTrue(result.contains("[ref]"))
     }
+
+    // --- Disambiguation hint ---
+
+    @Test
+    fun `LLM smart usages shows disambiguation hint when multiple types matched`() {
+        val smart = SmartUsageResult(
+            implementations = listOf(ImplementorInfo(ClassName("com.example.TargetImpl"), "TargetImpl.kt")),
+            usages = emptyList(),
+            matchedTypes = listOf(ClassName("com.example.Target"), ClassName("com.example.TargetImpl")),
+            interfaceTypes = setOf(ClassName("com.example.Target")),
+        )
+        val collapsed = listOf(
+            CollapsedUsage(ClassName("com.example.Service"), "run", "Service.kt", ClassName("com.example.Target"), setOf("method-call"), SourceSet.MAIN),
+        )
+
+        val result = LlmFormatter.formatSmartUsages(smart, collapsed)
+
+        assertTrue(result.contains("[matched]"), "Should contain matched header")
+        assertTrue(result.contains("com.example.Target (interface)"), "Should label interface")
+        assertTrue(result.contains("com.example.TargetImpl"), "Should list non-interface type")
+        assertTrue(result.contains("[hint]"), "Should contain hint")
+        assertTrue(result.contains("-Ptype=com.example.Target"), "Hint should suggest FQN")
+    }
+
+    @Test
+    fun `TEXT smart usages shows disambiguation hint when multiple types matched`() {
+        val smart = SmartUsageResult(
+            implementations = listOf(ImplementorInfo(ClassName("com.example.TargetImpl"), "TargetImpl.kt")),
+            usages = emptyList(),
+            matchedTypes = listOf(ClassName("com.example.Target"), ClassName("com.example.TargetImpl")),
+            interfaceTypes = setOf(ClassName("com.example.Target")),
+        )
+        val collapsed = listOf(
+            CollapsedUsage(ClassName("com.example.Service"), "run", "Service.kt", ClassName("com.example.Target"), setOf("method-call"), SourceSet.MAIN),
+        )
+
+        val result = UsageFormatter.formatSmartUsages(smart, collapsed)
+
+        assertTrue(result.contains("[matched]"), "Should contain matched header")
+        assertTrue(result.contains("[hint]"), "Should contain hint")
+    }
+
+    @Test
+    fun `smart usages omits disambiguation hint when single type matched`() {
+        val smart = SmartUsageResult(
+            implementations = listOf(ImplementorInfo(ClassName("com.example.TargetImpl"), "TargetImpl.kt")),
+            usages = emptyList(),
+            matchedTypes = listOf(ClassName("com.example.Target")),
+            interfaceTypes = setOf(ClassName("com.example.Target")),
+        )
+
+        val result = LlmFormatter.formatSmartUsages(smart, smartCollapsed())
+
+        assertFalse(result.contains("[matched]"), "Should not show matched for single type")
+        assertFalse(result.contains("[hint]"), "Should not show hint for single type")
+    }
+
+    @Test
+    fun `smart usages omits disambiguation hint when no matched types`() {
+        val result = LlmFormatter.formatSmartUsages(smartResult(), smartCollapsed())
+
+        assertFalse(result.contains("[matched]"), "Should not show matched when matchedTypes is empty")
+    }
+
+    @Test
+    fun `JSON smart usages includes matchedTypes and interfaceTypes`() {
+        val smart = SmartUsageResult(
+            implementations = listOf(ImplementorInfo(ClassName("com.example.TargetImpl"), "TargetImpl.kt")),
+            usages = emptyList(),
+            matchedTypes = listOf(ClassName("com.example.Target"), ClassName("com.example.TargetImpl")),
+            interfaceTypes = setOf(ClassName("com.example.Target")),
+        )
+
+        val json = JsonFormatter.formatSmartUsages(smart, smartCollapsed())
+
+        assertTrue(json.contains("\"matchedTypes\""), "Should include matchedTypes")
+        assertTrue(json.contains("\"interfaceTypes\""), "Should include interfaceTypes")
+        assertTrue(json.contains("com.example.Target"), "Should include interface type")
+    }
 }

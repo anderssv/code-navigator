@@ -316,6 +316,8 @@ object JsonFormatter {
 
     fun formatSmartUsages(result: SmartUsageResult, collapsedUsages: List<CollapsedUsage>): String =
         jsonObject(
+            "matchedTypes" to JsonRaw(jsonArray(result.matchedTypes) { it.toString() }),
+            "interfaceTypes" to JsonRaw(jsonArray(result.interfaceTypes.sorted()) { it.toString() }),
             "implementations" to JsonRaw(jsonArray(result.implementations) { impl ->
                 jsonObject(
                     "className" to impl.className.toString(),

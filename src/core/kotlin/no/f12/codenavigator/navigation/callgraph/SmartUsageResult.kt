@@ -13,4 +13,8 @@ data class SmartUsageResult(
     val implementations: List<ImplementorInfo>,
     /** Usages of the target type (and optionally its implementors). */
     val usages: List<UsageSite>,
+    /** All distinct target types that matched the query pattern. */
+    val matchedTypes: List<ClassName> = emptyList(),
+    /** Subset of [matchedTypes] that are interfaces. */
+    val interfaceTypes: Set<ClassName> = emptySet(),
 )

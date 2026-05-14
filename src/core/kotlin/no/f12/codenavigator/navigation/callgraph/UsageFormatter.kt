@@ -1,6 +1,22 @@
 package no.f12.codenavigator.navigation.callgraph
 
 object UsageFormatter {
+
+    /** Emit a disambiguation header when the query pattern matched multiple distinct types. */
+    private fun StringBuilder.appendDisambiguationHint(result: SmartUsageResult) {
+        if (result.matchedTypes.size > 1) {
+            val typeLabels = result.matchedTypes.sorted().joinToString(", ") { type ->
+                val label = type.toString()
+                if (type in result.interfaceTypes) "$label (interface)" else label
+            }
+            appendLine("[matched] $typeLabels")
+            val firstInterface = result.matchedTypes.filter { it in result.interfaceTypes }.minOrNull()
+            if (firstInterface != null) {
+                appendLine("[hint] For exact match, use FQN: -Ptype=$firstInterface")
+            }
+        }
+    }
+
     fun format(usages: List<UsageSite>): String {
         if (usages.isEmpty()) return "No usages found."
 
@@ -23,6 +39,7 @@ object UsageFormatter {
     }
 
     fun formatSmartUsages(result: SmartUsageResult, collapsedUsages: List<CollapsedUsage>): String = buildString {
+        appendDisambiguationHint(result)
         if (result.implementations.isNotEmpty()) {
             result.implementations.forEach { impl ->
                 appendLine("[impl] ${impl.className} (${impl.sourceFile})")
