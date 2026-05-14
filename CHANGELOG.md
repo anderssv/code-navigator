@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.74
+
+- **Improved:** `cnavFindUsages` pipeline refactored to Match→Enrich→Scan. Patterns are now resolved against `ClassIndexCache` before scanning, replacing per-class-file regex matching with O(1) set lookups. Interface detection and implementor expansion happen in a dedicated enrich phase before the single scan pass.
+- **Improved:** Self-reference filtering — usages where the caller class is the same as the target are excluded from output, reducing noise for data classes and delegation patterns.
+- **Improved:** Coroutine continuation references (`$<get-...>` accessors, `invokeSuspend` delegating to same-class methods) are collapsed to keep output focused on real call sites.
+- **Improved:** Disambiguation hint — when a short-name pattern matches multiple classes, the output includes a hint showing all matched FQNs so agents can narrow the query.
+- **Improved:** Interface-first sorting — `[impl]` lines now appear before `[ref]` lines in output for better scanability.
+- **Fixed:** `targetOwner` in field/method-signature type references now correctly reflects the matched type instead of the caller class or raw regex pattern.
+
 ## 0.1.73
 
 - **New:** `cnavFindUsages` now collapses bytecode noise by default. Constructor patterns (`new` + `<init>` + `checkcast`) are merged into a single `instantiation` entry. Lambda caller classes (e.g., `Service$getCurrentStatus$2$deferred$1`) collapse to their enclosing class (`Service`). Multiple reference kinds from the same caller/target pair merge into one line with combined kind tags (e.g., `instantiation,method-call`). The flat output format is preserved — each line is self-contained with file name and scope tag. Use `-Praw=true` to get the previous bytecode-level output.
