@@ -40,7 +40,7 @@ abstract class FindUsagesTask : DefaultTask() {
 
         val taggedDirs = project.taggedClassDirectories()
 
-        val result = UsageScanner.scanTagged(taggedDirs, ownerClass = config.ownerClass, method = config.method, field = config.field, type = config.type)
+        val result = UsageScanner.scanWithExactFallback(taggedDirs, ownerClass = config.ownerClass, method = config.method, field = config.field, type = config.type)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val afterPackageFilter = UsageScanner.filterOutsidePackage(result.data, config.outsidePackage)
@@ -78,7 +78,6 @@ abstract class FindUsagesTask : DefaultTask() {
             return
         }
 
-        val hasImpls = implementations.isNotEmpty()
         val interfaceTypeSet = matchedInterfaces.toSet()
         val collapsed = if (!config.raw) UsageCollapser.collapse(usages, interfaceTypeSet) else emptyList()
 
@@ -91,24 +90,21 @@ abstract class FindUsagesTask : DefaultTask() {
                 when {
                     config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummary(usages)
                     config.raw -> UsageFormatter.format(usages)
-                    hasImpls -> UsageFormatter.formatSmartUsages(smartResult, collapsed)
-                    else -> UsageFormatter.formatCollapsed(collapsed)
+                    else -> UsageFormatter.formatSmartUsages(smartResult, collapsed)
                 }
             },
             json = {
                 when {
                     config.groupBy == GroupBy.FILE -> JsonFormatter.formatUsagesSummary(usages)
                     config.raw -> JsonFormatter.formatUsages(usages)
-                    hasImpls -> JsonFormatter.formatSmartUsages(smartResult, collapsed)
-                    else -> JsonFormatter.formatCollapsedUsages(collapsed)
+                    else -> JsonFormatter.formatSmartUsages(smartResult, collapsed)
                 }
             },
             llm = {
                 when {
                     config.groupBy == GroupBy.FILE -> LlmFormatter.formatUsagesSummary(usages)
                     config.raw -> LlmFormatter.formatUsages(usages)
-                    hasImpls -> LlmFormatter.formatSmartUsages(smartResult, collapsed)
-                    else -> LlmFormatter.formatCollapsedUsages(collapsed)
+                    else -> LlmFormatter.formatSmartUsages(smartResult, collapsed)
                 }
             },
         ))

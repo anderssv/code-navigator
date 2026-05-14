@@ -98,4 +98,34 @@ class PatternEnhancerTest {
 
         assertEquals("Read(?:And)?(?:Or)?.*Write.*Lock", enhanced)
     }
+
+    @Test
+    fun `looksLikeFqn returns true for dotted names without metacharacters`() {
+        assertEquals(true, PatternEnhancer.looksLikeFqn("com.example.Service"))
+        assertEquals(true, PatternEnhancer.looksLikeFqn("no.f12.MyClass"))
+    }
+
+    @Test
+    fun `looksLikeFqn returns false for patterns without dots`() {
+        assertEquals(false, PatternEnhancer.looksLikeFqn("Service"))
+        assertEquals(false, PatternEnhancer.looksLikeFqn("MyService"))
+    }
+
+    @Test
+    fun `looksLikeFqn returns false for patterns with regex metacharacters`() {
+        assertEquals(false, PatternEnhancer.looksLikeFqn("com.example.*Service"))
+        assertEquals(false, PatternEnhancer.looksLikeFqn("com.example.Service|Other"))
+    }
+
+    @Test
+    fun `escapeForExactMatch produces regex that matches literal class and inner classes only`() {
+        val escaped = PatternEnhancer.escapeForExactMatch("com.example.Service")
+        val regex = Regex(escaped, RegexOption.IGNORE_CASE)
+
+        assertEquals(true, regex.containsMatchIn("com.example.Service"))
+        assertEquals(true, regex.containsMatchIn("com.example.Service\$Inner"))
+        assertEquals(false, regex.containsMatchIn("comXexampleXService"))
+        assertEquals(false, regex.containsMatchIn("com.example.ServiceImpl"))
+        assertEquals(false, regex.containsMatchIn("com.example.ServiceResult"))
+    }
 }
