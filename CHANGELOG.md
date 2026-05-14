@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.75
+
+- **Fixed:** `cnavFindSymbol`, `cnavListClasses`, `cnavClassDetail`, and `cnavDeadCode` crashed with `Artifact 'task ':jar'' not found in runtimeClasspath` on projects that have a `jar` task. Property reading now uses CLI `-P` properties exclusively instead of `Project.findProperty()`, which incorrectly picked up Gradle-internal project properties (like task references).
+
 ## 0.1.74
 
 - **Improved:** `cnavFindUsages` pipeline refactored to Match→Enrich→Scan. Patterns are now resolved against `ClassIndexCache` before scanning, replacing per-class-file regex matching with O(1) set lookups. Interface detection and implementor expansion happen in a dedicated enrich phase before the single scan pass.
