@@ -80,12 +80,27 @@ private fun Project.buildPropertyMap(
     propertyNames: List<String>,
     flagNames: List<String>,
 ): Map<String, String?> {
+    val cliProperties = project.gradle.startParameter.projectProperties
+    return extractProperties(cliProperties, propertyNames, flagNames)
+}
+
+/**
+ * Extracts property and flag values from the given source map.
+ * Only values present in [source] are included — this prevents
+ * accidentally picking up Gradle-internal project properties
+ * (like the `jar` task reference) that `Project.findProperty()` would return.
+ */
+internal fun extractProperties(
+    source: Map<String, String>,
+    propertyNames: List<String>,
+    flagNames: List<String>,
+): Map<String, String?> {
     val map = mutableMapOf<String, String?>()
     for (name in propertyNames) {
-        findProperty(name)?.let { map[name] = it.toString() }
+        source[name]?.let { map[name] = it }
     }
     for (name in flagNames) {
-        if (hasProperty(name)) {
+        if (name in source) {
             map[name] = null
         }
     }
