@@ -32,6 +32,9 @@ class InterfaceRegistry(
     fun implementorsOf(interfaceName: ClassName): List<ImplementorInfo> =
         interfaceToImplementors[interfaceName] ?: emptyList()
 
+    fun isInterface(className: ClassName): Boolean =
+        className in interfaceToImplementors
+
     fun interfacesOf(className: ClassName): Set<ClassName> =
         classToInterfaces[className] ?: emptySet()
 

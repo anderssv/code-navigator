@@ -20,6 +20,19 @@ sealed interface TypeMatcher {
                 className.value.startsWith("${target.value}$")
     }
 
+    /** Matches any class in the given set (O(1) lookup), plus their inner classes. */
+    data class SetMatcher(val targets: Set<ClassName>) : TypeMatcher {
+        override fun matches(className: ClassName): Boolean =
+            className in targets ||
+                targets.any { className.value.startsWith("${it.value}$") }
+    }
+
+    /** Matches any class that matches at least one of the delegates. */
+    data class AnyOf(val matchers: List<TypeMatcher>) : TypeMatcher {
+        override fun matches(className: ClassName): Boolean =
+            matchers.any { it.matches(className) }
+    }
+
     companion object {
         /**
          * Builds the appropriate matcher for a pattern string.
@@ -32,5 +45,14 @@ sealed interface TypeMatcher {
             } else {
                 RegexMatcher(Regex(pattern, RegexOption.IGNORE_CASE))
             }
+
+        /**
+         * Resolves a pattern against a set of known class names.
+         * Returns the concrete class names that match (using exact-first semantics).
+         */
+        fun resolve(pattern: String, allClassNames: Collection<ClassName>): Set<ClassName> {
+            val matcher = fromPattern(pattern)
+            return allClassNames.filterTo(mutableSetOf()) { matcher.matches(it) }
+        }
     }
 }

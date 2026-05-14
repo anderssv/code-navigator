@@ -81,4 +81,50 @@ class TypeMatcherTest {
 
         assertEquals(false, matcher.matches(ClassName("com.example.Repository")))
     }
+
+    @Test
+    fun `SetMatcher matches classes in the set`() {
+        val matcher = TypeMatcher.SetMatcher(setOf(
+            ClassName("com.example.Foo"),
+            ClassName("com.example.Bar"),
+        ))
+
+        assertEquals(true, matcher.matches(ClassName("com.example.Foo")))
+        assertEquals(true, matcher.matches(ClassName("com.example.Bar")))
+        assertEquals(false, matcher.matches(ClassName("com.example.Baz")))
+    }
+
+    @Test
+    fun `SetMatcher matches inner classes of targets`() {
+        val matcher = TypeMatcher.SetMatcher(setOf(ClassName("com.example.Foo")))
+
+        assertEquals(true, matcher.matches(ClassName("com.example.Foo\$Inner")))
+        assertEquals(false, matcher.matches(ClassName("com.example.FooBar")))
+    }
+
+    @Test
+    fun `resolve with FQN returns exact match`() {
+        val all = listOf(
+            ClassName("com.example.Service"),
+            ClassName("com.example.ServiceImpl"),
+            ClassName("com.example.Other"),
+        )
+
+        val resolved = TypeMatcher.resolve("com.example.Service", all)
+
+        assertEquals(setOf(ClassName("com.example.Service")), resolved)
+    }
+
+    @Test
+    fun `resolve with short name returns all matching classes`() {
+        val all = listOf(
+            ClassName("com.example.MyService"),
+            ClassName("com.example.OtherService"),
+            ClassName("com.example.Repository"),
+        )
+
+        val resolved = TypeMatcher.resolve("Service", all)
+
+        assertEquals(setOf(ClassName("com.example.MyService"), ClassName("com.example.OtherService")), resolved)
+    }
 }

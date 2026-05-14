@@ -8,10 +8,12 @@ import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
 import no.f12.codenavigator.navigation.callgraph.SmartUsageResult
 import no.f12.codenavigator.navigation.callgraph.UsageCollapser
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.core.GroupBy
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.callgraph.UsageScanner
+import no.f12.codenavigator.navigation.classinfo.ClassIndexCache
 import no.f12.codenavigator.navigation.core.TypeMatcher
 import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
 
@@ -40,40 +42,44 @@ abstract class FindUsagesTask : DefaultTask() {
         }
 
         val taggedDirs = project.taggedClassDirectories()
+        val classDirectories = taggedDirs.map { it.first }
+        val buildDir = project.layout.buildDirectory.asFile.get()
 
-        val ownerMatcher = config.ownerClass?.let { TypeMatcher.fromPattern(it) }
-        val typeMatcher = config.type?.let { TypeMatcher.fromPattern(it) }
+        // Phase 1: Match — resolve pattern to concrete class names
+        val targetType = config.type ?: config.ownerClass
+        val allClassNames = ClassIndexCache.getOrBuild(
+            File(buildDir, "cnav/class-index.cache"), classDirectories,
+        ).data.map { it.className }
+
+        val resolvedTypes: Set<ClassName> = if (targetType != null) {
+            TypeMatcher.resolve(targetType, allClassNames)
+        } else emptySet()
+
+        // Phase 2: Enrich — find interfaces among resolved types, expand with implementors
+        val interfaceRegistry = if (resolvedTypes.isNotEmpty()) {
+            InterfaceRegistryCache.getOrBuild(File(buildDir, "cnav/interface-registry.cache"), classDirectories).data
+        } else null
+
+        val matchedInterfaces = resolvedTypes.filter { interfaceRegistry?.isInterface(it) == true }
+        val implementations = matchedInterfaces.flatMap { interfaceRegistry!!.implementorsOf(it) }
+
+        val scanTargets = if (config.includeImpls && implementations.isNotEmpty()) {
+            resolvedTypes + implementations.map { it.className }.toSet()
+        } else {
+            resolvedTypes
+        }
+
+        // Phase 3: Scan — single pass with resolved class names
+        val scanMatcher = if (scanTargets.isNotEmpty()) TypeMatcher.SetMatcher(scanTargets) else null
+        val ownerMatcher = if (config.ownerClass != null) scanMatcher else null
+        val typeMatcher = if (config.type != null) scanMatcher else null
 
         val result = UsageScanner.scanTagged(taggedDirs, ownerMatcher = ownerMatcher, method = config.method, field = config.field, typeMatcher = typeMatcher)
-        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        val reportFile = File(buildDir, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val afterPackageFilter = UsageScanner.filterOutsidePackage(result.data, config.outsidePackage)
         val afterSyntheticFilter = config.filterSyntheticCallers(afterPackageFilter)
-        var usages = config.filterBySourceSet(afterSyntheticFilter)
-
-        // Smart usages: detect interface and include implementations + implementor usages
-        val classDirectories = taggedDirs.map { it.first }
-        val targetType = config.type ?: config.ownerClass
-        val interfaceRegistry = if (targetType != null) {
-            val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/interface-registry.cache")
-            InterfaceRegistryCache.getOrBuild(cacheFile, classDirectories).data
-        } else null
-
-        // Use findInterfaces() — same regex-based containsMatchIn resolution as all other commands
-        val matchedInterfaces = if (interfaceRegistry != null && targetType != null) {
-            interfaceRegistry.findInterfaces(targetType)
-        } else emptyList()
-
-        val implementations = matchedInterfaces.flatMap { interfaceRegistry!!.implementorsOf(it) }
-
-        // When include-impls is set and target is an interface, also scan usages of implementors
-        if (config.includeImpls && implementations.isNotEmpty()) {
-            for (impl in implementations) {
-                val implResult = UsageScanner.scanTagged(taggedDirs, ownerClass = impl.className.value, method = config.method, field = config.field, type = null)
-                val implFiltered = config.filterBySourceSet(config.filterSyntheticCallers(UsageScanner.filterOutsidePackage(implResult.data, config.outsidePackage)))
-                usages = usages + implFiltered
-            }
-        }
+        val usages = config.filterBySourceSet(afterSyntheticFilter)
 
         if (usages.isEmpty() && implementations.isEmpty()) {
             val target = UsageFormatter.noResultsTarget(config.ownerClass, config.method, config.field, config.type)
