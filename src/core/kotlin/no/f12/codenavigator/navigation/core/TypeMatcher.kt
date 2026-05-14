@@ -27,12 +27,6 @@ sealed interface TypeMatcher {
                 targets.any { className.value.startsWith("${it.value}$") }
     }
 
-    /** Matches any class that matches at least one of the delegates. */
-    data class AnyOf(val matchers: List<TypeMatcher>) : TypeMatcher {
-        override fun matches(className: ClassName): Boolean =
-            matchers.any { it.matches(className) }
-    }
-
     companion object {
         /**
          * Builds the appropriate matcher for a pattern string.
