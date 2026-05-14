@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.73-SNAPSHOT
+## 0.1.73
 
 - **New:** `cnavFindUsages` now collapses bytecode noise by default. Constructor patterns (`new` + `<init>` + `checkcast`) are merged into a single `instantiation` entry. Lambda caller classes (e.g., `Service$getCurrentStatus$2$deferred$1`) collapse to their enclosing class (`Service`). Multiple reference kinds from the same caller/target pair merge into one line with combined kind tags (e.g., `instantiation,method-call`). The flat output format is preserved — each line is self-contained with file name and scope tag. Use `-Praw=true` to get the previous bytecode-level output.
 - **New:** Smart usages — when `cnavFindUsages -Ptype=X` targets an interface, the output now auto-includes `[impl]` lines listing all implementors alongside the `[ref]` usage lines. Add `-Pinclude-impls` to also search usages of each implementor class, merging results into the same output.
