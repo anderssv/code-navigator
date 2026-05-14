@@ -6,6 +6,8 @@ import no.f12.codenavigator.navigation.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.callgraph.UsageKind
 import no.f12.codenavigator.navigation.callgraph.UsageSite
 import no.f12.codenavigator.navigation.callgraph.CollapsedUsage
+import no.f12.codenavigator.navigation.callgraph.SmartUsageResult
+import no.f12.codenavigator.navigation.interfaces.ImplementorInfo
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import kotlin.test.Test
@@ -403,5 +405,55 @@ class UsageFormatterTest {
         val result = JsonFormatter.formatCollapsedUsages(emptyList())
 
         assertEquals("[]", result)
+    }
+
+    // --- Smart usages formatting ---
+
+    private fun smartResult() = SmartUsageResult(
+        implementations = listOf(
+            ImplementorInfo(ClassName("com.example.TargetImpl"), "TargetImpl.kt"),
+            ImplementorInfo(ClassName("com.example.FakeTarget"), "FakeTarget.kt"),
+        ),
+        usages = emptyList(), // usages passed separately as collapsed
+    )
+
+    private fun smartCollapsed() = listOf(
+        CollapsedUsage(ClassName("com.example.Service"), "run", "Service.kt", ClassName("com.example.Target"), setOf("method-call"), SourceSet.MAIN),
+    )
+
+    @Test
+    fun `LLM formats smart usages with impl and ref lines`() {
+        val result = LlmFormatter.formatSmartUsages(smartResult(), smartCollapsed())
+
+        assertTrue(result.contains("[impl] com.example.TargetImpl TargetImpl.kt"))
+        assertTrue(result.contains("[impl] com.example.FakeTarget FakeTarget.kt"))
+        assertTrue(result.contains("[ref] com.example.Service.run -> com.example.Target method-call Service.kt [prod]"))
+    }
+
+    @Test
+    fun `TEXT formats smart usages with impl and ref lines`() {
+        val result = UsageFormatter.formatSmartUsages(smartResult(), smartCollapsed())
+
+        assertTrue(result.contains("[impl] com.example.TargetImpl"))
+        assertTrue(result.contains("[ref] com.example.Service.run"))
+    }
+
+    @Test
+    fun `JSON formats smart usages with implementations and usages`() {
+        val result = JsonFormatter.formatSmartUsages(smartResult(), smartCollapsed())
+
+        assertTrue(result.contains("\"implementations\""))
+        assertTrue(result.contains("\"TargetImpl.kt\""))
+        assertTrue(result.contains("\"usages\""))
+        assertTrue(result.contains("\"method-call\""))
+    }
+
+    @Test
+    fun `smart usages with no implementations falls back to ref-only`() {
+        val emptyImpls = SmartUsageResult(emptyList(), emptyList())
+        val result = LlmFormatter.formatSmartUsages(emptyImpls, smartCollapsed())
+
+        assertFalse(result.contains("[impl]"))
+        assertTrue(result.contains("[ref]"))
     }
 }

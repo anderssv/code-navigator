@@ -132,6 +132,8 @@ object AgentHelpText {
         appendLine("Choose the right scope for your question:")
         appendLine("- \"Who uses this type?\" → ${u("find-usages", p("type", "X"))}")
         appendLine("  Output is collapsed by default: new/init/checkcast → single 'instantiation', lambda callers → enclosing class.")
+        appendLine("  When the target is an interface, [impl] lines are auto-included showing implementors.")
+        appendLine("  Add ${pf("include-impls")} to also search usages of each implementor.")
         appendLine("  Add ${p("group-by", "file")} for a one-line-per-file summary. Add ${pf("raw")} for bytecode-level detail.")
         appendLine("- \"Who calls this method?\" → ${u("find-callers", p("pattern", "X"))}")
         appendLine("  Method-level call graph — traces through interfaces and inheritance.")

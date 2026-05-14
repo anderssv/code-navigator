@@ -11,6 +11,7 @@ import no.f12.codenavigator.config.OutputFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -223,6 +224,7 @@ class FindUsagesConfigTest {
         scope = scope,
         groupBy = GroupBy.NONE,
         raw = false,
+        includeImpls = false,
         format = OutputFormat.TEXT,
     )
 
@@ -315,6 +317,7 @@ class FindUsagesConfigTest {
             scope = Scope.ALL,
             groupBy = GroupBy.NONE,
             raw = false,
+            includeImpls = false,
             format = OutputFormat.TEXT,
         )
         val filtered = cfg.filterSyntheticCallers(usages)
@@ -362,5 +365,17 @@ class FindUsagesConfigTest {
 
         assertEquals(1, filtered.size)
         assertEquals("doWork", filtered[0].callerMethod)
+    }
+
+    @Test
+    fun `include-impls flag is parsed`() {
+        val config = FindUsagesConfig.parse(mapOf("type" to "com.example.Target", "include-impls" to "true"))
+        assertTrue(config.includeImpls)
+    }
+
+    @Test
+    fun `include-impls defaults to false`() {
+        val config = FindUsagesConfig.parse(mapOf("type" to "com.example.Target"))
+        assertFalse(config.includeImpls)
     }
 }

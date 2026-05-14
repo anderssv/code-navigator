@@ -32,6 +32,7 @@ import no.f12.codenavigator.navigation.hierarchy.SupertypeKind
 import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyResult
 import no.f12.codenavigator.navigation.callgraph.CollapsedUsage
+import no.f12.codenavigator.navigation.callgraph.SmartUsageResult
 import no.f12.codenavigator.navigation.callgraph.UsageSite
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.callgraph.AnnotationTag
@@ -166,6 +167,18 @@ object LlmFormatter {
             val sourceSetTag = u.sourceSet?.let { " [${it.label}]" } ?: ""
             "${u.callerClass}.${u.callerMethod} -> ${u.targetOwner} ${u.kinds.sorted().joinToString(",")} ${u.sourceFile}$sourceSetTag"
         }
+
+    fun formatSmartUsages(result: SmartUsageResult, collapsedUsages: List<CollapsedUsage>): String = buildString {
+        if (result.implementations.isNotEmpty()) {
+            result.implementations.forEach { impl ->
+                appendLine("[impl] ${impl.className} ${impl.sourceFile}")
+            }
+        }
+        collapsedUsages.forEach { u ->
+            val sourceSetTag = u.sourceSet?.let { " [${it.label}]" } ?: ""
+            appendLine("[ref] ${u.callerClass}.${u.callerMethod} -> ${u.targetOwner} ${u.kinds.sorted().joinToString(",")} ${u.sourceFile}$sourceSetTag")
+        }
+    }.trimEnd()
 
     fun formatRank(ranked: List<RankedType>): String =
         ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }

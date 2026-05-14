@@ -1,0 +1,16 @@
+package no.f12.codenavigator.navigation.callgraph
+
+import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.interfaces.ImplementorInfo
+
+/**
+ * Result of a "smart" find-usages query that auto-detects whether the target
+ * is an interface and includes its implementations alongside the usage list.
+ */
+data class SmartUsageResult(
+    /** Non-empty when the target type is an interface in the project. */
+    val implementations: List<ImplementorInfo>,
+    /** Usages of the target type (and optionally its implementors). */
+    val usages: List<UsageSite>,
+)

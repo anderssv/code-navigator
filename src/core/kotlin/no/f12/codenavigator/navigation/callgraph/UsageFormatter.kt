@@ -22,6 +22,18 @@ object UsageFormatter {
             }
     }
 
+    fun formatSmartUsages(result: SmartUsageResult, collapsedUsages: List<CollapsedUsage>): String = buildString {
+        if (result.implementations.isNotEmpty()) {
+            result.implementations.forEach { impl ->
+                appendLine("[impl] ${impl.className} (${impl.sourceFile})")
+            }
+        }
+        collapsedUsages.forEach { u ->
+            val sourceSetTag = u.sourceSet?.let { " [${it.label}]" } ?: ""
+            appendLine("[ref] ${u.callerClass}.${u.callerMethod} → ${u.targetOwner} (${u.sourceFile}) [${u.kinds.sorted().joinToString(", ")}]$sourceSetTag")
+        }
+    }.trimEnd()
+
     fun formatSummary(usages: List<UsageSite>): String {
         if (usages.isEmpty()) return "No usages found."
         return usages

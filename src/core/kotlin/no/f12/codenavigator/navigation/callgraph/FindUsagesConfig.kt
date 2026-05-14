@@ -17,6 +17,7 @@ data class FindUsagesConfig(
     val scope: Scope,
     val groupBy: GroupBy,
     val raw: Boolean,
+    val includeImpls: Boolean,
     val format: OutputFormat,
 ) {
     fun filterBySourceSet(usages: List<UsageSite>): List<UsageSite> {
@@ -60,6 +61,7 @@ data class FindUsagesConfig(
                 scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
                 groupBy = GroupBy.parse(TaskRegistry.GROUP_BY.parseFrom(properties)),
                 raw = TaskRegistry.RAW.parseFrom(properties),
+                includeImpls = TaskRegistry.INCLUDE_IMPLS.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
             )
         }

@@ -5,11 +5,14 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
+import no.f12.codenavigator.navigation.callgraph.SmartUsageResult
 import no.f12.codenavigator.navigation.callgraph.UsageCollapser
+import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.core.GroupBy
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.callgraph.UsageScanner
+import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Execute
@@ -59,6 +62,9 @@ class FindUsagesMojo : AbstractMojo() {
     @Parameter(property = "raw")
     private var raw: String? = null
 
+    @Parameter(property = "include-impls")
+    private var includeImpls: String? = null
+
     override fun execute() {
         val config = try {
             FindUsagesConfig.parse(TaskRegistry.FIND_USAGES.enhanceProperties(buildPropertyMap()))
@@ -81,20 +87,45 @@ class FindUsagesMojo : AbstractMojo() {
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
         val afterPackageFilter = UsageScanner.filterOutsidePackage(result.data, config.outsidePackage)
         val afterSyntheticFilter = config.filterSyntheticCallers(afterPackageFilter)
-        val usages = config.filterBySourceSet(afterSyntheticFilter)
+        var usages = config.filterBySourceSet(afterSyntheticFilter)
 
-        if (usages.isEmpty()) {
+        // Smart usages: detect interface and include implementations
+        val classDirectories = taggedDirs.map { it.first }
+        val targetType = config.type ?: config.ownerClass
+        val interfaceRegistry = if (targetType != null) {
+            val cacheFile = File(project.build.directory, "cnav/interface-registry.cache")
+            InterfaceRegistryCache.getOrBuild(cacheFile, classDirectories).data
+        } else null
+
+        val implementations = if (interfaceRegistry != null && targetType != null) {
+            interfaceRegistry.implementorsOf(ClassName(targetType))
+        } else emptyList()
+
+        if (config.includeImpls && implementations.isNotEmpty()) {
+            for (impl in implementations) {
+                val implResult = UsageScanner.scanTagged(taggedDirs, ownerClass = impl.className.value, method = config.method, field = config.field, type = null)
+                val implFiltered = config.filterBySourceSet(config.filterSyntheticCallers(UsageScanner.filterOutsidePackage(implResult.data, config.outsidePackage)))
+                usages = usages + implFiltered
+            }
+        }
+
+        val smartResult = SmartUsageResult(implementations, usages)
+
+        if (usages.isEmpty() && implementations.isEmpty()) {
             val target = UsageFormatter.noResultsTarget(config.ownerClass, config.method, config.field, config.type)
             val hints = UsageFormatter.noResultsHints(config.ownerClass, config.method, config.field, config.type)
             println(OutputWrapper.emptyResult(config.format, "No usages found for '$target'.", hints))
             return
         }
 
+        val hasImpls = implementations.isNotEmpty()
+
         println(OutputWrapper.formatAndWrap(config.format,
             text = {
                 when {
                     config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummary(usages)
                     config.raw -> UsageFormatter.format(usages)
+                    hasImpls -> UsageFormatter.formatSmartUsages(smartResult, UsageCollapser.collapse(usages))
                     else -> UsageFormatter.formatCollapsed(UsageCollapser.collapse(usages))
                 }
             },
@@ -102,6 +133,7 @@ class FindUsagesMojo : AbstractMojo() {
                 when {
                     config.groupBy == GroupBy.FILE -> JsonFormatter.formatUsagesSummary(usages)
                     config.raw -> JsonFormatter.formatUsages(usages)
+                    hasImpls -> JsonFormatter.formatSmartUsages(smartResult, UsageCollapser.collapse(usages))
                     else -> JsonFormatter.formatCollapsedUsages(UsageCollapser.collapse(usages))
                 }
             },
@@ -109,6 +141,7 @@ class FindUsagesMojo : AbstractMojo() {
                 when {
                     config.groupBy == GroupBy.FILE -> LlmFormatter.formatUsagesSummary(usages)
                     config.raw -> LlmFormatter.formatUsages(usages)
+                    hasImpls -> LlmFormatter.formatSmartUsages(smartResult, UsageCollapser.collapse(usages))
                     else -> LlmFormatter.formatCollapsedUsages(UsageCollapser.collapse(usages))
                 }
             },
@@ -127,5 +160,6 @@ class FindUsagesMojo : AbstractMojo() {
         filterSynthetic?.let { put("filter-synthetic", it) }
         groupBy?.let { put("group-by", it) }
         raw?.let { put("raw", it) }
+        includeImpls?.let { put("include-impls", it) }
     }
 }

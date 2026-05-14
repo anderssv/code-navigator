@@ -247,31 +247,9 @@ Implemented in `UsageCollapser`. Collapsed output is the default; `-Praw=true` f
 
 Merged into the collapsing step. Each line is flat and self-contained with combined kind tags.
 
-### Smart usages — auto-include interface implementations
+### ~~Smart usages — auto-include interface implementations~~ — DONE (v0.1.73)
 
-**Value: high** | **Effort: medium**
-
-From field test: when asking "where is `RAClient` used?", the most useful answer combines:
-1. What implements `RAClient` (the interface)
-2. Where `RAClient` and its implementations are referenced
-
-Currently these are two separate commands (`cnavFindInterfaces` + `cnavFindUsages`) that must be mentally combined.
-
-- **Approach**: When `cnavFindUsages -Ptype=X` targets a type that is an interface (detectable from bytecode flags), automatically:
-  1. Load `InterfaceRegistry` (infrastructure already exists in `interfaces/` package)
-  2. Include an "Implementations" section in output listing concrete classes
-  3. Optionally expand the usage search to include references to implementors (`-Pinclude-impls=true`)
-- **Output shape** (flat, each line self-contained):
-  ```
-  [impl] RAClientImpl ra/RAClientImpl.kt [prod]
-  [impl] CachingRAClient ra/CachingRAClient.kt [prod]
-  [impl] RAClientFake services/interfaces/RAClientFake.kt [test]
-  [ref] AppDependencies.create -> RAClient instantiation,field-access AppDependencies.kt [prod]
-  [ref] MonitorService.getCurrentStatus -> RAClient method-call MonitorService.kt [prod]
-  [ref] MetricsTest.setup -> RAClient instantiation,method-call MetricsTest.kt [test]
-  ```
-- **Relates to**: `cnavContext` already combines class detail + callers + interfaces. Smart usages is lighter — just usage list + implementations, no full class detail.
-- **Infrastructure**: `InterfaceRegistry` + `InterfaceRegistryCache` exist. `FindUsagesTask` needs to optionally load the registry and check if the target is an interface. `ContextTask` already does similar wiring.
+Implemented: when `cnavFindUsages -Ptype=X` targets an interface, `[impl]` lines are auto-included. `-Pinclude-impls` expands the search to include usages of each implementor.
 
 ---
 
