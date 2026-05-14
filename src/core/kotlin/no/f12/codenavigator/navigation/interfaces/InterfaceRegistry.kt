@@ -2,6 +2,7 @@ package no.f12.codenavigator.navigation.interfaces
 
 import no.f12.codenavigator.navigation.core.ClassName
 import no.f12.codenavigator.navigation.core.ScanResult
+import no.f12.codenavigator.navigation.core.TypeMatcher
 import no.f12.codenavigator.navigation.core.UnsupportedBytecodeVersionException
 import no.f12.codenavigator.navigation.core.createClassReader
 
@@ -35,9 +36,9 @@ class InterfaceRegistry(
         classToInterfaces[className] ?: emptySet()
 
     fun findInterfaces(pattern: String): List<ClassName> {
-        val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+        val matcher = TypeMatcher.fromPattern(pattern)
         return interfaceToImplementors.keys
-            .filter { it.matches(regex) }
+            .filter { matcher.matches(it) }
             .sortedBy { it.toString() }
     }
 
