@@ -5,6 +5,7 @@ import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.core.PatternEnhancer
 import no.f12.codenavigator.navigation.core.ScanResult
 import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.core.TypeMatcher
 import no.f12.codenavigator.navigation.core.UnsupportedBytecodeVersionException
 import no.f12.codenavigator.navigation.core.createClassReader
 
@@ -65,8 +66,8 @@ object UsageScanner {
     ): ScanResult<List<UsageSite>> {
         val usages = mutableSetOf<UsageSite>()
         val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
-        val ownerRegex = ownerClass?.let { Regex(it, RegexOption.IGNORE_CASE) }
-        val typeRegex = type?.let { Regex(it, RegexOption.IGNORE_CASE) }
+        val ownerMatcher = ownerClass?.let { TypeMatcher.RegexMatcher(Regex(it, RegexOption.IGNORE_CASE)) }
+        val typeMatcher = type?.let { TypeMatcher.RegexMatcher(Regex(it, RegexOption.IGNORE_CASE)) }
 
         taggedDirectories
             .filter { it.first.exists() }
@@ -75,7 +76,7 @@ object UsageScanner {
                     .filter { it.isFile && it.extension == "class" }
                     .forEach { classFile ->
                         try {
-                            extractUsages(classFile, ownerRegex, method, field, type, typeRegex, usages, sourceSet)
+                            extractUsages(classFile, ownerMatcher, method, field, typeMatcher, usages, sourceSet)
                         } catch (e: UnsupportedBytecodeVersionException) {
                             skipped.add(e)
                         }
@@ -112,11 +113,10 @@ object UsageScanner {
 
     private fun extractUsages(
         classFile: File,
-        ownerRegex: Regex?,
+        ownerMatcher: TypeMatcher?,
         method: String?,
         field: String?,
-        type: String?,
-        typeRegex: Regex?,
+        typeMatcher: TypeMatcher?,
         usages: MutableCollection<UsageSite>,
         sourceSet: SourceSet?,
     ) {
@@ -141,9 +141,9 @@ object UsageScanner {
                     access: Int, name: String, descriptor: String,
                     signature: String?, value: Any?,
                 ): FieldVisitor? {
-                    if (typeRegex != null) {
+                    if (typeMatcher != null) {
                         val referencedTypes = extractTypesFromDescriptor(descriptor)
-                        val matchedType = referencedTypes.firstOrNull { it.matches(typeRegex) }
+                        val matchedType = referencedTypes.firstOrNull { typeMatcher.matches(it) }
                         if (matchedType != null) {
                             usages.add(
                                 UsageSite(
@@ -168,9 +168,9 @@ object UsageScanner {
                 ): MethodVisitor {
                     val callerMethod = name
 
-                    if (typeRegex != null) {
+                    if (typeMatcher != null) {
                         val referencedTypes = extractTypesFromDescriptor(descriptor)
-                        val matchedType = referencedTypes.firstOrNull { it.matches(typeRegex) }
+                        val matchedType = referencedTypes.firstOrNull { typeMatcher.matches(it) }
                         if (matchedType != null) {
                             usages.add(
                                 UsageSite(
@@ -193,9 +193,9 @@ object UsageScanner {
                             instrDescriptor: String, isInterface: Boolean,
                         ) {
                             val instrOwnerClass = ClassName.fromInternal(instrOwner)
-                            val ownerMatched = field == null && matchesOwner(instrOwnerClass, ownerRegex) && matchesMethod(instrName, method)
-                            val fieldMatched = field != null && matchesOwner(instrOwnerClass, ownerRegex) && matchesFieldAccessor(instrName, field)
-                            val typeMatched = typeRegex != null && instrOwnerClass.matches(typeRegex) && matchesMethod(instrName, method)
+                            val ownerMatched = field == null && matchesOwner(instrOwnerClass, ownerMatcher) && matchesMethod(instrName, method)
+                            val fieldMatched = field != null && matchesOwner(instrOwnerClass, ownerMatcher) && matchesFieldAccessor(instrName, field)
+                            val typeMatched = typeMatcher != null && typeMatcher.matches(instrOwnerClass) && matchesMethod(instrName, method)
                             if (ownerMatched || fieldMatched || typeMatched) {
                                 usages.add(
                                     UsageSite(
@@ -217,9 +217,9 @@ object UsageScanner {
                             instrDescriptor: String,
                         ) {
                             val instrOwnerClass = ClassName.fromInternal(instrOwner)
-                            val ownerMatched = field == null && matchesOwner(instrOwnerClass, ownerRegex) && matchesMethod(instrName, method)
-                            val fieldMatched = field != null && matchesOwner(instrOwnerClass, ownerRegex) && instrName == field
-                            val typeMatched = typeRegex != null && instrOwnerClass.matches(typeRegex) && matchesMethod(instrName, method)
+                            val ownerMatched = field == null && matchesOwner(instrOwnerClass, ownerMatcher) && matchesMethod(instrName, method)
+                            val fieldMatched = field != null && matchesOwner(instrOwnerClass, ownerMatcher) && instrName == field
+                            val typeMatched = typeMatcher != null && typeMatcher.matches(instrOwnerClass) && matchesMethod(instrName, method)
                             if (ownerMatched || fieldMatched || typeMatched) {
                                 usages.add(
                                     UsageSite(
@@ -245,9 +245,9 @@ object UsageScanner {
                             for (arg in bootstrapMethodArguments) {
                                 if (arg is Handle) {
                                     val instrOwnerClass = ClassName.fromInternal(arg.owner)
-                                    val ownerMatched = field == null && matchesOwner(instrOwnerClass, ownerRegex) && matchesMethod(arg.name, method)
-                                    val fieldMatched = field != null && matchesOwner(instrOwnerClass, ownerRegex) && matchesFieldAccessor(arg.name, field)
-                                    val typeMatched = typeRegex != null && instrOwnerClass.matches(typeRegex) && matchesMethod(arg.name, method)
+                                    val ownerMatched = field == null && matchesOwner(instrOwnerClass, ownerMatcher) && matchesMethod(arg.name, method)
+                                    val fieldMatched = field != null && matchesOwner(instrOwnerClass, ownerMatcher) && matchesFieldAccessor(arg.name, field)
+                                    val typeMatched = typeMatcher != null && typeMatcher.matches(instrOwnerClass) && matchesMethod(arg.name, method)
                                     if (ownerMatched || fieldMatched || typeMatched) {
                                         usages.add(
                                             UsageSite(
@@ -268,7 +268,7 @@ object UsageScanner {
 
                         override fun visitTypeInsn(opcode: Int, instrType: String) {
                             val instrTypeClass = ClassName.fromInternal(instrType)
-                            if (typeRegex != null && instrTypeClass.matches(typeRegex)) {
+                            if (typeMatcher != null && typeMatcher.matches(instrTypeClass)) {
                                 usages.add(
                                     UsageSite(
                                         callerClass = callerClass,
@@ -290,9 +290,9 @@ object UsageScanner {
         )
     }
 
-    private fun matchesOwner(actual: ClassName, filter: Regex?): Boolean {
-        if (filter == null) return false
-        return actual.matches(filter)
+    private fun matchesOwner(actual: ClassName, matcher: TypeMatcher?): Boolean {
+        if (matcher == null) return false
+        return matcher.matches(actual)
     }
 
     private fun matchesMethod(actual: String, filter: String?): Boolean {
