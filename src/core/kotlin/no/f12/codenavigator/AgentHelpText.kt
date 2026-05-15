@@ -7,7 +7,7 @@ import no.f12.codenavigator.registry.TaskDef
 import no.f12.codenavigator.registry.TaskRegistry
 
 object AgentHelpText {
-    private val VALID_SECTIONS = setOf("install", "setup", "workflow", "interpretation", "schemas", "extraction", "recommendations")
+    private val VALID_SECTIONS = setOf("install", "setup", "workflow", "interpretation", "schemas", "extraction", "recommendations", "refactor")
 
     fun generate(tool: BuildTool = BuildTool.GRADLE, section: String? = null): String = when (section) {
         null -> generateCompact(tool)
@@ -18,6 +18,7 @@ object AgentHelpText {
         "schemas" -> generateSchemas(tool)
         "extraction" -> generateExtraction(tool)
         "recommendations" -> generateRecommendations(tool)
+        "refactor" -> generateRefactor(tool)
         else -> "Unknown section: '$section'. Valid sections: ${VALID_SECTIONS.sorted().joinToString(", ")}"
     }
 
@@ -878,7 +879,50 @@ object AgentHelpText {
         appendLine("  ${p("section", "schemas")}          — JSON output schemas per task")
         appendLine("  ${p("section", "extraction")}       — extracting output, jq examples")
         appendLine("  ${p("section", "recommendations")} — practices that complement structural analysis")
+        appendLine("  ${p("section", "refactor")}         — intent-based task lookup for refactoring")
         appendLine("Run ${u("help")} for full parameter documentation.")
+    }
+
+    private fun generateRefactor(tool: BuildTool): String = buildString {
+        val t = { goal: String -> tool.taskName(goal) }
+        val p = { name: String, value: String -> tool.param(name, value) }
+        val pf = { name: String -> tool.paramFlag(name) }
+        fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
+
+        appendLine("=== code-navigator: Refactoring Task Lookup ===")
+        appendLine()
+        appendLine("I want to...")
+        appendLine()
+        appendLine("MOVE / RENAME:")
+        appendLine("  Move a class to another package   → ${u("move-class", p("from", "com.old.Foo"), p("to", "com.new.Foo"))}")
+        appendLine("  Rename a class                    → ${u("move-class", p("from", "com.example.OldName"), p("to", "com.example.NewName"))}")
+        appendLine("  Rename a method                   → ${u("rename-method", p("class", "com.example.Svc"), p("method", "old"), p("new-name", "new"))}")
+        appendLine("  Rename a property (val/var)       → ${u("rename-property", p("class", "com.example.Cfg"), p("property", "old"), p("new-name", "new"))}")
+        appendLine("  Rename a parameter                → ${u("rename-param", p("class", "com.example.Svc"), p("method", "find"), p("param", "old"), p("new-name", "new"))}")
+        appendLine()
+        appendLine("  All write commands support ${pf("preview")} to see the edit plan before applying.")
+        appendLine("  NEVER manually edit imports after a refactoring — the commands handle same-package references.")
+        appendLine()
+        appendLine("EXPLORE BEFORE REFACTORING:")
+        appendLine("  Who uses type X?                  → ${u("find-usages", p("type", "X"))}")
+        appendLine("  Who calls method X?               → ${u("find-callers", p("pattern", "X"))}")
+        appendLine("  What does class X call?            → ${u("find-callees", p("pattern", "X"))}")
+        appendLine("  What does class X look like?       → ${u("class-detail", p("pattern", "X"))}")
+        appendLine("  Type hierarchy of X?               → ${u("type-hierarchy", p("pattern", "X"))}")
+        appendLine("  Who implements interface X?         → ${u("find-interfaces", p("pattern", "X"))}")
+        appendLine()
+        appendLine("FIND TARGETS FOR REFACTORING:")
+        appendLine("  Dead code to remove               → ${u("dead")}")
+        appendLine("  Duplicate code to extract          → ${u("duplicates")}")
+        appendLine("  Complex classes to simplify        → ${u("complexity")}")
+        appendLine("  Change hotspots                    → ${u("hotspots")}")
+        appendLine("  Package dependency cycles          → ${u("cycles")}")
+        appendLine("  Coupling between packages          → ${u("dsm")}")
+        appendLine()
+        appendLine("VERIFY AFTER REFACTORING:")
+        appendLine("  Check for remaining references     → ${u("find-usages", p("type", "OldName"))}")
+        appendLine("  Verify no new cycles               → ${u("cycles")}")
+        appendLine("  Compare metrics                    → ${u("metrics")}")
     }
 
     private fun StringBuilder.appendTroubleshooting(tool: BuildTool) {

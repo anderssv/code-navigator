@@ -1243,4 +1243,54 @@ class AgentHelpTextTest {
         assertContains(text, "Who calls this method")
         assertContains(text, "full picture")
     }
+
+    // --- Refactor section ---
+
+    @Test
+    fun `refactor is a valid section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "refactor")
+
+        assertFalse(text.contains("Unknown section"), "refactor should be a valid section")
+    }
+
+    @Test
+    fun `refactor section lists write commands`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "refactor")
+
+        assertContains(text, "cnavMoveClass")
+        assertContains(text, "cnavRenameMethod")
+        assertContains(text, "cnavRenameProperty")
+        assertContains(text, "cnavRenameParam")
+    }
+
+    @Test
+    fun `refactor section lists exploration commands`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "refactor")
+
+        assertContains(text, "cnavFindUsages")
+        assertContains(text, "cnavFindCallers")
+    }
+
+    @Test
+    fun `refactor section lists targets for refactoring`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "refactor")
+
+        assertContains(text, "cnavDead")
+        assertContains(text, "cnavDuplicates")
+        assertContains(text, "cnavComplexity")
+    }
+
+    @Test
+    fun `refactor section mentions preview flag`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "refactor")
+
+        assertContains(text, "preview")
+    }
+
+    @Test
+    fun `default output mentions refactor section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+
+        assertContains(text, "section=refactor")
+    }
 }
