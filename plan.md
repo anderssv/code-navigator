@@ -5,32 +5,9 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
-## Stale class file warning and drop forced compilation
+## ~~Stale class file warning and drop forced compilation~~ — DONE
 
-**Value: high** | **Effort: low**
-
-### Stale class file detection
-
-On every bytecode-based task, compare the newest source file timestamp against the newest class file timestamp. If source is newer than classes, print a warning:
-
-```
-⚠ Class files may be stale: newest source file is 2026-04-15 14:34:12, newest class file is 2026-04-15 14:22:03. Changes after 14:22:03 are not reflected.
-```
-
-If classes are up to date, say nothing. Applies to all bytecode tasks in both Gradle and Maven. Low cost — just `max(mtime)` over source and class directories. If no class files exist, error with "no class files found — run a successful build first."
-
-### Gradle: remove `dependsOn(compileKotlin)`
-
-Currently Gradle tasks have `dependsOn(compileKotlin)`, so a compilation failure prevents cnav from running — even though old class files are still present. With the staleness warning in place, the forced compilation is just a convenience that becomes an obstacle when compilation is broken. Remove it entirely. Maven mojos already work this way (no forced compilation) and it's fine.
-
-The staleness warning replaces the safety net that forced compilation was providing. No new parameters needed.
-
-### Agent help documentation
-
-Update `cnavAgentHelp` with guidance on compilation and staleness:
-- Cnav analyzes compiled bytecode, not source. Run a build first.
-- If the staleness warning appears, rebuild to get current results.
-- If compilation is broken mid-refactoring, cnav still works against the last successful build — the warning tells you the cutoff.
+`ClassFileStaleness.check()` compares newest source vs class mtime. Warns when stale, errors when no class files. Gradle: removed `dependsOn("classes")`/`dependsOn("testClasses")`. Maven: `checkStaleness()` added to all bytecode mojos (`@Execute` still forces compilation). AgentHelpText updated with staleness guidance.
 
 ---
 
@@ -90,24 +67,13 @@ May not be worth automating — manual merge with cnav handling the reference up
 
 Related improvements to `cnavDead`. Ordered by dependency — ConfidenceScorer extraction enables the others.
 
-### Extract ConfidenceScorer from DeadCodeFinder
+### ~~Extract ConfidenceScorer from DeadCodeFinder~~ — DONE
 
-**Value: medium** | **Effort: low**
+Confidence scoring logic extracted to `ConfidenceScorer` object. `DeadCodeFinder` delegates to it. Independently testable with `ConfidenceScorerTest`.
 
-`DeadCodeFinder` inlines all confidence-scoring logic (annotation checks, interface checks, method name heuristics, caller count thresholds). Extract a `ConfidenceScorer` class that takes a `DeadCode` candidate and returns its `DeadCodeConfidence` + `DeadCodeReason`.
+### ~~Introduce query/config objects for complex finders~~ — DONE
 
-- Makes scoring rules independently testable and easier to extend (e.g., meta-annotation traversal, Spring Data awareness).
-- **Prerequisite for**: Meta-annotation traversal and transitive dead code detection benefit from clean scoring separation.
-
-### Introduce query/config objects for complex finders
-
-**Value: medium** | **Effort: low**
-
-`DeadCodeFinder.find()` has 18 parameters. Other finders have similarly long signatures. When a method takes that many parameters, it signals a missing domain object.
-
-- **Approach**: Introduce a `DeadCodeQuery` (or reuse/extend `DeadCodeConfig`) that bundles all parameters into a single typed object. Apply the same pattern to other finders with complex signatures.
-- **Benefits**: Makes the API self-documenting, simplifies testing (build query objects with sensible defaults and `.copy()` for variations), and makes parameter additions non-breaking.
-- **Ordering**: Natural companion to `Extract ConfidenceScorer` — both simplify `DeadCodeFinder` internals.
+`DeadCodeQuery` data class bundles 21 parameters. `DeadCodeFinder.find(query)` accepts it. Old overload preserved for backward compatibility.
 
 ### Meta-annotation traversal for dead code filtering
 
@@ -272,13 +238,9 @@ Remaining:
 - Audit whether `cnavAgentHelp` mentions refactoring outcomes in other sections (`workflow`, `interpretation`) — currently they focus on analysis flow.
 - Consider a short "refactoring cheat sheet" as its own section (see "Goal-oriented task discovery" below).
 
-### Goal-oriented task discovery — `cnavDiscoverTasks` or `-Psection=refactor`
+### ~~Goal-oriented task discovery — `-Psection=refactor`~~ — DONE
 
-**Value: medium** | **Effort: low**
-
-Current `cnavAgentHelp` sections (`install`, `workflow`, `interpretation`, `schemas`, `extraction`) are oriented around analysis flow. There is no "I want to do X, which command?" reverse lookup for refactoring actions. Add either a new `-Psection=refactor` or a dedicated `cnavDiscoverTasks` task that lists tasks grouped by intent (explore, analyze, refactor, measure).
-
-- **Relates to**: Refactoring task discoverability above — same problem, broader solution.
+Added `-Psection=refactor` to `cnavAgentHelp`. Groups tasks by intent: move/rename, explore before refactoring, find targets, verify after. Listed in the "More Detail" section of compact output.
 
 ### Preview-by-default for write commands
 
@@ -474,15 +436,9 @@ Self-analysis found `JsonFormatter` (217 outgoing dependencies, 47 referenced ty
 - **Ordering**: `LlmFormatter` first (primary agent-facing format), then `JsonFormatter`. `TableFormatter` is smaller and can follow later.
 - **Benefits**: Adding a new feature means adding a new formatter file, not editing a shared god class.
 
-### Extract shared orchestration from Gradle tasks and Maven mojos
+### ~~Extract shared orchestration from Gradle tasks and Maven mojos~~ — DONE
 
-**Value: medium** | **Effort: low**
-
-`IntegrationStrengthTask.kt` and `IntegrationStrengthMojo.kt` duplicate ~17 lines of identical orchestration logic (extract → classify → format → output). `PackageDistanceTask.kt` and `PackageDistanceMojo.kt` duplicate ~20 lines. The only differences are config preamble (reading Gradle `-P` properties vs Maven `@Parameter` fields), report file path, and logging mechanism.
-
-- **Approach**: Extract shared orchestration functions (e.g., `runStrengthAnalysis(config, classDirs, logger) -> String`) into core. Gradle tasks and Maven mojos become thin wrappers that build the config from their respective property mechanisms and delegate to the shared function.
-- **Scope**: Start with Distance and Strength (smallest, most recently touched). If the pattern works well, apply to other task/mojo pairs.
-- **Benefits**: Bug fixes apply once. New features (e.g., a new output format) only need one code path.
+`StrengthOrchestrator` and `DistanceOrchestrator` extracted to core. Gradle tasks and Maven mojos are thin wrappers handling config parsing, directory resolution, and output routing.
 
 ### Make `DsmDependencyExtractor.packageFilter` nullable
 
