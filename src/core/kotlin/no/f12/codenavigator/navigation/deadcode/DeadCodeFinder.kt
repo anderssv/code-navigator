@@ -161,7 +161,7 @@ object DeadCodeFinder {
                         memberName = null,
                         kind = DeadCodeKind.CLASS,
                         sourceFile = graph.sourceFileOf(cls),
-                        confidence = classConfidence(cls, null, testGraph, referencedInTests, classAnnotations, methodAnnotations, classExternalInterfaces, modifierAnnotated),
+                        confidence = ConfidenceScorer.score(cls, null, testGraph, referencedInTests, classAnnotations, methodAnnotations, classExternalInterfaces, modifierAnnotated),
                         reason = reason,
                     )
                 )
@@ -182,7 +182,7 @@ object DeadCodeFinder {
                 ) {
                     val referencedInTests = method in testCalledMethods
                     val reason = if (testGraph != null && referencedInTests) DeadCodeReason.TEST_ONLY else DeadCodeReason.NO_REFERENCES
-                    val conf = classConfidence(method.className, method, testGraph, referencedInTests, classAnnotations, methodAnnotations, classExternalInterfaces, modifierAnnotated)
+                    val conf = ConfidenceScorer.score(method.className, method, testGraph, referencedInTests, classAnnotations, methodAnnotations, classExternalInterfaces, modifierAnnotated)
                     results.add(
                         DeadCode(
                             className = method.className,
@@ -206,53 +206,6 @@ object DeadCodeFinder {
             .filter { item -> scope != Scope.PROD || (item.reason == DeadCodeReason.NO_REFERENCES && item.className !in testClasses) }
             .filter { item -> scope != Scope.TEST || item.reason == DeadCodeReason.TEST_ONLY }
             .sortedWith(compareBy({ it.kind }, { it.className }, { it.memberName ?: "" }))
-    }
-
-    private fun classConfidence(
-        className: ClassName,
-        method: MethodRef?,
-        testGraph: CallGraph?,
-        referencedInTests: Boolean,
-        classAnnotations: Map<ClassName, Set<AnnotationName>>,
-        methodAnnotations: Map<MethodRef, Set<AnnotationName>>,
-        classExternalInterfaces: Map<ClassName, Set<ClassName>>,
-        modifierAnnotated: Set<String> = emptySet(),
-    ): DeadCodeConfidence {
-        if (hasModifierAnnotation(className, method, classAnnotations, methodAnnotations, modifierAnnotated)) {
-            return DeadCodeConfidence.LOW
-        }
-
-        val hasClassAnnotations = classAnnotations.containsKey(className)
-        val hasMethodAnnotations = method != null && methodAnnotations.containsKey(method)
-        if (method == null && hasClassAnnotations) return DeadCodeConfidence.LOW
-        if (hasMethodAnnotations) {
-            return DeadCodeConfidence.LOW
-        }
-
-        if (method != null && classExternalInterfaces.containsKey(className)) {
-            return DeadCodeConfidence.LOW
-        }
-
-        if (testGraph != null && referencedInTests) return DeadCodeConfidence.MEDIUM
-
-        return DeadCodeConfidence.HIGH
-    }
-
-    private fun hasModifierAnnotation(
-        className: ClassName,
-        method: MethodRef?,
-        classAnnotations: Map<ClassName, Set<AnnotationName>>,
-        methodAnnotations: Map<MethodRef, Set<AnnotationName>>,
-        modifierAnnotated: Set<String>,
-    ): Boolean {
-        if (modifierAnnotated.isEmpty()) return false
-        val classAnns = classAnnotations[className] ?: emptySet()
-        if (classAnns.any { it.value in modifierAnnotated || it.simpleName() in modifierAnnotated }) return true
-        if (method != null) {
-            val methodAnns = methodAnnotations[method] ?: emptySet()
-            if (methodAnns.any { it.value in modifierAnnotated || it.simpleName() in modifierAnnotated }) return true
-        }
-        return false
     }
 
     private fun isPropertyAccessor(
