@@ -108,9 +108,9 @@ abstract class DeadCodeTask : DefaultTask() {
         }
 
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { DeadCodeFormatter.format(dead) },
-            json = { JsonFormatter.formatDead(dead) },
-            llm = { LlmFormatter.formatDead(dead) },
+            text = { DeadCodeFormatter.format(dead, config.scope) },
+            json = { JsonFormatter.formatDead(dead, config.scope) },
+            llm = { LlmFormatter.formatDead(dead, config.scope) },
         ))
     }
 }

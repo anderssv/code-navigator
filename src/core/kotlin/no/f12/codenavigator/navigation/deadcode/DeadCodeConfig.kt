@@ -37,9 +37,13 @@ data class DeadCodeConfig(
                 modifierAnnotated = mergedModifiers,
                 supertypeEntryPoints = supertypes,
                 receiverTypeEntryPoints = receiverTypes,
-                scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
+                scope = parseDeadCodeScope(properties),
                 format = ParamDef.parseFormat(properties),
             )
+        }
+        private fun parseDeadCodeScope(properties: Map<String, String?>): Scope {
+            val explicit = properties["scope"]
+            return if (explicit == null) Scope.PROD else Scope.parse(explicit)
         }
     }
 }

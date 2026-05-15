@@ -24,6 +24,7 @@ import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.dsm.CycleDetail
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.deadcode.DeadCode
 import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.stringconstant.StringConstantMatch
@@ -337,7 +338,7 @@ object JsonFormatter {
             )
         }
 
-    fun formatDead(dead: List<DeadCode>): String =
+    fun formatDead(dead: List<DeadCode>, @Suppress("UNUSED_PARAMETER") scope: Scope = Scope.ALL): String =
         jsonArray(dead) { d ->
             jsonObject(
                 "className" to d.className.toString(),

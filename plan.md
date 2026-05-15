@@ -303,14 +303,9 @@ From user feedback: `cnavFindUsages -Ptype=SignatureContext` failed with a short
 
 Fixed: `getOrBuildTagged` now validates that cached source sets match requested tags. Previously, a non-tagged `getOrBuild` call (from MetricsMojo, PackageDepsMojo, etc.) would write the cache with all classes tagged as MAIN, and subsequent `getOrBuildTagged` calls would read the stale cache with wrong source set tags.
 
-### Default `cnavDead` to exclude test classes
+### ~~Default `cnavDead` to exclude test classes~~ — DONE
 
-**Value: medium** | **Effort: low**
-
-From evaluation: `dead` correctly flags test classes as dead (no references) since test runners discover them via annotations, not bytecode calls. AI agents may misinterpret this and try to delete test classes.
-
-- **Approach**: Default `-Pscope=prod` (exclude test source set). Add `-Pscope=all` to include tests. The confidence levels (LOW for framework-discovered classes) help, but excluding by default is safer.
-- **Alternative**: Keep current default but add stronger guidance in output when test classes appear.
+Default scope for `cnavDead` changed from ALL to PROD. Test classes are excluded by default. Output includes notice: "Test classes excluded. Use scope=all to include test classes." Applies to TEXT and LLM formats.
 
 ### Filter non-source files from git analysis recommendations
 

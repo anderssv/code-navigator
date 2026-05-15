@@ -1,10 +1,12 @@
 package no.f12.codenavigator.navigation.deadcode
 
+import no.f12.codenavigator.navigation.core.Scope
+
 object DeadCodeFormatter {
 
     private val NOTE = "Note: Dead code detection is a hard problem with many edge cases (reflection, serialization, generated code). Use exclude=<regex> to filter out packages or classes you know are not dead."
 
-    fun format(dead: List<DeadCode>): String {
+    fun format(dead: List<DeadCode>, scope: Scope = Scope.ALL): String {
         if (dead.isEmpty()) return "No potential dead code found."
 
         val classWidth = maxOf("Class".length, dead.maxOf { it.className.toString().length })
@@ -30,6 +32,9 @@ object DeadCodeFormatter {
             }
             appendLine()
             appendLine()
+            if (scope == Scope.PROD) {
+                appendLine("Test classes excluded. Use scope=all to include test classes.")
+            }
             append(NOTE)
         }
     }

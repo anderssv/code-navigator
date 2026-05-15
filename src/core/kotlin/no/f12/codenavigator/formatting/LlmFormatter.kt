@@ -25,6 +25,7 @@ import no.f12.codenavigator.navigation.core.PackageName
 import no.f12.codenavigator.navigation.symbol.SymbolInfo
 import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType
+import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.deadcode.DeadCode
 import no.f12.codenavigator.navigation.stringconstant.StringConstantMatch
 import no.f12.codenavigator.navigation.hierarchy.SupertypeInfo
@@ -200,12 +201,13 @@ object LlmFormatter {
 
     private val DEAD_CODE_NOTE = "Note: Dead code detection is a hard problem with many edge cases (reflection, serialization, generated code). Use exclude=<regex> to filter out packages or classes you know are not dead."
 
-    fun formatDead(dead: List<DeadCode>): String {
+    fun formatDead(dead: List<DeadCode>, scope: Scope = Scope.ALL): String {
         if (dead.isEmpty()) return ""
+        val scopeNotice = if (scope == Scope.PROD) "Test classes excluded. Use scope=all to include test classes.\n" else ""
         return dead.joinToString("\n") { d ->
             val name = if (d.memberName != null) "${d.className}.${d.memberName}" else d.className.toString()
             "$name ${d.kind.name} ${d.sourceFile} confidence=${d.confidence.name} reason=${d.reason.name}"
-        } + "\n\n" + DEAD_CODE_NOTE
+        } + "\n\n" + scopeNotice + DEAD_CODE_NOTE
     }
 
     fun formatStringConstants(matches: List<StringConstantMatch>): String =

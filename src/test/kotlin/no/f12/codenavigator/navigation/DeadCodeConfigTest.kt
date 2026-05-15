@@ -124,10 +124,10 @@ class DeadCodeConfigTest {
     }
 
     @Test
-    fun `scope defaults to ALL when absent`() {
+    fun `scope defaults to PROD when absent`() {
         val config = DeadCodeConfig.parse(emptyMap())
 
-        assertEquals(Scope.ALL, config.scope)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test

@@ -6,8 +6,10 @@ import no.f12.codenavigator.navigation.deadcode.DeadCodeConfidence
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
 import no.f12.codenavigator.navigation.deadcode.DeadCodeKind
 import no.f12.codenavigator.navigation.deadcode.DeadCodeReason
+import no.f12.codenavigator.navigation.core.Scope
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DeadCodeFormatterTest {
@@ -70,5 +72,28 @@ class DeadCodeFormatterTest {
         val output = DeadCodeFormatter.format(emptyList())
 
         assertTrue(!output.contains("exclude"), "No-results message should not include the note")
+    }
+
+    @Test
+    fun `shows notice about excluded test classes when scope is PROD`() {
+        val dead = listOf(
+            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt", DeadCodeConfidence.HIGH, DeadCodeReason.NO_REFERENCES),
+        )
+
+        val output = DeadCodeFormatter.format(dead, scope = Scope.PROD)
+
+        assertTrue(output.contains("Test classes excluded"), "Should mention test classes are excluded")
+        assertTrue(output.contains("scope=all"), "Should mention scope=all parameter")
+    }
+
+    @Test
+    fun `does not show test exclusion notice when scope is ALL`() {
+        val dead = listOf(
+            DeadCode(ClassName("com.example.Orphan"), null, DeadCodeKind.CLASS, "Orphan.kt", DeadCodeConfidence.HIGH, DeadCodeReason.NO_REFERENCES),
+        )
+
+        val output = DeadCodeFormatter.format(dead, scope = Scope.ALL)
+
+        assertFalse(output.contains("Test classes excluded"), "Should not mention test exclusion when scope=all")
     }
 }
