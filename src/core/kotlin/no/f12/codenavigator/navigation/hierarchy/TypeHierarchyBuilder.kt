@@ -42,7 +42,7 @@ object TypeHierarchyBuilder {
             TypeHierarchyResult(
                 className = className,
                 sourceFile = info.sourceFile,
-                supertypes = resolveSupertypes(info, classIndex, projectOnly, mutableSetOf()),
+                supertypes = resolveSupertypes(info, classIndex, mutableSetOf()),
                 implementors = interfaceRegistry.implementorsOf(className),
             )
         }.sortedBy { it.className }
@@ -51,7 +51,6 @@ object TypeHierarchyBuilder {
     private fun resolveSupertypes(
         info: ClassIndexEntry,
         classIndex: Map<ClassName, ClassIndexEntry>,
-        projectOnly: Boolean,
         visited: MutableSet<ClassName>,
     ): List<SupertypeInfo> {
         val result = mutableListOf<SupertypeInfo>()
@@ -61,13 +60,11 @@ object TypeHierarchyBuilder {
                 visited.add(superClass)
                 val superEntry = classIndex[superClass]
                 val childSupertypes = if (superEntry != null) {
-                    resolveSupertypes(superEntry, classIndex, projectOnly, visited)
+                    resolveSupertypes(superEntry, classIndex, visited)
                 } else {
                     emptyList()
                 }
-                if (!projectOnly || superEntry != null) {
-                    result.add(SupertypeInfo(superClass, SupertypeKind.CLASS, childSupertypes))
-                }
+                result.add(SupertypeInfo(superClass, SupertypeKind.CLASS, childSupertypes))
             }
         }
 
@@ -76,13 +73,11 @@ object TypeHierarchyBuilder {
                 visited.add(iface)
                 val ifaceEntry = classIndex[iface]
                 val childSupertypes = if (ifaceEntry != null) {
-                    resolveSupertypes(ifaceEntry, classIndex, projectOnly, visited)
+                    resolveSupertypes(ifaceEntry, classIndex, visited)
                 } else {
                     emptyList()
                 }
-                if (!projectOnly || ifaceEntry != null) {
-                    result.add(SupertypeInfo(iface, SupertypeKind.INTERFACE, childSupertypes))
-                }
+                result.add(SupertypeInfo(iface, SupertypeKind.INTERFACE, childSupertypes))
             }
         }
 

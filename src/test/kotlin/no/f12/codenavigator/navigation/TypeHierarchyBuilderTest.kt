@@ -160,7 +160,7 @@ class TypeHierarchyBuilderTest {
     }
 
     @Test
-    fun `filters non-project supertypes when projectOnly is true`() {
+    fun `shows direct library supertypes even when projectOnly is true`() {
         TestClassWriter.writeClassFile(
             tempDir.toFile(), "com/example/MyClass", "MyClass.kt",
             interfaces = arrayOf("java/io/Serializable"),
@@ -168,7 +168,11 @@ class TypeHierarchyBuilderTest {
 
         val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "MyClass", projectOnly = true)
 
-        assertTrue(results.first().supertypes.isEmpty())
+        assertEquals(1, results.first().supertypes.size)
+        val supertype = results.first().supertypes.first()
+        assertEquals(ClassName("java.io.Serializable"), supertype.className)
+        assertEquals(SupertypeKind.INTERFACE, supertype.kind)
+        assertTrue(supertype.supertypes.isEmpty(), "should not recurse into library types")
     }
 
     @Test

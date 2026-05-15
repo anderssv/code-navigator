@@ -299,6 +299,24 @@ From user feedback: `cnavFindUsages -Ptype=SignatureContext` failed with a short
 - **Approach**: Audit all tasks for `-Pproject-only` / `-Pscope` support. Add missing support where it makes sense. Document which tasks support which filters in `cnavAgentHelp`.
 - **Note**: Some tasks may intentionally not support certain filters — document why.
 
+### Investigate `[prod]`/`[test]` misclassification on Maven projects
+
+**Value: high** | **Effort: low**
+
+From evaluation on realworld-springboot: some test methods in `find-callers` output were tagged `[prod]` instead of `[test]`. This is misleading for impact analysis — agents rely on the prod/test distinction to decide severity.
+
+- **Investigate**: How Maven mojos resolve source sets. The Gradle plugin uses `SourceSetResolver`; Maven may not be tagging test class directories correctly.
+- **Fix**: Ensure `target/test-classes` is tagged as `test` source set in all Maven mojos that pass tagged directories.
+
+### Default `cnavDead` to exclude test classes
+
+**Value: medium** | **Effort: low**
+
+From evaluation: `dead` correctly flags test classes as dead (no references) since test runners discover them via annotations, not bytecode calls. AI agents may misinterpret this and try to delete test classes.
+
+- **Approach**: Default `-Pscope=prod` (exclude test source set). Add `-Pscope=all` to include tests. The confidence levels (LOW for framework-discovered classes) help, but excluding by default is safer.
+- **Alternative**: Keep current default but add stronger guidance in output when test classes appear.
+
 ### Filter non-source files from git analysis recommendations
 
 **Value: medium** | **Effort: low**
@@ -364,6 +382,16 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 ---
 
 ## Standalone new tasks
+
+### Fix `type-hierarchy` to show full supertype/interface chain
+
+**Value: high** | **Effort: medium**
+
+From evaluation on spring-petclinic and realworld-springboot: `type-hierarchy` only shows the class itself — not the inheritance chain. For `OwnerRepository` extending `JpaRepository`, the output is nearly empty. For framework types with deep hierarchies, the command is near-useless.
+
+- **Expected**: Show the full chain of supertypes and interfaces, including library types resolved from classpath JARs.
+- **Minimum**: Show supertypes/interfaces found in project bytecode. Extend with classpath scanning when that infrastructure is available.
+- **Relates to**: Classpath/JAR scanning section — full hierarchy requires resolving library types.
 
 ### `cnavTestHealth` — verify all test methods actually ran
 
