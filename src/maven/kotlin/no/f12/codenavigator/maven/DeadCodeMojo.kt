@@ -57,6 +57,8 @@ class DeadCodeMojo : AbstractMojo() {
     private var treatAsDead: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val classesDir = File(project.build.outputDirectory)
         if (!classesDir.exists()) {
             log.warn("Classes directory does not exist: $classesDir — run 'mvn compile' first.")

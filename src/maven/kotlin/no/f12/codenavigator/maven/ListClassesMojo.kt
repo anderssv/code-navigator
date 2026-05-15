@@ -44,6 +44,8 @@ class ListClassesMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = ListClassesConfig.parse(TaskRegistry.LIST_CLASSES.enhanceProperties(buildPropertyMap()))
 
         val classes = if (config.jar != null) {

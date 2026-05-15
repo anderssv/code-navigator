@@ -43,6 +43,8 @@ class RankMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val taggedDirs = project.taggedClassDirectories()
         if (taggedDirs.isEmpty()) {
             log.warn("Classes directory does not exist: ${File(project.build.outputDirectory)} — run 'mvn compile' first.")

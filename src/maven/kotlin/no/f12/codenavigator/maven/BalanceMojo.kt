@@ -67,6 +67,8 @@ class BalanceMojo : AbstractMojo() {
     private var noFollow: Boolean = false
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = BalanceConfig.parse(TaskRegistry.BALANCE.enhanceProperties(buildPropertyMap()))
 
         // --- Bytecode analysis (strength + distance) ---

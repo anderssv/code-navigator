@@ -38,6 +38,8 @@ class FindCalleesMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         CallTreeMojoSupport.execute(
             project = project,
             log = log,

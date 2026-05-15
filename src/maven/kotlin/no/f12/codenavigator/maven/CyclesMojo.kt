@@ -49,6 +49,8 @@ class CyclesMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = CyclesConfig.parse(TaskRegistry.CYCLE_DETECTION.enhanceProperties(buildPropertyMap()))
         config.deprecations().forEach { log.warn(it) }
 

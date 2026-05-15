@@ -50,6 +50,8 @@ class IntegrationStrengthMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = StrengthConfig.parse(TaskRegistry.STRENGTH.enhanceProperties(buildPropertyMap()))
 
         val taggedDirs = project.taggedClassDirectories()

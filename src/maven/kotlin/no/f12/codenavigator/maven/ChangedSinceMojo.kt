@@ -44,6 +44,8 @@ class ChangedSinceMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = ChangedSinceConfig.parse(TaskRegistry.CHANGED_SINCE.enhanceProperties(buildPropertyMap()))
 
         if (config.ref == null) {

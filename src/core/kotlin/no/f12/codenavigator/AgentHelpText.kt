@@ -57,6 +57,8 @@ object AgentHelpText {
         appendLine()
         appendLine("Run ${tool.usage("agent-help")} for full usage instructions optimized for AI agents.")
         appendLine("Navigation tasks require compiled classes. Git history tasks work without compilation.")
+        appendLine("If cnav warns about stale class files, rebuild to get current results.")
+        appendLine("If compilation is broken mid-refactoring, cnav still works against the last successful build.")
         appendLine("Run ${tool.usage("help")} to see all available tasks and their parameters.")
     }
 

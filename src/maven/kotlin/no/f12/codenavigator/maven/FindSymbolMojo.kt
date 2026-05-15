@@ -49,6 +49,8 @@ class FindSymbolMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = try {
             FindSymbolConfig.parse(TaskRegistry.FIND_SYMBOL.enhanceProperties(buildPropertyMap()))
         } catch (e: IllegalArgumentException) {

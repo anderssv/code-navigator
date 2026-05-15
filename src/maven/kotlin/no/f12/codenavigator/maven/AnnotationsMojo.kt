@@ -43,6 +43,8 @@ class AnnotationsMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = try {
             AnnotationQueryConfig.parse(TaskRegistry.ANNOTATIONS.enhanceProperties(buildPropertyMap()))
         } catch (e: IllegalArgumentException) {

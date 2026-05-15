@@ -45,6 +45,8 @@ class FindClassMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = try {
             FindClassConfig.parse(TaskRegistry.FIND_CLASS.enhanceProperties(buildPropertyMap()))
         } catch (e: IllegalArgumentException) {

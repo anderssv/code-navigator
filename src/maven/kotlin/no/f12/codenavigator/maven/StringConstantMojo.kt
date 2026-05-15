@@ -37,6 +37,8 @@ class StringConstantMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = StringConstantConfig.parse(
             TaskRegistry.FIND_STRING_CONSTANT.enhanceProperties(buildPropertyMap()),
         )

@@ -51,6 +51,8 @@ class PackageDistanceMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = PackageDistanceConfig.parse(TaskRegistry.DISTANCE.enhanceProperties(buildPropertyMap()))
 
         val taggedDirs = project.taggedClassDirectories()

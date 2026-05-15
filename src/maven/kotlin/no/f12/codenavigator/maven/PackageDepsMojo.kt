@@ -44,6 +44,8 @@ class PackageDepsMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = PackageDepsConfig.parse(TaskRegistry.PACKAGE_DEPS.enhanceProperties(buildPropertyMap()))
 
         val taggedDirs = project.taggedClassDirectories()

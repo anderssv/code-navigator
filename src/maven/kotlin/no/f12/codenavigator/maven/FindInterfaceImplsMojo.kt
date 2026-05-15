@@ -41,6 +41,8 @@ class FindInterfaceImplsMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = try {
             FindInterfaceImplsConfig.parse(TaskRegistry.FIND_INTERFACES.enhanceProperties(buildPropertyMap()))
         } catch (e: IllegalArgumentException) {

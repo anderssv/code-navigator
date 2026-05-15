@@ -1,9 +1,24 @@
 package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.registry.ClassFileStaleness
+import no.f12.codenavigator.registry.StalenessResult
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.project.MavenProject
 import java.io.File
+
+fun MavenProject.checkStaleness(log: org.apache.maven.plugin.logging.Log) {
+    val sourceDirs = (compileSourceRoots + testCompileSourceRoots).map { File(it as String) }
+    val classDirs = listOfNotNull(
+        File(build.outputDirectory).takeIf { it.exists() },
+        File(build.testOutputDirectory).takeIf { it.exists() },
+    )
+    when (val result = ClassFileStaleness.check(sourceDirs, classDirs)) {
+        is StalenessResult.Fresh -> {}
+        is StalenessResult.Stale -> log.warn("⚠ ${result.warning}")
+        is StalenessResult.NoClassFiles -> throw MojoFailureException(result.error)
+    }
+}
 
 fun MavenProject.taggedClassDirectories(): List<Pair<File, SourceSet>> {
     val result = mutableListOf<Pair<File, SourceSet>>()

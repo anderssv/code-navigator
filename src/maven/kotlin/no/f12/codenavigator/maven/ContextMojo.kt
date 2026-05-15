@@ -53,6 +53,8 @@ class ContextMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = try {
             ContextConfig.parse(TaskRegistry.CONTEXT.enhanceProperties(buildPropertyMap()))
         } catch (e: IllegalArgumentException) {

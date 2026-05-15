@@ -1,11 +1,14 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.registry.ClassFileStaleness
+import no.f12.codenavigator.registry.StalenessResult
 import no.f12.codenavigator.registry.TaskDef
 import no.f12.codenavigator.registry.TaskRegistry
 import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.tasks.SourceSetContainer
 
 class CodeNavigatorPlugin : Plugin<Project> {
 
@@ -64,11 +67,20 @@ class CodeNavigatorPlugin : Plugin<Project> {
             project.tasks.register(taskName, taskClass) {
                 description = taskDef.description
                 group = "code-navigator"
-                if (taskDef.requiresCompilation) {
-                    dependsOn("classes")
-                }
-                if (taskDef.requiresTestCompilation) {
-                    dependsOn("testClasses")
+                if (taskDef.requiresCompilation || taskDef.requiresTestCompilation) {
+                    doFirst {
+                        val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
+                        val sourceDirs = sourceSets.getByName("main").allSource.srcDirs.toList()
+                        val classDirs = sourceSets.getByName("main").output.classesDirs.files.toList()
+                        if (taskDef.requiresTestCompilation) {
+                            val testSourceSet = sourceSets.findByName("test")
+                            val testSourceDirs = testSourceSet?.allSource?.srcDirs?.toList() ?: emptyList()
+                            val testClassDirs = testSourceSet?.output?.classesDirs?.files?.toList() ?: emptyList()
+                            checkStaleness(sourceDirs + testSourceDirs, classDirs + testClassDirs)
+                        } else {
+                            checkStaleness(sourceDirs, classDirs)
+                        }
+                    }
                 }
                 if (this is RenameParamTask) {
                     openRewriteClasspath.from(openRewriteConfig)
@@ -126,5 +138,13 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "agent-help" to AgentHelpTask::class.java,
             "config-help" to ConfigHelpTask::class.java,
         )
+    }
+}
+
+private fun DefaultTask.checkStaleness(sourceDirectories: List<java.io.File>, classDirectories: List<java.io.File>) {
+    when (val result = ClassFileStaleness.check(sourceDirectories, classDirectories)) {
+        is StalenessResult.Fresh -> {}
+        is StalenessResult.Stale -> logger.warn("⚠ ${result.warning}")
+        is StalenessResult.NoClassFiles -> throw org.gradle.api.GradleException(result.error)
     }
 }

@@ -58,6 +58,8 @@ class DsmMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = DsmConfig.parse(TaskRegistry.DSM.enhanceProperties(buildPropertyMap()))
         config.deprecations().forEach { log.warn(it) }
 

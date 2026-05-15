@@ -42,6 +42,8 @@ class LayerCheckMojo : AbstractMojo() {
     private var init: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val checkConfig = LayerCheckConfig.parse(TaskRegistry.LAYER_CHECK.enhanceProperties(buildPropertyMap()))
 
         val classDirectories = project.taggedClassDirectories().map { it.first }

@@ -39,6 +39,8 @@ class TypeHierarchyMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
+        project.checkStaleness(log)
+
         val config = try {
             TypeHierarchyConfig.parse(TaskRegistry.TYPE_HIERARCHY.enhanceProperties(buildPropertyMap()))
         } catch (e: IllegalArgumentException) {
