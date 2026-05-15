@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.77
+
+- **New:** Stale class file detection — all bytecode-based tasks now compare source and class file timestamps. Warns when source is newer than compiled classes. Errors with clear message when no class files exist.
+- **Changed:** Gradle tasks no longer force compilation via `dependsOn("classes")`. If compilation is broken mid-refactoring, cnav runs against the last successful build with a staleness warning.
+- **New:** `cnavAgentHelp -Psection=refactor` — intent-based task lookup for refactoring workflows. Groups tasks by: move/rename, explore before refactoring, find targets, and verify after.
+- **Improved:** Extracted `ConfidenceScorer` from `DeadCodeFinder` — confidence scoring rules are now independently testable.
+- **Improved:** Introduced `DeadCodeQuery` data class to bundle `DeadCodeFinder.find()` parameters (previously 21 positional parameters).
+- **Improved:** Extracted `StrengthOrchestrator` and `DistanceOrchestrator` — shared analysis logic moved from Gradle tasks and Maven mojos into core.
+
 ## 0.1.76
 
 - **Fixed:** `type-hierarchy` now always shows direct supertypes including library types (e.g., `JpaRepository`). Previously `projectOnly=true` (the default) hid all non-project supertypes, making the command near-useless for classes extending framework types. Recursion still stops at library type boundaries.
