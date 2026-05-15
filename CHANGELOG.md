@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.76
+
+- **Fixed:** `type-hierarchy` now always shows direct supertypes including library types (e.g., `JpaRepository`). Previously `projectOnly=true` (the default) hid all non-project supertypes, making the command near-useless for classes extending framework types. Recursion still stops at library type boundaries.
+- **Fixed:** Call graph cache invalidation when source set tags don't match. A non-tagged `getOrBuild` call (from `metrics`, `package-deps`, etc.) could write the cache with all classes tagged as `MAIN`. Subsequent `getOrBuildTagged` calls (from `find-callers`, `find-usages`, etc.) would read the stale cache and misclassify test classes as `[prod]`.
+- **Changed:** `cnavDead` now defaults to `scope=prod` instead of `scope=all`. Test classes are excluded by default since test runners discover them via annotations, not bytecode calls. Output includes a notice: "Test classes excluded. Use scope=all to include test classes."
+- **Improved:** Documentation clarifies that `find-callers` and `find-callees` produce full recursive call hierarchies, not just direct callers/callees.
+
 ## 0.1.75
 
 - **Fixed:** `cnavFindSymbol`, `cnavListClasses`, `cnavClassDetail`, and `cnavDeadCode` crashed with `Artifact 'task ':jar'' not found in runtimeClasspath` on projects that have a `jar` task. Property reading now uses CLI `-P` properties exclusively instead of `Project.findProperty()`, which incorrectly picked up Gradle-internal project properties (like task references).
