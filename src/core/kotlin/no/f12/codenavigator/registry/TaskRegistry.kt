@@ -314,7 +314,7 @@ object TaskRegistry {
 
     val FIND_CALLERS = TaskDef(
         goal = "find-callers",
-        description = "Find callers of a method (call tree)",
+        description = "Full call hierarchy: find all callers of a method, recursively",
         params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
@@ -328,7 +328,7 @@ object TaskRegistry {
 
     val FIND_CALLEES = TaskDef(
         goal = "find-callees",
-        description = "Find methods called by a method (call tree)",
+        description = "Full call hierarchy: find all methods called by a method, recursively",
         params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
