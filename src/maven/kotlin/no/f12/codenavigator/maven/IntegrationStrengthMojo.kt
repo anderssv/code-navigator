@@ -1,18 +1,8 @@
 package no.f12.codenavigator.maven
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
-import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.PackageName
-import no.f12.codenavigator.navigation.core.scanProjectClasses
-import no.f12.codenavigator.navigation.dsm.ClassTypeCollector
-import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
-import no.f12.codenavigator.navigation.dsm.StrengthClassifier
 import no.f12.codenavigator.navigation.dsm.StrengthConfig
-import no.f12.codenavigator.navigation.dsm.StrengthFormatter
-import no.f12.codenavigator.navigation.annotation.FrameworkPresets
-import no.f12.codenavigator.navigation.core.SkippedFileReporter
+import no.f12.codenavigator.navigation.dsm.StrengthOrchestrator
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
@@ -63,35 +53,11 @@ class IntegrationStrengthMojo : AbstractMojo() {
             return
         }
 
-        val projectClasses = scanProjectClasses(classDirectories)
-
-        val classTypeRegistry = ClassTypeCollector.collect(classDirectories, FrameworkPresets.resolveAllModelAnnotations())
-
-        val packageFilter = config.packageFilter?.let { PackageName(it) }
-
-        val extractResult = DsmDependencyExtractor.extract(
-            classDirectories, projectClasses,
-            packageFilter = packageFilter ?: PackageName(""),
-            includeExternal = config.includeExternal,
-            filterTargets = false,
-        )
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
-        SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { log.warn(it) }
+        val output = StrengthOrchestrator.run(config, classDirectories, reportFile)
 
-        val result = StrengthClassifier.classify(extractResult.data, classTypeRegistry, config.top, packageFilter)
-
-        if (result.entries.isEmpty()) {
-            val packageCount = projectClasses.map { it.packageName() }.distinct().size
-            val hints = StrengthFormatter.noResultsHints(packageCount)
-            println(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
-            return
-        }
-
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { StrengthFormatter.format(result) },
-            json = { JsonFormatter.formatStrength(result) },
-            llm = { LlmFormatter.formatStrength(result) },
-        ))
+        output.skippedFileWarning?.let { log.warn(it) }
+        output.formatted?.let { println(it) }
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
