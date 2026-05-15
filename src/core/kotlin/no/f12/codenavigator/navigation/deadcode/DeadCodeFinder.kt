@@ -34,7 +34,55 @@ data class DeadCode(
     val reason: DeadCodeReason,
 )
 
+data class DeadCodeQuery(
+    val graph: CallGraph,
+    val filter: Regex? = null,
+    val exclude: Regex? = null,
+    val classesOnly: Boolean = false,
+    val excludeAnnotated: Set<String> = emptySet(),
+    val classAnnotations: Map<ClassName, Set<AnnotationName>> = emptyMap(),
+    val methodAnnotations: Map<MethodRef, Set<AnnotationName>> = emptyMap(),
+    val testGraph: CallGraph? = null,
+    val interfaceImplementors: Map<ClassName, Set<ClassName>> = emptyMap(),
+    val classFields: Map<ClassName, Set<String>> = emptyMap(),
+    val inlineMethods: Set<MethodRef> = emptySet(),
+    val classExternalInterfaces: Map<ClassName, Set<ClassName>> = emptyMap(),
+    val scope: Scope = Scope.ALL,
+    val modifierAnnotated: Set<String> = emptySet(),
+    val supertypeEntryPoints: Set<ClassName> = emptySet(),
+    val testClasses: Set<ClassName> = emptySet(),
+    val classReceiverTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
+    val receiverTypeEntryPoints: Set<ClassName> = emptySet(),
+    val delegationMethods: Set<MethodRef> = emptySet(),
+    val bridgeMethods: Set<MethodRef> = emptySet(),
+    val declaredMethods: Map<ClassName, Set<String>> = emptyMap(),
+)
+
 object DeadCodeFinder {
+
+    fun find(query: DeadCodeQuery): List<DeadCode> = find(
+        graph = query.graph,
+        filter = query.filter,
+        exclude = query.exclude,
+        classesOnly = query.classesOnly,
+        excludeAnnotated = query.excludeAnnotated,
+        classAnnotations = query.classAnnotations,
+        methodAnnotations = query.methodAnnotations,
+        testGraph = query.testGraph,
+        interfaceImplementors = query.interfaceImplementors,
+        classFields = query.classFields,
+        inlineMethods = query.inlineMethods,
+        classExternalInterfaces = query.classExternalInterfaces,
+        scope = query.scope,
+        modifierAnnotated = query.modifierAnnotated,
+        supertypeEntryPoints = query.supertypeEntryPoints,
+        testClasses = query.testClasses,
+        classReceiverTypes = query.classReceiverTypes,
+        receiverTypeEntryPoints = query.receiverTypeEntryPoints,
+        delegationMethods = query.delegationMethods,
+        bridgeMethods = query.bridgeMethods,
+        declaredMethods = query.declaredMethods,
+    )
 
     fun find(
         graph: CallGraph,

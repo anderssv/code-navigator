@@ -11,6 +11,7 @@ import no.f12.codenavigator.navigation.deadcode.BridgeMethodDetector
 import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFinder
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
+import no.f12.codenavigator.navigation.deadcode.DeadCodeQuery
 import no.f12.codenavigator.navigation.deadcode.DelegationMethodDetector
 import no.f12.codenavigator.navigation.deadcode.FieldExtractor
 import no.f12.codenavigator.navigation.deadcode.InlineMethodDetector
@@ -78,7 +79,7 @@ abstract class DeadCodeTask : DefaultTask() {
 
         val classReceiverTypes = ReceiverTypeExtractor.scanAll(classDirectories)
 
-        val dead = DeadCodeFinder.find(
+        val dead = DeadCodeFinder.find(DeadCodeQuery(
             graph = graph,
             filter = config.filter,
             exclude = config.exclude,
@@ -100,7 +101,7 @@ abstract class DeadCodeTask : DefaultTask() {
             delegationMethods = delegationMethods,
             bridgeMethods = bridgeMethods,
             declaredMethods = graph.allDeclaredMethods(),
-        )
+        ))
 
         if (dead.isEmpty()) {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No potential dead code found."))
