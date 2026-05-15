@@ -123,7 +123,10 @@ object CallGraphCache : FileCache<CallGraph>() {
         val classDirectories = taggedDirectories.map { it.first }
         if (isFresh(cacheFile, classDirectories)) {
             try {
-                return ScanResult(read(cacheFile), emptyList())
+                val cached = read(cacheFile)
+                if (hasMatchingSourceSets(cached, taggedDirectories)) {
+                    return ScanResult(cached, emptyList())
+                }
             } catch (_: Exception) {
                 cacheFile.delete()
             }
@@ -132,5 +135,18 @@ object CallGraphCache : FileCache<CallGraph>() {
         val result = CallGraphBuilder.buildTagged(taggedDirectories)
         write(cacheFile, result.data)
         return result
+    }
+
+    private fun hasMatchingSourceSets(
+        cached: CallGraph,
+        taggedDirectories: List<Pair<File, SourceSet>>,
+    ): Boolean {
+        val requestedSourceSets = taggedDirectories
+            .filter { it.first.exists() }
+            .map { it.second }
+            .toSet()
+        val cachedSourceSets = mutableSetOf<SourceSet>()
+        cached.forEachSourceSet { _, sourceSet -> cachedSourceSets.add(sourceSet) }
+        return requestedSourceSets == cachedSourceSets
     }
 }

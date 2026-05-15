@@ -299,14 +299,9 @@ From user feedback: `cnavFindUsages -Ptype=SignatureContext` failed with a short
 - **Approach**: Audit all tasks for `-Pproject-only` / `-Pscope` support. Add missing support where it makes sense. Document which tasks support which filters in `cnavAgentHelp`.
 - **Note**: Some tasks may intentionally not support certain filters — document why.
 
-### Investigate `[prod]`/`[test]` misclassification on Maven projects
+### ~~Investigate `[prod]`/`[test]` misclassification on Maven projects~~ — DONE
 
-**Value: high** | **Effort: low**
-
-From evaluation on realworld-springboot: some test methods in `find-callers` output were tagged `[prod]` instead of `[test]`. This is misleading for impact analysis — agents rely on the prod/test distinction to decide severity.
-
-- **Investigate**: How Maven mojos resolve source sets. The Gradle plugin uses `SourceSetResolver`; Maven may not be tagging test class directories correctly.
-- **Fix**: Ensure `target/test-classes` is tagged as `test` source set in all Maven mojos that pass tagged directories.
+Fixed: `getOrBuildTagged` now validates that cached source sets match requested tags. Previously, a non-tagged `getOrBuild` call (from MetricsMojo, PackageDepsMojo, etc.) would write the cache with all classes tagged as MAIN, and subsequent `getOrBuildTagged` calls would read the stale cache with wrong source set tags.
 
 ### Default `cnavDead` to exclude test classes
 
@@ -537,6 +532,27 @@ The current `peerLimit` and `testInfrastructure` attributes work but may not be 
 - **Layer groups**: The old package-based plan had "peer groups" (same-index arrays). The pattern-based model uses layer ordering only. Is there demand for peer groups?
 
 Low priority — the current model works. Revisit when real-world usage reveals friction.
+
+---
+
+## Hexagonal architecture analysis (loose thoughts — not to be acted upon yet)
+
+**Value: TBD** | **Effort: TBD**
+
+Analyze code-navigator's own codebase through a hexagonal architecture lens. The goal is to ensure outer layers are well-defined and that the core uses data classes carrying relevant metadata rather than leaking formatting or parsing concerns inward.
+
+Preliminary thinking on port/adapter boundaries:
+
+- **Input edge (driving)**: Command parsing — reading `-P`/`-D` properties, building config objects. Currently split across Gradle tasks and Maven mojos with some duplication.
+- **Output edge (driven)**: Printing formats — TEXT, LLM, JSON. Currently in `JsonFormatter`, `LlmFormatter`, `TableFormatter` (already identified as god classes in the internal code quality section).
+- **Bytecode edge (driven)**: Interfacing with compiled classes — listing, exact matching, simple search patterns, possibly hierarchy traversal. This is the primary data source and may warrant its own port abstraction.
+- **Core**: Analysis logic operating on data classes with relevant metadata. Should not know about property parsing or output formatting.
+
+This is a planning entry to discuss and design together before any implementation. Questions to resolve:
+- What are the right port abstractions?
+- Does the bytecode scanning layer belong inside or outside the core?
+- How does this relate to the existing "Extract shared orchestration" and "Split formatters" items?
+- Is the current `Config → Builder → Formatter` separation already close enough, or does it need restructuring?
 
 ---
 

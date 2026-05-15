@@ -319,6 +319,22 @@ class CallGraphCacheTest {
         assertEquals(SourceSet.TEST, result.data.sourceSetOf(ClassName("com.example.ServiceTest")))
     }
 
+    @Test
+    fun `getOrBuildTagged rebuilds when cache was built by non-tagged getOrBuild`() {
+        val mainDir = tempDir.resolve("main-classes").toFile()
+        mainDir.mkdirs()
+        writeClassFile("com/example/Service", mainDir)
+        val testDir = tempDir.resolve("test-classes").toFile()
+        testDir.mkdirs()
+        writeClassFile("com/example/ServiceTest", testDir)
+
+        CallGraphCache.getOrBuild(cacheFile, listOf(mainDir, testDir))
+        val result = CallGraphCache.getOrBuildTagged(cacheFile, listOf(mainDir to SourceSet.MAIN, testDir to SourceSet.TEST))
+
+        assertEquals(SourceSet.MAIN, result.data.sourceSetOf(ClassName("com.example.Service")))
+        assertEquals(SourceSet.TEST, result.data.sourceSetOf(ClassName("com.example.ServiceTest")))
+    }
+
     private fun writeClassFile(className: String, targetDir: File = classesDir) {
         val writer = ClassWriter(0)
         writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
