@@ -17,6 +17,7 @@ object FrameworkPresets {
         "org.springframework.context.event.EventListener",
         "org.springframework.web.bind.annotation.ExceptionHandler",
         "org.springframework.web.bind.annotation.ControllerAdvice",
+        "org.springframework.web.bind.annotation.RestControllerAdvice",
         "org.springframework.boot.actuate.endpoint.annotation.Endpoint",
         "org.springframework.boot.autoconfigure.SpringBootApplication",
         "org.springframework.boot.autoconfigure.EnableAutoConfiguration",

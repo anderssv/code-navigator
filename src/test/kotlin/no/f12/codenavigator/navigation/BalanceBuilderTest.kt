@@ -60,7 +60,7 @@ class BalanceBuilderTest {
     }
 
     @Test
-    fun `over-engineering — contract strength plus low distance plus low volatility`() {
+    fun `contract strength plus low distance plus high volatility is tolerable not over-engineered`() {
         val pkgA = PackageName("com.example.service")
         val pkgB = PackageName("com.example.model")
 
@@ -74,15 +74,73 @@ class BalanceBuilderTest {
         )
         val volatility = PackageVolatilityResult(
             entries = listOf(
-                volatility("com.example.service", revisions = 2),
-                volatility("com.example.model", revisions = 1),
+                volatility("com.example.service", revisions = 20),
+                volatility("com.example.model", revisions = 15),
             ),
         )
 
         val result = BalanceBuilder.build(strength, distance, volatility)
 
         assertEquals(1, result.entries.size)
-        assertEquals(BalanceVerdict.OVER_ENGINEERED, result.entries.first().verdict)
+        assertEquals(BalanceVerdict.TOLERABLE, result.entries.first().verdict)
+    }
+
+    @Test
+    fun `contract strength plus low distance plus low volatility is balanced when nearby`() {
+        val pkgA = PackageName("com.example.domain.service")
+        val pkgB = PackageName("com.example.domain.model")
+
+        val strength = StrengthResult(
+            entries = listOf(
+                strengthEntry(pkgA, pkgB, IntegrationStrength.CONTRACT, contract = 3),
+            ),
+        )
+        val distance = PackageDistanceResult(
+            entries = listOf(distanceEntry(pkgA, pkgB, distance = 2)),
+        )
+        val volatility = PackageVolatilityResult(
+            entries = listOf(
+                volatility("com.example.domain.service", revisions = 2),
+                volatility("com.example.domain.model", revisions = 1),
+                volatility("com.example.other.hot", revisions = 30),
+                volatility("com.example.other.active", revisions = 25),
+                volatility("com.example.other.busy", revisions = 20),
+            ),
+        )
+
+        val result = BalanceBuilder.build(strength, distance, volatility)
+
+        assertEquals(1, result.entries.size)
+        assertEquals(BalanceVerdict.BALANCED, result.entries.first().verdict)
+    }
+
+    @Test
+    fun `model strength plus low distance plus low volatility is balanced`() {
+        val pkgA = PackageName("com.example.domain.service")
+        val pkgB = PackageName("com.example.domain.repository")
+
+        val strength = StrengthResult(
+            entries = listOf(
+                strengthEntry(pkgA, pkgB, IntegrationStrength.MODEL, model = 3),
+            ),
+        )
+        val distance = PackageDistanceResult(
+            entries = listOf(distanceEntry(pkgA, pkgB, distance = 1)),
+        )
+        val volatility = PackageVolatilityResult(
+            entries = listOf(
+                volatility("com.example.domain.service", revisions = 2),
+                volatility("com.example.domain.repository", revisions = 1),
+                volatility("com.example.other.hot", revisions = 30),
+                volatility("com.example.other.active", revisions = 25),
+                volatility("com.example.other.busy", revisions = 20),
+            ),
+        )
+
+        val result = BalanceBuilder.build(strength, distance, volatility)
+
+        assertEquals(1, result.entries.size)
+        assertEquals(BalanceVerdict.BALANCED, result.entries.first().verdict)
     }
 
     @Test
@@ -224,7 +282,7 @@ class BalanceBuilderTest {
 
         assertEquals(2, result.entries.size)
         assertEquals(BalanceVerdict.DANGER, result.entries[0].verdict)
-        assertEquals(BalanceVerdict.OVER_ENGINEERED, result.entries[1].verdict)
+        assertEquals(BalanceVerdict.TOLERABLE, result.entries[1].verdict)
     }
 
     @Test

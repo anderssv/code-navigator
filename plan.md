@@ -75,6 +75,33 @@ Confidence scoring logic extracted to `ConfidenceScorer` object. `DeadCodeFinder
 
 `DeadCodeQuery` data class bundles 21 parameters. `DeadCodeFinder.find(query)` accepts it. Old overload preserved for backward compatibility.
 
+### Dead class count mismatch between `cnavMetrics` and `cnavDead`
+
+**Value: high** | **Effort: low**
+
+From self-analysis on realworld-springboot: `cnavMetrics` reports 8 dead classes but `cnavDead` returns only 2. Self-analysis on code-navigator itself: `cnavMetrics` reports 165 dead classes but `cnavDead` returns ~69 items. The two tasks should agree on the same defaults. Likely cause: different default parameters (scope, exclude-annotated, treat-as-dead) between `MetricsBuilder.deadClassCount` and `DeadCodeFinder.find()`.
+
+- **Approach**: Trace both code paths and align defaults. Add a test that asserts `metrics.deadClassCount == dead.size` for the same input.
+
+### `@ControllerAdvice` not recognized as Spring entry point
+
+**Value: medium** | **Effort: low**
+
+From self-analysis on realworld-springboot: `ExceptionHandlerController` (annotated `@ControllerAdvice`) flagged as dead with low confidence. `@ControllerAdvice` is a Spring stereotype but not in `FrameworkPresets.SPRING`. Should be added alongside `@Controller`, `@RestController`, etc.
+
+- **Approach**: Add `ControllerAdvice` to `FrameworkPresets.SPRING`.
+
+### OVER_ENGINEERED false positives for standard domain layer packages
+
+**Value: medium** | **Effort: low**
+
+From self-analysis on realworld-springboot: `cnavBalance` flags `domain.repository` → `domain.model`, `domain.service` → `domain.model`, and `domain.service` → `domain.repository` as OVER_ENGINEERED ("loosely coupled nearby packages — consider merging"). These are textbook DDD separations that should not be flagged.
+
+The heuristic penalizes nearby + loosely coupled, but MODEL and CONTRACT strength between sibling domain packages is expected and healthy. Merging `domain.model` into `domain.service` would be objectively worse.
+
+- **Approach**: Exempt pairs where strength is MODEL or CONTRACT and distance ≤ 2 from the OVER_ENGINEERED verdict. These represent intentional layering, not accidental splitting.
+- **Alternative**: Only flag OVER_ENGINEERED when strength is FUNCTIONAL (implementation coupling) — MODEL and CONTRACT coupling at short distance is a sign of good architecture, not over-engineering.
+
 ### Meta-annotation traversal for dead code filtering
 
 **Value: high** | **Effort: medium**
@@ -384,6 +411,20 @@ Find entire libraries that could be removed. For each declared dependency JAR, e
 
 Improvements to cnav's own codebase — not user-facing features.
 
+### Potentially dead code in cnav's own codebase (from self-analysis)
+
+**Value: medium** | **Effort: low**
+
+Self-analysis with `cnavDead` found high-confidence dead code in core:
+
+- `CallGraphCache.build()`, `ClassIndexCache.build()`, `InterfaceRegistryCache.build()`, `SymbolIndexCache.build()` — `build` methods on cache classes have no callers (`getOrBuild` is used instead). If these are truly dead, remove them.
+- `FileCache.build()`, `FileCache.getOrBuild()`, `FileCache.isFresh()`, `FileCache.read()`, `FileCache.readLines()`, `FileCache.write()`, `FileCache.writeLines()` — multiple FileCache methods flagged. These may be called via subclass dispatch (check if cnav's analysis misses this).
+- `UsageScanner.scan()` — no callers found. Investigate if this is superseded.
+- `DsmDependencyExtractor.extractFromClass-Ue68T7I()` — inline class mangled name. May be a false positive from name mangling.
+- `CollapsedUsage.copy-NT0O-NM()` — Kotlin copy() with inline class param. Expected false positive from name mangling.
+
+The Gradle task methods (`showDeadCode`, `findCallers`, etc.) are all correctly flagged low-confidence — they're invoked by the Gradle runtime via reflection, not via direct calls. This confirms framework-entry-point detection is working correctly for Gradle `@TaskAction`.
+
 ### Test suite health: coverage, speed, and duplication
 
 **Value: high** | **Effort: medium**
@@ -426,15 +467,55 @@ Non-Gradle gaps to address:
 - ~~**Reduce duplication**~~ **DONE** — see `plan-completed.md`.
 - ~~**Align with kotlin-tdd**~~ **DONE** — already aligned.
 
+### Break `formatting` ↔ `navigation.dsm` cycle
+
+**Value: high** | **Effort: medium**
+
+Self-analysis found a cycle between `formatting` and `navigation.dsm`. `JsonFormatter`/`LlmFormatter` depend on DSM data types (expected — formatters consume result structures). The problem is the reverse: `DistanceOrchestrator` and `StrengthOrchestrator` depend on `JsonFormatter`, `LlmFormatter`, and `OutputWrapper` in `formatting`. Orchestrators should produce result data and let the caller handle formatting.
+
+- **Approach**: Orchestrators should return result data classes. Move formatting out of orchestrators into the Gradle tasks / Maven mojos (or a thin dispatch layer). This also makes orchestrators independently testable without formatter dependencies.
+- **Relates to**: "Split JsonFormatter and LlmFormatter per-feature" below — splitting formatters becomes easier once the cycle is broken.
+
+### Break 6-package core cycle
+
+**Value: medium** | **Effort: high**
+
+Self-analysis found a cycle involving `navigation.annotation`, `navigation.callgraph`, `navigation.complexity`, `navigation.core`, `navigation.interfaces`, and `registry`. Key problematic edges:
+
+- `navigation.core` → `navigation.complexity` (via `LambdaCollapser` → `ClassComplexity`) — core should not depend on a feature package
+- `navigation.core` → `registry` (via `FileCache` → `CacheFreshness`) — core depending on registry is an inversion
+- `registry` → `navigation.annotation` (via `TaskRegistry` → `FrameworkPresets`) — registry should not reach into feature packages
+- `registry` → `navigation.core` (via `TaskDef` → `PatternEnhancer`)
+
+- **Approach**: Move `CacheFreshness` from `registry` to `navigation.core`. Move `FrameworkPresets` from `navigation.annotation` to a shared location (e.g. `navigation.core` or its own `navigation.framework` package). Extract `ClassComplexity` data class from `navigation.complexity` to `navigation.core` or a shared types package. Move `PatternEnhancer` usage out of `TaskDef`.
+
 ### Split JsonFormatter and LlmFormatter per-feature
 
 **Value: medium** | **Effort: medium**
 
-Self-analysis found `JsonFormatter` (217 outgoing dependencies, 47 referenced types) and `LlmFormatter` (177 outgoing, 46 types) are god classes. They change together 96% of the time.
+Self-analysis found `JsonFormatter` (347 outgoing dependencies, 72 referenced types, fanIn=257) and `LlmFormatter` (similar scale) are the highest-complexity classes in the entire codebase. They change together 96% of the time.
 
 - **Approach**: Split into per-feature formatters (e.g., `CallTreeJsonFormatter`, `DeadCodeJsonFormatter`). Top-level formatters become thin dispatchers.
 - **Ordering**: `LlmFormatter` first (primary agent-facing format), then `JsonFormatter`. `TableFormatter` is smaller and can follow later.
 - **Benefits**: Adding a new feature means adding a new formatter file, not editing a shared god class.
+
+### Reduce Gradle/Maven duplication in orchestration and config
+
+**Value: medium** | **Effort: medium**
+
+Self-analysis with `cnavDuplicates` found 50 duplicate blocks between Gradle tasks and Maven mojos. Top duplicates (by token count):
+- `MetricsTask.kt` ↔ `MetricsMojo.kt` (255 tokens) — nearly identical orchestration
+- `ContextTask.kt` ↔ `ContextMojo.kt` (238 tokens)
+- `DeadCodeTask.kt` ↔ `DeadCodeMojo.kt` (211 tokens)
+- `ListClassesTask.kt` ↔ `FindClassTask.kt` (200 tokens) — even within Gradle, two tasks share logic
+- `FindCalleesMojo.kt` ↔ `FindCallersMojo.kt` (165 tokens)
+
+The shared orchestration extraction (StrengthOrchestrator, DistanceOrchestrator) pattern should be extended to more tasks. Priority: Metrics, Context, DeadCode (highest duplication).
+
+Also found core duplication:
+- `InlineMethodDetector.kt` ↔ `DelegationMethodDetector.kt` (227 tokens) — similar visitor patterns
+- `RenameMethodRewriter.kt` ↔ `RenamePropertyRewriter.kt` ↔ `RenameParamRewriter.kt` (117 tokens each) — shared rewriter boilerplate
+- `RenamePropertyFormatter.kt` ↔ `RenameMethodFormatter.kt` (101 tokens)
 
 ### ~~Extract shared orchestration from Gradle tasks and Maven mojos~~ — DONE
 

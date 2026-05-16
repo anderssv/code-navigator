@@ -7,21 +7,13 @@ import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.navigation.core.RootPackageDetector
-import no.f12.codenavigator.navigation.core.Scope
 import no.f12.codenavigator.navigation.core.scanProjectClasses
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.classinfo.ClassScanner
-import no.f12.codenavigator.navigation.deadcode.BridgeMethodDetector
-import no.f12.codenavigator.navigation.deadcode.DeadCodeFinder
-import no.f12.codenavigator.navigation.deadcode.DelegationMethodDetector
-import no.f12.codenavigator.navigation.deadcode.FieldExtractor
-import no.f12.codenavigator.navigation.deadcode.InlineMethodDetector
-import no.f12.codenavigator.navigation.deadcode.ReceiverTypeExtractor
+import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
+import no.f12.codenavigator.navigation.deadcode.DeadCodeOrchestrator
 import no.f12.codenavigator.navigation.dsm.CycleDetector
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
-import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
 import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
 import no.f12.codenavigator.navigation.metrics.MetricsBuilder
 import no.f12.codenavigator.navigation.metrics.MetricsConfig
@@ -31,6 +23,7 @@ import no.f12.codenavigator.navigation.core.SkippedFileReporter
 import no.f12.codenavigator.navigation.rank.TypeRanker
 
 import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
@@ -51,9 +44,10 @@ abstract class MetricsTask : DefaultTask() {
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
         val classDirectories = filteredDirs.map { it.first }
 
-        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/call-graph.cache")
+        val cacheDir = File(project.layout.buildDirectory.asFile.get(), "cnav")
+        val cacheFile = File(cacheDir, "call-graph.cache")
         val graphResult = CallGraphCache.getOrBuild(cacheFile, classDirectories)
-        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        val reportFile = File(cacheDir, "skipped-files.txt")
         SkippedFileReporter.report(graphResult.skippedFiles, reportFile)?.let { logger.warn(it) }
         val graph = graphResult.data
 
@@ -61,43 +55,33 @@ abstract class MetricsTask : DefaultTask() {
         val packages = PackageDependencyBuilder.build(graph).allPackages()
         val rankedTypes = TypeRanker.rank(graph, projectOnly = true, collapseLambdas = true)
 
-        val excludeAnnotated = config.excludeAnnotated.toSet()
-        val annotations = AnnotationExtractor.scanAll(classDirectories)
+        // Use DeadCodeConfig for consistent framework preset resolution
+        val deadCodeConfig = DeadCodeConfig.parse(props)
 
-        val interfaceRegistry = InterfaceRegistryCache.getOrBuild(
-            File(project.layout.buildDirectory.asFile.get(), "cnav/interface-registry.cache"),
-            classDirectories,
-        ).data
-        val interfaceImplementors = mutableMapOf<ClassName, MutableSet<ClassName>>()
-        interfaceRegistry.forEachEntry { interfaceName, implementors ->
-            interfaceImplementors[interfaceName] = implementors.map { it.className }.toMutableSet()
+        // Build test graph for accurate dead code detection
+        val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
+        val testSourceSet = sourceSets.findByName("test")
+        val testClassDirectories = testSourceSet?.output?.classesDirs?.files?.filter { it.exists() }?.toList() ?: emptyList()
+        val testGraph = if (testClassDirectories.isNotEmpty()) {
+            CallGraphCache.getOrBuild(
+                File(cacheDir, "test-call-graph.cache"),
+                testClassDirectories,
+            ).data
+        } else {
+            null
         }
 
-        val classFields = FieldExtractor.scanAll(classDirectories)
-        val inlineMethods = InlineMethodDetector.scanAll(classDirectories)
-        val delegationMethods = DelegationMethodDetector.scanAll(classDirectories)
-        val bridgeMethods = BridgeMethodDetector.scanAll(classDirectories)
-        val classExternalInterfaces = interfaceRegistry.externalInterfacesOf(graph.projectClasses())
-        val classReceiverTypes = ReceiverTypeExtractor.scanAll(classDirectories)
-
-        val deadCode = DeadCodeFinder.find(
+        val deadCode = DeadCodeOrchestrator.findDeadCode(DeadCodeOrchestrator.DeadCodeInput(
             graph = graph,
-            filter = null,
-            exclude = null,
-            classesOnly = false,
-            excludeAnnotated = excludeAnnotated,
-            classAnnotations = annotations.classAnnotations,
-            methodAnnotations = annotations.methodAnnotations,
-            testGraph = null,
-            interfaceImplementors = interfaceImplementors,
-            classFields = classFields,
-            inlineMethods = inlineMethods,
-            classExternalInterfaces = classExternalInterfaces,
-            classReceiverTypes = classReceiverTypes,
-            delegationMethods = delegationMethods,
-            bridgeMethods = bridgeMethods,
-            declaredMethods = graph.allDeclaredMethods(),
-        )
+            classDirectories = classDirectories,
+            testGraph = testGraph,
+            excludeAnnotated = deadCodeConfig.excludeAnnotated.toSet(),
+            modifierAnnotated = deadCodeConfig.modifierAnnotated.toSet(),
+            supertypeEntryPoints = deadCodeConfig.supertypeEntryPoints,
+            receiverTypeEntryPoints = deadCodeConfig.receiverTypeEntryPoints,
+            scope = deadCodeConfig.scope,
+            cacheDir = cacheDir,
+        ))
 
         val projectClasses = scanProjectClasses(classDirectories)
         val dsmResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal)

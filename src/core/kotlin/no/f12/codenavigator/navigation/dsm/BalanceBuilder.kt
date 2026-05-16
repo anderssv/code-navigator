@@ -87,20 +87,18 @@ object BalanceBuilder {
         if (modularityGood) return BalanceVerdict.BALANCED
 
         // Modularity is poor (both high or both low)
-        if (!volatilityHigh) {
-            return if (!strengthHigh && !distanceHigh) {
-                BalanceVerdict.OVER_ENGINEERED
-            } else {
-                BalanceVerdict.TOLERABLE
-            }
+        if (!strengthHigh && !distanceHigh) {
+            // Low coupling at short distance = intentional layering (e.g. domain.service → domain.model).
+            // MODEL/CONTRACT strength between nearby packages is healthy architecture, not over-engineering.
+            return if (volatilityHigh) BalanceVerdict.TOLERABLE else BalanceVerdict.BALANCED
         }
 
-        // Modularity poor + high volatility
-        return if (strengthHigh && distanceHigh) {
-            BalanceVerdict.DANGER
-        } else {
-            BalanceVerdict.OVER_ENGINEERED
+        if (!volatilityHigh) {
+            return BalanceVerdict.TOLERABLE
         }
+
+        // High strength + high distance + high volatility
+        return BalanceVerdict.DANGER
     }
 
     private fun suggest(verdict: BalanceVerdict): String = when (verdict) {

@@ -307,7 +307,7 @@ object HelpText {
         appendLine("    Composite balanced coupling analysis (combines ${t("strength")}, ${t("distance")}, ${t("volatility")})")
         appendLine("    into a single verdict per package pair. Requires both compiled code (bytecode) and git history.")
         appendLine("    Verdicts: BALANCED (good modularity), TOLERABLE (poor modularity but low volatility),")
-        appendLine("    OVER_ENGINEERED (loosely coupled nearby packages), DANGER (tight coupling + high distance + volatility).")
+        appendLine("    DANGER (tight coupling + high distance + volatility), TOLERABLE (poor modularity, low volatility), BALANCED.")
         appendLine("    Parameters:")
         appendLine("      ${pd(TaskRegistry.PACKAGE_FILTER)}")
         appendLine("      ${pd(TaskRegistry.INCLUDE_EXTERNAL)}")

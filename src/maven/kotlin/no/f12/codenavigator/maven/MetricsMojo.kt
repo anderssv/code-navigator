@@ -8,19 +8,12 @@ import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.navigation.core.RootPackageDetector
 import no.f12.codenavigator.navigation.core.scanProjectClasses
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.classinfo.ClassScanner
-import no.f12.codenavigator.navigation.deadcode.BridgeMethodDetector
-import no.f12.codenavigator.navigation.deadcode.DeadCodeFinder
-import no.f12.codenavigator.navigation.deadcode.DelegationMethodDetector
-import no.f12.codenavigator.navigation.deadcode.FieldExtractor
-import no.f12.codenavigator.navigation.deadcode.InlineMethodDetector
-import no.f12.codenavigator.navigation.deadcode.ReceiverTypeExtractor
+import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
+import no.f12.codenavigator.navigation.deadcode.DeadCodeOrchestrator
 import no.f12.codenavigator.navigation.dsm.CycleDetector
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
-import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
 import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
 import no.f12.codenavigator.navigation.metrics.MetricsBuilder
 import no.f12.codenavigator.navigation.metrics.MetricsConfig
@@ -79,7 +72,8 @@ class MetricsMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = MetricsConfig.parse(TaskRegistry.METRICS.enhanceProperties(buildPropertyMap()))
+        val props = TaskRegistry.METRICS.enhanceProperties(buildPropertyMap())
+        val config = MetricsConfig.parse(props)
         config.deprecations().forEach { log.warn(it) }
 
         val taggedDirs = project.taggedClassDirectories()
@@ -91,8 +85,9 @@ class MetricsMojo : AbstractMojo() {
             return
         }
 
-        val graphResult = CallGraphCache.getOrBuild(File(project.build.directory, "cnav/call-graph.cache"), classDirectories)
-        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
+        val cacheDir = File(project.build.directory, "cnav")
+        val graphResult = CallGraphCache.getOrBuild(File(cacheDir, "call-graph.cache"), classDirectories)
+        val reportFile = File(cacheDir, "skipped-files.txt")
         SkippedFileReporter.report(graphResult.skippedFiles, reportFile)?.let { log.warn(it) }
         val graph = graphResult.data
 
@@ -100,43 +95,28 @@ class MetricsMojo : AbstractMojo() {
         val packages = PackageDependencyBuilder.build(graph).allPackages()
         val rankedTypes = TypeRanker.rank(graph, projectOnly = true, collapseLambdas = true)
 
-        val excludeAnnotatedSet = config.excludeAnnotated.toSet()
-        val annotations = AnnotationExtractor.scanAll(classDirectories)
+        // Use DeadCodeConfig for consistent framework preset resolution
+        val deadCodeConfig = DeadCodeConfig.parse(props)
 
-        val interfaceRegistry = InterfaceRegistryCache.getOrBuild(
-            File(project.build.directory, "cnav/interface-registry.cache"),
-            classDirectories,
-        ).data
-        val interfaceImplementors = mutableMapOf<ClassName, MutableSet<ClassName>>()
-        interfaceRegistry.forEachEntry { interfaceName, implementors ->
-            interfaceImplementors[interfaceName] = implementors.map { it.className }.toMutableSet()
+        // Build test graph for accurate dead code detection
+        val testClassesDir = File(project.build.testOutputDirectory)
+        val testGraph = if (testClassesDir.exists()) {
+            CallGraphCache.getOrBuild(File(cacheDir, "test-call-graph.cache"), listOf(testClassesDir)).data
+        } else {
+            null
         }
 
-        val classFields = FieldExtractor.scanAll(classDirectories)
-        val inlineMethods = InlineMethodDetector.scanAll(classDirectories)
-        val delegationMethods = DelegationMethodDetector.scanAll(classDirectories)
-        val bridgeMethods = BridgeMethodDetector.scanAll(classDirectories)
-        val classExternalInterfaces = interfaceRegistry.externalInterfacesOf(graph.projectClasses())
-        val classReceiverTypes = ReceiverTypeExtractor.scanAll(classDirectories)
-
-        val deadCode = DeadCodeFinder.find(
+        val deadCode = DeadCodeOrchestrator.findDeadCode(DeadCodeOrchestrator.DeadCodeInput(
             graph = graph,
-            filter = null,
-            exclude = null,
-            classesOnly = false,
-            excludeAnnotated = excludeAnnotatedSet,
-            classAnnotations = annotations.classAnnotations,
-            methodAnnotations = annotations.methodAnnotations,
-            testGraph = null,
-            interfaceImplementors = interfaceImplementors,
-            classFields = classFields,
-            inlineMethods = inlineMethods,
-            classExternalInterfaces = classExternalInterfaces,
-            classReceiverTypes = classReceiverTypes,
-            delegationMethods = delegationMethods,
-            bridgeMethods = bridgeMethods,
-            declaredMethods = graph.allDeclaredMethods(),
-        )
+            classDirectories = classDirectories,
+            testGraph = testGraph,
+            excludeAnnotated = deadCodeConfig.excludeAnnotated.toSet(),
+            modifierAnnotated = deadCodeConfig.modifierAnnotated.toSet(),
+            supertypeEntryPoints = deadCodeConfig.supertypeEntryPoints,
+            receiverTypeEntryPoints = deadCodeConfig.receiverTypeEntryPoints,
+            scope = deadCodeConfig.scope,
+            cacheDir = cacheDir,
+        ))
 
         val projectClasses = scanProjectClasses(classDirectories)
         val dsmResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal)

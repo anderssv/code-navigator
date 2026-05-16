@@ -4,19 +4,10 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.callgraph.CallGraphCache
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.deadcode.BridgeMethodDetector
 import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
-import no.f12.codenavigator.navigation.deadcode.DeadCodeFinder
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
-import no.f12.codenavigator.navigation.deadcode.DeadCodeQuery
-import no.f12.codenavigator.navigation.deadcode.DelegationMethodDetector
-import no.f12.codenavigator.navigation.deadcode.FieldExtractor
-import no.f12.codenavigator.navigation.deadcode.InlineMethodDetector
-import no.f12.codenavigator.navigation.deadcode.ReceiverTypeExtractor
-import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
+import no.f12.codenavigator.navigation.deadcode.DeadCodeOrchestrator
 import no.f12.codenavigator.navigation.core.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
@@ -38,69 +29,37 @@ abstract class DeadCodeTask : DefaultTask() {
         val mainSourceSet = sourceSets.getByName("main")
         val classDirectories = mainSourceSet.output.classesDirs.files.toList()
 
-        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/call-graph.cache")
+        val cacheDir = File(project.layout.buildDirectory.asFile.get(), "cnav")
+        val cacheFile = File(cacheDir, "call-graph.cache")
         val result = CallGraphCache.getOrBuild(cacheFile, classDirectories)
-        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        val reportFile = File(cacheDir, "skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val graph = result.data
-
-        val excludeAnnotated = config.excludeAnnotated.toSet()
-        val annotations = AnnotationExtractor.scanAll(classDirectories)
 
         val testSourceSet = sourceSets.findByName("test")
         val testClassDirectories = testSourceSet?.output?.classesDirs?.files?.filter { it.exists() }?.toList() ?: emptyList()
         val testGraph = if (testClassDirectories.isNotEmpty()) {
             CallGraphCache.getOrBuild(
-                File(project.layout.buildDirectory.asFile.get(), "cnav/test-call-graph.cache"),
+                File(cacheDir, "test-call-graph.cache"),
                 testClassDirectories,
             ).data
         } else {
             null
         }
 
-        val interfaceRegistry = InterfaceRegistryCache.getOrBuild(
-            File(project.layout.buildDirectory.asFile.get(), "cnav/interface-registry.cache"),
-            classDirectories,
-        ).data
-        val interfaceImplementors = mutableMapOf<ClassName, MutableSet<ClassName>>()
-        interfaceRegistry.forEachEntry { interfaceName, implementors ->
-            interfaceImplementors[interfaceName] = implementors.map { it.className }.toMutableSet()
-        }
-
-        val classFields = FieldExtractor.scanAll(classDirectories)
-
-        val inlineMethods = InlineMethodDetector.scanAll(classDirectories)
-
-        val delegationMethods = DelegationMethodDetector.scanAll(classDirectories)
-
-        val bridgeMethods = BridgeMethodDetector.scanAll(classDirectories)
-
-        val classExternalInterfaces = interfaceRegistry.externalInterfacesOf(graph.projectClasses())
-
-        val classReceiverTypes = ReceiverTypeExtractor.scanAll(classDirectories)
-
-        val dead = DeadCodeFinder.find(DeadCodeQuery(
+        val dead = DeadCodeOrchestrator.findDeadCode(DeadCodeOrchestrator.DeadCodeInput(
             graph = graph,
+            classDirectories = classDirectories,
+            testGraph = testGraph,
+            excludeAnnotated = config.excludeAnnotated.toSet(),
+            modifierAnnotated = config.modifierAnnotated.toSet(),
+            supertypeEntryPoints = config.supertypeEntryPoints,
+            receiverTypeEntryPoints = config.receiverTypeEntryPoints,
+            scope = config.scope,
             filter = config.filter,
             exclude = config.exclude,
             classesOnly = config.classesOnly,
-            excludeAnnotated = excludeAnnotated,
-            classAnnotations = annotations.classAnnotations,
-            methodAnnotations = annotations.methodAnnotations,
-            testGraph = testGraph,
-            interfaceImplementors = interfaceImplementors,
-            classFields = classFields,
-            inlineMethods = inlineMethods,
-            classExternalInterfaces = classExternalInterfaces,
-            scope = config.scope,
-            modifierAnnotated = config.modifierAnnotated.toSet(),
-            supertypeEntryPoints = config.supertypeEntryPoints,
-            testClasses = testGraph?.projectClasses() ?: emptySet(),
-            classReceiverTypes = classReceiverTypes,
-            receiverTypeEntryPoints = config.receiverTypeEntryPoints,
-            delegationMethods = delegationMethods,
-            bridgeMethods = bridgeMethods,
-            declaredMethods = graph.allDeclaredMethods(),
+            cacheDir = cacheDir,
         ))
 
         if (dead.isEmpty()) {

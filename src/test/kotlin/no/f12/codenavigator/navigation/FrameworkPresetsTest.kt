@@ -11,6 +11,13 @@ import kotlin.test.assertTrue
 class FrameworkPresetsTest {
 
     @Test
+    fun `spring preset includes RestControllerAdvice`() {
+        val entryPoints = FrameworkPresets.resolveEntryPoints("spring")
+
+        assertTrue(entryPoints.contains(AnnotationName("org.springframework.web.bind.annotation.RestControllerAdvice")))
+    }
+
+    @Test
     fun `spring preset includes Controller and Component`() {
         val annotations = FrameworkPresets.resolve("spring")
 

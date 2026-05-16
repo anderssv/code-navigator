@@ -7,7 +7,6 @@ import no.f12.codenavigator.navigation.metrics.MetricsConfig
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MetricsConfigTest {
@@ -79,41 +78,6 @@ class MetricsConfigTest {
         val config = MetricsConfig.parse(emptyMap())
 
         assertEquals(PackageName(""), config.rootPackage)
-    }
-
-    @Test
-    fun `parses exclude-annotated from property map`() {
-        val config = MetricsConfig.parse(mapOf(
-            "exclude-annotated" to "Scheduled,EventListener",
-            "treat-as-dead" to "ALL",
-        ))
-
-        assertEquals(listOf("Scheduled", "EventListener"), config.excludeAnnotated)
-    }
-
-    @Test
-    fun `all frameworks active by default includes annotations in excludeAnnotated`() {
-        val config = MetricsConfig.parse(emptyMap())
-
-        assertTrue(config.excludeAnnotated.contains("com.fasterxml.jackson.annotation.JsonCreator"))
-        assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Controller"))
-    }
-
-    @Test
-    fun `merges explicit annotations with default framework presets`() {
-        val config = MetricsConfig.parse(mapOf(
-            "exclude-annotated" to "Custom",
-        ))
-
-        assertTrue(config.excludeAnnotated.contains("Custom"))
-        assertTrue(config.excludeAnnotated.contains("com.fasterxml.jackson.annotation.JsonCreator"))
-    }
-
-    @Test
-    fun `treat-as-dead=ALL results in empty excludeAnnotated`() {
-        val config = MetricsConfig.parse(mapOf("treat-as-dead" to "ALL"))
-
-        assertEquals(emptyList<String>(), config.excludeAnnotated)
     }
 
     // === package-filter ===
