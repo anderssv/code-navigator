@@ -491,6 +491,8 @@ Every Gradle Task / Maven Mojo pair duplicates its full orchestration logic. The
 
 Three pairs already follow the correct pattern — `StrengthOrchestrator`, `DistanceOrchestrator`, and `DeadCodeOrchestrator` live in `core/` and their Task/Mojo are thin ~10-line adapters. Extend this to the rest.
 
+Variations of input and output should be tested on the orchestrators — they are the natural place to verify that config options (filters, scopes, raw mode, etc.) flow through correctly to the underlying components.
+
 **Priority order** (by duplicated lines):
 1. `FindUsagesTask ↔ FindUsagesMojo` (~90 lines) — extract `FindUsagesOrchestrator`
 2. `MetricsTask ↔ MetricsMojo` (~70 lines) — extract `MetricsOrchestrator`

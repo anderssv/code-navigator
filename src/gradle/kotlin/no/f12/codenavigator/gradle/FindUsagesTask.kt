@@ -6,16 +6,9 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.relations.callgraph.FindUsagesConfig
-import no.f12.codenavigator.navigation.relations.callgraph.SmartUsageResult
-import no.f12.codenavigator.navigation.relations.callgraph.UsageCollapser
-import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.relations.callgraph.FindUsagesOrchestrator
 import no.f12.codenavigator.navigation.types.GroupBy
-import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.relations.callgraph.UsageFormatter
-import no.f12.codenavigator.navigation.relations.callgraph.UsageScanner
-import no.f12.codenavigator.navigation.classinfo.ClassIndexCache
-import no.f12.codenavigator.navigation.types.TypeMatcher
-import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistryCache
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -42,79 +35,41 @@ abstract class FindUsagesTask : DefaultTask() {
         }
 
         val taggedDirs = project.taggedClassDirectories()
-        val classDirectories = taggedDirs.map { it.first }
         val buildDir = project.layout.buildDirectory.asFile.get()
+        val cacheDir = File(buildDir, "cnav")
 
-        // Phase 1: Match — resolve pattern to concrete class names
-        val targetType = config.type ?: config.ownerClass
-        val allClassNames = ClassIndexCache.getOrBuild(
-            File(buildDir, "cnav/class-index.cache"), classDirectories,
-        ).data.map { it.className }
+        val output = FindUsagesOrchestrator.run(config, taggedDirs, cacheDir)
+        output.skippedFileWarning?.let { logger.warn(it) }
 
-        val resolvedTypes: Set<ClassName> = if (targetType != null) {
-            TypeMatcher.resolve(targetType, allClassNames)
-        } else emptySet()
-
-        // Phase 2: Enrich — find interfaces among resolved types, expand with implementors
-        val interfaceRegistry = if (resolvedTypes.isNotEmpty()) {
-            InterfaceRegistryCache.getOrBuild(File(buildDir, "cnav/interface-registry.cache"), classDirectories).data
-        } else null
-
-        val matchedInterfaces = resolvedTypes.filter { interfaceRegistry?.isInterface(it) == true }
-        val implementations = matchedInterfaces.flatMap { interfaceRegistry!!.implementorsOf(it) }
-
-        val scanTargets = if (config.includeImpls && implementations.isNotEmpty()) {
-            resolvedTypes + implementations.map { it.className }.toSet()
-        } else {
-            resolvedTypes
-        }
-
-        // Phase 3: Scan — single pass with resolved class names
-        val scanMatcher = if (scanTargets.isNotEmpty()) TypeMatcher.SetMatcher(scanTargets) else null
-        val ownerMatcher = if (config.ownerClass != null) scanMatcher else null
-        val typeMatcher = if (config.type != null) scanMatcher else null
-
-        val result = UsageScanner.scanTagged(taggedDirs, ownerMatcher = ownerMatcher, method = config.method, field = config.field, typeMatcher = typeMatcher)
-        val reportFile = File(buildDir, "cnav/skipped-files.txt")
-        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val afterPackageFilter = UsageScanner.filterOutsidePackage(result.data, config.outsidePackage)
-        val afterSyntheticFilter = config.filterSyntheticCallers(afterPackageFilter)
-        val usages = config.filterBySourceSet(afterSyntheticFilter)
-
-        if (usages.isEmpty() && implementations.isEmpty()) {
+        if (output.usages.isEmpty() && output.implementations.isEmpty()) {
             val target = UsageFormatter.noResultsTarget(config.ownerClass, config.method, config.field, config.type)
             val hints = UsageFormatter.noResultsHints(config.ownerClass, config.method, config.field, config.type)
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No usages found for '$target'.", hints))
             return
         }
 
-        val interfaceTypeSet = matchedInterfaces.toSet()
-        val collapsed = if (!config.raw) UsageCollapser.collapse(usages, interfaceTypeSet) else emptyList()
-
-        // Derive matched types from collapsed output — use topLevelClass to merge inner classes
-        val matchedTypes = collapsed.map { it.targetOwner.topLevelClass() }.distinct().sorted()
-        val smartResult = SmartUsageResult(implementations, usages, matchedTypes, interfaceTypeSet)
+        val smartResult = output.toSmartResult()
 
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
             text = {
                 when {
-                    config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummary(usages)
-                    config.raw -> UsageFormatter.format(usages)
-                    else -> UsageFormatter.formatSmartUsages(smartResult, collapsed)
+                    config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummary(output.usages)
+                    config.raw -> UsageFormatter.format(output.usages)
+                    else -> UsageFormatter.formatSmartUsages(smartResult, output.collapsed)
                 }
             },
             json = {
                 when {
-                    config.groupBy == GroupBy.FILE -> JsonFormatter.formatUsagesSummary(usages)
-                    config.raw -> JsonFormatter.formatUsages(usages)
-                    else -> JsonFormatter.formatSmartUsages(smartResult, collapsed)
+                    config.groupBy == GroupBy.FILE -> JsonFormatter.formatUsagesSummary(output.usages)
+                    config.raw -> JsonFormatter.formatUsages(output.usages)
+                    else -> JsonFormatter.formatSmartUsages(smartResult, output.collapsed)
                 }
             },
             llm = {
                 when {
-                    config.groupBy == GroupBy.FILE -> LlmFormatter.formatUsagesSummary(usages)
-                    config.raw -> LlmFormatter.formatUsages(usages)
-                    else -> LlmFormatter.formatSmartUsages(smartResult, collapsed)
+                    config.groupBy == GroupBy.FILE -> LlmFormatter.formatUsagesSummary(output.usages)
+                    config.raw -> LlmFormatter.formatUsages(output.usages)
+                    else -> LlmFormatter.formatSmartUsages(smartResult, output.collapsed)
                 }
             },
         ))
