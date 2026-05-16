@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.SourceSet
-import no.f12.codenavigator.navigation.core.SourceSetResolver
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.types.SourceSet
+import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import kotlin.test.Test

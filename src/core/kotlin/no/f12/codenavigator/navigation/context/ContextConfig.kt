@@ -3,10 +3,10 @@ package no.f12.codenavigator.navigation.context
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
-import no.f12.codenavigator.navigation.core.Scope
-import no.f12.codenavigator.navigation.core.SourceSet
-import no.f12.codenavigator.navigation.callgraph.CallGraph
-import no.f12.codenavigator.navigation.callgraph.MethodRef
+import no.f12.codenavigator.navigation.types.Scope
+import no.f12.codenavigator.navigation.types.SourceSet
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraph
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 
 data class ContextConfig(
     val pattern: String,

@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation.classinfo
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.FileCache
-import no.f12.codenavigator.navigation.core.ScanResult
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.cache.FileCache
+import no.f12.codenavigator.navigation.bytecode.ScanResult
 import java.io.File
 
 object ClassIndexCache : FileCache<List<ClassInfo>>() {

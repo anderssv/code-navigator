@@ -1,7 +1,7 @@
 package no.f12.codenavigator.analysis
 
-import no.f12.codenavigator.navigation.core.Scope
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.types.Scope
+import no.f12.codenavigator.navigation.types.SourceSet
 import java.io.File
 
 object DuplicateScanner {

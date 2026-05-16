@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation.dsm
 
 import no.f12.codenavigator.analysis.PackageVolatilityResult
-import no.f12.codenavigator.navigation.core.PackageName
+import no.f12.codenavigator.navigation.types.PackageName
 
 enum class BalanceVerdict(val severity: Int) {
     BALANCED(0),

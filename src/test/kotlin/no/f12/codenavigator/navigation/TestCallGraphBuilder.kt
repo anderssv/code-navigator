@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.callgraph.CallGraph
-import no.f12.codenavigator.navigation.callgraph.MethodRef
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraph
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 
 /**
  * Shared test utility for constructing in-memory [CallGraph] instances from edge pairs.

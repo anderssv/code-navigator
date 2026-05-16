@@ -1,13 +1,13 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.SourceSet
-import no.f12.codenavigator.navigation.callgraph.UsageFormatter
-import no.f12.codenavigator.navigation.callgraph.UsageKind
-import no.f12.codenavigator.navigation.callgraph.UsageSite
-import no.f12.codenavigator.navigation.callgraph.CollapsedUsage
-import no.f12.codenavigator.navigation.callgraph.SmartUsageResult
-import no.f12.codenavigator.navigation.interfaces.ImplementorInfo
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.types.SourceSet
+import no.f12.codenavigator.navigation.relations.callgraph.UsageFormatter
+import no.f12.codenavigator.navigation.relations.callgraph.UsageKind
+import no.f12.codenavigator.navigation.relations.callgraph.UsageSite
+import no.f12.codenavigator.navigation.relations.callgraph.CollapsedUsage
+import no.f12.codenavigator.navigation.relations.callgraph.SmartUsageResult
+import no.f12.codenavigator.navigation.relations.implementors.ImplementorInfo
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import kotlin.test.Test

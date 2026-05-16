@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.callgraph.MethodRef
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.changedsince.ChangedSinceFormatter
 import kotlin.test.Test

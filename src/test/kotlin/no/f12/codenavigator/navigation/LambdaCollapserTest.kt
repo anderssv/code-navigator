@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.LambdaCollapser
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.bytecode.LambdaCollapser
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import kotlin.test.Test
 import kotlin.test.assertEquals

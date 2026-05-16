@@ -6,7 +6,7 @@ import no.f12.codenavigator.analysis.DuplicateScanner
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.types.SourceSet
 import no.f12.codenavigator.registry.TaskRegistry
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo

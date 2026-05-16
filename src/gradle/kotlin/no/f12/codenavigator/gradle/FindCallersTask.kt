@@ -1,7 +1,7 @@
 package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.callgraph.CallDirection
+import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault

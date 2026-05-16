@@ -4,10 +4,10 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSetResolver
-import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyBuilder
-import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyConfig
-import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyFormatter
+import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyBuilder
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyConfig
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyFormatter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Execute

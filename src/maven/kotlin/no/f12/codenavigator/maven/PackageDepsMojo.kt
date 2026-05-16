@@ -4,12 +4,12 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.callgraph.CallGraphCache
-import no.f12.codenavigator.navigation.callgraph.MethodRef
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
 import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDepsConfig
-import no.f12.codenavigator.navigation.core.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase

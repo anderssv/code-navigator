@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation.dsm
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.PackageName
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.types.PackageName
 
 data class Cycle(
     val packages: List<PackageName>,

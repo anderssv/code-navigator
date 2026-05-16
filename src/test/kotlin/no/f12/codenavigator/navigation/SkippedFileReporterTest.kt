@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.SkippedFileReporter
-import no.f12.codenavigator.navigation.core.UnsupportedBytecodeVersionException
+import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.UnsupportedBytecodeVersionException
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path

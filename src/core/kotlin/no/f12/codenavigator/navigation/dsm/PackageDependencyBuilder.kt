@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation.dsm
 
-import no.f12.codenavigator.navigation.core.PackageName
-import no.f12.codenavigator.navigation.callgraph.CallGraph
-import no.f12.codenavigator.navigation.callgraph.MethodRef
+import no.f12.codenavigator.navigation.types.PackageName
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraph
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 
 class PackageDependencies(
     private val packageToDeps: Map<PackageName, List<PackageName>>,

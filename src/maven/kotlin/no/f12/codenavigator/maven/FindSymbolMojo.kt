@@ -4,11 +4,11 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SourceSetResolver
-import no.f12.codenavigator.navigation.core.JarClassScanner
+import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
+import no.f12.codenavigator.navigation.bytecode.JarClassScanner
 import no.f12.codenavigator.navigation.classinfo.ClassInfoExtractor
 import no.f12.codenavigator.navigation.symbol.FindSymbolConfig
-import no.f12.codenavigator.navigation.core.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.symbol.SymbolExtractor
 import no.f12.codenavigator.navigation.symbol.SymbolFilter
 import no.f12.codenavigator.navigation.symbol.SymbolIndexCache

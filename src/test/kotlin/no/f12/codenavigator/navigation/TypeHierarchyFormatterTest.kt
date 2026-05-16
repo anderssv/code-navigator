@@ -1,11 +1,11 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.interfaces.ImplementorInfo
-import no.f12.codenavigator.navigation.hierarchy.SupertypeInfo
-import no.f12.codenavigator.navigation.hierarchy.SupertypeKind
-import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyFormatter
-import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyResult
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.relations.implementors.ImplementorInfo
+import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeInfo
+import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeKind
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyFormatter
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

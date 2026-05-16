@@ -1,6 +1,6 @@
 package no.f12.codenavigator.navigation.dsm
 
-import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.types.ClassName
 
 data class Layer(
     val name: String,

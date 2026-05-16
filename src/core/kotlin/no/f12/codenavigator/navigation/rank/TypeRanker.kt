@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation.rank
 
-import no.f12.codenavigator.navigation.callgraph.CallGraph
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.LambdaCollapser
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraph
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.bytecode.LambdaCollapser
 
 data class RankedType(
     val className: ClassName,

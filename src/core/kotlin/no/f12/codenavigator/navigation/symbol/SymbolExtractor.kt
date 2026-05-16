@@ -1,9 +1,9 @@
 package no.f12.codenavigator.navigation.symbol
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.KotlinMethodFilter
-import no.f12.codenavigator.navigation.core.PackageName
-import no.f12.codenavigator.navigation.core.createClassReader
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.bytecode.KotlinMethodFilter
+import no.f12.codenavigator.navigation.types.PackageName
+import no.f12.codenavigator.navigation.bytecode.createClassReader
 
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor

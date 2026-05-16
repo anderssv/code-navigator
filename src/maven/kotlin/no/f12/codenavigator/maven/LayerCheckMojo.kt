@@ -3,8 +3,8 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
-import no.f12.codenavigator.navigation.core.SkippedFileReporter
-import no.f12.codenavigator.navigation.core.scanProjectClasses
+import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.LayerCheckConfig
 import no.f12.codenavigator.navigation.dsm.LayerCheckResult

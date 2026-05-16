@@ -1,7 +1,9 @@
-package no.f12.codenavigator.navigation.interfaces
+package no.f12.codenavigator.navigation
+
+import no.f12.codenavigator.navigation.relations.implementors.*
 
 import no.f12.codenavigator.config.OutputFormat
-import no.f12.codenavigator.navigation.core.Scope
+import no.f12.codenavigator.navigation.types.Scope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

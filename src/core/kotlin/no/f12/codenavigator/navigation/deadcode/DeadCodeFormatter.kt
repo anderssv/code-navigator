@@ -1,6 +1,6 @@
 package no.f12.codenavigator.navigation.deadcode
 
-import no.f12.codenavigator.navigation.core.Scope
+import no.f12.codenavigator.navigation.types.Scope
 
 object DeadCodeFormatter {
 

@@ -1,8 +1,8 @@
 package no.f12.codenavigator.registry
 
 import no.f12.codenavigator.config.OutputFormat
-import no.f12.codenavigator.navigation.core.PatternEnhancer
-import no.f12.codenavigator.navigation.annotation.FrameworkPresets
+import no.f12.codenavigator.navigation.types.PatternEnhancer
+import no.f12.codenavigator.navigation.types.FrameworkPresets
 import java.time.LocalDate
 
 enum class TaskCategory {

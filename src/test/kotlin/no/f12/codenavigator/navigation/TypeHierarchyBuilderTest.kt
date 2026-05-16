@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.hierarchy.SupertypeKind
-import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyBuilder
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeKind
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyBuilder
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path

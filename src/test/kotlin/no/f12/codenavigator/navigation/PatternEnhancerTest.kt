@@ -1,6 +1,6 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.PatternEnhancer
+import no.f12.codenavigator.navigation.types.PatternEnhancer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

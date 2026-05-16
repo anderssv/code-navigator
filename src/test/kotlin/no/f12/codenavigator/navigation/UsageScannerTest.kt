@@ -1,13 +1,13 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.GroupBy
-import no.f12.codenavigator.navigation.core.Scope
-import no.f12.codenavigator.navigation.core.SourceSet
-import no.f12.codenavigator.navigation.callgraph.FindUsagesConfig
-import no.f12.codenavigator.navigation.callgraph.UsageKind
-import no.f12.codenavigator.navigation.callgraph.UsageScanner
-import no.f12.codenavigator.navigation.callgraph.UsageSite
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.types.GroupBy
+import no.f12.codenavigator.navigation.types.Scope
+import no.f12.codenavigator.navigation.types.SourceSet
+import no.f12.codenavigator.navigation.relations.callgraph.FindUsagesConfig
+import no.f12.codenavigator.navigation.relations.callgraph.UsageKind
+import no.f12.codenavigator.navigation.relations.callgraph.UsageScanner
+import no.f12.codenavigator.navigation.relations.callgraph.UsageSite
 import no.f12.codenavigator.config.OutputFormat
 import org.objectweb.asm.Opcodes
 import org.junit.jupiter.api.BeforeEach

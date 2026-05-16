@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation.deadcode
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.callgraph.MethodRef
-import no.f12.codenavigator.navigation.core.createClassReader
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
+import no.f12.codenavigator.navigation.bytecode.createClassReader
 import kotlin.metadata.KmClass
 import kotlin.metadata.KmPackage
 import kotlin.metadata.isInline

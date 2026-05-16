@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.navigation.annotation.AnnotationQueryConfig
-import no.f12.codenavigator.navigation.core.Scope
+import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.config.OutputFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals

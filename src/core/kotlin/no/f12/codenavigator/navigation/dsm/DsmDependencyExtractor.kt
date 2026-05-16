@@ -1,10 +1,10 @@
 package no.f12.codenavigator.navigation.dsm
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.PackageName
-import no.f12.codenavigator.navigation.core.ScanResult
-import no.f12.codenavigator.navigation.core.UnsupportedBytecodeVersionException
-import no.f12.codenavigator.navigation.core.createClassReader
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.types.PackageName
+import no.f12.codenavigator.navigation.bytecode.ScanResult
+import no.f12.codenavigator.navigation.bytecode.UnsupportedBytecodeVersionException
+import no.f12.codenavigator.navigation.bytecode.createClassReader
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor

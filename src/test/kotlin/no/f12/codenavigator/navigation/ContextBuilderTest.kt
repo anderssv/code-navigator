@@ -1,11 +1,11 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.callgraph.CallTreeNode
-import no.f12.codenavigator.navigation.callgraph.MethodRef
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.relations.callgraph.CallTreeNode
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 import no.f12.codenavigator.navigation.classinfo.ClassDetail
 import no.f12.codenavigator.navigation.context.ContextBuilder
-import no.f12.codenavigator.navigation.interfaces.ImplementorInfo
+import no.f12.codenavigator.navigation.relations.implementors.ImplementorInfo
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

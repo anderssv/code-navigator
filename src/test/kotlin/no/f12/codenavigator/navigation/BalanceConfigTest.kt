@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
-import no.f12.codenavigator.navigation.core.Scope
+import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.navigation.dsm.BalanceConfig
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull

@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation.deadcode
 
-import no.f12.codenavigator.navigation.annotation.FrameworkPresets
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.Scope
+import no.f12.codenavigator.navigation.types.FrameworkPresets
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat

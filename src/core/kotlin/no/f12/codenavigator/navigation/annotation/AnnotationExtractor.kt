@@ -1,12 +1,12 @@
 package no.f12.codenavigator.navigation.annotation
 
-import no.f12.codenavigator.navigation.core.AnnotationName
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.KotlinMethodFilter
-import no.f12.codenavigator.navigation.core.unwrappingAnnotationVisitor
-import no.f12.codenavigator.navigation.callgraph.MethodRef
-import no.f12.codenavigator.navigation.core.UnsupportedBytecodeVersionException
-import no.f12.codenavigator.navigation.core.createClassReader
+import no.f12.codenavigator.navigation.types.AnnotationName
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.bytecode.KotlinMethodFilter
+import no.f12.codenavigator.navigation.bytecode.unwrappingAnnotationVisitor
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
+import no.f12.codenavigator.navigation.bytecode.UnsupportedBytecodeVersionException
+import no.f12.codenavigator.navigation.bytecode.createClassReader
 import org.objectweb.asm.AnnotationVisitor
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor

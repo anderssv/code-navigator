@@ -6,9 +6,9 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
 import no.f12.codenavigator.analysis.HotspotBuilder
-import no.f12.codenavigator.navigation.core.RootPackageDetector
-import no.f12.codenavigator.navigation.core.scanProjectClasses
-import no.f12.codenavigator.navigation.callgraph.CallGraphCache
+import no.f12.codenavigator.navigation.bytecode.RootPackageDetector
+import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.classinfo.ClassScanner
 import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
 import no.f12.codenavigator.navigation.deadcode.DeadCodeOrchestrator
@@ -19,7 +19,7 @@ import no.f12.codenavigator.navigation.metrics.MetricsBuilder
 import no.f12.codenavigator.navigation.metrics.MetricsConfig
 import no.f12.codenavigator.navigation.metrics.MetricsFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
-import no.f12.codenavigator.navigation.core.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.rank.TypeRanker
 
 import org.gradle.api.DefaultTask

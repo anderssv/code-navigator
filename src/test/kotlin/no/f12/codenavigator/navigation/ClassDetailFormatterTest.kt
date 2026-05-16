@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.AnnotationName
-import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.types.AnnotationName
+import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
 import no.f12.codenavigator.navigation.classinfo.ClassDetail
 import no.f12.codenavigator.navigation.classinfo.ClassDetailFormatter

@@ -2,7 +2,7 @@ package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.analysis.PackageVolatility
 import no.f12.codenavigator.analysis.PackageVolatilityResult
-import no.f12.codenavigator.navigation.core.PackageName
+import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.dsm.BalanceBuilder
 import no.f12.codenavigator.navigation.dsm.BalanceVerdict
 import no.f12.codenavigator.navigation.dsm.IntegrationStrength

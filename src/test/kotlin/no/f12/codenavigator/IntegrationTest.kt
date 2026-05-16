@@ -1,10 +1,10 @@
 package no.f12.codenavigator
 
-import no.f12.codenavigator.navigation.callgraph.CallGraphBuilder
-import no.f12.codenavigator.navigation.callgraph.CallDirection
-import no.f12.codenavigator.navigation.callgraph.CallTreeFormatter
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.callgraph.MethodRef
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraphBuilder
+import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
+import no.f12.codenavigator.navigation.relations.callgraph.CallTreeFormatter
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.assertEquals

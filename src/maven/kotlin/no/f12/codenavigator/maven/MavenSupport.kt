@@ -1,6 +1,6 @@
 package no.f12.codenavigator.maven
 
-import no.f12.codenavigator.navigation.core.SourceSet
+import no.f12.codenavigator.navigation.types.SourceSet
 import no.f12.codenavigator.registry.ClassFileStaleness
 import no.f12.codenavigator.registry.StalenessResult
 import org.apache.maven.plugin.MojoFailureException

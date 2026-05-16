@@ -2,7 +2,7 @@ package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.changedsince.ChangedSinceConfig
-import no.f12.codenavigator.navigation.core.Scope
+import no.f12.codenavigator.navigation.types.Scope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

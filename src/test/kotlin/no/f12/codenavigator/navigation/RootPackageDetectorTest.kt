@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.PackageName
-import no.f12.codenavigator.navigation.core.RootPackageDetector
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.types.PackageName
+import no.f12.codenavigator.navigation.bytecode.RootPackageDetector
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

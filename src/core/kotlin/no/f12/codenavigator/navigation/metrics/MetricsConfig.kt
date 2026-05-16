@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation.metrics
 
-import no.f12.codenavigator.navigation.core.PackageName
-import no.f12.codenavigator.navigation.core.Scope
+import no.f12.codenavigator.navigation.types.PackageName
+import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat

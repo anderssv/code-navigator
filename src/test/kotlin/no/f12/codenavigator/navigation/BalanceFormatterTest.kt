@@ -1,6 +1,6 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.PackageName
+import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.dsm.BalanceEntry
 import no.f12.codenavigator.navigation.dsm.BalanceFormatter
 import no.f12.codenavigator.navigation.dsm.BalanceResult

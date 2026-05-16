@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation.classinfo
 
-import no.f12.codenavigator.navigation.core.ScanResult
-import no.f12.codenavigator.navigation.core.UnsupportedBytecodeVersionException
+import no.f12.codenavigator.navigation.bytecode.ScanResult
+import no.f12.codenavigator.navigation.bytecode.UnsupportedBytecodeVersionException
 import java.io.File
 
 object ClassScanner {

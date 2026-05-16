@@ -1,12 +1,12 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.deadcode.DeadCode
 import no.f12.codenavigator.navigation.deadcode.DeadCodeConfidence
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
 import no.f12.codenavigator.navigation.deadcode.DeadCodeKind
 import no.f12.codenavigator.navigation.deadcode.DeadCodeReason
-import no.f12.codenavigator.navigation.core.Scope
+import no.f12.codenavigator.navigation.types.Scope
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

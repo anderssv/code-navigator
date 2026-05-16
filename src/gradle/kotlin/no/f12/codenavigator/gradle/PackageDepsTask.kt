@@ -4,13 +4,13 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.Scope
-import no.f12.codenavigator.navigation.callgraph.CallGraphCache
-import no.f12.codenavigator.navigation.callgraph.MethodRef
+import no.f12.codenavigator.navigation.types.Scope
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
 import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDepsConfig
-import no.f12.codenavigator.navigation.core.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction

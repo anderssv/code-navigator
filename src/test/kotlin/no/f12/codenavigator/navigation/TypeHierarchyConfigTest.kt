@@ -1,8 +1,8 @@
 package no.f12.codenavigator.navigation
 
 import no.f12.codenavigator.config.OutputFormat
-import no.f12.codenavigator.navigation.core.Scope
-import no.f12.codenavigator.navigation.hierarchy.TypeHierarchyConfig
+import no.f12.codenavigator.navigation.types.Scope
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

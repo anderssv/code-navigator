@@ -1,7 +1,7 @@
 package no.f12.codenavigator.navigation.context
 
-import no.f12.codenavigator.navigation.callgraph.CallDirection
-import no.f12.codenavigator.navigation.callgraph.CallTreeFormatter
+import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
+import no.f12.codenavigator.navigation.relations.callgraph.CallTreeFormatter
 import no.f12.codenavigator.navigation.classinfo.ClassDetailFormatter
 
 object ContextFormatter {

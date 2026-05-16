@@ -5,17 +5,17 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
-import no.f12.codenavigator.navigation.callgraph.CallDirection
-import no.f12.codenavigator.navigation.callgraph.CallGraphCache
-import no.f12.codenavigator.navigation.callgraph.CallTreeBuilder
-import no.f12.codenavigator.navigation.callgraph.MethodRef
+import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
+import no.f12.codenavigator.navigation.relations.callgraph.CallTreeBuilder
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 import no.f12.codenavigator.navigation.classinfo.ClassDetailScanner
 import no.f12.codenavigator.navigation.context.ContextBuilder
 import no.f12.codenavigator.navigation.context.ContextConfig
 import no.f12.codenavigator.navigation.context.ContextFormatter
-import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
+import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistryCache
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException

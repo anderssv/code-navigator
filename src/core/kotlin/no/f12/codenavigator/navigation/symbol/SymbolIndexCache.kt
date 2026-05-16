@@ -1,9 +1,9 @@
 package no.f12.codenavigator.navigation.symbol
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.FileCache
-import no.f12.codenavigator.navigation.core.PackageName
-import no.f12.codenavigator.navigation.core.ScanResult
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.cache.FileCache
+import no.f12.codenavigator.navigation.types.PackageName
+import no.f12.codenavigator.navigation.bytecode.ScanResult
 import java.io.File
 
 object SymbolIndexCache : FileCache<List<SymbolInfo>>() {

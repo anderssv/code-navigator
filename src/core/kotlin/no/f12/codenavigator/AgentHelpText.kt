@@ -1,6 +1,6 @@
 package no.f12.codenavigator
 
-import no.f12.codenavigator.navigation.annotation.FrameworkPresets
+import no.f12.codenavigator.navigation.types.FrameworkPresets
 import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskCategory
 import no.f12.codenavigator.registry.TaskDef

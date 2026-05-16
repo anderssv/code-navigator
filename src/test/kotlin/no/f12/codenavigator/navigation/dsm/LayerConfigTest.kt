@@ -1,6 +1,6 @@
 package no.f12.codenavigator.navigation.dsm
 
-import no.f12.codenavigator.navigation.core.ClassName
+import no.f12.codenavigator.navigation.types.ClassName
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

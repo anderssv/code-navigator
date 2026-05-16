@@ -5,15 +5,15 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.core.Scope
-import no.f12.codenavigator.navigation.core.SourceSetResolver
-import no.f12.codenavigator.navigation.core.JarClassScanner
+import no.f12.codenavigator.navigation.types.Scope
+import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
+import no.f12.codenavigator.navigation.bytecode.JarClassScanner
 import no.f12.codenavigator.navigation.classinfo.ClassDetailExtractor
 import no.f12.codenavigator.navigation.classinfo.ClassDetailFormatter
 import no.f12.codenavigator.navigation.classinfo.ClassDetailScanner
 import no.f12.codenavigator.navigation.classinfo.ClassInfoExtractor
 import no.f12.codenavigator.navigation.classinfo.FindClassDetailConfig
-import no.f12.codenavigator.navigation.core.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException

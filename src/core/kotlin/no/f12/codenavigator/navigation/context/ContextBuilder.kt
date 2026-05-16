@@ -1,9 +1,9 @@
 package no.f12.codenavigator.navigation.context
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.callgraph.CallTreeNode
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.relations.callgraph.CallTreeNode
 import no.f12.codenavigator.navigation.classinfo.ClassDetail
-import no.f12.codenavigator.navigation.interfaces.ImplementorInfo
+import no.f12.codenavigator.navigation.relations.implementors.ImplementorInfo
 
 data class ContextResult(
     val classDetail: ClassDetail,

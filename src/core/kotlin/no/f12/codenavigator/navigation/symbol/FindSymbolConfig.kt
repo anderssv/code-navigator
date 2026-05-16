@@ -3,7 +3,7 @@ package no.f12.codenavigator.navigation.symbol
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
-import no.f12.codenavigator.navigation.core.Scope
+import no.f12.codenavigator.navigation.types.Scope
 
 data class FindSymbolConfig(
     val pattern: String,

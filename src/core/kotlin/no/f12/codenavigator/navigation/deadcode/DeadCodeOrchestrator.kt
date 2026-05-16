@@ -1,11 +1,11 @@
 package no.f12.codenavigator.navigation.deadcode
 
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
-import no.f12.codenavigator.navigation.callgraph.CallGraph
-import no.f12.codenavigator.navigation.callgraph.CallGraphCache
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.Scope
-import no.f12.codenavigator.navigation.interfaces.InterfaceRegistryCache
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraph
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.types.Scope
+import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistryCache
 import java.io.File
 
 /**

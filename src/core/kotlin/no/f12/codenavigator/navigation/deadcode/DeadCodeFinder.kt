@@ -1,11 +1,11 @@
 package no.f12.codenavigator.navigation.deadcode
 
-import no.f12.codenavigator.navigation.core.AnnotationName
-import no.f12.codenavigator.navigation.callgraph.CallGraph
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.KotlinMethodFilter
-import no.f12.codenavigator.navigation.core.Scope
-import no.f12.codenavigator.navigation.callgraph.MethodRef
+import no.f12.codenavigator.navigation.types.AnnotationName
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraph
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.bytecode.KotlinMethodFilter
+import no.f12.codenavigator.navigation.types.Scope
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 
 enum class DeadCodeKind {
     CLASS,

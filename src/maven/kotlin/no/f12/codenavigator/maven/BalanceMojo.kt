@@ -6,11 +6,11 @@ import no.f12.codenavigator.analysis.PackageVolatilityBuilder
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
-import no.f12.codenavigator.navigation.annotation.FrameworkPresets
-import no.f12.codenavigator.navigation.core.PackageName
-import no.f12.codenavigator.navigation.core.RootPackageDetector
-import no.f12.codenavigator.navigation.core.SkippedFileReporter
-import no.f12.codenavigator.navigation.core.scanProjectClasses
+import no.f12.codenavigator.navigation.types.FrameworkPresets
+import no.f12.codenavigator.navigation.types.PackageName
+import no.f12.codenavigator.navigation.bytecode.RootPackageDetector
+import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.BalanceBuilder
 import no.f12.codenavigator.navigation.dsm.BalanceConfig
 import no.f12.codenavigator.navigation.dsm.BalanceFormatter

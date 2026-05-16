@@ -1,10 +1,10 @@
 package no.f12.codenavigator.navigation
 
-import no.f12.codenavigator.navigation.core.ClassName
-import no.f12.codenavigator.navigation.core.SourceSet
-import no.f12.codenavigator.navigation.callgraph.UsageCollapser
-import no.f12.codenavigator.navigation.callgraph.UsageKind
-import no.f12.codenavigator.navigation.callgraph.UsageSite
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.types.SourceSet
+import no.f12.codenavigator.navigation.relations.callgraph.UsageCollapser
+import no.f12.codenavigator.navigation.relations.callgraph.UsageKind
+import no.f12.codenavigator.navigation.relations.callgraph.UsageSite
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
