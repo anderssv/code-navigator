@@ -281,15 +281,9 @@ Fixed: `getOrBuildTagged` now validates that cached source sets match requested 
 
 Default scope for `cnavDead` changed from ALL to PROD. Test classes are excluded by default. Output includes notice: "Test classes excluded. Use scope=all to include test classes." Applies to TEXT and LLM formats.
 
-### Filter non-source files from git analysis recommendations
+### ~~Filter non-source files from git analysis recommendations~~ — DONE
 
-**Value: medium** | **Effort: low**
-
-Coupling and hotspot recommendations flag build/config/doc files (e.g., `gradle-wrapper.properties`, `deployment/configmap.yaml`, `pom.xml`, `README.md`) with advice meant for source code ("unclear responsibilities", "consider merging"). These are noise — config files co-changing is expected, and build files don't have "responsibilities" in the code sense.
-
-- **Approach**: Add an optional source-file filter at the builder level. Default to files matching `src/**` (or configurable pattern). Non-source files still appear in results but don't get recommendation annotations.
-- **Affects**: `ChangeCouplingFormatter`, `HotspotFormatter`.
-- **Note**: Test+main pairs in coupling are already suppressed (v0.1.52).
+Non-source files (paths not starting with `src/`) no longer get recommendation annotations in coupling and hotspot output. Files still appear in results but without `←` advice meant for source code.
 
 ### Add interpretation section to all analysis task output
 
@@ -506,14 +500,9 @@ Also found core duplication:
 
 `StrengthOrchestrator` and `DistanceOrchestrator` extracted to core. Gradle tasks and Maven mojos are thin wrappers handling config parsing, directory resolution, and output routing.
 
-### Make `DsmDependencyExtractor.packageFilter` nullable
+### ~~Make `DsmDependencyExtractor.packageFilter` nullable~~ — DONE
 
-**Value: low** | **Effort: low**
-
-Four task/mojo files pass `PackageName("")` to `DsmDependencyExtractor.extractFromClassWithProjectFilter()` as a workaround for "no filter." The downstream APIs (`filterByPackage`, `StrengthClassifier.classify`) already accept `PackageName?` with null semantics. The extractor's `packageFilter` parameter should be `PackageName?` with null meaning "no filter."
-
-- **Approach**: Change `extractFromClassWithProjectFilter(packageFilter: PackageName)` to `PackageName?`. Update callers to pass `null` instead of `PackageName("")`. Update internal logic to skip `startsWith` check when null.
-- **Benefits**: Eliminates a magic value. Makes the API self-documenting.
+Changed `packageFilter` from `PackageName` with `PackageName("")` magic value to `PackageName?` with null meaning "no filter." Updated all callers, config classes, and tests. No default values on parameters.
 
 ---
 

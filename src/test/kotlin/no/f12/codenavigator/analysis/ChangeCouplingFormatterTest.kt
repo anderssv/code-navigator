@@ -123,4 +123,26 @@ class ChangeCouplingFormatterTest {
 
         assertFalse(result.contains("High coupling"), "Should not flag moderate coupling")
     }
+
+    @Test
+    fun `non-source files with high coupling get no recommendation`() {
+        val pairs = listOf(
+            CoupledPair("pom.xml", "gradle-wrapper.properties", 90, 20, 22),
+        )
+
+        val result = ChangeCouplingFormatter.format(pairs)
+
+        assertFalse(result.contains("High coupling"), "Non-source files should not get recommendation, got:\n$result")
+    }
+
+    @Test
+    fun `mixed source and non-source pair with high coupling gets no recommendation`() {
+        val pairs = listOf(
+            CoupledPair("src/main/kotlin/Foo.kt", "build.gradle.kts", 80, 15, 18),
+        )
+
+        val result = ChangeCouplingFormatter.format(pairs)
+
+        assertFalse(result.contains("High coupling"), "Mixed source/non-source pair should not get recommendation, got:\n$result")
+    }
 }

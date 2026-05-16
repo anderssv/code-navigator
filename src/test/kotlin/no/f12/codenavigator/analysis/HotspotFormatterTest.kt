@@ -78,4 +78,15 @@ class HotspotFormatterTest {
 
         assertFalse(result.contains("Change hotspot"), "Uniform files should not be flagged")
     }
+
+    @Test
+    fun `non-source file above threshold gets no label`() {
+        val hotspots = (1..20).map { i ->
+            Hotspot(if (i == 1) "pom.xml" else "src/main/File$i.kt", if (i == 1) 50 else 5, if (i == 1) 500 else 30)
+        }
+
+        val result = HotspotFormatter.format(hotspots)
+
+        assertFalse(result.contains("Change hotspot"), "Non-source file should not get hotspot label, got:\n$result")
+    }
 }

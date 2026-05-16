@@ -15,7 +15,7 @@ object HotspotFormatter {
             hotspots.forEachIndexed { index, h ->
                 if (index > 0) appendLine()
                 append("%-${fileWidth}s  %${revWidth}d  %${churnWidth}d".format(h.file, h.revisions, h.totalChurn))
-                if (hotspotThreshold != null && h.revisions >= hotspotThreshold) {
+                if (hotspotThreshold != null && h.revisions >= hotspotThreshold && h.file.startsWith("src/")) {
                     append("  ← Change hotspot — review for unclear responsibilities or missing abstractions.")
                 }
             }
