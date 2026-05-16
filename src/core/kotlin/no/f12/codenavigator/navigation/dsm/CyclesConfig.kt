@@ -8,14 +8,14 @@ import no.f12.codenavigator.navigation.core.Scope
 
 data class CyclesConfig(
     val rootPackage: PackageName,
-    val packageFilter: PackageName,
+    val packageFilter: PackageName?,
     val includeExternal: Boolean,
     val depth: Int,
     val scope: Scope,
     val format: OutputFormat,
 ) {
     fun deprecations(): List<String> = buildList {
-        if (rootPackage.value.isNotEmpty() && packageFilter == rootPackage) {
+        if (rootPackage.value.isNotEmpty() && packageFilter != null && packageFilter == rootPackage) {
             add("'root-package' is deprecated. Results are now automatically limited to classes in the project source sets. Use 'package-filter' to narrow further.")
         }
     }
@@ -24,11 +24,11 @@ data class CyclesConfig(
         fun parse(properties: Map<String, String?>): CyclesConfig {
             val explicitFilter = TaskRegistry.PACKAGE_FILTER.parseFrom(properties)
             val legacyRoot = TaskRegistry.ROOT_PACKAGE.parseFrom(properties)
-            val resolvedFilter = explicitFilter ?: legacyRoot ?: ""
+            val resolvedFilter = (explicitFilter ?: legacyRoot)?.let { PackageName(it) }
 
             return CyclesConfig(
                 rootPackage = PackageName(legacyRoot ?: ""),
-                packageFilter = PackageName(resolvedFilter),
+                packageFilter = resolvedFilter,
                 includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
                 depth = TaskRegistry.DSM_DEPTH.parseFrom(properties),
                 scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),

@@ -33,7 +33,7 @@ abstract class LayerCheckTask : DefaultTask() {
         val classDirectories = project.taggedClassDirectories().map { it.first }
         val projectClasses = scanProjectClasses(classDirectories)
 
-        val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses)
+        val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { logger.warn(it) }
         val dependencies = extractResult.data

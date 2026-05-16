@@ -291,7 +291,7 @@ class DsmDependencyExtractorTest {
             ClassName("com.example.api.HelperUser"),
         )
 
-        val deps = DsmDependencyExtractor.extract(classDirectories = listOf(classesDir), projectClasses = projectClasses).data
+        val deps = DsmDependencyExtractor.extract(classDirectories = listOf(classesDir), projectClasses = projectClasses, packageFilter = null, includeExternal = false, filterTargets = true).data
 
         assertTrue(deps.isEmpty(), "Dependencies on non-project classes should be excluded")
     }
@@ -309,7 +309,7 @@ class DsmDependencyExtractorTest {
             ClassName("com.example.service.Service"),
         )
 
-        val deps = DsmDependencyExtractor.extract(classDirectories = listOf(classesDir), projectClasses = projectClasses).data
+        val deps = DsmDependencyExtractor.extract(classDirectories = listOf(classesDir), projectClasses = projectClasses, packageFilter = null, includeExternal = false, filterTargets = true).data
 
         val dep = deps.find { it.sourceClass == ClassName("com.example.api.Controller") && it.targetClass == ClassName("com.example.service.Service") }
         assertTrue(dep != null, "Expected project-to-project dependency")
@@ -328,7 +328,9 @@ class DsmDependencyExtractorTest {
         val deps = DsmDependencyExtractor.extract(
             classDirectories = listOf(classesDir),
             projectClasses = projectClasses,
+            packageFilter = null,
             includeExternal = true,
+            filterTargets = true,
         ).data
 
         val dep = deps.find { it.targetClass == ClassName("com.other.lib.Helper") }
@@ -357,6 +359,8 @@ class DsmDependencyExtractorTest {
             classDirectories = listOf(classesDir),
             projectClasses = projectClasses,
             packageFilter = PackageName("com.example.api"),
+            includeExternal = false,
+            filterTargets = true,
         ).data
 
         assertTrue(deps.all { it.sourcePackage.startsWith(PackageName("com.example.api")) }, "Only sources matching package-filter should be included")
@@ -379,6 +383,7 @@ class DsmDependencyExtractorTest {
             classDirectories = listOf(classesDir),
             projectClasses = projectClasses,
             packageFilter = PackageName("com.example.api"),
+            includeExternal = false,
             filterTargets = false,
         ).data
 
@@ -411,6 +416,7 @@ class DsmDependencyExtractorTest {
             classDirectories = listOf(classesDir),
             projectClasses = projectClasses,
             packageFilter = PackageName("com.example.api"),
+            includeExternal = false,
             filterTargets = false,
         ).data
 
@@ -437,6 +443,8 @@ class DsmDependencyExtractorTest {
             classDirectories = listOf(classesDir),
             projectClasses = projectClasses,
             packageFilter = PackageName("com.example.api"),
+            includeExternal = false,
+            filterTargets = true,
         ).data
 
         assertTrue(deps.isEmpty(), "Default filterTargets=true should filter out targets outside the filter (existing DSM behavior)")

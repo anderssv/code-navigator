@@ -75,32 +75,17 @@ Confidence scoring logic extracted to `ConfidenceScorer` object. `DeadCodeFinder
 
 `DeadCodeQuery` data class bundles 21 parameters. `DeadCodeFinder.find(query)` accepts it. Old overload preserved for backward compatibility.
 
-### Dead class count mismatch between `cnavMetrics` and `cnavDead`
+### ~~Dead class count mismatch between `cnavMetrics` and `cnavDead`~~ — DONE
 
-**Value: high** | **Effort: low**
+Extracted `DeadCodeOrchestrator` as single source of truth for dead code scanning. `MetricsTask`/`MetricsMojo` now use `DeadCodeConfig` + `DeadCodeOrchestrator` with same defaults as `DeadCodeTask`. Removed `excludeAnnotated` from `MetricsConfig`. Verified on realworld-springboot: metrics and dead both report 2 dead classes (was 8 vs 2).
 
-From self-analysis on realworld-springboot: `cnavMetrics` reports 8 dead classes but `cnavDead` returns only 2. Self-analysis on code-navigator itself: `cnavMetrics` reports 165 dead classes but `cnavDead` returns ~69 items. The two tasks should agree on the same defaults. Likely cause: different default parameters (scope, exclude-annotated, treat-as-dead) between `MetricsBuilder.deadClassCount` and `DeadCodeFinder.find()`.
+### ~~`@ControllerAdvice` not recognized as Spring entry point~~ — DONE
 
-- **Approach**: Trace both code paths and align defaults. Add a test that asserts `metrics.deadClassCount == dead.size` for the same input.
+Added `@RestControllerAdvice` to `FrameworkPresets.SPRING` (the actual missing annotation — `@ControllerAdvice` was already present).
 
-### `@ControllerAdvice` not recognized as Spring entry point
+### ~~OVER_ENGINEERED false positives for standard domain layer packages~~ — DONE
 
-**Value: medium** | **Effort: low**
-
-From self-analysis on realworld-springboot: `ExceptionHandlerController` (annotated `@ControllerAdvice`) flagged as dead with low confidence. `@ControllerAdvice` is a Spring stereotype but not in `FrameworkPresets.SPRING`. Should be added alongside `@Controller`, `@RestController`, etc.
-
-- **Approach**: Add `ControllerAdvice` to `FrameworkPresets.SPRING`.
-
-### OVER_ENGINEERED false positives for standard domain layer packages
-
-**Value: medium** | **Effort: low**
-
-From self-analysis on realworld-springboot: `cnavBalance` flags `domain.repository` → `domain.model`, `domain.service` → `domain.model`, and `domain.service` → `domain.repository` as OVER_ENGINEERED ("loosely coupled nearby packages — consider merging"). These are textbook DDD separations that should not be flagged.
-
-The heuristic penalizes nearby + loosely coupled, but MODEL and CONTRACT strength between sibling domain packages is expected and healthy. Merging `domain.model` into `domain.service` would be objectively worse.
-
-- **Approach**: Exempt pairs where strength is MODEL or CONTRACT and distance ≤ 2 from the OVER_ENGINEERED verdict. These represent intentional layering, not accidental splitting.
-- **Alternative**: Only flag OVER_ENGINEERED when strength is FUNCTIONAL (implementation coupling) — MODEL and CONTRACT coupling at short distance is a sign of good architecture, not over-engineering.
+Nearby packages with MODEL/CONTRACT coupling are now classified as BALANCED (intentional layering) or TOLERABLE (if volatile). The OVER_ENGINEERED verdict is effectively retired. Help text updated.
 
 ### Meta-annotation traversal for dead code filtering
 

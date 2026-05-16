@@ -12,13 +12,13 @@ data class MetricsConfig(
     val top: Int,
     val followRenames: Boolean,
     val rootPackage: PackageName,
-    val packageFilter: PackageName,
+    val packageFilter: PackageName?,
     val includeExternal: Boolean,
     val format: OutputFormat,
     val scope: Scope,
 ) {
     fun deprecations(): List<String> = buildList {
-        if (rootPackage.value.isNotEmpty() && packageFilter == rootPackage) {
+        if (rootPackage.value.isNotEmpty() && packageFilter != null && packageFilter == rootPackage) {
             add("'root-package' is deprecated. Results are now automatically limited to classes in the project source sets. Use 'package-filter' to narrow further.")
         }
     }
@@ -27,14 +27,14 @@ data class MetricsConfig(
         fun parse(properties: Map<String, String?>): MetricsConfig {
             val explicitFilter = TaskRegistry.PACKAGE_FILTER.parseFrom(properties)
             val legacyRoot = TaskRegistry.ROOT_PACKAGE.parseFrom(properties)
-            val resolvedFilter = explicitFilter ?: legacyRoot ?: ""
+            val resolvedFilter = (explicitFilter ?: legacyRoot)?.let { PackageName(it) }
 
             return MetricsConfig(
                 after = TaskRegistry.AFTER.parseFrom(properties),
                 top = TaskRegistry.METRICS_TOP.parseFrom(properties),
                 followRenames = !TaskRegistry.NO_FOLLOW.parseFrom(properties),
                 rootPackage = PackageName(legacyRoot ?: ""),
-                packageFilter = PackageName(resolvedFilter),
+                packageFilter = resolvedFilter,
                 includeExternal = TaskRegistry.INCLUDE_EXTERNAL.parseFrom(properties),
                 format = ParamDef.parseFormat(properties),
                 scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),

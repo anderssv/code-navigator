@@ -55,7 +55,7 @@ class LayerCheckMojo : AbstractMojo() {
 
         val projectClasses = scanProjectClasses(classDirectories)
 
-        val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses)
+        val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { log.warn(it) }
         val dependencies = extractResult.data

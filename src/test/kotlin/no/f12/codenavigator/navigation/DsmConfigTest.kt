@@ -191,10 +191,10 @@ class DsmConfigTest {
     }
 
     @Test
-    fun `defaults package-filter to empty`() {
+    fun `defaults package-filter to null`() {
         val config = DsmConfig.parse(emptyMap())
 
-        assertEquals(PackageName(""), config.packageFilter)
+        assertNull(config.packageFilter)
     }
 
     @Test

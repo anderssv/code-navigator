@@ -23,7 +23,7 @@ object DistanceOrchestrator {
 
         val extractResult = DsmDependencyExtractor.extract(
             classDirectories, projectClasses,
-            packageFilter = packageFilter ?: PackageName(""),
+            packageFilter = packageFilter,
             includeExternal = config.includeExternal,
             filterTargets = false,
         )

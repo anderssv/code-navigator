@@ -7,6 +7,7 @@ import no.f12.codenavigator.navigation.metrics.MetricsConfig
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class MetricsConfigTest {
@@ -90,10 +91,10 @@ class MetricsConfigTest {
     }
 
     @Test
-    fun `defaults package-filter to empty`() {
+    fun `defaults package-filter to null`() {
         val config = MetricsConfig.parse(emptyMap())
 
-        assertEquals(PackageName(""), config.packageFilter)
+        assertNull(config.packageFilter)
     }
 
     @Test

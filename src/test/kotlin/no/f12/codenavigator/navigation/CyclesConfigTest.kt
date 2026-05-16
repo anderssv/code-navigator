@@ -7,6 +7,7 @@ import no.f12.codenavigator.navigation.dsm.CyclesConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CyclesConfigTest {
@@ -47,10 +48,10 @@ class CyclesConfigTest {
     }
 
     @Test
-    fun `defaults package-filter to empty`() {
+    fun `defaults package-filter to null`() {
         val config = CyclesConfig.parse(emptyMap())
 
-        assertEquals(PackageName(""), config.packageFilter)
+        assertNull(config.packageFilter)
     }
 
     @Test
