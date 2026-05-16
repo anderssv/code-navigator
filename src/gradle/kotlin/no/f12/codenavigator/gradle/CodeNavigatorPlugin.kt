@@ -107,6 +107,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "find-interfaces" to FindInterfaceImplsTask::class.java,
             "type-hierarchy" to TypeHierarchyTask::class.java,
             "package-deps" to PackageDepsTask::class.java,
+            "why-depends" to WhyDependsTask::class.java,
             "dsm" to DsmTask::class.java,
             "cycles" to CyclesTask::class.java,
             "find-usages" to FindUsagesTask::class.java,

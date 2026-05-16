@@ -249,6 +249,8 @@ object TaskRegistry {
     val MIN_TOKENS = ParamDef("min-tokens", "<N>", "Minimum duplicate token sequence length", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
     val MOVE_FROM = ParamDef("from", "<fqcn>", "Fully qualified class name to move/rename", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MOVE_TO = ParamDef("to", "<fqcn>", "Target fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val FROM_PACKAGE = ParamDef("from-package", "<pkg>", "Source package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val TO_PACKAGE = ParamDef("to-package", "<pkg>", "Target package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
     val FORMAT_PARAMS = listOf(FORMAT, LLM)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
@@ -382,6 +384,17 @@ object TaskRegistry {
             UsageExample(listOf(REVERSE to "true")),
             UsageExample(listOf(PACKAGE to "domain", REVERSE to "true")),
             UsageExample(listOf(PROJECTONLY to "true")),
+        ),
+    )
+
+    val WHY_DEPENDS = TaskDef(
+        goal = "why-depends",
+        description = "Show why one package depends on another at class level",
+        params = FORMAT_PARAMS + listOf(FROM_PACKAGE, TO_PACKAGE) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(listOf(FROM_PACKAGE to "com.example.api", TO_PACKAGE to "com.example.db")),
         ),
     )
 
@@ -791,6 +804,7 @@ object TaskRegistry {
         FIND_INTERFACES,
         TYPE_HIERARCHY,
         PACKAGE_DEPS,
+        WHY_DEPENDS,
         DSM,
         CYCLE_DETECTION,
         FIND_USAGES,

@@ -1,0 +1,51 @@
+package no.f12.codenavigator.gradle
+
+import no.f12.codenavigator.formatting.OutputWrapper
+import no.f12.codenavigator.registry.TaskRegistry
+import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
+import no.f12.codenavigator.navigation.dsm.WhyDependsBuilder
+import no.f12.codenavigator.navigation.dsm.WhyDependsConfig
+import no.f12.codenavigator.navigation.dsm.WhyDependsFormatter
+import no.f12.codenavigator.navigation.types.PackageName
+import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.TaskAction
+import org.gradle.work.DisableCachingByDefault
+import java.io.File
+
+@DisableCachingByDefault(because = "Produces console output only")
+abstract class WhyDependsTask : DefaultTask() {
+
+    @TaskAction
+    fun showWhyDepends() {
+        val config = WhyDependsConfig.parse(
+            project.buildPropertyMap(TaskRegistry.WHY_DEPENDS),
+        )
+
+        val taggedDirs = project.taggedClassDirectories()
+        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
+        val classDirectories = filteredDirs.map { it.first }
+
+        val extractResult = DsmDependencyExtractor.extract(classDirectories, PackageName(""))
+        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
+        SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { logger.warn(it) }
+
+        val result = WhyDependsBuilder.build(
+            dependencies = extractResult.data,
+            fromPackage = PackageName(config.fromPackage),
+            toPackage = PackageName(config.toPackage),
+        )
+
+        if (result.edges.isEmpty()) {
+            val hints = WhyDependsFormatter.noResultsHints(result.fromPackage, result.toPackage)
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No dependencies found from '${config.fromPackage}' to '${config.toPackage}'.", hints))
+            return
+        }
+
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
+            text = { WhyDependsFormatter.format(result) },
+            json = { WhyDependsFormatter.format(result) },
+            llm = { WhyDependsFormatter.format(result) },
+        ))
+    }
+}
