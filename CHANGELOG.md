@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.78
+
+- **New:** `cnavWhyDepends` — explains why one package depends on another at class level, showing which classes in the source package reference which classes in the target package.
+- **Improved:** Extracted `FindUsagesOrchestrator` — shared find-usages logic (type resolution, interface expansion, scanning, filtering, collapsing) moved from Gradle task and Maven mojo into core, eliminating ~90 lines of duplication.
+- **Improved:** Restructured navigation packages — split `core/` into `types/`, `bytecode/`, `cache/`; moved callgraph/hierarchy/interfaces under `relations/`.
+- **Fixed:** Broke `formatting ↔ navigation.dsm` cycle by extracting `DsmOutputFormatter`.
+- **Fixed:** Skip recommendation annotations on non-source files in coupling and hotspot output.
+- **Fixed:** Dead code count mismatch between `cnavMetrics` and `cnavDead`; added `@RestControllerAdvice` as Spring entry point; retired `OVER_ENGINEERED` verdict.
+- **Fixed:** Made `packageFilter` nullable instead of using `PackageName("")` as magic empty value.
+
 ## 0.1.77
 
 - **New:** Stale class file detection — all bytecode-based tasks now compare source and class file timestamps. Warns when source is newer than compiled classes. Errors with clear message when no class files exist.
