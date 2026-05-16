@@ -124,15 +124,9 @@ After triaging dead code and removing items, re-run `cnavDead` and see what chan
 
 Related improvements to package dependency analysis. `cnavWhyDepends` is a prerequisite for cycle fix suggestions, which in turn is a prerequisite for what-if simulation.
 
-### `cnavWhyDepends` — dependency edge explanation
+### ~~`cnavWhyDepends` — dependency edge explanation~~ — DONE
 
-**Value: high** | **Effort: medium**
-
-The DSM tells you package A depends on package B, but not *why*. To break a cycle you need to know the specific fields, method parameters, return types, and local variable types that create the dependency.
-
-- **Builder**: `DependencyExplainer.explain(callGraph, from, to) -> List<DependencyEdge(sourceClass, targetClass, kind: FIELD|PARAMETER|RETURN_TYPE|LOCAL_VAR|METHOD_CALL, detail: String)>`
-- **Parameters**: `-Pfrom=<class-or-package>` (required), `-Pto=<class-or-package>` (required), `-Pproject-only=true`
-- **Why useful**: The missing link between "the DSM says there's a dependency" and "here's what to move/extract to break it."
+Implemented class-level dependency edge explanation. `WhyDependsBuilder` filters `PackageDependency` list by from/to package, collapses inner classes to top-level via `topLevelClass()`, groups by (source, target) pair with counts. Registered as `why-depends` goal with `from-package` and `to-package` params. Gradle task, Maven mojo, help text, and agent help all updated.
 
 ### Cycle fix suggestions in DSM
 
@@ -468,20 +462,36 @@ Self-analysis found `JsonFormatter` (347 outgoing dependencies, 72 referenced ty
 - **Ordering**: `LlmFormatter` first (primary agent-facing format), then `JsonFormatter`. `TableFormatter` is smaller and can follow later.
 - **Benefits**: Adding a new feature means adding a new formatter file, not editing a shared god class.
 
-### Reduce Gradle/Maven duplication in orchestration and config
+### Reduce Gradle/Maven duplication via orchestrator extraction
 
 **Value: medium** | **Effort: medium**
 
-Self-analysis with `cnavDuplicates` found 50 duplicate blocks between Gradle tasks and Maven mojos. Top duplicates (by token count):
-- `MetricsTask.kt` ↔ `MetricsMojo.kt` (255 tokens) — nearly identical orchestration
-- `ContextTask.kt` ↔ `ContextMojo.kt` (238 tokens)
-- `DeadCodeTask.kt` ↔ `DeadCodeMojo.kt` (211 tokens)
-- `ListClassesTask.kt` ↔ `FindClassTask.kt` (200 tokens) — even within Gradle, two tasks share logic
-- `FindCalleesMojo.kt` ↔ `FindCallersMojo.kt` (165 tokens)
+Every Gradle Task / Maven Mojo pair duplicates its full orchestration logic. The pairs differ only in property reading, output channel (`logger.lifecycle` vs `println`), build dir resolution, and Maven's "classes not found" guard. ~590 lines of duplicated orchestration across 14 pairs.
 
-The shared orchestration extraction (StrengthOrchestrator, DistanceOrchestrator) pattern should be extended to more tasks. Priority: Metrics, Context, DeadCode (highest duplication).
+Three pairs already follow the correct pattern — `StrengthOrchestrator`, `DistanceOrchestrator`, and `DeadCodeOrchestrator` live in `core/` and their Task/Mojo are thin ~10-line adapters. Extend this to the rest.
 
-Also found core duplication:
+**Priority order** (by duplicated lines):
+1. `FindUsagesTask ↔ FindUsagesMojo` (~90 lines) — extract `FindUsagesOrchestrator`
+2. `MetricsTask ↔ MetricsMojo` (~70 lines) — extract `MetricsOrchestrator`
+3. `BalanceTask ↔ BalanceMojo` (~55 lines) — extract `BalanceOrchestrator`
+4. `CallTreeTaskSupport ↔ CallTreeMojoSupport` (~55 lines) — merge into single `CallTreeOrchestrator` in core
+5. `DeadCodeTask ↔ DeadCodeMojo` (~45 lines) — already has `DeadCodeOrchestrator`, wire mojos to use it
+6. `LayerCheckTask ↔ LayerCheckMojo` (~45 lines) — extract `LayerCheckOrchestrator`
+7. `DsmTask ↔ DsmMojo` (~40 lines) — extract `DsmOrchestrator`
+8. `PackageDepsTask ↔ PackageDepsMojo` (~40 lines) — extract `PackageDepsOrchestrator`
+9. `FindClassTask ↔ FindClassMojo` (~40 lines) — extract `FindClassOrchestrator`
+10. `ComplexityTask ↔ ComplexityMojo` (~30 lines) — extract `ComplexityOrchestrator`
+11. `RankTask ↔ RankMojo` (~25 lines) — extract `RankOrchestrator`
+12. `WhyDependsTask ↔ WhyDependsMojo` (~25 lines) — extract `WhyDependsOrchestrator`
+13. Remaining small pairs (Hotspot, Churn, CodeAge, AuthorAnalysis, etc.) — ~15 lines each
+
+**Also extract shared micro-patterns:**
+- `taggedDirs → scope filter → classDirectories` (3 lines × 16 files) — shared helper function
+- `SkippedFileReporter` boilerplate (2-3 lines × 24 files) — helper
+- Maven "classes not found" guard (3 lines × 12 mojos) — shared guard in `MavenSupport`
+- `isArtifactCoordinate` pure function duplicated in `GradleSupport` and `MavenSupport` — move to `core/`
+
+Also found core duplication (lower priority):
 - `InlineMethodDetector.kt` ↔ `DelegationMethodDetector.kt` (227 tokens) — similar visitor patterns
 - `RenameMethodRewriter.kt` ↔ `RenamePropertyRewriter.kt` ↔ `RenameParamRewriter.kt` (117 tokens each) — shared rewriter boilerplate
 - `RenamePropertyFormatter.kt` ↔ `RenameMethodFormatter.kt` (101 tokens)
