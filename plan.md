@@ -359,6 +359,27 @@ From user feedback: a project had 19 silently skipped tests because test methods
 - **Additional checks** (bytecode-only): test methods missing `@Test` annotation but named `test*`, test classes with no `@Test` methods, `@Disabled`/`@Ignore` inventory
 - Both Gradle and Maven write the same JUnit XML format, so one parser handles both.
 
+### `cnavTestCoverage` — per-test-class coverage proximity analysis
+
+**Value: medium** | **Effort: medium**
+
+Identify which production classes are only tested "at distance" (no dedicated test, only exercised transitively by tests for other classes). Helps find brittle test coupling where a change to a utility breaks distant tests without a close test isolating the cause.
+
+**Approach** (prototyped on cnav's own codebase):
+1. A JUnit `TestExecutionListener` calls JaCoCo agent's `getExecutionData(reset=false)` / `reset()` per test class, producing one `.exec` file per test class in a single test run.
+2. A builder reads all exec files + class directories, produces a coverage matrix: for each production class, which test classes cover it and at what "distance" (same-name dedicated test = close, same package = near, cross-package = distant).
+3. Flags production classes covered **only** at distance with no close test — these are the coupling risk.
+
+**Findings from prototype** (cnav self-analysis, 170 test classes, 383 production classes):
+- 129 classes had no dedicated test (only distant coverage). Most were harmless: data classes, enums, ubiquitous types (`ClassName`, `PackageName`), and shared infrastructure.
+- Actual coupling risk concentrated in: refactor support utilities (4 files), `CallTreeFormatter` (8 distant tests, no dedicated test), and orchestrators.
+- `JsonFormatterTest` and `LlmFormatterTest` appeared as distant coverage for nearly every result type — this is expected and healthy (tests serialization).
+
+**Open questions**:
+- Should this integrate with JaCoCo (requires agent access), or use a simpler heuristic (file name matching only, no coverage data)?
+- Line-level overlap analysis (which specific lines are redundantly covered) would require comparing probe data across exec files — significantly more complex.
+- The JUnit listener approach requires `output=file` (default) not `output=tcpserver`. May need to detect agent configuration.
+
 ### `cnavDiff` — structural diff between builds
 
 **Value: medium** | **Effort: medium**
