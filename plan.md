@@ -446,27 +446,17 @@ Non-Gradle gaps to address:
 - ~~**Reduce duplication**~~ **DONE** — see `plan-completed.md`.
 - ~~**Align with kotlin-tdd**~~ **DONE** — already aligned.
 
-### Break `formatting` ↔ `navigation.dsm` cycle
+### ~~Break `formatting` ↔ `navigation.dsm` cycle~~ — DONE
 
-**Value: high** | **Effort: medium**
+Orchestrators (`DistanceOrchestrator`, `StrengthOrchestrator`) now return result data classes instead of formatted strings. Formatting moved to `DsmOutputFormatter` in the `formatting` package. Callers (Gradle tasks / Maven mojos) use `DsmOutputFormatter.format(output, config.format)`. No production cycles remain.
 
-Self-analysis found a cycle between `formatting` and `navigation.dsm`. `JsonFormatter`/`LlmFormatter` depend on DSM data types (expected — formatters consume result structures). The problem is the reverse: `DistanceOrchestrator` and `StrengthOrchestrator` depend on `JsonFormatter`, `LlmFormatter`, and `OutputWrapper` in `formatting`. Orchestrators should produce result data and let the caller handle formatting.
+### ~~Align test packages with production packages~~ — DONE
 
-- **Approach**: Orchestrators should return result data classes. Move formatting out of orchestrators into the Gradle tasks / Maven mojos (or a thin dispatch layer). This also makes orchestrators independently testable without formatter dependencies.
-- **Relates to**: "Split JsonFormatter and LlmFormatter per-feature" below — splitting formatters becomes easier once the cycle is broken.
+Moved ~95 test files from flat `navigation/` test package to sub-packages matching production structure (`annotation/`, `bytecode/`, `changedsince/`, `classinfo/`, `complexity/`, `context/`, `deadcode/`, `dsm/`, `metrics/`, `rank/`, `relations/callgraph/`, `relations/hierarchy/`, `relations/implementors/`, `stringconstant/`, `symbol/`, `types/`). Shared test utilities (`TestClassWriter`, `TestCallGraphBuilder`) remain in `navigation/` and are accessed via wildcard import.
 
-### Break 6-package core cycle
+### ~~Break 6-package core cycle~~ — DONE
 
-**Value: medium** | **Effort: high**
-
-Self-analysis found a cycle involving `navigation.annotation`, `navigation.callgraph`, `navigation.complexity`, `navigation.core`, `navigation.interfaces`, and `registry`. Key problematic edges:
-
-- `navigation.core` → `navigation.complexity` (via `LambdaCollapser` → `ClassComplexity`) — core should not depend on a feature package
-- `navigation.core` → `registry` (via `FileCache` → `CacheFreshness`) — core depending on registry is an inversion
-- `registry` → `navigation.annotation` (via `TaskRegistry` → `FrameworkPresets`) — registry should not reach into feature packages
-- `registry` → `navigation.core` (via `TaskDef` → `PatternEnhancer`)
-
-- **Approach**: Move `CacheFreshness` from `registry` to `navigation.core`. Move `FrameworkPresets` from `navigation.annotation` to a shared location (e.g. `navigation.core` or its own `navigation.framework` package). Extract `ClassComplexity` data class from `navigation.complexity` to `navigation.core` or a shared types package. Move `PatternEnhancer` usage out of `TaskDef`.
+Resolved by the package restructure (commit `a3c3bf9`). Split `navigation.core` into `types/`, `bytecode/`, `cache/`. Moved `PatternEnhancer` to `types/`, `CacheFreshness` to `cache/`, `FrameworkPresets` to `types/`. No production cycles remain.
 
 ### Split JsonFormatter and LlmFormatter per-feature
 

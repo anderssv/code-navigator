@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation.dsm
 
+import no.f12.codenavigator.navigation.*
+
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.types.PackageName
 import kotlin.test.Test

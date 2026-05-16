@@ -1,8 +1,5 @@
 package no.f12.codenavigator.navigation.dsm
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
-import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.bytecode.RootPackageDetector
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
@@ -10,7 +7,8 @@ import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import java.io.File
 
 data class DistanceOutput(
-    val formatted: String?,
+    val result: PackageDistanceResult?,
+    val noResultsHints: List<String>,
     val skippedFileWarning: String?,
 )
 
@@ -38,19 +36,16 @@ object DistanceOrchestrator {
 
         if (result.entries.isEmpty()) {
             val packageCount = projectClasses.map { it.packageName() }.distinct().size
-            val hints = PackageDistanceFormatter.noResultsHints(packageCount)
             return DistanceOutput(
-                formatted = OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints),
+                result = null,
+                noResultsHints = PackageDistanceFormatter.noResultsHints(packageCount),
                 skippedFileWarning = skippedWarning,
             )
         }
 
         return DistanceOutput(
-            formatted = OutputWrapper.formatAndWrap(config.format,
-                text = { PackageDistanceFormatter.format(result) },
-                json = { JsonFormatter.formatDistance(result) },
-                llm = { LlmFormatter.formatDistance(result) },
-            ),
+            result = result,
+            noResultsHints = emptyList(),
             skippedFileWarning = skippedWarning,
         )
     }

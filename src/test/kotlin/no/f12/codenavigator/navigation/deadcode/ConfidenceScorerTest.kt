@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation.deadcode
 
+import no.f12.codenavigator.navigation.*
+
 import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 import no.f12.codenavigator.navigation.types.AnnotationName
 import no.f12.codenavigator.navigation.types.ClassName

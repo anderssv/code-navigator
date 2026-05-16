@@ -1,0 +1,153 @@
+package no.f12.codenavigator.navigation.bytecode
+
+import no.f12.codenavigator.navigation.*
+
+import no.f12.codenavigator.navigation.bytecode.UnsupportedBytecodeVersionException
+import no.f12.codenavigator.navigation.bytecode.createClassReader
+import no.f12.codenavigator.navigation.classinfo.ClassScanner
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Opcodes
+import org.junit.jupiter.api.io.TempDir
+import java.io.File
+import java.nio.file.Path
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertContains
+
+class BytecodeReadExceptionTest {
+
+    @TempDir
+    lateinit var tempDir: Path
+
+    @Test
+    fun `throws UnsupportedBytecodeVersionException for unsupported major version`() {
+        val classFile = writeClassFileWithVersion(99, "com/example/FutureClass")
+
+        val exception = assertFailsWith<UnsupportedBytecodeVersionException> {
+            createClassReader(classFile)
+        }
+
+        assertContains(exception.message!!, "FutureClass.class")
+        assertContains(exception.message!!, "newer JVM than the code-navigator plugin supports")
+    }
+
+    @Test
+    fun `exception message includes Java version derived from major version`() {
+        val majorVersion = 80 // Java 36 (well beyond current support)
+        val classFile = writeClassFileWithVersion(majorVersion, "com/example/FutureJavaClass")
+
+        val exception = assertFailsWith<UnsupportedBytecodeVersionException> {
+            createClassReader(classFile)
+        }
+
+        assertContains(exception.message!!, "Java 36")
+    }
+
+    @Test
+    fun `succeeds for supported bytecode version`() {
+        val classFile = writeClassFileWithVersion(65, "com/example/SupportedClass") // Java 21
+
+        val reader = createClassReader(classFile)
+
+        assertEquals("com/example/SupportedClass", reader.className)
+    }
+
+    @Test
+    fun `succeeds for Java 24 bytecode`() {
+        val classFile = writeClassFileWithVersion(68, "com/example/Java24Class") // Java 24
+
+        val reader = createClassReader(classFile)
+
+        assertEquals("com/example/Java24Class", reader.className)
+    }
+
+    @Test
+    fun `ByteArray overload returns ClassReader for valid bytecode`() {
+        val bytes = validClassBytes("com/example/ByteArrayClass")
+
+        val reader = createClassReader(bytes)
+
+        assertEquals("com/example/ByteArrayClass", reader.className)
+    }
+
+    @Test
+    fun `ByteArray overload throws for unsupported bytecode version`() {
+        val bytes = validClassBytes("com/example/FutureClass")
+        bytes[6] = (99 shr 8).toByte()
+        bytes[7] = (99 and 0xFF).toByte()
+
+        val exception = assertFailsWith<UnsupportedBytecodeVersionException> {
+            createClassReader(bytes, "my-lib.jar!/com/example/FutureClass.class")
+        }
+
+        assertContains(exception.message!!, "my-lib.jar!/com/example/FutureClass.class")
+        assertContains(exception.message!!, "newer JVM than the code-navigator plugin supports")
+    }
+
+    @Test
+    fun `ByteArray overload uses default label when none provided`() {
+        val bytes = validClassBytes("com/example/FutureClass")
+        bytes[6] = (99 shr 8).toByte()
+        bytes[7] = (99 and 0xFF).toByte()
+
+        val exception = assertFailsWith<UnsupportedBytecodeVersionException> {
+            createClassReader(bytes)
+        }
+
+        assertContains(exception.message!!, "<bytes>")
+    }
+
+    @Test
+    fun `ClassScanner returns skipped files when class files are unsupported`() {
+        writeClassFileWithVersion(99, "com/example/UnsupportedClass")
+
+        val result = ClassScanner.scan(listOf(tempDir.toFile()))
+
+        assertEquals(1, result.skippedFiles.size)
+        assertContains(result.skippedFiles.first().message!!, "UnsupportedClass.class")
+    }
+
+    @Test
+    fun `ClassScanner returns valid classes alongside skipped files`() {
+        writeClassFileWithVersion(65, "com/example/ValidClass")
+        writeClassFileWithVersion(99, "com/example/UnsupportedClass")
+
+        val result = ClassScanner.scan(listOf(tempDir.toFile()))
+
+        assertEquals(1, result.data.size)
+        assertEquals("com.example.ValidClass", result.data.first().className.value)
+        assertEquals(1, result.skippedFiles.size)
+    }
+
+    private fun validClassBytes(className: String): ByteArray {
+        val writer = ClassWriter(0)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visitEnd()
+        return writer.toByteArray()
+    }
+
+    private fun writeClassFileWithVersion(majorVersion: Int, className: String): File {
+        val writer = ClassWriter(0)
+        writer.visit(
+            Opcodes.V17,
+            Opcodes.ACC_PUBLIC,
+            className,
+            null,
+            "java/lang/Object",
+            null,
+        )
+        writer.visitEnd()
+        val bytes = writer.toByteArray()
+
+        // Patch the major version in the raw bytecode (bytes 6-7)
+        bytes[6] = (majorVersion shr 8).toByte()
+        bytes[7] = (majorVersion and 0xFF).toByte()
+
+        val dir = tempDir.resolve(className.substringBeforeLast("/", "")).toFile()
+        dir.mkdirs()
+        val file = File(dir, className.substringAfterLast("/") + ".class")
+        file.writeBytes(bytes)
+        return file
+    }
+}

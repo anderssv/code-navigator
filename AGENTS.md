@@ -38,21 +38,24 @@ src/
 **`formatting/`** — output formatters:
 - `JsonFormatter.kt`, `LlmFormatter.kt`, `TableFormatter.kt` — output formatters
 - `OutputWrapper.kt` — wraps output with LLM markers
+- `DsmOutputFormatter.kt` — formats DSM orchestrator results (distance/strength)
 
 **`config/`** — dependency-free leaf package:
 - `OutputFormat.kt` — `OutputFormat` enum (TEXT/JSON/LLM), imported by all `*Config` classes
 
 **`navigation/`** — bytecode-based analysis (requires compiled `classes`). Organized into sub-packages by feature:
 
-- **`core/`**: `BytecodeReader.kt` (`ScanResult<T>`), `DomainTypes.kt` (`ClassName`, `PackageName`, `AnnotationName`, `SourceSet`), `FileCache.kt`, `KotlinMethodFilter.kt`, `LambdaCollapser.kt`, `PatternEnhancer.kt`, `SkippedFileReporter.kt`, `ProjectClassScanner.kt`, `RootPackageDetector.kt`, `SourceSetResolver.kt`, `AnnotationParameterCollector.kt`
-- **`annotation/`**: `AnnotationExtractor`, `AnnotationQueryBuilder`, `AnnotationQueryConfig`, `AnnotationQueryFormatter`, `FrameworkPresets`
-- **`callgraph/`**: `CallGraphBuilder` (ASM → `CallGraph`), `CallGraphCache`, `CallGraphConfig`, `CallTreeBuilder` (→ `CallTreeNode`), `CallTreeFormatter`, `FindUsagesConfig`, `UsageFormatter`, `UsageScanner`
+- **`types/`**: `DomainTypes.kt` (`ClassName`, `PackageName`, `AnnotationName`, `SourceSet`), `TypeMatcher.kt`, `FrameworkPresets.kt`, `PatternEnhancer.kt`
+- **`bytecode/`**: `BytecodeReader.kt` (`ScanResult<T>`), `KotlinMethodFilter.kt`, `LambdaCollapser.kt`, `SkippedFileReporter.kt`, `ProjectClassScanner.kt`, `RootPackageDetector.kt`, `SourceSetResolver.kt`, `AnnotationParameterCollector.kt`
+- **`cache/`**: `FileCache.kt`, `CacheFreshness.kt`
+- **`annotation/`**: `AnnotationExtractor`, `AnnotationQueryBuilder`, `AnnotationQueryConfig`, `AnnotationQueryFormatter`
+- **`relations/callgraph/`**: `CallGraphBuilder` (ASM → `CallGraph`), `CallGraphCache`, `CallGraphConfig`, `CallTreeBuilder` (→ `CallTreeNode`), `CallTreeFormatter`, `FindUsagesConfig`, `UsageFormatter`, `UsageScanner`
+- **`relations/hierarchy/`**: `TypeHierarchyBuilder`, `TypeHierarchyConfig`, `TypeHierarchyFormatter`
+- **`relations/implementors/`**: `FindInterfaceImplsConfig`, `InterfaceFormatter`, `InterfaceRegistry`, `InterfaceRegistryCache`
 - **`classinfo/`**: `ClassDetailExtractor`, `ClassDetailFormatter`, `ClassDetailScanner`, `ClassFilter`, `ClassIndexCache`, `ClassInfoExtractor`, `ClassScanner`, `FindClassConfig`, `FindClassDetailConfig`, `ListClassesConfig`
 - **`complexity/`**: `ClassComplexityAnalyzer`, `ComplexityConfig`, `ComplexityFormatter`
 - **`deadcode/`**: `DeadCodeConfig`, `DeadCodeFinder`, `DeadCodeFormatter`, `FieldExtractor`, `InlineMethodDetector`
 - **`dsm/`**: `CycleDetector`, `CyclesConfig`, `CyclesFormatter`, `DsmConfig`, `DsmDependencyExtractor`, `DsmFormatter`, `DsmHtmlRenderer`, `DsmMatrixBuilder`, `PackageDependencyBuilder`, `PackageDependencyFormatter`, `PackageDepsConfig`
-- **`hierarchy/`**: `TypeHierarchyBuilder`, `TypeHierarchyConfig`, `TypeHierarchyFormatter`
-- **`interfaces/`**: `FindInterfaceImplsConfig`, `InterfaceFormatter`, `InterfaceRegistry`, `InterfaceRegistryCache`
 - **`metrics/`**: `MetricsBuilder`, `MetricsConfig`, `MetricsFormatter`
 - **`rank/`**: `RankConfig`, `RankFormatter`, `TypeRanker`
 - **`stringconstant/`**: `StringConstantConfig`, `StringConstantExtractor`, `StringConstantFormatter`, `StringConstantScanner`

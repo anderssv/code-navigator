@@ -1,0 +1,245 @@
+package no.f12.codenavigator.navigation.deadcode
+
+import no.f12.codenavigator.navigation.*
+
+import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.types.Scope
+import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class DeadCodeConfigTest {
+
+    @Test
+    fun `parses all properties from map`() {
+        val props = mapOf(
+            "filter" to "Service",
+            "exclude" to "Test",
+            "format" to "json",
+        )
+
+        val config = DeadCodeConfig.parse(props)
+
+        assertTrue(config.filter!!.containsMatchIn("MyService"))
+        assertTrue(config.exclude!!.containsMatchIn("MyTest"))
+        assertEquals(OutputFormat.JSON, config.format)
+    }
+
+    @Test
+    fun `defaults filter to null when absent`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertNull(config.filter)
+    }
+
+    @Test
+    fun `defaults exclude to null when absent`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertNull(config.exclude)
+    }
+
+    @Test
+    fun `defaults to TEXT format`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertEquals(OutputFormat.TEXT, config.format)
+    }
+
+    @Test
+    fun `parses LLM format`() {
+        val config = DeadCodeConfig.parse(mapOf("llm" to "true"))
+
+        assertEquals(OutputFormat.LLM, config.format)
+    }
+
+    @Test
+    fun `filter regex is case-insensitive`() {
+        val config = DeadCodeConfig.parse(mapOf("filter" to "service"))
+
+        assertTrue(config.filter!!.containsMatchIn("MyService"))
+    }
+
+    @Test
+    fun `exclude regex is case-insensitive`() {
+        val config = DeadCodeConfig.parse(mapOf("exclude" to "test"))
+
+        assertTrue(config.exclude!!.containsMatchIn("MyTest"))
+    }
+
+    @Test
+    fun `defaults classesOnly to false when absent`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertFalse(config.classesOnly)
+    }
+
+    @Test
+    fun `parses classesOnly as true`() {
+        val config = DeadCodeConfig.parse(mapOf("classes-only" to "true"))
+
+        assertTrue(config.classesOnly)
+    }
+
+    @Test
+    fun `parses classesOnly as false`() {
+        val config = DeadCodeConfig.parse(mapOf("classes-only" to "false"))
+
+        assertFalse(config.classesOnly)
+    }
+
+    @Test
+    fun `parses exclude-annotated from comma-separated string`() {
+        val config = DeadCodeConfig.parse(mapOf(
+            "exclude-annotated" to "RestController,Scheduled,Component",
+            "treat-as-dead" to "ALL",
+        ))
+
+        assertEquals(listOf("RestController", "Scheduled", "Component"), config.excludeAnnotated)
+    }
+
+    @Test
+    fun `defaults exclude-annotated to empty list when absent`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ALL"))
+
+        assertTrue(config.excludeAnnotated.isEmpty())
+    }
+
+    @Test
+    fun `trims whitespace from exclude-annotated values`() {
+        val config = DeadCodeConfig.parse(mapOf(
+            "exclude-annotated" to " RestController , Scheduled ",
+            "treat-as-dead" to "ALL",
+        ))
+
+        assertEquals(listOf("RestController", "Scheduled"), config.excludeAnnotated)
+    }
+
+    @Test
+    fun `parses scope test`() {
+        val config = DeadCodeConfig.parse(mapOf("scope" to "test"))
+
+        assertEquals(Scope.TEST, config.scope)
+    }
+
+    @Test
+    fun `scope defaults to PROD when absent`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertEquals(Scope.PROD, config.scope)
+    }
+
+    @Test
+    fun `parses scope prod`() {
+        val config = DeadCodeConfig.parse(mapOf("scope" to "prod"))
+
+        assertEquals(Scope.PROD, config.scope)
+    }
+
+    @Test
+    fun `all frameworks active by default includes spring entry-points in excludeAnnotated`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Controller"))
+        assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Component"))
+        assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Service"))
+    }
+
+    @Test
+    fun `treat-as-dead merges with explicit exclude-annotated`() {
+        val config = DeadCodeConfig.parse(mapOf(
+            "exclude-annotated" to "MyCustomAnnotation",
+        ))
+
+        assertTrue(config.excludeAnnotated.contains("org.springframework.stereotype.Controller"))
+        assertTrue(config.excludeAnnotated.contains("MyCustomAnnotation"))
+    }
+
+    @Test
+    fun `treat-as-dead=ALL results in empty excludeAnnotated`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ALL"))
+
+        assertTrue(config.excludeAnnotated.isEmpty())
+    }
+
+    @Test
+    fun `all frameworks active by default populates modifierAnnotated`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertTrue(config.modifierAnnotated.contains("org.springframework.transaction.annotation.Transactional"))
+        assertTrue(config.modifierAnnotated.contains("org.eclipse.microprofile.faulttolerance.CircuitBreaker"))
+    }
+
+    @Test
+    fun `treat-as-dead=ALL results in empty modifierAnnotated`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ALL"))
+
+        assertTrue(config.modifierAnnotated.isEmpty())
+    }
+
+    @Test
+    fun `treat-as-dead=spring excludes spring but keeps others`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "spring"))
+
+        assertFalse(config.excludeAnnotated.contains("org.springframework.stereotype.Controller"))
+        assertTrue(config.excludeAnnotated.contains("jakarta.ws.rs.GET"))
+        assertFalse(config.modifierAnnotated.contains("org.springframework.transaction.annotation.Transactional"))
+        assertTrue(config.modifierAnnotated.contains("org.eclipse.microprofile.faulttolerance.CircuitBreaker"))
+    }
+
+    @Test
+    fun `excludeAnnotated does not contain modifier annotations`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertFalse(config.excludeAnnotated.contains("org.springframework.transaction.annotation.Transactional"))
+        assertFalse(config.excludeAnnotated.contains("org.springframework.cache.annotation.Cacheable"))
+    }
+
+    @Test
+    fun `all frameworks active by default populates supertypeEntryPoints`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertTrue(config.supertypeEntryPoints.any { it.value == "org.springframework.data.jpa.repository.JpaRepository" })
+        assertTrue(config.supertypeEntryPoints.any { it.value == "org.springframework.data.repository.CrudRepository" })
+    }
+
+    @Test
+    fun `treat-as-dead=ALL results in empty supertypeEntryPoints`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ALL"))
+
+        assertTrue(config.supertypeEntryPoints.isEmpty())
+    }
+
+    @Test
+    fun `treat-as-dead=spring excludes spring supertypes but keeps quarkus`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "spring"))
+
+        assertFalse(config.supertypeEntryPoints.any { it.value == "org.springframework.data.jpa.repository.JpaRepository" })
+        assertTrue(config.supertypeEntryPoints.any { it.value == "io.quarkus.hibernate.orm.panache.PanacheRepository" })
+    }
+
+    @Test
+    fun `all frameworks active by default populates receiverTypeEntryPoints`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertTrue(config.receiverTypeEntryPoints.any { it.value == "io.ktor.server.routing.Route" })
+        assertTrue(config.receiverTypeEntryPoints.any { it.value == "io.ktor.server.application.Application" })
+    }
+
+    @Test
+    fun `treat-as-dead=ALL results in empty receiverTypeEntryPoints`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ALL"))
+
+        assertTrue(config.receiverTypeEntryPoints.isEmpty())
+    }
+
+    @Test
+    fun `treat-as-dead=ktor excludes ktor receiver types but keeps others`() {
+        val config = DeadCodeConfig.parse(mapOf("treat-as-dead" to "ktor"))
+
+        assertFalse(config.receiverTypeEntryPoints.any { it.value == "io.ktor.server.routing.Route" })
+    }
+}

@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.formatting.DsmOutputFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.DistanceOrchestrator
 import no.f12.codenavigator.navigation.dsm.PackageDistanceConfig
@@ -27,6 +28,6 @@ abstract class PackageDistanceTask : DefaultTask() {
         val output = DistanceOrchestrator.run(config, classDirectories, reportFile)
 
         output.skippedFileWarning?.let { logger.warn(it) }
-        output.formatted?.let { logger.lifecycle(it) }
+        DsmOutputFormatter.format(output, config.format)?.let { logger.lifecycle(it) }
     }
 }

@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.formatting.DsmOutputFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.StrengthConfig
 import no.f12.codenavigator.navigation.dsm.StrengthOrchestrator
@@ -27,6 +28,6 @@ abstract class IntegrationStrengthTask : DefaultTask() {
         val output = StrengthOrchestrator.run(config, classDirectories, reportFile)
 
         output.skippedFileWarning?.let { logger.warn(it) }
-        output.formatted?.let { logger.lifecycle(it) }
+        DsmOutputFormatter.format(output, config.format)?.let { logger.lifecycle(it) }
     }
 }

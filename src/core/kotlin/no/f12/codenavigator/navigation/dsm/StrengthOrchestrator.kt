@@ -1,8 +1,5 @@
 package no.f12.codenavigator.navigation.dsm
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
-import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.types.FrameworkPresets
 import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
@@ -10,7 +7,8 @@ import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import java.io.File
 
 data class StrengthOutput(
-    val formatted: String?,
+    val result: StrengthResult?,
+    val noResultsHints: List<String>,
     val skippedFileWarning: String?,
 )
 
@@ -35,19 +33,16 @@ object StrengthOrchestrator {
 
         if (result.entries.isEmpty()) {
             val packageCount = projectClasses.map { it.packageName() }.distinct().size
-            val hints = StrengthFormatter.noResultsHints(packageCount)
             return StrengthOutput(
-                formatted = OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints),
+                result = null,
+                noResultsHints = StrengthFormatter.noResultsHints(packageCount),
                 skippedFileWarning = skippedWarning,
             )
         }
 
         return StrengthOutput(
-            formatted = OutputWrapper.formatAndWrap(config.format,
-                text = { StrengthFormatter.format(result) },
-                json = { JsonFormatter.formatStrength(result) },
-                llm = { LlmFormatter.formatStrength(result) },
-            ),
+            result = result,
+            noResultsHints = emptyList(),
             skippedFileWarning = skippedWarning,
         )
     }

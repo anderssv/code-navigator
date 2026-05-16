@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.formatting.DsmOutputFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.DistanceOrchestrator
 import no.f12.codenavigator.navigation.dsm.PackageDistanceConfig
@@ -57,7 +58,7 @@ class PackageDistanceMojo : AbstractMojo() {
         val output = DistanceOrchestrator.run(config, classDirectories, reportFile)
 
         output.skippedFileWarning?.let { log.warn(it) }
-        output.formatted?.let { println(it) }
+        DsmOutputFormatter.format(output, config.format)?.let { println(it) }
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
