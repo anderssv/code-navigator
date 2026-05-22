@@ -9,10 +9,11 @@ import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
 import org.apache.maven.plugins.annotations.Mojo
 import org.apache.maven.plugins.annotations.Parameter
+import org.apache.maven.plugins.annotations.ResolutionScope
 import org.apache.maven.project.MavenProject
 import java.io.File
 
-@Mojo(name = "strength")
+@Mojo(name = "strength", requiresDependencyResolution = ResolutionScope.RUNTIME)
 @Execute(phase = LifecyclePhase.COMPILE)
 class IntegrationStrengthMojo : AbstractMojo() {
 
@@ -55,7 +56,16 @@ class IntegrationStrengthMojo : AbstractMojo() {
         }
 
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
-        val output = StrengthOrchestrator.run(config, classDirectories, reportFile)
+
+        val classpath = if (config.includeExternal) {
+            @Suppress("UNCHECKED_CAST")
+            (project.runtimeClasspathElements as? List<String> ?: emptyList())
+                .map { File(it).toPath() }
+        } else {
+            emptyList()
+        }
+
+        val output = StrengthOrchestrator.run(config, classDirectories, reportFile, classpath)
 
         output.skippedFileWarning?.let { log.warn(it) }
         DsmOutputFormatter.format(output, config.format)?.let { println(it) }

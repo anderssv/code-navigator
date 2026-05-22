@@ -17,7 +17,7 @@ That's it. The agent will install the plugin, run the help task, and set up its 
 **Gradle** (`build.gradle.kts`):
 ```kotlin
 plugins {
-    id("no.f12.code-navigator") version "0.1.79"
+    id("no.f12.code-navigator") version "0.1.80"
 }
 ```
 
@@ -28,7 +28,7 @@ plugins {
         <plugin>
             <groupId>no.f12</groupId>
             <artifactId>code-navigator-maven-plugin</artifactId>
-            <version>0.1.79</version>
+            <version>0.1.80</version>
         </plugin>
     </plugins>
 </build>

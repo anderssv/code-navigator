@@ -153,8 +153,10 @@ object MoveClassRewriter {
             }
         }
 
+        val movedNames = declaredClasses.toSet() + extractTopLevelNames(sourceContent)
+
         val allChanges = replacePackageImports(
-            changes, ps, oldPackage, newPackage, movedFilePath, sourceContent,
+            changes, ps, oldPackage, newPackage, movedFilePath, sourceContent, movedNames,
         )
 
         if (!preview) {
@@ -171,6 +173,7 @@ object MoveClassRewriter {
         newPackage: String,
         movedFilePath: String?,
         movedFileContent: String,
+        movedNames: Set<String> = emptySet(),
     ): List<RenameChange> {
         val changes = existingChanges.toMutableMap()
         val oldImportPrefix = "import $oldPackage."
@@ -185,7 +188,12 @@ object MoveClassRewriter {
 
             val updatedContent = currentContent.lines().joinToString("\n") { line ->
                 if (line.startsWith(oldImportPrefix)) {
-                    line.replace(oldImportPrefix, newImportPrefix)
+                    val importedName = line.removePrefix(oldImportPrefix).trimEnd()
+                    if (movedNames.isEmpty() || importedName in movedNames) {
+                        line.replace(oldImportPrefix, newImportPrefix)
+                    } else {
+                        line
+                    }
                 } else {
                     line
                 }
@@ -262,6 +270,22 @@ object MoveClassRewriter {
 
     internal fun extractDeclaredClassNames(source: String): List<String> =
         CLASS_DECLARATION_PATTERN.findAll(source).map { it.groupValues[1] }.toList()
+
+    private val TOP_LEVEL_FUN_PATTERN = Regex(
+        """^(?:internal\s+|private\s+|public\s+)?fun\s+(?:<[^>]+>\s+)?(\w+)""",
+        RegexOption.MULTILINE,
+    )
+
+    private val TOP_LEVEL_VAL_PATTERN = Regex(
+        """^(?:internal\s+|private\s+|public\s+|const\s+)*(?:val|var)\s+(\w+)""",
+        RegexOption.MULTILINE,
+    )
+
+    internal fun extractTopLevelNames(source: String): Set<String> {
+        val funs = TOP_LEVEL_FUN_PATTERN.findAll(source).map { it.groupValues[1] }
+        val vals = TOP_LEVEL_VAL_PATTERN.findAll(source).map { it.groupValues[1] }
+        return (funs + vals).toSet()
+    }
 
     internal fun isKtFacadeName(className: String): Boolean {
         val simpleName = className.substringAfterLast(".")

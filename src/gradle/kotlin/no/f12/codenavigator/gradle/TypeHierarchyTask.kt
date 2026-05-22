@@ -13,6 +13,7 @@ import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyFormatte
 
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 
@@ -34,10 +35,20 @@ abstract class TypeHierarchyTask : DefaultTask() {
         val taggedDirs = project.taggedClassDirectories()
         val resolver = SourceSetResolver.from(taggedDirs)
 
+        val classpath = if (!config.projectOnly) {
+            project.configurations.findByName("runtimeClasspath")
+                ?.resolve()
+                ?.map { it.toPath() }
+                ?: emptyList()
+        } else {
+            emptyList()
+        }
+
         val allResults = TypeHierarchyBuilder.build(
             resolver.classDirectories,
             config.pattern,
             config.projectOnly,
+            classpath,
         )
         val results = allResults.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 

@@ -9,6 +9,8 @@ import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.Opcodes
 import java.io.File
+import java.nio.file.Path
+import java.util.jar.JarFile
 
 data class SupertypeInfo(
     val className: ClassName,
@@ -31,8 +33,11 @@ object TypeHierarchyBuilder {
         classDirectories: List<File>,
         pattern: String,
         projectOnly: Boolean,
+        classpath: List<Path> = emptyList(),
     ): List<TypeHierarchyResult> {
         val classIndex = scanAllClasses(classDirectories)
+        val classpathIndex = if (!projectOnly) scanClasspath(classpath) else emptyMap()
+        val fullIndex = classpathIndex + classIndex // project classes take precedence
         val regex = Regex(pattern, RegexOption.IGNORE_CASE)
         val matchingClasses = classIndex.filter { it.key.matches(regex) }
 
@@ -42,7 +47,7 @@ object TypeHierarchyBuilder {
             TypeHierarchyResult(
                 className = className,
                 sourceFile = info.sourceFile,
-                supertypes = resolveSupertypes(info, classIndex, mutableSetOf()),
+                supertypes = resolveSupertypes(info, fullIndex, mutableSetOf()),
                 implementors = interfaceRegistry.implementorsOf(className),
             )
         }.sortedBy { it.className }
@@ -105,6 +110,85 @@ object TypeHierarchyBuilder {
             }
 
         return index
+    }
+
+    private fun scanClasspath(classpath: List<Path>): Map<ClassName, ClassIndexEntry> {
+        val index = mutableMapOf<ClassName, ClassIndexEntry>()
+
+        for (path in classpath) {
+            val file = path.toFile()
+            if (!file.exists()) continue
+
+            if (file.isDirectory) {
+                file.walkTopDown()
+                    .filter { it.isFile && it.extension == "class" }
+                    .forEach { classFile ->
+                        try {
+                            val entry = extractClassEntry(classFile)
+                            index.putIfAbsent(entry.className, entry)
+                        } catch (_: Exception) {
+                            // skip unreadable entries
+                        }
+                    }
+            } else if (file.extension == "jar") {
+                try {
+                    JarFile(file).use { jar ->
+                        for (entry in jar.entries()) {
+                            if (!entry.name.endsWith(".class")) continue
+                            try {
+                                val bytes = jar.getInputStream(entry).readBytes()
+                                val classEntry = extractClassEntryFromBytes(bytes)
+                                index.putIfAbsent(classEntry.className, classEntry)
+                            } catch (_: Exception) {
+                                // skip unreadable entries
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
+                    // skip unreadable JARs
+                }
+            }
+        }
+
+        return index
+    }
+
+    private fun extractClassEntryFromBytes(bytes: ByteArray): ClassIndexEntry {
+        val reader = ClassReader(bytes)
+        var className = ClassName("")
+        var sourceFile = "<unknown>"
+        var superClass: ClassName? = null
+        var interfaces = emptyList<ClassName>()
+
+        reader.accept(
+            object : ClassVisitor(Opcodes.ASM9) {
+                override fun visit(
+                    version: Int,
+                    access: Int,
+                    name: String,
+                    signature: String?,
+                    superName: String?,
+                    interfaceNames: Array<out String>?,
+                ) {
+                    className = ClassName.fromInternal(name)
+                    superClass = superName
+                        ?.takeIf { it != "java/lang/Object" }
+                        ?.let { ClassName.fromInternal(it) }
+                    interfaces = interfaceNames
+                        ?.map { ClassName.fromInternal(it) }
+                        ?: emptyList()
+                }
+
+                override fun visitSource(source: String?, debug: String?) {
+                    if (source != null) {
+                        sourceFile = source
+                    }
+                }
+            },
+            ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES,
+        )
+
+        return ClassIndexEntry(className, sourceFile, superClass, interfaces)
     }
 
     private fun extractClassEntry(classFile: File): ClassIndexEntry {

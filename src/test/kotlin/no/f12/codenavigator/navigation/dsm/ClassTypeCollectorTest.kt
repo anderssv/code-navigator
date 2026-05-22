@@ -7,8 +7,11 @@ import no.f12.codenavigator.navigation.dsm.ClassKind
 import no.f12.codenavigator.navigation.dsm.ClassTypeCollector
 import org.objectweb.asm.Opcodes
 import java.io.File
+import java.util.jar.JarEntry
+import java.util.jar.JarOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.io.TempDir
 
@@ -199,5 +202,64 @@ class ClassTypeCollectorTest {
         )
 
         assertEquals(ClassKind.ANNOTATED_MODEL, registry[ClassName("com.example.BaseEntity")])
+    }
+
+    @Test
+    fun `resolveFromClasspath classifies interface from JAR`() {
+        val jarFile = createJarWithClass(
+            tempDir, "lib.jar",
+            "org/framework/Repository",
+            access = Opcodes.ACC_PUBLIC or Opcodes.ACC_INTERFACE or Opcodes.ACC_ABSTRACT,
+        )
+
+        val result = ClassTypeCollector.resolveFromClasspath(
+            setOf(ClassName("org.framework.Repository")),
+            listOf(jarFile.toPath()),
+        )
+
+        assertEquals(ClassKind.INTERFACE, result[ClassName("org.framework.Repository")])
+    }
+
+    @Test
+    fun `resolveFromClasspath classifies concrete class from JAR`() {
+        val jarFile = createJarWithClass(tempDir, "lib.jar", "org/framework/ServiceImpl")
+
+        val result = ClassTypeCollector.resolveFromClasspath(
+            setOf(ClassName("org.framework.ServiceImpl")),
+            listOf(jarFile.toPath()),
+        )
+
+        assertEquals(ClassKind.CONCRETE, result[ClassName("org.framework.ServiceImpl")])
+    }
+
+    @Test
+    fun `resolveFromClasspath returns empty for classes not in classpath`() {
+        val jarFile = createJarWithClass(tempDir, "lib.jar", "org/framework/Other")
+
+        val result = ClassTypeCollector.resolveFromClasspath(
+            setOf(ClassName("org.framework.Missing")),
+            listOf(jarFile.toPath()),
+        )
+
+        assertTrue(result.isEmpty())
+    }
+
+    private fun createJarWithClass(
+        dir: File,
+        jarName: String,
+        className: String,
+        access: Int = Opcodes.ACC_PUBLIC,
+    ): File {
+        val jarFile = File(dir, jarName)
+        val writer = org.objectweb.asm.ClassWriter(0)
+        writer.visit(Opcodes.V17, access, className, null, "java/lang/Object", null)
+        writer.visitEnd()
+
+        JarOutputStream(jarFile.outputStream()).use { jos ->
+            jos.putNextEntry(JarEntry("$className.class"))
+            jos.write(writer.toByteArray())
+            jos.closeEntry()
+        }
+        return jarFile
     }
 }

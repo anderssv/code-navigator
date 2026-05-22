@@ -24,8 +24,17 @@ abstract class IntegrationStrengthTask : DefaultTask() {
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
         val classDirectories = filteredDirs.map { it.first }
 
+        val classpath = if (config.includeExternal) {
+            project.configurations.findByName("runtimeClasspath")
+                ?.resolve()
+                ?.map { it.toPath() }
+                ?: emptyList()
+        } else {
+            emptyList()
+        }
+
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        val output = StrengthOrchestrator.run(config, classDirectories, reportFile)
+        val output = StrengthOrchestrator.run(config, classDirectories, reportFile, classpath)
 
         output.skippedFileWarning?.let { logger.warn(it) }
         DsmOutputFormatter.format(output, config.format)?.let { logger.lifecycle(it) }

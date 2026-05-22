@@ -9,6 +9,8 @@ import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 import java.io.File
+import java.nio.file.Path
+import java.util.jar.JarFile
 
 enum class ClassKind {
     INTERFACE,
@@ -47,6 +49,66 @@ object ClassTypeCollector {
             }
 
         return registry
+    }
+
+    /**
+     * Resolves specific classes from classpath JARs/directories that are not already in the registry.
+     * Only scans entries needed for the given [targetClasses], avoiding full JAR scans.
+     */
+    fun resolveFromClasspath(
+        targetClasses: Set<ClassName>,
+        classpath: List<Path>,
+        modelAnnotations: Set<String> = emptySet(),
+    ): Map<ClassName, ClassKind> {
+        if (targetClasses.isEmpty() || classpath.isEmpty()) return emptyMap()
+
+        val modelDescriptors = modelAnnotations.map { "L${it.replace('.', '/')};" }.toSet()
+        val resolved = mutableMapOf<ClassName, ClassKind>()
+        val remaining = targetClasses.toMutableSet()
+
+        // Build lookup: className -> internal path in JAR
+        val targetPaths = remaining.associateBy { it.value.replace('.', '/') + ".class" }
+
+        for (path in classpath) {
+            if (remaining.isEmpty()) break
+            val file = path.toFile()
+            if (!file.exists()) continue
+
+            if (file.isDirectory) {
+                for ((entryPath, className) in targetPaths) {
+                    if (className !in remaining) continue
+                    val classFile = File(file, entryPath)
+                    if (classFile.exists()) {
+                        try {
+                            val reader = createClassReader(classFile)
+                            val classifier = ClassKindVisitor(modelDescriptors)
+                            reader.accept(classifier, ClassReader.SKIP_DEBUG or ClassReader.SKIP_FRAMES)
+                            resolved[className] = classifier.classKind()
+                            remaining.remove(className)
+                        } catch (_: Exception) { }
+                    }
+                }
+            } else if (file.extension == "jar") {
+                try {
+                    JarFile(file).use { jar ->
+                        for ((entryPath, className) in targetPaths) {
+                            if (className !in remaining) continue
+                            val entry = jar.getJarEntry(entryPath) ?: continue
+                            try {
+                                val bytes = jar.getInputStream(entry).readBytes()
+                                val reader = ClassReader(bytes)
+                                val classifier = ClassKindVisitor(modelDescriptors)
+                                reader.accept(classifier, ClassReader.SKIP_DEBUG or ClassReader.SKIP_FRAMES)
+                                resolved[className] = classifier.classKind()
+                                remaining.remove(className)
+                            } catch (_: Exception) { }
+                        }
+                    }
+                } catch (_: Exception) { }
+            }
+        }
+
+        return resolved
     }
 }
 

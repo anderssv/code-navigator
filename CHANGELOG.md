@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.80
+
+- **Fixed:** `cnavMoveClass` no longer rewrites imports of sibling classes in the same package when moving a Kt facade. Only imports belonging to the moved file (declared classes + top-level functions/properties) are rewritten.
+- **Fixed:** `cnavTypeHierarchy` now resolves full supertype/interface chains through classpath JARs. Library types (e.g., `JpaRepository → Repository`) are resolved when `project-only=false`.
+- **Fixed:** `cnavStrength` with `include-external=true` now lazily resolves external library classes from runtime classpath JARs, eliminating most `unknown` classifications. External types are properly classified as CONTRACT/MODEL/FUNCTIONAL.
+- **Improved:** `cnavFindCallers` adds a UX hint when the search pattern matches only the class-name portion of multiple methods in the same class, suggesting `cnavFindUsages -Ptype=` instead.
+
 ## 0.1.79
 
 - **New:** `cnavCohesion` — package cohesion scoring. Measures the ratio of internal class dependencies to total outgoing dependencies per package. Includes class count, verdict (COHESIVE/REVIEW/THIN_LAYER), min-edges threshold, and per-class detail mode.

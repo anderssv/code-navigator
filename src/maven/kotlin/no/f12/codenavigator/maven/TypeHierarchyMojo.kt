@@ -14,9 +14,12 @@ import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
 import org.apache.maven.plugins.annotations.Mojo
 import org.apache.maven.plugins.annotations.Parameter
+import org.apache.maven.plugins.annotations.ResolutionScope
 import org.apache.maven.project.MavenProject
+import java.io.File
+import java.nio.file.Path
 
-@Mojo(name = "type-hierarchy")
+@Mojo(name = "type-hierarchy", requiresDependencyResolution = ResolutionScope.RUNTIME)
 @Execute(phase = LifecyclePhase.COMPILE)
 class TypeHierarchyMojo : AbstractMojo() {
 
@@ -55,10 +58,19 @@ class TypeHierarchyMojo : AbstractMojo() {
             return
         }
 
+        val classpath: List<Path> = if (!config.projectOnly) {
+            @Suppress("UNCHECKED_CAST")
+            (project.runtimeClasspathElements as? List<String> ?: emptyList())
+                .map { File(it).toPath() }
+        } else {
+            emptyList()
+        }
+
         val allResults = TypeHierarchyBuilder.build(
             resolver.classDirectories,
             config.pattern,
             config.projectOnly,
+            classpath,
         )
         val results = allResults.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 

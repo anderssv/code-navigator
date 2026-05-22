@@ -461,4 +461,22 @@ class MoveClassRewriterTest {
         assertTrue(shippingChange == null, "ShippingService should NOT be changed. Changed files: ${result.changes.map { it.filePath }}")
     }
 
+    @Test
+    fun `move Kt facade does not rewrite imports of sibling classes in the same package`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.CookieSupportKt",
+            newFqcn = "com.example.variants.moveclass.http.CookieSupportKt",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+            parsedSources = cachedParsedSources,
+        )
+
+        val orderChange = result.changes.firstOrNull { it.filePath.endsWith("OrderService.kt") }
+        assertTrue(orderChange == null, "OrderService imports PaymentService from same package but should NOT be changed when moving CookieSupportKt. Changed files: ${result.changes.map { it.filePath }}")
+
+        val reportChange = result.changes.firstOrNull { it.filePath.endsWith("ReportService.kt") }
+        assertTrue(reportChange == null, "ReportService imports PaymentService from same package but should NOT be changed when moving CookieSupportKt. Changed files: ${result.changes.map { it.filePath }}")
+    }
+
 }

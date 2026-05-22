@@ -736,4 +736,56 @@ class CallerTreeFormatterTest {
             result,
         )
     }
+
+    @Test
+    fun `classMatchHint returns hint when pattern matches only class name across multiple methods`() {
+        val methods = listOf(
+            MethodRef(ClassName("com.example.Parser"), "parse"),
+            MethodRef(ClassName("com.example.Parser"), "validate"),
+            MethodRef(ClassName("com.example.Parser"), "reset"),
+        )
+
+        val hint = CallTreeFormatter.classMatchHint("Parser", methods)
+
+        assertEquals(
+            "Hint: Pattern 'Parser' matched all methods in com.example.Parser. " +
+                "If you want type-level references instead, use: cnavFindUsages -Ptype=Parser",
+            hint,
+        )
+    }
+
+    @Test
+    fun `classMatchHint returns null when methods span multiple classes`() {
+        val methods = listOf(
+            MethodRef(ClassName("com.example.Parser"), "parse"),
+            MethodRef(ClassName("com.example.Validator"), "parse"),
+        )
+
+        val hint = CallTreeFormatter.classMatchHint("parse", methods)
+
+        assertEquals(null, hint)
+    }
+
+    @Test
+    fun `classMatchHint returns null when pattern matches method names directly`() {
+        val methods = listOf(
+            MethodRef(ClassName("com.example.Service"), "process"),
+            MethodRef(ClassName("com.example.Service"), "processAsync"),
+        )
+
+        val hint = CallTreeFormatter.classMatchHint("process", methods)
+
+        assertEquals(null, hint)
+    }
+
+    @Test
+    fun `classMatchHint returns null for single method match`() {
+        val methods = listOf(
+            MethodRef(ClassName("com.example.Parser"), "parse"),
+        )
+
+        val hint = CallTreeFormatter.classMatchHint("Parser", methods)
+
+        assertEquals(null, hint)
+    }
 }

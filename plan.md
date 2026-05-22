@@ -25,7 +25,7 @@ v0.1.65 added `*Kt` facade class support (when `-Pfrom` ends with `Kt`), but tha
 
 - **Approach**: When moving a class from a file, also detect top-level declarations in the same file and update their `*Kt` facade references in consumer files. May need to run `ChangeType` for both the named class and the `*Kt` facade class in a single operation.
 
-### `cnavMoveClass`: rewrites imports of sibling classes in the same package
+### ~~BUG: `cnavMoveClass`: rewrites imports of sibling classes in the same package~~ — DONE (v0.1.80)
 
 **Value: high** | **Effort: medium**
 
@@ -72,6 +72,92 @@ This is an inherently complex operation:
 - Deciding placement within the target file.
 
 May not be worth automating — manual merge with cnav handling the reference updates could be the pragmatic answer. Consider adding detection: if the target file already exists, warn and suggest manual merge rather than silently failing or overwriting.
+
+---
+
+## cnavLayerCheck: concentric ring / hexagonal architecture support
+
+### Support hexagonal (concentric ring) layer definitions instead of only linear stacks
+
+**Value: high** | **Effort: medium**
+
+From field test: `cnavLayerCheck` currently models layers as a linear stack where layer N can only depend on layers below it. This doesn't map well to hexagonal architecture, which uses concentric rings:
+
+- **Ring 0 (innermost)**: Domain — pure business logic, no outward dependencies
+- **Ring 1**: Ports/services — interfaces the domain exposes and consumes
+- **Ring 2**: Adapters — driving adapters (HTTP routes/pages) and driven adapters (DB, email clients)
+- **Ring 3 (outermost)**: Composition root — wires everything together
+
+Key differences from a linear stack:
+1. Multiple packages at the same ring level should NOT depend on each other (adapters shouldn't cross-reference)
+2. Dependencies must flow inward only (outer ring → inner ring), never outward
+3. The composition root is special — it's allowed to reference all rings (it wires adapters to ports)
+4. Peer dependencies between adapters at the same ring are violations (unlike a stack where "same layer" might be allowed with `peerLimit`)
+
+**Proposed config format** (strawman):
+```json
+{
+  "mode": "hexagonal",
+  "rings": [
+    { "name": "domain", "packages": ["*.polls", "*.polls.calendar", "*.util", "*.validation"] },
+    { "name": "ports", "packages": ["*.context", "*.auth", "*.email"] },
+    { "name": "adapters", "packages": ["*.admin", "*.participant", "*.creation", "*.mypolls", "*.static", "*.transfer", "*.web", "*.web.*", "*.css", "*.db"], "peerForbidden": true },
+    { "name": "composition", "packages": ["*.Application*"], "canReferenceAll": true }
+  ]
+}
+```
+
+Rules:
+- Ring N can depend on ring N-1, N-2, ... (inward only)
+- Ring N cannot depend on ring N+1, N+2, ... (outward = violation)
+- Peers within the same ring are forbidden by default in hexagonal mode (`peerForbidden: true`)
+- Composition root exempted from all rules (or uses `canReferenceAll`)
+
+---
+
+## cnavMoveSuggest improvements
+
+Reduce false positives from structural patterns that look like misplacement but are intentional.
+
+### Suppress composition root / DI container suggestions
+
+**Value: high** | **Effort: low**
+
+From field test: `cnavMoveSuggest` suggested moving `AppDependencies` → `polls` and `ApplicationDependencyContext` → `polls` because the context package has many edges to polls. A DI container will *always* have high fan-out to the things it wires — that's its job.
+
+- **Detection heuristic**: Classes with high fan-out to many distinct packages (e.g., edges to 5+ packages) are likely composition roots, not misplaced classes. Suppress or flag as "composition root pattern".
+- Could also use naming heuristic: `*Context`, `*Module`, `*Application*`, `*Wiring*`.
+
+### Suppress route handler → domain service suggestions
+
+**Value: medium** | **Effort: low**
+
+From field test: suggested `TransferRoutesKt` → `auth` because it calls 3 auth functions. But routes are driving adapters that *use* domain services — that's hexagonal by design. A route calling auth services doesn't mean it belongs in auth.
+
+- **Detection heuristic**: Classes matching `*Routes*`, `*Controller*`, `*Endpoint*`, `*Handler*` are drivers. They're expected to have edges to domain/service packages. Suppress suggestions that would move a driver into a domain package.
+
+### Confidence should consider callers, not just callees
+
+**Value: medium** | **Effort: medium**
+
+From field test: confidence=1.0 when `own=0` just means "this class has no edges to its own package". But for thin packages (2-3 classes with distinct responsibilities), that's expected and intentional.
+
+A class might have zero edges to siblings but many *callers* from its own package. Current confidence only looks at outgoing edges. Including incoming edges (who calls this class, and are those callers in the current package?) would reduce false positives for thin feature packages.
+
+- **Approach**: Factor in fan-in from same package. If the class is called by siblings, it likely belongs where it is despite having no outgoing same-package edges.
+
+### Symbol-level move suggestions (intra-file analysis)
+
+**Value: medium** | **Effort: high**
+
+From field test: `DateSelection` is a class inside `web/RouteUtils.kt` — a grab-bag file with multiple unrelated declarations (`withAdminPoll`, `getUUID`, `HtmlRenderUtils`, etc.). An independent code review correctly identified `DateSelection` as domain logic misplaced in a web infrastructure file. But `cnavMoveSuggest` couldn't detect this because it analyzes at the file/facade level (`RouteUtilsKt`), not individual symbols within a file.
+
+Currently cnav treats multi-declaration files as a single unit. To catch intra-file misplacement, it would need to:
+1. Identify individual top-level declarations (classes, functions, properties) within a `*Kt` facade
+2. Compute edge gravity per symbol, not per file
+3. Suggest extracting specific symbols to a different package
+
+This is significantly more complex than file-level analysis — requires mapping bytecode members back to individual source declarations. May not be worth the effort unless combined with a `cnavExtractSymbol` refactoring command.
 
 ---
 
@@ -204,7 +290,7 @@ Add `-Pclasspath=true` to scan the full runtime classpath (project classes + all
 - **Considerations**: Significantly slower (thousands of classes). Combine with existing `-Ppattern` / `-Powner` filters to narrow scope. Consider caching scanned JARs by checksum.
 - **Why**: AI agents frequently need to check library API signatures to write correct code.
 
-### Lazy JAR scanning for external class classification
+### ~~Lazy JAR scanning for external class classification~~ — DONE (v0.1.80)
 
 **Value: medium** | **Effort: medium**
 
@@ -368,7 +454,7 @@ Group classes by actual dependency affinity (classes that depend on each other m
 - `cnavStrength` identifies strong coupling — cohesion analysis explains whether that coupling means "merge" or "add an interface"
 - `cnavDistance` measures abstract/stable balance — move suggestions address the concrete "what to do about it"
 
-### Fix `type-hierarchy` to show full supertype/interface chain
+### ~~Fix `type-hierarchy` to show full supertype/interface chain~~ — DONE (v0.1.80)
 
 **Value: high** | **Effort: medium**
 
@@ -640,7 +726,7 @@ Items below are low-priority or may not be worth building. Revisit if demand eme
 
 - **Scope decision: tool vs. platform**: With 40 tasks today and 20+ planned, code-navigator is approaching "code intelligence platform" territory. This is fine, but worth an explicit decision: stay as a focused collection of tasks, or invest in extensibility infrastructure (plugin system, composable analysis pipelines, third-party task registration)? The answer affects architectural choices going forward. If staying focused, the current `TaskRegistry` approach scales well enough. If building for extensibility, consider a plugin API where tasks are discovered rather than registered.
 - **`cnavFindCallees` callee explosion**: `CallTreeBuilder` expands ALL polymorphic implementors as separate children with no collapsing. Default maxdepth=3 causes >51KB output for methods touching deep hierarchies. Root cause: `resolveInterfaceDispatch` adds every implementor, no deduplication of identical subtrees, no output truncation anywhere. Solutions: collapse dispatch groups into a single "N implementors" node with expand-on-demand, add a max-children limit per node, lower default depth for callees. v0.1.47 field test.
-- **`cnavFindCallers` class-match UX hint**: `CallGraph.findMethods()` uses `Regex.containsMatchIn` on `qualifiedName` (className.methodName). Pattern "Parser" matches every method in `Parser` class, producing separate caller trees per method. User expected "who references Parser as a type" which is `cnavFindUsages -Ptype=Parser`. Fix: when pattern matches only class-name portions of multiple methods in the same class, add a hint suggesting `cnavFindUsages -Ptype=`. v0.1.47 field test.
+- **~~`cnavFindCallers` class-match UX hint~~** — DONE (v0.1.80): `CallGraph.findMethods()` uses `Regex.containsMatchIn` on `qualifiedName` (className.methodName). Pattern "Parser" matches every method in `Parser` class, producing separate caller trees per method. User expected "who references Parser as a type" which is `cnavFindUsages -Ptype=Parser`. Fix: when pattern matches only class-name portions of multiple methods in the same class, add a hint suggesting `cnavFindUsages -Ptype=`. v0.1.47 field test.
 - **Improve `cnavAnnotations` discoverability**: Field test (v0.1.44) reported "no inverse annotation search" but the feature exists — `cnavAnnotations -Ppattern=Serializable` finds all classes with that annotation. The task name is ambiguous. Consider a task alias (`cnavFindByAnnotation`), better no-results guidance mentioning retention policy / `methods` flags, or more prominent placement in `cnavAgentHelp`. v0.1.45 re-test clarified: `cnavAnnotations` only finds RUNTIME and CLASS retention annotations present in bytecode. SOURCE retention annotations (e.g. `@Suppress`) are invisible — this is inherent to bytecode analysis, but should be documented in no-results guidance. v0.1.46: no-results hint now suggests `-Pmethods=true` and retention policy (bug #8 FIXED). Remaining: task alias and retention policy documentation in help text.
 - **`cnavDead -Pscope=prod` no-visible-effect guidance**: When `scope=prod` is set and filtering has no effect, add a note to output explaining why.
 - **Remove `junit` from `FrameworkPresets` or document it's a no-op for `cnavDead`**: v0.1.45 analysis suite reported `-Ptreat-as-dead=junit` has no observable effect. Root cause: dead code analysis scans both source sets by default now, but JUnit annotations on test classes are typically excluded from dead code results because test classes are considered live (they have callers from the test runner). The junit preset may still be useful for edge cases. Options: (a) remove `junit` from presets (it's misleading), (b) document in help that `treat-as-dead` only applies to production-class annotations, (c) keep as-is.

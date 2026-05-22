@@ -74,4 +74,26 @@ object CallTreeFormatter {
         val frameworkAnnotation = node.annotations.firstOrNull { it.framework != null } ?: return null
         return "@${frameworkAnnotation.name.simpleName()} is a ${frameworkAnnotation.framework} entry point; invoked by the framework at runtime."
     }
+
+    /**
+     * When a pattern matches multiple methods all in the same class, and the pattern
+     * matches the class name (not any method name individually), suggest cnavFindUsages.
+     */
+    fun classMatchHint(pattern: String, methods: List<MethodRef>): String? {
+        if (methods.size < 2) return null
+        val distinctClasses = methods.map { it.className }.distinct()
+        if (distinctClasses.size != 1) return null
+
+        val regex = Regex(pattern, RegexOption.IGNORE_CASE)
+        val className = distinctClasses.first()
+        val classSimpleName = className.simpleName()
+
+        if (!regex.containsMatchIn(classSimpleName)) return null
+
+        val anyMethodMatchesDirectly = methods.any { regex.containsMatchIn(it.methodName) }
+        if (anyMethodMatchesDirectly) return null
+
+        return "Hint: Pattern '$pattern' matched all methods in $className. " +
+            "If you want type-level references instead, use: cnavFindUsages -Ptype=$classSimpleName"
+    }
 }

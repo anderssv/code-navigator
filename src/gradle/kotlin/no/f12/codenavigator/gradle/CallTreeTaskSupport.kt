@@ -69,12 +69,15 @@ object CallTreeTaskSupport {
             classAnnotationParameters = annotations.classAnnotationParameters,
             methodAnnotationParameters = annotations.methodAnnotationParameters,
         )
+
+        val classHint = CallTreeFormatter.classMatchHint(config.method, methods)
+
         logger.lifecycle(
             OutputWrapper.formatAndWrap(
                 config.format,
-                text = { CallTreeFormatter.renderTrees(trees, direction) },
+                text = { CallTreeFormatter.renderTrees(trees, direction) + (classHint?.let { "\n\n$it" } ?: "") },
                 json = { JsonFormatter.renderCallTrees(trees, direction) },
-                llm = { LlmFormatter.renderCallTrees(trees, direction) },
+                llm = { LlmFormatter.renderCallTrees(trees, direction) + (classHint?.let { "\n\n$it" } ?: "") },
             ),
         )
     }

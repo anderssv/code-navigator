@@ -8,6 +8,8 @@ import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyBuilder
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path
+import java.util.jar.JarEntry
+import java.util.jar.JarOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -197,5 +199,66 @@ class TypeHierarchyBuilderTest {
         val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "NonExistent", projectOnly = false)
 
         assertTrue(results.isEmpty())
+    }
+
+    @Test
+    fun `resolves full supertype chain through classpath JARs`() {
+        // Library JAR contains: BaseRepo extends AbstractRepo
+        val jarFile = createJarWithClasses(
+            tempDir.toFile(),
+            "lib.jar",
+            listOf(
+                ClassDef("org/framework/AbstractRepo", superName = "java/lang/Object"),
+                ClassDef("org/framework/BaseRepo", superName = "org/framework/AbstractRepo"),
+            ),
+        )
+
+        // Project class extends library BaseRepo
+        TestClassWriter.writeClassFile(
+            tempDir.toFile(), "com/example/UserRepo", "UserRepo.kt",
+            superName = "org/framework/BaseRepo",
+        )
+
+        val results = TypeHierarchyBuilder.build(
+            listOf(tempDir.toFile()),
+            "UserRepo",
+            projectOnly = false,
+            classpath = listOf(jarFile.toPath()),
+        )
+
+        assertEquals(1, results.size)
+        val baseRepo = results.first().supertypes.first()
+        assertEquals(ClassName("org.framework.BaseRepo"), baseRepo.className)
+        assertEquals(SupertypeKind.CLASS, baseRepo.kind)
+
+        val abstractRepo = baseRepo.supertypes.first()
+        assertEquals(ClassName("org.framework.AbstractRepo"), abstractRepo.className)
+        assertEquals(SupertypeKind.CLASS, abstractRepo.kind)
+    }
+
+    private data class ClassDef(
+        val name: String,
+        val superName: String = "java/lang/Object",
+        val interfaces: Array<String>? = null,
+    )
+
+    private fun createJarWithClasses(dir: File, jarName: String, classes: List<ClassDef>): File {
+        val jarFile = File(dir, jarName)
+        JarOutputStream(jarFile.outputStream()).use { jos ->
+            for (classDef in classes) {
+                val writer = org.objectweb.asm.ClassWriter(0)
+                writer.visit(
+                    org.objectweb.asm.Opcodes.V17,
+                    org.objectweb.asm.Opcodes.ACC_PUBLIC,
+                    classDef.name, null, classDef.superName, classDef.interfaces,
+                )
+                writer.visitEnd()
+                val entry = JarEntry("${classDef.name}.class")
+                jos.putNextEntry(entry)
+                jos.write(writer.toByteArray())
+                jos.closeEntry()
+            }
+        }
+        return jarFile
     }
 }
