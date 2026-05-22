@@ -357,9 +357,24 @@ Current DSM-family goals (`cnavDsm`, `cnavStrength`, `cnavDistance`, `cnavCycles
    - Output: proposed package groupings, diff against current structure
 
 **Incremental delivery:**
-- Start with cohesion scoring (simplest, uses existing DSM data)
+- ~~Start with cohesion scoring (simplest, uses existing DSM data)~~ — DONE (v0.1.79-SNAPSHOT)
 - Add move suggestions (builds on cohesion + existing TypeMatcher/ClassIndex)
 - Cluster analysis last (requires graph algorithm, most complex)
+
+**Improvements from validation on ra-backend, greitt, spring-petclinic:**
+
+1. **Add class count column** — A single-class package always has 0 internal edges (cohesion 0.00), which is misleading. Show class count so users can distinguish "1 class reaching out" from "15 classes that never reference each other."
+
+2. **Minimum edge threshold** — Packages with 0 internal + very few external edges (e.g. `services.interfaces` with 9 total, `ktor.routes` with 10) are noise. They're already minimal and can't be split. Add `min-edges` param or filter by default.
+
+3. **Suggestion/verdict column** — Different package roles sort together at the bottom. Add heuristic verdicts:
+   - 0 internal + all external = THIN LAYER (expected for routes/DI)
+   - 0 internal + interfaces only = CONTRACT (ports package, healthy)
+   - Some internal + many external = REVIEW (candidate for split)
+   - High internal + low external = COHESIVE (good)
+   - Confirmed: `services.interfaces` (12 interfaces, 0 internal, 9 external) is a healthy contract package, not a problem. `routes.bankid` (4 test classes, 98 external) is test infrastructure. Verdicts should distinguish these.
+
+4. **Per-class detail mode** — `ra` has cohesion 0.30 (68 internal, 156 external) but which classes are responsible? A `--detail` or `--package=X` flag showing per-class outbound edge counts within the worst packages would make it actionable.
 
 **Relation to existing goals:**
 - `cnavLayerCheck` enforces a *declared* structure — these goals would help you *discover* what to declare
