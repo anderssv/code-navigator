@@ -25,6 +25,18 @@ v0.1.65 added `*Kt` facade class support (when `-Pfrom` ends with `Kt`), but tha
 
 - **Approach**: When moving a class from a file, also detect top-level declarations in the same file and update their `*Kt` facade references in consumer files. May need to run `ChangeType` for both the named class and the `*Kt` facade class in a single operation.
 
+### `cnavMoveClass`: rewrites imports of sibling classes in the same package
+
+**Value: high** | **Effort: medium**
+
+From field test: moving `CssUtilsKt` from `no.mikill.greitt.css` to `no.mikill.greitt.util`. The file only contains a top-level `buildCssUrl` function. However, the preview also rewrites imports of `LightningCssTransformer` (a separate class in `no.mikill.greitt.css` that is NOT being moved) from `no.mikill.greitt.css.LightningCssTransformer` to `no.mikill.greitt.util.LightningCssTransformer`.
+
+The move operation appears to treat all same-package imports as belonging to the moved class, rather than only rewriting references to the specific class being moved.
+
+- **Approach**: When rewriting imports, only update imports that resolve to the class actually being moved (the `*Kt` facade or named class). Do not touch imports of other classes that happen to share the source package.
+
+---
+
 ### `cnavMoveClass` / `cnavRenameClass`: handle files with multiple class declarations
 
 **Value: high** | **Effort: medium**
@@ -335,49 +347,24 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 
 ## Standalone new tasks
 
-### `cnavCohesion` / `cnavSuggestStructure` — prescriptive package structure analysis
+### ~~`cnavCohesion` — package cohesion scoring~~ — DONE (v0.1.79)
+
+Measures ratio of internal class dependencies to total outgoing dependencies per package. Includes class count, verdict (COHESIVE/REVIEW/THIN_LAYER), `min-edges` threshold filter, and `CohesionScorer.detail()` for per-class breakdown. `DsmDependencyExtractor` enhanced with `includeSamePackage` parameter.
+
+### ~~`cnavMoveSuggest` — misplaced class detection~~ — DONE (v0.1.79)
+
+Identifies classes with more outgoing edges to another package than their own. Filters ubiquitous types via `max-fan-in` parameter. Sorted by confidence (ratio of target edges to total). Validated on ra-backend (48 suggestions).
+
+### `cnavSuggestStructure` — cluster analysis
 
 **Value: high** | **Effort: high**
 
-Current DSM-family goals (`cnavDsm`, `cnavStrength`, `cnavDistance`, `cnavCycles`) describe what the structure *is* and where it's unhealthy. None answer "what structure *should* we have?" — they identify problems without suggesting solutions.
-
-**Three complementary analyses:**
-
-1. **Cohesion scoring** — For each package, measure how much classes within it actually depend on each other vs. reaching outside. Low internal cohesion = package should be split. High cross-package affinity = packages should be merged.
-   - Metric: ratio of internal edges to total edges per package
-   - Output: ranked list of packages by cohesion score, with "split" or "merge" suggestions
-
-2. **Move suggestions** — Identify misplaced classes based on dependency gravity. "ClassX depends on 5 classes in package B and 0 in its current package A → suggest move to B."
-   - Uses existing `PackageDependency` and call graph data
-   - Filters out ubiquitous types (high fan-in) that would distort suggestions
-   - Output: list of (class, current package, suggested package, reason)
-
-3. **Cluster analysis** — Group classes by actual dependency affinity (classes that depend on each other more than on outsiders form a natural cluster). Compare actual packages to optimal clusters → quantify structural drift.
-   - Algorithm: community detection on the class dependency graph (e.g. Louvain or label propagation)
-   - Output: proposed package groupings, diff against current structure
-
-**Incremental delivery:**
-- ~~Start with cohesion scoring (simplest, uses existing DSM data)~~ — DONE (v0.1.79-SNAPSHOT)
-- Add move suggestions (builds on cohesion + existing TypeMatcher/ClassIndex)
-- Cluster analysis last (requires graph algorithm, most complex)
-
-**Improvements from validation on ra-backend, greitt, spring-petclinic:**
-
-1. **Add class count column** — A single-class package always has 0 internal edges (cohesion 0.00), which is misleading. Show class count so users can distinguish "1 class reaching out" from "15 classes that never reference each other."
-
-2. **Minimum edge threshold** — Packages with 0 internal + very few external edges (e.g. `services.interfaces` with 9 total, `ktor.routes` with 10) are noise. They're already minimal and can't be split. Add `min-edges` param or filter by default.
-
-3. **Suggestion/verdict column** — Different package roles sort together at the bottom. Add heuristic verdicts:
-   - 0 internal + all external = THIN LAYER (expected for routes/DI)
-   - 0 internal + interfaces only = CONTRACT (ports package, healthy)
-   - Some internal + many external = REVIEW (candidate for split)
-   - High internal + low external = COHESIVE (good)
-   - Confirmed: `services.interfaces` (12 interfaces, 0 internal, 9 external) is a healthy contract package, not a problem. `routes.bankid` (4 test classes, 98 external) is test infrastructure. Verdicts should distinguish these.
-
-4. **Per-class detail mode** — `ra` has cohesion 0.30 (68 internal, 156 external) but which classes are responsible? A `--detail` or `--package=X` flag showing per-class outbound edge counts within the worst packages would make it actionable.
+Group classes by actual dependency affinity (classes that depend on each other more than on outsiders form a natural cluster). Compare actual packages to optimal clusters → quantify structural drift.
+- Algorithm: community detection on the class dependency graph (e.g. Louvain or label propagation)
+- Output: proposed package groupings, diff against current structure
 
 **Relation to existing goals:**
-- `cnavLayerCheck` enforces a *declared* structure — these goals would help you *discover* what to declare
+- `cnavLayerCheck` enforces a *declared* structure — these goals help you *discover* what to declare
 - `cnavStrength` identifies strong coupling — cohesion analysis explains whether that coupling means "merge" or "add an interface"
 - `cnavDistance` measures abstract/stable balance — move suggestions address the concrete "what to do about it"
 
