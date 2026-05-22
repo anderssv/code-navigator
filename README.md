@@ -4,6 +4,8 @@ A Gradle and Maven plugin for **code navigation**, **coupling analysis**, and **
 
 Built primarily for **coding agents** (AI assistants that write and refactor code), though equally useful for human developers. The git history analysis is inspired by [Code Maat](https://github.com/adamtornhill/code-maat) and Adam Tornhill's *Your Code as a Crime Scene*.
 
+**Opinionated about architecture:** Code Navigator's analysis tasks are designed to measure and guide codebases toward **hexagonal architecture** (ports & adapters). They quantify how well your code separates domain logic from infrastructure, identify where coupling crosses boundaries, and suggest concrete improvements — from package cohesion scoring to class move suggestions.
+
 ## Getting started
 
 Copy-paste this to your agent:
@@ -78,6 +80,9 @@ All tasks support `-Pformat=json` / `-Dformat=json` and `-Pllm=true` / `-Dllm=tr
 | `cnavCycles` / `cnav:cycles` | Detect dependency cycles (Tarjan's SCC) |
 | `cnavStrength` / `cnav:strength` | Classify integration strength of inter-package dependencies |
 | `cnavDistance` / `cnav:distance` | Structural distance between coupled packages |
+| `cnavCohesion` / `cnav:cohesion` | Package cohesion scoring (internal vs external edges) |
+| `cnavMoveSuggest` / `cnav:move-suggest` | Suggest misplaced classes based on dependency gravity |
+| `cnavWhyDepends` / `cnav:why-depends` | Explain why one package depends on another (class-level edges) |
 | `cnavLayerCheck` / `cnav:layer-check` | Architecture conformance check (hexagonal layers) |
 | **Git activity analysis** (no compilation needed) | |
 | `cnavHotspots` / `cnav:hotspots` | Files ranked by change frequency |
@@ -102,6 +107,26 @@ All tasks support `-Pformat=json` / `-Dformat=json` and `-Pllm=true` / `-Dllm=tr
 `cnavDead` finds unreferenced classes and methods. It includes built-in awareness of common JVM frameworks — classes annotated with framework entry-point annotations (e.g. `@RestController`, `@Scheduled`, `@Entity`, `@Test`) are automatically excluded.
 
 Supported presets (all active by default): **Spring**, **Quarkus**, **JPA**, **Jackson**, **JAX-RS**, **CDI**, **MicroProfile**, **gRPC**, **Jakarta**, **Bean Validation**, and **JUnit**. Use `-Pexclude-framework=<name>` to disable a specific preset, or `-Pexclude-framework=ALL` to disable all.
+
+### Where to start improving code quality
+
+Run these tasks in order to assess and improve your codebase structure:
+
+1. **`cnavMetrics`** — Quick health snapshot (cycles, dead code, coupling stats)
+2. **`cnavCycles`** — Find circular package dependencies (the #1 structural problem)
+3. **`cnavCohesion`** — Find packages with low internal cohesion (split candidates)
+4. **`cnavMoveSuggest`** — Find classes that belong in a different package
+5. **`cnavStrength`** — Are dependencies going through contracts or concrete classes?
+6. **`cnavBalance`** — Combined verdict: which package pairs need attention?
+7. **`cnavLayerCheck`** — Enforce hexagonal layers (define in `.cnav-layers.json`)
+
+The ideal hexagonal structure:
+- **Domain packages**: COHESIVE, high internal edges, few external, no framework deps
+- **Port packages**: THIN_LAYER (interfaces only), depended on via CONTRACT strength
+- **Adapter packages**: Depend inward on ports, never referenced by domain
+- **No cycles** between layers; dependencies flow inward only
+
+Run `cnavAgentHelp -Psection=getting-started` for detailed guidance with examples.
 
 ## Configuration
 
