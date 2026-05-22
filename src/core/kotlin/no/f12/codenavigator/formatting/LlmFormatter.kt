@@ -42,6 +42,7 @@ import no.f12.codenavigator.navigation.context.ContextResult
 import no.f12.codenavigator.navigation.dsm.BalanceResult
 import no.f12.codenavigator.navigation.dsm.LayerCheckResult
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
+import no.f12.codenavigator.navigation.dsm.CohesionResult
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 
 object LlmFormatter {
@@ -463,4 +464,9 @@ object LlmFormatter {
             }
         }
     }
+
+    fun formatCohesion(result: CohesionResult): String =
+        result.entries.joinToString("\n") { entry ->
+            "${entry.packageName} internal=${entry.internalEdges} external=${entry.externalEdges} cohesion=${"%.2f".format(entry.cohesion)}"
+        }
 }

@@ -678,6 +678,20 @@ object TaskRegistry {
         ),
     )
 
+    val COHESION = TaskDef(
+        goal = "cohesion",
+        description = "Score package cohesion: ratio of internal to total class dependencies per package",
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        paramDefaultOverrides = mapOf("top" to "all"),
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(TOP to "10")),
+            UsageExample(listOf(PACKAGE_FILTER to "com.example")),
+        ),
+    )
+
     val VOLATILITY = TaskDef(
         goal = "volatility",
         description = "Show package-level volatility from git history (change frequency and churn)",
@@ -823,6 +837,7 @@ object TaskRegistry {
         CONTEXT,
         DISTANCE,
         STRENGTH,
+        COHESION,
         VOLATILITY,
         BALANCE,
         LAYER_CHECK,

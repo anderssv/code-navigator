@@ -39,6 +39,7 @@ import no.f12.codenavigator.navigation.context.ContextResult
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.BalanceResult
 import no.f12.codenavigator.navigation.dsm.LayerCheckResult
+import no.f12.codenavigator.navigation.dsm.CohesionResult
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 
 @JvmInline
@@ -579,6 +580,16 @@ object JsonFormatter {
             jsonObject(
                 "name" to a.name.value,
                 "parameters" to JsonRaw(jsonObject(*a.parameters.map { (k, v) -> k to v }.toTypedArray())),
+            )
+        }
+
+    fun formatCohesion(result: CohesionResult): String =
+        jsonArray(result.entries) { entry ->
+            jsonObject(
+                "package" to entry.packageName.toString(),
+                "internalEdges" to entry.internalEdges,
+                "externalEdges" to entry.externalEdges,
+                "cohesion" to entry.cohesion,
             )
         }
 }

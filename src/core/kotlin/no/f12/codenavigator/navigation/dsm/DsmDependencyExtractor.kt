@@ -46,6 +46,7 @@ object DsmDependencyExtractor {
         packageFilter: PackageName?,
         includeExternal: Boolean,
         filterTargets: Boolean,
+        includeSamePackage: Boolean = false,
     ): ScanResult<List<PackageDependency>> {
         val dependencies = mutableSetOf<PackageDependency>()
         val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
@@ -57,7 +58,7 @@ object DsmDependencyExtractor {
                     .filter { it.isFile && it.extension == "class" }
                     .forEach { classFile ->
                         try {
-                            extractFromClassWithProjectFilter(classFile, projectClasses, packageFilter, includeExternal, filterTargets, dependencies)
+                            extractFromClassWithProjectFilter(classFile, projectClasses, packageFilter, includeExternal, filterTargets, includeSamePackage, dependencies)
                         } catch (e: UnsupportedBytecodeVersionException) {
                             skipped.add(e)
                         }
@@ -76,6 +77,7 @@ object DsmDependencyExtractor {
         packageFilter: PackageName?,
         includeExternal: Boolean,
         filterTargets: Boolean,
+        includeSamePackage: Boolean,
         dependencies: MutableSet<PackageDependency>,
     ) {
         val reader = createClassReader(classFile)
@@ -94,13 +96,11 @@ object DsmDependencyExtractor {
             .filter { !filterTargets || packageFilter == null || it.startsWith(packageFilter) }
             .forEach { targetClass ->
                 val targetPackage = targetClass.packageName()
-                if (targetPackage != sourcePackage) {
+                if (includeSamePackage || targetPackage != sourcePackage) {
                     dependencies += PackageDependency(sourcePackage, targetPackage, sourceClass, targetClass)
                 }
             }
-    }
-
-    private fun extractFromClass(
+    }    private fun extractFromClass(
         classFile: File,
         rootPrefix: PackageName,
         dependencies: MutableSet<PackageDependency>,

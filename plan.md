@@ -335,6 +335,37 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 
 ## Standalone new tasks
 
+### `cnavCohesion` / `cnavSuggestStructure` — prescriptive package structure analysis
+
+**Value: high** | **Effort: high**
+
+Current DSM-family goals (`cnavDsm`, `cnavStrength`, `cnavDistance`, `cnavCycles`) describe what the structure *is* and where it's unhealthy. None answer "what structure *should* we have?" — they identify problems without suggesting solutions.
+
+**Three complementary analyses:**
+
+1. **Cohesion scoring** — For each package, measure how much classes within it actually depend on each other vs. reaching outside. Low internal cohesion = package should be split. High cross-package affinity = packages should be merged.
+   - Metric: ratio of internal edges to total edges per package
+   - Output: ranked list of packages by cohesion score, with "split" or "merge" suggestions
+
+2. **Move suggestions** — Identify misplaced classes based on dependency gravity. "ClassX depends on 5 classes in package B and 0 in its current package A → suggest move to B."
+   - Uses existing `PackageDependency` and call graph data
+   - Filters out ubiquitous types (high fan-in) that would distort suggestions
+   - Output: list of (class, current package, suggested package, reason)
+
+3. **Cluster analysis** — Group classes by actual dependency affinity (classes that depend on each other more than on outsiders form a natural cluster). Compare actual packages to optimal clusters → quantify structural drift.
+   - Algorithm: community detection on the class dependency graph (e.g. Louvain or label propagation)
+   - Output: proposed package groupings, diff against current structure
+
+**Incremental delivery:**
+- Start with cohesion scoring (simplest, uses existing DSM data)
+- Add move suggestions (builds on cohesion + existing TypeMatcher/ClassIndex)
+- Cluster analysis last (requires graph algorithm, most complex)
+
+**Relation to existing goals:**
+- `cnavLayerCheck` enforces a *declared* structure — these goals would help you *discover* what to declare
+- `cnavStrength` identifies strong coupling — cohesion analysis explains whether that coupling means "merge" or "add an interface"
+- `cnavDistance` measures abstract/stable balance — move suggestions address the concrete "what to do about it"
+
 ### Fix `type-hierarchy` to show full supertype/interface chain
 
 **Value: high** | **Effort: medium**
