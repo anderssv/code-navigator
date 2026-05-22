@@ -208,6 +208,7 @@ object TaskRegistry {
     val REVERSE = ParamDef("reverse", "true", "Show reverse dependencies", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Deprecated: use package-filter instead. Only include packages under this prefix", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'root-package' is deprecated. Results are now automatically limited to classes in the project source sets. Use 'package-filter' to narrow further.")
     val PACKAGE_FILTER = ParamDef("package-filter", "<pkg>", "Only include packages under this prefix", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val MIN_EDGES = ParamDef("min-edges", "<N>", "Minimum total edges (internal+external) to include a package", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
     val INCLUDE_EXTERNAL = ParamDef("include-external", "true", "Include dependencies on classes outside the project", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val DSM_DEPTH = ParamDef("dsm-depth", "<N>", "Package grouping depth", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
     val DSM_HTML = ParamDef("dsm-html", "<path>", "Write interactive HTML matrix to file", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -681,13 +682,14 @@ object TaskRegistry {
     val COHESION = TaskDef(
         goal = "cohesion",
         description = "Score package cohesion: ratio of internal to total class dependencies per package",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP, MIN_EDGES) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         paramDefaultOverrides = mapOf("top" to "all"),
         examples = listOf(
             UsageExample(emptyList()),
             UsageExample(listOf(TOP to "10")),
+            UsageExample(listOf(MIN_EDGES to "5")),
             UsageExample(listOf(PACKAGE_FILTER to "com.example")),
         ),
     )

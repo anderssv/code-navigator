@@ -27,7 +27,7 @@ object CohesionOrchestrator {
         )
         val skippedWarning = SkippedFileReporter.report(extractResult.skippedFiles, reportFile)
 
-        val result = CohesionScorer.score(extractResult.data, config.top)
+        val result = CohesionScorer.score(extractResult.data, config.top, config.minEdges)
 
         if (result.entries.isEmpty()) {
             val packageCount = projectClasses.map { it.packageName() }.distinct().size

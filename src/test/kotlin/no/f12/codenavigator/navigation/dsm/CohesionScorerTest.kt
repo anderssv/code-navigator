@@ -103,4 +103,98 @@ class CohesionScorerTest {
 
         assertEquals(2, result.entries.size)
     }
+
+    @Test
+    fun `counts distinct source classes per package`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.example"), PackageName("com.other"), ClassName("com.example.A"), ClassName("com.other.X")),
+            PackageDependency(PackageName("com.example"), PackageName("com.other"), ClassName("com.example.A"), ClassName("com.other.Y")),
+            PackageDependency(PackageName("com.example"), PackageName("com.other"), ClassName("com.example.B"), ClassName("com.other.X")),
+        )
+
+        val result = CohesionScorer.score(deps)
+
+        val entry = result.entries.first { it.packageName == PackageName("com.example") }
+        assertEquals(2, entry.classCount)
+    }
+
+    @Test
+    fun `min-edges filters out packages with few total edges`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.small"), PackageName("com.other"), ClassName("com.small.A"), ClassName("com.other.X")),
+            PackageDependency(PackageName("com.big"), PackageName("com.other"), ClassName("com.big.A"), ClassName("com.other.X")),
+            PackageDependency(PackageName("com.big"), PackageName("com.other"), ClassName("com.big.A"), ClassName("com.other.Y")),
+            PackageDependency(PackageName("com.big"), PackageName("com.big"), ClassName("com.big.A"), ClassName("com.big.B")),
+            PackageDependency(PackageName("com.big"), PackageName("com.big"), ClassName("com.big.B"), ClassName("com.big.A")),
+            PackageDependency(PackageName("com.big"), PackageName("com.other"), ClassName("com.big.B"), ClassName("com.other.Z")),
+        )
+
+        val result = CohesionScorer.score(deps, minEdges = 3)
+
+        assertEquals(1, result.entries.size)
+        assertEquals(PackageName("com.big"), result.entries[0].packageName)
+    }
+
+    @Test
+    fun `assigns COHESIVE verdict for high cohesion`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.good"), PackageName("com.good"), ClassName("com.good.A"), ClassName("com.good.B")),
+            PackageDependency(PackageName("com.good"), PackageName("com.good"), ClassName("com.good.B"), ClassName("com.good.A")),
+            PackageDependency(PackageName("com.good"), PackageName("com.other"), ClassName("com.good.A"), ClassName("com.other.X")),
+        )
+
+        val result = CohesionScorer.score(deps)
+
+        val entry = result.entries.first { it.packageName == PackageName("com.good") }
+        assertEquals(CohesionVerdict.COHESIVE, entry.verdict)
+    }
+
+    @Test
+    fun `assigns REVIEW verdict for low cohesion with some internal edges`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.pkg"), PackageName("com.pkg"), ClassName("com.pkg.A"), ClassName("com.pkg.B")),
+            PackageDependency(PackageName("com.pkg"), PackageName("com.other"), ClassName("com.pkg.A"), ClassName("com.other.X")),
+            PackageDependency(PackageName("com.pkg"), PackageName("com.other"), ClassName("com.pkg.A"), ClassName("com.other.Y")),
+            PackageDependency(PackageName("com.pkg"), PackageName("com.other"), ClassName("com.pkg.B"), ClassName("com.other.Z")),
+            PackageDependency(PackageName("com.pkg"), PackageName("com.other"), ClassName("com.pkg.B"), ClassName("com.other.W")),
+        )
+
+        val result = CohesionScorer.score(deps)
+
+        val entry = result.entries.first { it.packageName == PackageName("com.pkg") }
+        assertEquals(CohesionVerdict.REVIEW, entry.verdict)
+    }
+
+    @Test
+    fun `assigns THIN_LAYER verdict for zero internal edges`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.routes"), PackageName("com.other"), ClassName("com.routes.A"), ClassName("com.other.X")),
+            PackageDependency(PackageName("com.routes"), PackageName("com.other"), ClassName("com.routes.B"), ClassName("com.other.Y")),
+        )
+
+        val result = CohesionScorer.score(deps)
+
+        val entry = result.entries.first { it.packageName == PackageName("com.routes") }
+        assertEquals(CohesionVerdict.THIN_LAYER, entry.verdict)
+    }
+
+    @Test
+    fun `detail mode returns per-class breakdown for a specific package`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.pkg"), PackageName("com.pkg"), ClassName("com.pkg.A"), ClassName("com.pkg.B")),
+            PackageDependency(PackageName("com.pkg"), PackageName("com.other"), ClassName("com.pkg.A"), ClassName("com.other.X")),
+            PackageDependency(PackageName("com.pkg"), PackageName("com.other"), ClassName("com.pkg.A"), ClassName("com.other.Y")),
+            PackageDependency(PackageName("com.pkg"), PackageName("com.other"), ClassName("com.pkg.B"), ClassName("com.other.Z")),
+        )
+
+        val result = CohesionScorer.detail(deps, PackageName("com.pkg"))
+
+        assertEquals(2, result.size)
+        val entryA = result.first { it.className == ClassName("com.pkg.A") }
+        assertEquals(1, entryA.internalEdges)
+        assertEquals(2, entryA.externalEdges)
+        val entryB = result.first { it.className == ClassName("com.pkg.B") }
+        assertEquals(0, entryB.internalEdges)
+        assertEquals(1, entryB.externalEdges)
+    }
 }

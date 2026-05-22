@@ -987,6 +987,7 @@ class TaskRegistryTest {
             "project-only" to ParamType.BOOLEAN,
             "filter-synthetic" to ParamType.BOOLEAN,
             "top" to ParamType.INT,
+            "min-edges" to ParamType.INT,
             "after" to ParamType.DATE,
             "no-follow" to ParamType.FLAG,
             "min-revs" to ParamType.INT,

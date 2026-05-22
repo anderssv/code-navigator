@@ -31,6 +31,9 @@ class CohesionMojo : AbstractMojo() {
     @Parameter(property = "top")
     private var top: String? = null
 
+    @Parameter(property = "min-edges")
+    private var minEdges: String? = null
+
     @Parameter(property = "scope")
     private var scope: String? = null
 
@@ -60,6 +63,7 @@ class CohesionMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         packageFilter?.let { put("package-filter", it) }
         top?.let { put("top", it) }
+        minEdges?.let { put("min-edges", it) }
         scope?.let { put("scope", it) }
     }
 }

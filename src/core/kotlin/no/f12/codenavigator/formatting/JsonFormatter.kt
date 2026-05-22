@@ -587,9 +587,11 @@ object JsonFormatter {
         jsonArray(result.entries) { entry ->
             jsonObject(
                 "package" to entry.packageName.toString(),
+                "classes" to entry.classCount,
                 "internalEdges" to entry.internalEdges,
                 "externalEdges" to entry.externalEdges,
                 "cohesion" to entry.cohesion,
+                "verdict" to entry.verdict.name,
             )
         }
 }

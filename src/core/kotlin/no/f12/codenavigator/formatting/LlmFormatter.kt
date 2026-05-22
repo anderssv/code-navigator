@@ -467,6 +467,6 @@ object LlmFormatter {
 
     fun formatCohesion(result: CohesionResult): String =
         result.entries.joinToString("\n") { entry ->
-            "${entry.packageName} internal=${entry.internalEdges} external=${entry.externalEdges} cohesion=${"%.2f".format(entry.cohesion)}"
+            "${entry.packageName} classes=${entry.classCount} internal=${entry.internalEdges} external=${entry.externalEdges} cohesion=${"%.2f".format(entry.cohesion)} verdict=${entry.verdict}"
         }
 }
