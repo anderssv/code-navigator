@@ -127,6 +127,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "distance" to PackageDistanceTask::class.java,
             "strength" to IntegrationStrengthTask::class.java,
             "cohesion" to CohesionTask::class.java,
+            "move-suggest" to MoveSuggestTask::class.java,
             "volatility" to PackageVolatilityTask::class.java,
             "balance" to BalanceTask::class.java,
             "layer-check" to LayerCheckTask::class.java,

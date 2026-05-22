@@ -655,6 +655,7 @@ class AgentHelpTextTest {
         val distanceTask = TaskRegistry.DISTANCE.taskName(BuildTool.GRADLE)
         val strengthTask = TaskRegistry.STRENGTH.taskName(BuildTool.GRADLE)
         val cohesionTask = TaskRegistry.COHESION.taskName(BuildTool.GRADLE)
+        val moveSuggestTask = TaskRegistry.MOVE_SUGGEST.taskName(BuildTool.GRADLE)
         val balanceTask = TaskRegistry.BALANCE.taskName(BuildTool.GRADLE)
 
         assertTrue(
@@ -662,8 +663,8 @@ class AgentHelpTextTest {
             "Global section should show default: 50 for most tasks using top",
         )
         assertTrue(
-            globalSection.contains("$distanceTask, $strengthTask, $cohesionTask, $balanceTask: default: all"),
-            "Global section should show 'all' default for distance, strength, cohesion, and balance top param",
+            globalSection.contains("$distanceTask, $strengthTask, $cohesionTask, $moveSuggestTask, $balanceTask: default: all"),
+            "Global section should show 'all' default for distance, strength, cohesion, move-suggest, and balance top param",
         )
     }
 

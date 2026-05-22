@@ -40,6 +40,7 @@ import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.BalanceResult
 import no.f12.codenavigator.navigation.dsm.LayerCheckResult
 import no.f12.codenavigator.navigation.dsm.CohesionResult
+import no.f12.codenavigator.navigation.dsm.MoveSuggestionResult
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 
 @JvmInline
@@ -592,6 +593,18 @@ object JsonFormatter {
                 "externalEdges" to entry.externalEdges,
                 "cohesion" to entry.cohesion,
                 "verdict" to entry.verdict.name,
+            )
+        }
+
+    fun formatMoveSuggestions(result: MoveSuggestionResult): String =
+        jsonArray(result.suggestions) { s ->
+            jsonObject(
+                "class" to s.className.value,
+                "currentPackage" to s.currentPackage.toString(),
+                "suggestedPackage" to s.suggestedPackage.toString(),
+                "edgesToCurrent" to s.edgesToCurrent,
+                "edgesToSuggested" to s.edgesToSuggested,
+                "confidence" to s.confidence,
             )
         }
 }

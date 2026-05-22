@@ -4,6 +4,8 @@ import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.dsm.CohesionFormatter
 import no.f12.codenavigator.navigation.dsm.CohesionOutput
 import no.f12.codenavigator.navigation.dsm.DistanceOutput
+import no.f12.codenavigator.navigation.dsm.MoveSuggestFormatter
+import no.f12.codenavigator.navigation.dsm.MoveSuggestOutput
 import no.f12.codenavigator.navigation.dsm.PackageDistanceFormatter
 import no.f12.codenavigator.navigation.dsm.StrengthFormatter
 import no.f12.codenavigator.navigation.dsm.StrengthOutput
@@ -40,6 +42,17 @@ object DsmOutputFormatter {
             text = { CohesionFormatter.format(result) },
             json = { JsonFormatter.formatCohesion(result) },
             llm = { LlmFormatter.formatCohesion(result) },
+        )
+    }
+
+    fun format(output: MoveSuggestOutput, format: OutputFormat): String? {
+        val result = output.result
+            ?: return OutputWrapper.emptyResult(format, "No misplaced classes found.", output.noResultsHints)
+
+        return OutputWrapper.formatAndWrap(format,
+            text = { MoveSuggestFormatter.format(result) },
+            json = { JsonFormatter.formatMoveSuggestions(result) },
+            llm = { LlmFormatter.formatMoveSuggestions(result) },
         )
     }
 }

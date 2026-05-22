@@ -43,6 +43,7 @@ import no.f12.codenavigator.navigation.dsm.BalanceResult
 import no.f12.codenavigator.navigation.dsm.LayerCheckResult
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.CohesionResult
+import no.f12.codenavigator.navigation.dsm.MoveSuggestionResult
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 
 object LlmFormatter {
@@ -468,5 +469,10 @@ object LlmFormatter {
     fun formatCohesion(result: CohesionResult): String =
         result.entries.joinToString("\n") { entry ->
             "${entry.packageName} classes=${entry.classCount} internal=${entry.internalEdges} external=${entry.externalEdges} cohesion=${"%.2f".format(entry.cohesion)} verdict=${entry.verdict}"
+        }
+
+    fun formatMoveSuggestions(result: MoveSuggestionResult): String =
+        result.suggestions.joinToString("\n") { s ->
+            "${s.className.value} current=${s.currentPackage} suggested=${s.suggestedPackage} own=${s.edgesToCurrent} target=${s.edgesToSuggested} confidence=${"%.2f".format(s.confidence)}"
         }
 }

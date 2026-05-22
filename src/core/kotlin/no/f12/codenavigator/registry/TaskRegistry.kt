@@ -209,6 +209,7 @@ object TaskRegistry {
     val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Deprecated: use package-filter instead. Only include packages under this prefix", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'root-package' is deprecated. Results are now automatically limited to classes in the project source sets. Use 'package-filter' to narrow further.")
     val PACKAGE_FILTER = ParamDef("package-filter", "<pkg>", "Only include packages under this prefix", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MIN_EDGES = ParamDef("min-edges", "<N>", "Minimum total edges (internal+external) to include a package", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
+    val MAX_FAN_IN = ParamDef("max-fan-in", "<N>", "Exclude ubiquitous types with fan-in above this threshold from move suggestions", flag = false, defaultValue = "10", enhancePattern = false, type = ParamType.INT)
     val INCLUDE_EXTERNAL = ParamDef("include-external", "true", "Include dependencies on classes outside the project", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val DSM_DEPTH = ParamDef("dsm-depth", "<N>", "Package grouping depth", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
     val DSM_HTML = ParamDef("dsm-html", "<path>", "Write interactive HTML matrix to file", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -694,6 +695,21 @@ object TaskRegistry {
         ),
     )
 
+    val MOVE_SUGGEST = TaskDef(
+        goal = "move-suggest",
+        description = "Suggest misplaced classes based on dependency gravity — classes with more edges to another package than their own",
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP, MAX_FAN_IN) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        paramDefaultOverrides = mapOf("top" to "all"),
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(TOP to "10")),
+            UsageExample(listOf(MAX_FAN_IN to "5")),
+            UsageExample(listOf(PACKAGE_FILTER to "com.example")),
+        ),
+    )
+
     val VOLATILITY = TaskDef(
         goal = "volatility",
         description = "Show package-level volatility from git history (change frequency and churn)",
@@ -840,6 +856,7 @@ object TaskRegistry {
         DISTANCE,
         STRENGTH,
         COHESION,
+        MOVE_SUGGEST,
         VOLATILITY,
         BALANCE,
         LAYER_CHECK,
