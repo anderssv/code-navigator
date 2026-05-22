@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.79
+
+- **New:** `cnavCohesion` — package cohesion scoring. Measures the ratio of internal class dependencies to total outgoing dependencies per package. Includes class count, verdict (COHESIVE/REVIEW/THIN_LAYER), min-edges threshold, and per-class detail mode.
+- **New:** `cnavMoveSuggest` — suggests misplaced classes based on dependency gravity. Identifies classes with more outgoing edges to another package than their own and suggests where to move them. Filters ubiquitous types via `max-fan-in` parameter.
+- **New:** `cnavAgentHelp -Psection=getting-started` — hexagonal architecture guidance. Step-by-step guide for assessing and improving codebase structure toward ports & adapters.
+- **Improved:** `DsmDependencyExtractor` supports `includeSamePackage` parameter for intra-package dependency analysis.
+- **Improved:** README and help text now position code-navigator as opinionated about hexagonal architecture.
+
 ## 0.1.78
 
 - **New:** `cnavWhyDepends` — explains why one package depends on another at class level, showing which classes in the source package reference which classes in the target package.
