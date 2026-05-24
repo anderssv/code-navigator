@@ -1,25 +1,8 @@
 package no.f12.codenavigator.maven
 
-import no.f12.codenavigator.analysis.GitLogRunner
-import no.f12.codenavigator.analysis.HotspotBuilder
-import no.f12.codenavigator.analysis.PackageVolatilityBuilder
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
-import no.f12.codenavigator.formatting.OutputWrapper
-import no.f12.codenavigator.navigation.types.FrameworkPresets
-import no.f12.codenavigator.navigation.types.PackageName
-import no.f12.codenavigator.navigation.bytecode.RootPackageDetector
-import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
-import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
-import no.f12.codenavigator.navigation.dsm.BalanceBuilder
+import no.f12.codenavigator.formatting.DsmOutputFormatter
 import no.f12.codenavigator.navigation.dsm.BalanceConfig
-import no.f12.codenavigator.navigation.dsm.BalanceFormatter
-import no.f12.codenavigator.navigation.dsm.ClassTypeCollector
-import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
-import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
-import no.f12.codenavigator.navigation.dsm.PackageDistanceBuilder
-import no.f12.codenavigator.navigation.dsm.StrengthClassifier
-import no.f12.codenavigator.navigation.dsm.filterByPackage
+import no.f12.codenavigator.navigation.dsm.BalanceOrchestrator
 import no.f12.codenavigator.registry.TaskRegistry
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute
@@ -71,8 +54,6 @@ class BalanceMojo : AbstractMojo() {
 
         val config = BalanceConfig.parse(TaskRegistry.BALANCE.enhanceProperties(buildPropertyMap()))
 
-        // --- Bytecode analysis (strength + distance) ---
-
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
         val classDirectories = filteredDirs.map { it.first }
@@ -82,50 +63,11 @@ class BalanceMojo : AbstractMojo() {
             return
         }
 
-        val projectClasses = scanProjectClasses(classDirectories)
-
-        val classTypeRegistry = ClassTypeCollector.collect(classDirectories, FrameworkPresets.resolveAllModelAnnotations())
-
-        val packageFilter = config.packageFilter?.let { PackageName(it) }
-
-        val extractResult = DsmDependencyExtractor.extract(
-            classDirectories, projectClasses,
-            packageFilter = packageFilter,
-            includeExternal = config.includeExternal,
-            filterTargets = false,
-        )
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
-        SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { log.warn(it) }
+        val output = BalanceOrchestrator.run(config, classDirectories, reportFile, project.basedir)
 
-        val strengthResult = StrengthClassifier.classify(extractResult.data, classTypeRegistry, Int.MAX_VALUE, packageFilter)
-
-        val dependencies = extractResult.data.filterByPackage(packageFilter)
-        val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
-        val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)
-        val distanceResult = PackageDistanceBuilder.build(matrix, Int.MAX_VALUE)
-
-        // --- Git history analysis (volatility) ---
-
-        val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
-        val hotspots = HotspotBuilder.build(commits, config.minRevs)
-        val volatilityResult = PackageVolatilityBuilder.build(hotspots, Int.MAX_VALUE)
-
-        // --- Combine into balance ---
-
-        val result = BalanceBuilder.build(strengthResult, distanceResult, volatilityResult, config.top)
-
-        if (result.entries.isEmpty()) {
-            val packageCount = projectClasses.map { it.packageName() }.distinct().size
-            val hints = BalanceFormatter.noResultsHints(packageCount)
-            println(OutputWrapper.emptyResult(config.format, "No balanced coupling data found.", hints))
-            return
-        }
-
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { BalanceFormatter.format(result) },
-            json = { JsonFormatter.formatBalance(result) },
-            llm = { LlmFormatter.formatBalance(result) },
-        ))
+        output.skippedFileWarning?.let { log.warn(it) }
+        DsmOutputFormatter.format(output, config.format)?.let { println(it) }
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {

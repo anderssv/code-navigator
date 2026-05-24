@@ -1,6 +1,8 @@
 package no.f12.codenavigator.formatting
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.navigation.dsm.BalanceFormatter
+import no.f12.codenavigator.navigation.dsm.BalanceOutput
 import no.f12.codenavigator.navigation.dsm.CohesionFormatter
 import no.f12.codenavigator.navigation.dsm.CohesionOutput
 import no.f12.codenavigator.navigation.dsm.DistanceOutput
@@ -53,6 +55,17 @@ object DsmOutputFormatter {
             text = { MoveSuggestFormatter.format(result) },
             json = { JsonFormatter.formatMoveSuggestions(result) },
             llm = { LlmFormatter.formatMoveSuggestions(result) },
+        )
+    }
+
+    fun format(output: BalanceOutput, format: OutputFormat): String? {
+        val result = output.result
+            ?: return OutputWrapper.emptyResult(format, "No balanced coupling data found.", output.noResultsHints)
+
+        return OutputWrapper.formatAndWrap(format,
+            text = { BalanceFormatter.format(result) },
+            json = { JsonFormatter.formatBalance(result) },
+            llm = { LlmFormatter.formatBalance(result) },
         )
     }
 }

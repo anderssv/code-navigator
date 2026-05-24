@@ -42,7 +42,7 @@ object RingDetector {
         }
 
         // Step 1: Find SCCs (strongly connected components) — these are cycles
-        val sccs = findSCCs(allPackages, dependsOn)
+        val sccs = TarjanSCC.findSCCs(allPackages, dependsOn).toList()
 
         // Step 2: Collapse SCCs into single nodes, compute DAG
         val sccOf = mutableMapOf<PackageName, Int>()
@@ -106,47 +106,4 @@ object RingDetector {
         return memo
     }
 
-    private fun findSCCs(packages: Set<PackageName>, dependsOn: Map<PackageName, Set<PackageName>>): List<Set<PackageName>> {
-        // Tarjan's SCC algorithm
-        var index = 0
-        val indices = mutableMapOf<PackageName, Int>()
-        val lowlinks = mutableMapOf<PackageName, Int>()
-        val onStack = mutableSetOf<PackageName>()
-        val stack = ArrayDeque<PackageName>()
-        val sccs = mutableListOf<Set<PackageName>>()
-
-        fun strongConnect(v: PackageName) {
-            indices[v] = index
-            lowlinks[v] = index
-            index++
-            stack.addLast(v)
-            onStack.add(v)
-
-            for (w in dependsOn[v] ?: emptySet()) {
-                if (w !in indices) {
-                    strongConnect(w)
-                    lowlinks[v] = minOf(lowlinks[v]!!, lowlinks[w]!!)
-                } else if (w in onStack) {
-                    lowlinks[v] = minOf(lowlinks[v]!!, indices[w]!!)
-                }
-            }
-
-            if (lowlinks[v] == indices[v]) {
-                val scc = mutableSetOf<PackageName>()
-                while (true) {
-                    val w = stack.removeLast()
-                    onStack.remove(w)
-                    scc.add(w)
-                    if (w == v) break
-                }
-                sccs.add(scc)
-            }
-        }
-
-        for (pkg in packages) {
-            if (pkg !in indices) strongConnect(pkg)
-        }
-
-        return sccs
-    }
 }

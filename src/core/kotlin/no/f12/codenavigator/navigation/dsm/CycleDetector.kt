@@ -50,51 +50,10 @@ object CycleDetector {
             allNodes.addAll(targets)
         }
 
-        val index = mutableMapOf<PackageName, Int>()
-        val lowLink = mutableMapOf<PackageName, Int>()
-        val onStack = mutableSetOf<PackageName>()
-        val stack = ArrayDeque<PackageName>()
-        var nextIndex = 0
-        val sccs = mutableListOf<List<PackageName>>()
-
-        fun strongConnect(node: PackageName) {
-            index[node] = nextIndex
-            lowLink[node] = nextIndex
-            nextIndex++
-            stack.addLast(node)
-            onStack.add(node)
-
-            for (target in graph[node] ?: emptySet()) {
-                if (target !in index) {
-                    strongConnect(target)
-                    lowLink[node] = minOf(lowLink[node]!!, lowLink[target]!!)
-                } else if (target in onStack) {
-                    lowLink[node] = minOf(lowLink[node]!!, index[target]!!)
-                }
-            }
-
-            if (lowLink[node] == index[node]) {
-                val scc = mutableListOf<PackageName>()
-                while (true) {
-                    val w = stack.removeLast()
-                    onStack.remove(w)
-                    scc.add(w)
-                    if (w == node) break
-                }
-                if (scc.size > 1) {
-                    sccs.add(scc.sorted())
-                }
-            }
-        }
-
-        for (node in allNodes.sorted()) {
-            if (node !in index) {
-                strongConnect(node)
-            }
-        }
+        val sccs = TarjanSCC.findSCCs(allNodes, graph, minSize = 2)
 
         return sccs
             .sortedBy { it.size }
-            .map { Cycle(packages = it) }
+            .map { Cycle(packages = it.sorted()) }
     }
 }
