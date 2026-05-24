@@ -64,8 +64,10 @@ object MoveSuggester {
 
             if (bestOther.value > edgesToOwn) {
                 if (isDriver(cls)) return@mapNotNull null
+                if (isFeatureSliceMember(cls, currentPkg, filteredDeps)) return@mapNotNull null
 
-                val total = outgoing.size
+                val callersFromSamePackage = filteredDeps.count { it.targetClass == cls && it.sourcePackage == currentPkg }
+                val total = outgoing.size + callersFromSamePackage
                 val confidence = bestOther.value.toDouble() / total
                 MoveSuggestion(cls, currentPkg, bestOther.key, edgesToOwn, bestOther.value, confidence)
             } else {
@@ -76,6 +78,20 @@ object MoveSuggester {
             .take(top)
 
         return MoveSuggestionResult(suggestions)
+    }
+
+    private fun isFeatureSliceMember(cls: ClassName, pkg: PackageName, deps: List<PackageDependency>): Boolean {
+        // Find same-package classes this class depends on
+        val samePackageTargets = deps
+            .filter { it.sourceClass == cls && it.targetPackage == pkg }
+            .map { it.targetClass }
+            .distinct()
+        if (samePackageTargets.isEmpty()) return false
+
+        // Check if any sibling (different class in same package) also depends on the same target
+        return samePackageTargets.any { target ->
+            deps.any { it.sourceClass != cls && it.sourcePackage == pkg && it.targetClass == target }
+        }
     }
 
     private fun isCompositionRoot(cls: ClassName, outgoing: List<PackageDependency>): Boolean {

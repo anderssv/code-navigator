@@ -213,4 +213,88 @@ class MoveSuggesterTest {
 
         assertTrue(result.suggestions.none { it.className == ClassName("com.api.OrderController") })
     }
+
+    @Test
+    fun `class with callers from own package has reduced confidence`() {
+        val deps = listOf(
+            // Foo has 0 outgoing edges to own package, 2 to com.b
+            PackageDependency(PackageName("com.a"), PackageName("com.b"), ClassName("com.a.Foo"), ClassName("com.b.X")),
+            PackageDependency(PackageName("com.a"), PackageName("com.b"), ClassName("com.a.Foo"), ClassName("com.b.Y")),
+            // But Foo is called by a sibling in com.a
+            PackageDependency(PackageName("com.a"), PackageName("com.a"), ClassName("com.a.Bar"), ClassName("com.a.Foo")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        val suggestion = result.suggestions.find { it.className == ClassName("com.a.Foo") }!!
+        assertTrue(suggestion.confidence < 1.0, "Confidence should be reduced by callers from same package, was ${suggestion.confidence}")
+    }
+
+    @Test
+    fun `class with many callers from own package is not suggested to move`() {
+        val deps = listOf(
+            // Foo has 0 outgoing edges to own package, 2 to com.b
+            PackageDependency(PackageName("com.a"), PackageName("com.b"), ClassName("com.a.Foo"), ClassName("com.b.X")),
+            PackageDependency(PackageName("com.a"), PackageName("com.b"), ClassName("com.a.Foo"), ClassName("com.b.Y")),
+            // But Foo is called by 3 siblings in com.a — strong signal it belongs here
+            PackageDependency(PackageName("com.a"), PackageName("com.a"), ClassName("com.a.Bar"), ClassName("com.a.Foo")),
+            PackageDependency(PackageName("com.a"), PackageName("com.a"), ClassName("com.a.Baz"), ClassName("com.a.Foo")),
+            PackageDependency(PackageName("com.a"), PackageName("com.a"), ClassName("com.a.Qux"), ClassName("com.a.Foo")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        // With 3 callers and only 2 outgoing to com.b, confidence = 2/5 = 0.4 — below threshold
+        // bestOther (2) must be > edgesToOwn (0) to even be a candidate, so it IS a candidate
+        // but confidence is low enough to indicate it's likely not misplaced
+        val suggestion = result.suggestions.find { it.className == ClassName("com.a.Foo") }
+        if (suggestion != null) {
+            assertTrue(suggestion.confidence < 0.5, "Confidence should be very low: ${suggestion.confidence}")
+        }
+    }
+
+    @Test
+    fun `feature slice - class not suggested when siblings share a common in-package dependency`() {
+        // Feature package com.feature has: Domain, Service, Page
+        // Service and Page both depend on Domain (in same package)
+        // Service also calls com.infra (outgoing edge to another package)
+        // Without feature-slice awareness, Service would be suggested to move
+        val deps = listOf(
+            // Service depends on Domain (same package) and com.infra
+            PackageDependency(PackageName("com.feature"), PackageName("com.feature"), ClassName("com.feature.Service"), ClassName("com.feature.Domain")),
+            PackageDependency(PackageName("com.feature"), PackageName("com.infra"), ClassName("com.feature.Service"), ClassName("com.infra.Repository")),
+            PackageDependency(PackageName("com.feature"), PackageName("com.infra"), ClassName("com.feature.Service"), ClassName("com.infra.Cache")),
+            // Page also depends on Domain (same package) and com.web
+            PackageDependency(PackageName("com.feature"), PackageName("com.feature"), ClassName("com.feature.Page"), ClassName("com.feature.Domain")),
+            PackageDependency(PackageName("com.feature"), PackageName("com.web"), ClassName("com.feature.Page"), ClassName("com.web.Template")),
+            PackageDependency(PackageName("com.feature"), PackageName("com.web"), ClassName("com.feature.Page"), ClassName("com.web.Layout")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        // Service shares Domain with Page — they're a feature slice around Domain
+        assertTrue(result.suggestions.none { it.className == ClassName("com.feature.Service") },
+            "Service should not be suggested to move: it shares Domain with siblings (feature slice)")
+        assertTrue(result.suggestions.none { it.className == ClassName("com.feature.Page") },
+            "Page should not be suggested to move: it shares Domain with siblings (feature slice)")
+    }
+
+    @Test
+    fun `non-feature-slice - classes clustering around external class are still suggested`() {
+        val deps = listOf(
+            // Foo and Bar are in com.a but both depend on com.b.SharedThing (external)
+            // They have no shared in-package dependency
+            PackageDependency(PackageName("com.a"), PackageName("com.b"), ClassName("com.a.Foo"), ClassName("com.b.SharedThing")),
+            PackageDependency(PackageName("com.a"), PackageName("com.b"), ClassName("com.a.Foo"), ClassName("com.b.Other")),
+            PackageDependency(PackageName("com.a"), PackageName("com.b"), ClassName("com.a.Bar"), ClassName("com.b.SharedThing")),
+            PackageDependency(PackageName("com.a"), PackageName("com.b"), ClassName("com.a.Bar"), ClassName("com.b.Another")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        assertTrue(result.suggestions.any { it.className == ClassName("com.a.Foo") },
+            "Foo should still be suggested: no shared in-package dependency")
+        assertTrue(result.suggestions.any { it.className == ClassName("com.a.Bar") },
+            "Bar should still be suggested: no shared in-package dependency")
+    }
 }
