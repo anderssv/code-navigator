@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.82
+
+- **Improved:** `cnavMoveSuggest` callers-based confidence — incoming edges from same-package siblings reduce confidence score. A class with many callers from its own package is less likely to be misplaced.
+- **Improved:** `cnavMoveSuggest` feature-slice awareness — classes that share an in-package dependency with a sibling are recognized as cohesive feature slices and suppressed from suggestions.
+
 ## 0.1.81
 
 - **Improved:** `cnavMoveSuggest` now suppresses composition roots (DI containers, wiring classes matching `*Context`, `*Module`, `*Application*`, `*Wiring*`, `*Dependencies*`, or classes with edges to 5+ distinct packages) and driving adapters (`*Routes*`, `*Controller*`, `*Endpoint*`, `*Handler*`) from suggestions since these naturally depend on many packages by design.
