@@ -131,6 +131,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "volatility" to PackageVolatilityTask::class.java,
             "balance" to BalanceTask::class.java,
             "layer-check" to LayerCheckTask::class.java,
+            "rings" to RingsTask::class.java,
             "size" to SizeTask::class.java,
             "duplicates" to DuplicatesTask::class.java,
             "rename-param" to RenameParamTask::class.java,

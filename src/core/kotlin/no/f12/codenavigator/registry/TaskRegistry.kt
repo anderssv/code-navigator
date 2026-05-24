@@ -749,6 +749,17 @@ object TaskRegistry {
         ),
     )
 
+    val RINGS = TaskDef(
+        goal = "rings",
+        description = "Auto-detect hexagonal architecture rings and report violations (outward deps, peer/cycle deps)",
+        params = FORMAT_PARAMS + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(emptyList()),
+        ),
+    )
+
     val SIZE = TaskDef(
         goal = "size",
         description = "List source files by line count",
@@ -860,6 +871,7 @@ object TaskRegistry {
         VOLATILITY,
         BALANCE,
         LAYER_CHECK,
+        RINGS,
         SIZE,
         DUPLICATES,
         RENAME_PARAM_TASK,
