@@ -608,19 +608,56 @@ Orchestrators (`DistanceOrchestrator`, `StrengthOrchestrator`) now return result
 
 Moved ~95 test files from flat `navigation/` test package to sub-packages matching production structure (`annotation/`, `bytecode/`, `changedsince/`, `classinfo/`, `complexity/`, `context/`, `deadcode/`, `dsm/`, `metrics/`, `rank/`, `relations/callgraph/`, `relations/hierarchy/`, `relations/implementors/`, `stringconstant/`, `symbol/`, `types/`). Shared test utilities (`TestClassWriter`, `TestCallGraphBuilder`) remain in `navigation/` and are accessed via wildcard import.
 
+### Move `DsmOutputFormatter` to `navigation.dsm`
+
+**Value: medium** | **Effort: low**
+
+Self-analysis (v0.1.83) found `DsmOutputFormatter` has 0 edges to its own package (`formatting`) and 13 edges to `navigation.dsm`. Confidence=1.0 misplacement. It was placed in `formatting` during the orchestrator extraction but its only job is formatting DSM-specific result types.
+
+- **Action**: Move to `navigation.dsm` package. Update imports in Gradle tasks and Maven mojos.
+
+### Break `formatting` ↔ `navigation.relations` cycle
+
+**Value: medium** | **Effort: low**
+
+The only remaining production cycle: `formatting.JsonFormatter`/`LlmFormatter` → 28 classes in `navigation.relations`, reverse edge caused by `UsageFormatterTest` importing `formatting.JsonFormatter` and `formatting.LlmFormatter`.
+
+- **Action**: Move `UsageFormatterTest` to the `formatting` test package (it tests formatter output, not usage scanning logic).
+
+### Move misplaced root-package test classes
+
+**Value: low** | **Effort: low**
+
+Several test classes in the root `no.f12.codenavigator` test package belong in sub-packages:
+- `ClassFileStalenessTest` → `registry`
+- `TaskDefTest`, `TaskRegistryTest`, `ParamDefTest`, `UsageExampleTest` → `registry`
+- `CacheFreshnessTest` → `navigation.cache`
+- `TableFormatterTest` → `formatting`
+- `IntegrationTest` → `navigation.relations.callgraph`
+
+Part of ongoing alignment with production package structure.
+
 ### ~~Break 6-package core cycle~~ — DONE
 
 Resolved by the package restructure (commit `a3c3bf9`). Split `navigation.core` into `types/`, `bytecode/`, `cache/`. Moved `PatternEnhancer` to `types/`, `CacheFreshness` to `cache/`, `FrameworkPresets` to `types/`. No production cycles remain.
 
+### Fix DANGER balance: root package → callgraph/implementors
+
+**Value: medium** | **Effort: low**
+
+Self-analysis (v0.1.83) found 2 DANGER entries: `no.f12.codenavigator` → `navigation.relations.callgraph` and → `navigation.relations.implementors` (FUNCTIONAL strength, distance=3, high volatility=246). The root package contains `AgentHelpText`, `HelpText`, and registry-related classes that reference concrete callgraph/implementor types.
+
+- **Investigate**: Which classes in the root package cause these edges? Likely `AgentHelpText` or test classes. May resolve naturally when misplaced test classes are moved.
+
 ### Split JsonFormatter and LlmFormatter per-feature
 
-**Value: medium** | **Effort: medium**
+**Value: high** | **Effort: medium**
 
-Self-analysis found `JsonFormatter` (347 outgoing dependencies, 72 referenced types, fanIn=257) and `LlmFormatter` (similar scale) are the highest-complexity classes in the entire codebase. They change together 96% of the time.
+Self-analysis (v0.1.83) confirms: `JsonFormatter` (364 outgoing, 77 referenced types, fanIn=261) and `LlmFormatter` (similar scale) are the highest-complexity production classes. Package cohesion for `formatting` is 0.03 (nearly zero internal collaboration). Both are top-5 hotspots (45+ revisions each). They change together 96% of the time.
 
 - **Approach**: Split into per-feature formatters (e.g., `CallTreeJsonFormatter`, `DeadCodeJsonFormatter`). Top-level formatters become thin dispatchers.
 - **Ordering**: `LlmFormatter` first (primary agent-facing format), then `JsonFormatter`. `TableFormatter` is smaller and can follow later.
-- **Benefits**: Adding a new feature means adding a new formatter file, not editing a shared god class.
+- **Benefits**: Adding a new feature means adding a new formatter file, not editing a shared god class. Cohesion of `formatting` package improves dramatically.
 
 ### Reduce Gradle/Maven duplication via orchestrator extraction
 
