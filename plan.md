@@ -400,14 +400,11 @@ Default scope for `cnavDead` changed from ALL to PROD. Test classes are excluded
 
 Non-source files (paths not starting with `src/`) no longer get recommendation annotations in coupling and hotspot output. Files still appear in results but without `←` advice meant for source code.
 
-### Add interpretation section to all analysis task output
+### ~~Add interpretation section to all analysis task output~~ ✅
 
-**Value: high** | **Effort: medium**
+**Value: high** | **Effort: medium** | **Done**
 
-All analysis tasks should include a short (2-4 sentences) interpretation section in their output to help LLMs pick up the right context for results. Show to both humans and LLMs.
-
-- Each task formatter appends a brief "Interpretation" block explaining what the results mean and how to act on them.
-- Keeps agents from misreading output (e.g., treating 0-caller framework entry points as dead code, or confusing stripped package prefixes with actual package names).
+All analysis tasks now include a short interpretation section in their LLM output. Uses `withInterpretation()` helper that guards against empty output. Constants are `internal` for test access. Covers: hotspots, coupling, age, churn, volatility, rank, complexity, distance, strength, balance, cohesion, move-suggest, layer-check, cycles.
 
 ---
 

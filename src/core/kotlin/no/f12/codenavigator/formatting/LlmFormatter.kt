@@ -113,6 +113,7 @@ object LlmFormatter {
 
     fun formatHotspots(hotspots: List<Hotspot>): String =
         hotspots.joinToString("\n") { "${it.file} revisions=${it.revisions} churn=${it.totalChurn}" }
+            .withInterpretation(HOTSPOT_INTERPRETATION)
 
     fun formatSize(entries: List<FileSizeEntry>): String =
         entries.joinToString("\n") { "${it.file} lines=${it.lines}" }
@@ -135,22 +136,28 @@ object LlmFormatter {
             appendLine()
             appendLine("Unassigned: ${result.unassignedClasses.sorted().joinToString(", ")}")
         }
+        appendLine()
+        append(LAYER_CHECK_INTERPRETATION)
     }.trimEnd()
 
     fun formatVolatility(result: PackageVolatilityResult): String =
         result.entries.joinToString("\n") { "${it.packageName} revisions=${it.revisions} churn=${it.totalChurn} files=${it.fileCount} avgRev=${"%.1f".format(it.avgRevisionsPerFile)}" }
+            .withInterpretation(VOLATILITY_INTERPRETATION)
 
     fun formatCoupling(pairs: List<CoupledPair>): String =
         pairs.joinToString("\n") { "${it.entity} -- ${it.coupled} degree=${it.degree}% shared=${it.sharedRevs} avg=${it.avgRevs}" }
+            .withInterpretation(COUPLING_INTERPRETATION)
 
     fun formatAge(ages: List<FileAge>): String =
         ages.joinToString("\n") { "${it.file} age=${it.ageMonths}months last=${it.lastChangeDate}" }
+            .withInterpretation(AGE_INTERPRETATION)
 
     fun formatAuthors(modules: List<ModuleAuthors>): String =
         modules.joinToString("\n") { "${it.file} authors=${it.authors} revisions=${it.revisions}" }
 
     fun formatChurn(churn: List<FileChurn>): String =
         churn.joinToString("\n") { "${it.file} added=${it.added} deleted=${it.deleted} commits=${it.commits}" }
+            .withInterpretation(CHURN_INTERPRETATION)
 
     fun formatUsages(usages: List<UsageSite>): String =
         usages.sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))
@@ -200,6 +207,7 @@ object LlmFormatter {
 
     fun formatRank(ranked: List<RankedType>): String =
         ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }
+            .withInterpretation(RANK_INTERPRETATION)
 
     private val DEAD_CODE_NOTE = "Note: Dead code detection is a hard problem with many edge cases (reflection, serialization, generated code). Use exclude=<regex> to filter out packages or classes you know are not dead."
 
@@ -269,7 +277,7 @@ object LlmFormatter {
                     c.incomingByClass.forEach { append("\n    ${it.first}(${it.second})") }
                 }
             }
-        }
+        }.withInterpretation(COMPLEXITY_INTERPRETATION)
 
     fun formatCycles(details: List<CycleDetail>, displayPrefix: PackageName = PackageName("")): String {
         if (details.isEmpty()) return "(no cycles)"
@@ -288,7 +296,7 @@ object LlmFormatter {
                     }
                 }
             })
-        }
+        }.withInterpretation(CYCLES_INTERPRETATION)
     }
 
     fun formatMetrics(metrics: MetricsResult): String = buildString {
@@ -328,13 +336,16 @@ object LlmFormatter {
         }
     }.trimEnd()
 
-    fun formatDistance(result: PackageDistanceResult): String = buildString {
-        if (result.displayPrefix.isNotEmpty()) {
-            appendLine("prefix:${result.displayPrefix}")
-        }
-        append(result.entries.joinToString("\n") { entry ->
-            "${entry.source}->${entry.target} distance=${entry.distance} deps=${entry.dependencyCount}"
-        })
+    fun formatDistance(result: PackageDistanceResult): String {
+        if (result.entries.isEmpty()) return ""
+        return buildString {
+            if (result.displayPrefix.isNotEmpty()) {
+                appendLine("prefix:${result.displayPrefix}")
+            }
+            append(result.entries.joinToString("\n") { entry ->
+                "${entry.source}->${entry.target} distance=${entry.distance} deps=${entry.dependencyCount}"
+            })
+        }.withInterpretation(DISTANCE_INTERPRETATION)
     }
 
     fun formatStrength(result: StrengthResult): String =
@@ -345,7 +356,7 @@ object LlmFormatter {
                     append(" unknown=${entry.unknownCount}")
                 }
             }
-        }
+        }.withInterpretation(STRENGTH_INTERPRETATION)
 
     fun formatBalance(result: BalanceResult): String =
         result.entries.joinToString("\n") { entry ->
@@ -355,7 +366,7 @@ object LlmFormatter {
                     append(" | ${entry.suggestion}")
                 }
             }
-        }
+        }.withInterpretation(BALANCE_INTERPRETATION)
 
     fun formatDsm(matrix: DsmMatrix): String = buildString {
         val prefix = matrix.displayPrefix
@@ -407,6 +418,39 @@ object LlmFormatter {
             })
         }
     }
+
+    // --- Interpretation constants ---
+
+    private fun String.withInterpretation(interpretation: String): String =
+        if (isEmpty()) this else "$this\n\n$interpretation"
+
+    internal const val HOTSPOT_INTERPRETATION = "Interpretation: Files with high revision counts change frequently and are likely complexity hotspots. Prioritize refactoring files that are both hot (many revisions) and large (high churn). Cross-reference with coupling to find risky change clusters."
+
+    internal const val COUPLING_INTERPRETATION = "Interpretation: High degree (%) means these files almost always change together. Intentional coupling (e.g., interface+implementation) is fine. Unintentional coupling suggests hidden dependencies or shared responsibilities that should be extracted."
+
+    internal const val AGE_INTERPRETATION = "Interpretation: Old files (many months since last change) are either stable infrastructure or forgotten code. Very old files in active packages may indicate dead code or deferred maintenance."
+
+    internal const val CHURN_INTERPRETATION = "Interpretation: High added+deleted lines indicate files undergoing significant rework. Files with high churn but few commits may have large, risky changes. Files with steady churn across many commits are actively maintained."
+
+    internal const val VOLATILITY_INTERPRETATION = "Interpretation: Package-level volatility aggregates file changes. High-volatility packages with many outgoing dependencies are the riskiest — changes ripple outward. Stable packages (low volatility) with high fan-in are good dependency targets."
+
+    internal const val RANK_INTERPRETATION = "Interpretation: PageRank identifies structurally central classes. High-rank classes are depended on transitively by many others — changes to them have wide impact. Low-rank classes are peripheral and safer to modify."
+
+    internal const val COMPLEXITY_INTERPRETATION = "Interpretation: fan-out = total outgoing references (distinct classes). High fan-out means the class knows too much. fan-in = total incoming references. High fan-in means many classes depend on it — changes are risky. Classes with both high fan-in and high fan-out are prime refactoring targets."
+
+    internal const val DISTANCE_INTERPRETATION = "Interpretation: Distance measures package name segment separation (e.g., com.a.b → com.x.y = distance 4). High distance + high dependency count suggests coupling between unrelated parts of the codebase that may benefit from an intermediate abstraction."
+
+    internal const val STRENGTH_INTERPRETATION = "Interpretation: Integration strength levels — MODEL: only data classes cross the boundary (loosest). CONTRACT: interfaces/abstractions cross. FUNCTIONAL: concrete implementations cross (tightest). Higher strength at greater distance is a modularity concern."
+
+    internal const val BALANCE_INTERPRETATION = "Interpretation: BALANCED = coupling strength matches package distance. TOLERABLE = suboptimal but low volatility reduces risk. DANGER = tight coupling across distant, volatile packages — highest priority for refactoring. Focus on DANGER entries first."
+
+    internal const val COHESION_INTERPRETATION = "Interpretation: Cohesion ratio = internal edges / total edges. COHESIVE (>0.5) = classes collaborate more with each other than with outsiders. REVIEW (<0.5) = package may contain unrelated classes. THIN_LAYER (0.0) = no internal collaboration, consider merging into a neighbor."
+
+    internal const val MOVE_SUGGEST_INTERPRETATION = "Interpretation: Classes with more edges to another package than their own are potentially misplaced. High confidence + low own-edges = strong signal. Verify intent before moving — composition roots, drivers, and thin adapters are expected to have outward edges."
+
+    internal const val LAYER_CHECK_INTERPRETATION = "Interpretation: UPWARD violations mean an inner layer depends on an outer layer (breaks dependency rule). PEER violations mean same-layer classes reference each other (may indicate missing extraction). Unassigned classes don't match any layer pattern — add them to the config."
+
+    internal const val CYCLES_INTERPRETATION = "Interpretation: Package cycles prevent independent compilation and deployment. To break a cycle, identify the weakest edge (fewest class references) and extract an interface or move the referenced class. Use cnavWhyDepends for edge details."
 
     private fun StringBuilder.renderChildren(children: List<CallTreeNode>, direction: CallDirection, depth: Int) {
         val indent = "  ".repeat(depth)
@@ -469,10 +513,10 @@ object LlmFormatter {
     fun formatCohesion(result: CohesionResult): String =
         result.entries.joinToString("\n") { entry ->
             "${entry.packageName} classes=${entry.classCount} internal=${entry.internalEdges} external=${entry.externalEdges} cohesion=${"%.2f".format(entry.cohesion)} verdict=${entry.verdict}"
-        }
+        }.withInterpretation(COHESION_INTERPRETATION)
 
     fun formatMoveSuggestions(result: MoveSuggestionResult): String =
         result.suggestions.joinToString("\n") { s ->
             "${s.className.value} current=${s.currentPackage} suggested=${s.suggestedPackage} own=${s.edgesToCurrent} target=${s.edgesToSuggested} confidence=${"%.2f".format(s.confidence)}"
-        }
+        }.withInterpretation(MOVE_SUGGEST_INTERPRETATION)
 }

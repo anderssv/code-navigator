@@ -219,7 +219,7 @@ class LlmFormatterTest {
 
         val result = LlmFormatter.formatHotspots(hotspots)
 
-        assertEquals("src/Foo.kt revisions=10 churn=150\nsrc/Bar.kt revisions=5 churn=30", result)
+        assertEquals("src/Foo.kt revisions=10 churn=150\nsrc/Bar.kt revisions=5 churn=30\n\n${LlmFormatter.HOTSPOT_INTERPRETATION}", result)
     }
 
     // === Coupling formatting ===
@@ -230,7 +230,7 @@ class LlmFormatterTest {
 
         val result = LlmFormatter.formatCoupling(pairs)
 
-        assertEquals("src/Foo.kt -- src/Bar.kt degree=85% shared=10 avg=12", result)
+        assertEquals("src/Foo.kt -- src/Bar.kt degree=85% shared=10 avg=12\n\n${LlmFormatter.COUPLING_INTERPRETATION}", result)
     }
 
     // === Churn formatting ===
@@ -241,7 +241,7 @@ class LlmFormatterTest {
 
         val result = LlmFormatter.formatChurn(churn)
 
-        assertEquals("src/Foo.kt added=100 deleted=50 commits=10\nsrc/Bar.kt added=30 deleted=10 commits=5", result)
+        assertEquals("src/Foo.kt added=100 deleted=50 commits=10\nsrc/Bar.kt added=30 deleted=10 commits=5\n\n${LlmFormatter.CHURN_INTERPRETATION}", result)
     }
 
     // === DSM formatting ===
@@ -333,7 +333,7 @@ class LlmFormatterTest {
         val result = LlmFormatter.formatRank(ranked)
 
         assertEquals(
-            "com.example.Core rank=0.4200 in=5 out=2\ncom.example.Service rank=0.1500 in=2 out=3",
+            "com.example.Core rank=0.4200 in=5 out=2\ncom.example.Service rank=0.1500 in=2 out=3\n\n${LlmFormatter.RANK_INTERPRETATION}",
             result,
         )
     }
@@ -398,7 +398,7 @@ class LlmFormatterTest {
                 "    com.example.Repo(3)\n" +
                 "    com.example.Cache(2)\n" +
                 "  incoming:\n" +
-                "    com.example.Controller(3)",
+                "    com.example.Controller(3)\n\n${LlmFormatter.COMPLEXITY_INTERPRETATION}",
             result,
         )
     }
@@ -423,7 +423,7 @@ class LlmFormatterTest {
         assertEquals(
             "com.example.Orphan out=0/0 in=0/0\n" +
                 "  outgoing: none\n" +
-                "  incoming: none",
+                "  incoming: none\n\n${LlmFormatter.COMPLEXITY_INTERPRETATION}",
             result,
         )
     }
@@ -873,7 +873,7 @@ class LlmFormatterTest {
         val output = LlmFormatter.formatDistance(result)
 
         assertEquals(
-            "com.example.api->org.other.service distance=6 deps=3\ncom.example.api->com.example.model distance=2 deps=5",
+            "com.example.api->org.other.service distance=6 deps=3\ncom.example.api->com.example.model distance=2 deps=5\n\n${LlmFormatter.DISTANCE_INTERPRETATION}",
             output,
         )
     }
@@ -1106,7 +1106,7 @@ class LlmFormatterTest {
         val output = LlmFormatter.formatStrength(result)
 
         assertEquals(
-            "com.example.api->com.example.model strength=MODEL contract=1 model=2 functional=0\ncom.example.api->org.other.service strength=FUNCTIONAL contract=0 model=0 functional=4",
+            "com.example.api->com.example.model strength=MODEL contract=1 model=2 functional=0\ncom.example.api->org.other.service strength=FUNCTIONAL contract=0 model=0 functional=4\n\n${LlmFormatter.STRENGTH_INTERPRETATION}",
             output,
         )
     }
@@ -1125,7 +1125,7 @@ class LlmFormatterTest {
         val output = LlmFormatter.formatStrength(result)
 
         assertEquals(
-            "com.example.api->org.external.lib strength=CONTRACT contract=1 model=0 functional=0 unknown=3",
+            "com.example.api->org.external.lib strength=CONTRACT contract=1 model=0 functional=0 unknown=3\n\n${LlmFormatter.STRENGTH_INTERPRETATION}",
             output,
         )
     }
