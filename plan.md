@@ -169,6 +169,17 @@ A class might have zero edges to siblings but many *callers* from its own packag
 
 - **Approach**: Factor in fan-in from same package. If the class is called by siblings, it likely belongs where it is despite having no outgoing same-package edges.
 
+### Account for self-package dependencies when suggesting moves
+
+**Value: high** | **Effort: low**
+
+From self-review (v0.1.83): `cnavMoveSuggest` suggested moving `DsmOutputFormatter` from `formatting` to `navigation.dsm` with confidence=1.0 (own=0, target=13). But `DsmOutputFormatter` references `JsonFormatter`, `LlmFormatter`, and `OutputWrapper` — all in its own `formatting` package. These self-package references aren't counted as "own edges" because the current algorithm only counts edges to *other* classes in the same package, not edges to classes the suggested class depends on within its package.
+
+Moving it would create a cycle (`navigation.dsm` → `formatting`), making the suggestion actively harmful.
+
+- **Fix**: Count edges the class has TO its own package's classes (not just FROM). If a class depends heavily on its current package's collaborators, suppress or reduce confidence even if it has no edges to sibling classes that depend on it.
+- **Display**: Show "depends-on-own=N" alongside "own=N" (which means "siblings-that-depend-on-me=N").
+
 ### Symbol-level move suggestions (intra-file analysis)
 
 **Value: medium** | **Effort: high**
@@ -257,6 +268,23 @@ The DSM tells you which cycles exist, but not how to fix them. When `-Pcycles=tr
 
 - **Prerequisite**: Benefits from `cnavWhyDepends` infrastructure — same edge-explanation logic.
 - **Separate from DSM what-if**: What-if simulation is a distinct, higher-effort feature. Evaluate need after cycle fix suggestions ship.
+
+### `scope=prod` support for cycles and rings
+
+**Value: high** | **Effort: low**
+
+From self-review (v0.1.83): `cnavDsm -Pcycles=true` and `cnavRings` both include test class edges, which create false cycles and collapse intentional sub-layering into a single SCC. Code-navigator itself has clear hexagonal layering (types → bytecode → classinfo → callgraph), but test classes create reverse edges that merge everything into one ring.
+
+- `cnavDsm -Pcycles=true -Pscope=prod` — exclude test source set from cycle detection
+- `cnavRings -Pscope=prod` — exclude test edges from SCC analysis
+- **Expected impact**: Code-navigator's ring 1 (22 packages) would likely split into 4-5 distinct rings, revealing the actual layering
+- **Implementation**: Filter `ScanResult` by source set before building the package dependency graph. Both `CycleDetector` and `RingDetector` already receive edges from `DsmDependencyExtractor` — add scope filter there.
+
+### High violation count warning for `cnavRings`
+
+**Value: low** | **Effort: low**
+
+From self-review: `cnavRings` produced 116 peer violations. When violation count exceeds a threshold (e.g., >50), add a note: "High violation count may indicate the project doesn't follow concentric ring architecture, or that test edges are collapsing the ring structure. Consider `cnavRings -Pscope=prod` or `cnavLayerCheck` with explicit layer config."
 
 ### `cnavFileDeps` — file-level dependency tree
 
@@ -388,6 +416,16 @@ From user feedback: `cnavFindUsages -Ptype=SignatureContext` failed with a short
 - **Approach**: Audit all tasks for `-Pproject-only` / `-Pscope` support. Add missing support where it makes sense. Document which tasks support which filters in `cnavAgentHelp`.
 - **Note**: Some tasks may intentionally not support certain filters — document why.
 
+### `cnavBalance` volatility values lack context
+
+**Value: low** | **Effort: low**
+
+From self-review (v0.1.83): `cnavBalance` output showed `volatility=246/0` for a DANGER entry. The raw number is meaningless without knowing the scale. Is 246 high?
+
+- **Option A**: Show percentile rank — "volatility=246 (top 5%)" or "HIGH/MEDIUM/LOW" verdict
+- **Option B**: Show relative to project mean — "volatility=246 (12x avg)"
+- **Option C**: Include the interpretation in the `withInterpretation()` text — "volatility numbers represent total git churn across all files in the package"
+
 ### ~~Investigate `[prod]`/`[test]` misclassification on Maven projects~~ — DONE
 
 Fixed: `getOrBuildTagged` now validates that cached source sets match requested tags. Previously, a non-tagged `getOrBuild` call (from MetricsMojo, PackageDepsMojo, etc.) would write the cache with all classes tagged as MAIN, and subsequent `getOrBuildTagged` calls would read the stale cache with wrong source set tags.
@@ -430,12 +468,13 @@ From user feedback (v0.38): the user had to mentally cross-reference 6 separate 
 
 ### `cnavReport` — consolidated full analysis
 
-**Value: medium** | **Effort: low**
+**Value: high** | **Effort: low**
 
 Run all analysis tasks and produce a single consolidated report. `cnavMetrics` already exists for a summary snapshot; `cnavReport` runs everything and outputs all results in one pass.
 
 - **Parameters**: Inherits from constituent tasks. `-Pformat=json` produces a single JSON object with sections per analysis.
 - **Why useful**: Agents often want the full picture. A single task is faster (shared caching, one compilation) and produces a coherent snapshot.
+- **Self-review finding (v0.1.83)**: Reviewing code-navigator itself required running 7 separate tasks and manually synthesizing findings. A single command for "assess this codebase" is the biggest workflow gap.
 
 ### Per-package health dashboard — `[Balanced Coupling]`
 
@@ -608,13 +647,9 @@ Orchestrators (`DistanceOrchestrator`, `StrengthOrchestrator`) now return result
 
 Moved ~95 test files from flat `navigation/` test package to sub-packages matching production structure (`annotation/`, `bytecode/`, `changedsince/`, `classinfo/`, `complexity/`, `context/`, `deadcode/`, `dsm/`, `metrics/`, `rank/`, `relations/callgraph/`, `relations/hierarchy/`, `relations/implementors/`, `stringconstant/`, `symbol/`, `types/`). Shared test utilities (`TestClassWriter`, `TestCallGraphBuilder`) remain in `navigation/` and are accessed via wildcard import.
 
-### Move `DsmOutputFormatter` to `navigation.dsm`
+### ~~Move `DsmOutputFormatter` to `navigation.dsm`~~ — REJECTED
 
-**Value: medium** | **Effort: low**
-
-Self-analysis (v0.1.83) found `DsmOutputFormatter` has 0 edges to its own package (`formatting`) and 13 edges to `navigation.dsm`. Confidence=1.0 misplacement. It was placed in `formatting` during the orchestrator extraction but its only job is formatting DSM-specific result types.
-
-- **Action**: Move to `navigation.dsm` package. Update imports in Gradle tasks and Maven mojos.
+Self-analysis (v0.1.83) suggested this move (confidence=1.0, own=0, target=13). However, `DsmOutputFormatter` depends on `JsonFormatter`, `LlmFormatter`, and `OutputWrapper` in its own `formatting` package. Moving it would create a cycle (`navigation.dsm` → `formatting`). This exposed a gap in `cnavMoveSuggest` — see "Account for self-package dependencies" above.
 
 ### Break `formatting` ↔ `navigation.relations` cycle
 
