@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.81
+
+- **Improved:** `cnavMoveSuggest` now suppresses composition roots (DI containers, wiring classes matching `*Context`, `*Module`, `*Application*`, `*Wiring*`, `*Dependencies*`, or classes with edges to 5+ distinct packages) and driving adapters (`*Routes*`, `*Controller*`, `*Endpoint*`, `*Handler*`) from suggestions since these naturally depend on many packages by design.
+- **Improved:** Install section updated with explicit anti-explore directive and upgrade prompt in README.
+
 ## 0.1.80
 
 - **Fixed:** `cnavMoveClass` no longer rewrites imports of sibling classes in the same package when moving a Kt facade. Only imports belonging to the moved file (declared classes + top-level functions/properties) are rewritten.
