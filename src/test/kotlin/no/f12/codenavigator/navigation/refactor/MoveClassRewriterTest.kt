@@ -232,8 +232,8 @@ class MoveClassRewriterTest {
             parsedSources = cachedParsedSources,
         )
 
-        val orderChange = result.changes.firstOrNull { it.filePath.endsWith("OrderService.kt") }
-        assertTrue(orderChange != null, "Should have a change for OrderService.kt. Changed files: ${result.changes.map { it.filePath }}")
+        val orderChange = result.changes.firstOrNull { it.filePath.endsWith("moveclass/consumer/OrderService.kt") }
+        assertTrue(orderChange != null, "Should have a change for consumer/OrderService.kt. Changed files: ${result.changes.map { it.filePath }}")
         assertTrue(orderChange.after.contains("import com.example.variants.moveclass.original.BillingService"), "Import should use new class name. Content:\n${orderChange.after}")
         assertTrue(!orderChange.after.contains("PaymentService"), "Old class name should be gone. Content:\n${orderChange.after}")
     }
@@ -477,6 +477,24 @@ class MoveClassRewriterTest {
 
         val reportChange = result.changes.firstOrNull { it.filePath.endsWith("ReportService.kt") }
         assertTrue(reportChange == null, "ReportService imports PaymentService from same package but should NOT be changed when moving CookieSupportKt. Changed files: ${result.changes.map { it.filePath }}")
+    }
+
+    @Test
+    fun `moved file gets imports for former same-package classes it references`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.OrderService",
+            newFqcn = "com.example.variants.moveclass.billing.OrderService",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+        )
+
+        val movedChange = result.changes.firstOrNull { it.filePath.endsWith("original/OrderService.kt") }
+        assertTrue(movedChange != null, "Should have a change for OrderService.kt. Changed files: ${result.changes.map { it.filePath }}")
+        assertTrue(movedChange!!.after.contains("package com.example.variants.moveclass.billing"), "Package should be updated")
+        assertTrue(movedChange.after.contains("import com.example.variants.moveclass.original.PaymentService"), "Should add import for PaymentService (former same-package class)")
+        assertTrue(movedChange.after.contains("import com.example.variants.moveclass.original.InventoryService"), "Should add import for InventoryService (former same-package class)")
+        assertTrue(movedChange.after.contains("import com.example.variants.moveclass.original.Notifier"), "Should add import for Notifier (former same-package interface)")
     }
 
 }

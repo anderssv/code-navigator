@@ -94,6 +94,26 @@ object MoveClassRewriter {
             }
         }
 
+        // Add imports for former same-package classes referenced by the moved file
+        if (movedFilePath != null) {
+            val siblingNames = findSiblingClassNames(ps, oldPackage, simpleClassName)
+            val movedChangeIdx = changes.indexOfFirst { it.filePath == movedFilePath }
+            val movedContent = if (movedChangeIdx >= 0) changes[movedChangeIdx].after else {
+                ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == movedFilePath }?.printAll()
+            }
+            if (movedContent != null) {
+                val updatedContent = addMissingImportsForSiblings(movedContent, oldPackage, siblingNames)
+                if (updatedContent != movedContent) {
+                    val originalContent = if (movedChangeIdx >= 0) changes[movedChangeIdx].before else movedContent
+                    if (movedChangeIdx >= 0) {
+                        changes[movedChangeIdx] = RenameChange(movedFilePath, originalContent, updatedContent)
+                    } else {
+                        changes.add(RenameChange(movedFilePath, originalContent, updatedContent))
+                    }
+                }
+            }
+        }
+
         if (!preview) {
             applyChanges(changes, movedFilePath, newFilePath)
         }
@@ -290,5 +310,61 @@ object MoveClassRewriter {
     internal fun isKtFacadeName(className: String): Boolean {
         val simpleName = className.substringAfterLast(".")
         return simpleName.endsWith("Kt") && simpleName.length > 2
+    }
+
+    private fun findSiblingClassNames(ps: ParsedSources, packageName: String, excludeName: String): Set<String> {
+        val siblings = mutableSetOf<String>()
+        for (sourceFile in ps.sources) {
+            val content = sourceFile.printAll()
+            val pkgMatch = Regex("""^package\s+(\S+)""", RegexOption.MULTILINE).find(content)
+            if (pkgMatch?.groupValues?.get(1) == packageName) {
+                siblings.addAll(extractDeclaredClassNames(content))
+            }
+        }
+        siblings.remove(excludeName)
+        return siblings
+    }
+
+    internal fun addMissingImportsForSiblings(content: String, oldPackage: String, siblingNames: Set<String>): String {
+        if (siblingNames.isEmpty()) return content
+
+        // Find which sibling names are referenced in the file (as word boundaries, not in imports/package lines)
+        val existingImports = content.lines()
+            .filter { it.trimStart().startsWith("import ") }
+            .map { it.trimStart().removePrefix("import ").trim() }
+            .toSet()
+
+        val referencedSiblings = siblingNames.filter { name ->
+            val alreadyImported = existingImports.contains("$oldPackage.$name")
+            if (alreadyImported) return@filter false
+            // Check if the name appears as a word boundary (type reference) in non-import, non-package lines
+            val pattern = Regex("""\b${Regex.escape(name)}\b""")
+            content.lines().any { line ->
+                val trimmed = line.trimStart()
+                !trimmed.startsWith("package ") && !trimmed.startsWith("import ") && pattern.containsMatchIn(line)
+            }
+        }.sorted()
+
+        if (referencedSiblings.isEmpty()) return content
+
+        val newImports = referencedSiblings.map { "import $oldPackage.$it" }
+
+        // Insert imports after the package declaration (and existing imports)
+        val lines = content.lines().toMutableList()
+        val lastImportIdx = lines.indexOfLast { it.trimStart().startsWith("import ") }
+        val insertIdx = if (lastImportIdx >= 0) lastImportIdx + 1 else {
+            val packageIdx = lines.indexOfFirst { it.trimStart().startsWith("package ") }
+            if (packageIdx >= 0) packageIdx + 2 else 0 // after package + blank line
+        }
+
+        // Add blank line before imports if needed
+        val importsToInsert = if (lastImportIdx < 0 && insertIdx > 0 && lines.getOrNull(insertIdx - 1)?.isNotBlank() == true) {
+            listOf("") + newImports
+        } else {
+            newImports
+        }
+
+        lines.addAll(insertIdx, importsToInsert)
+        return lines.joinToString("\n")
     }
 }
