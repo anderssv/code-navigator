@@ -6,6 +6,8 @@ Built primarily for **coding agents** (AI assistants that write and refactor cod
 
 **Opinionated about architecture:** Code Navigator's analysis tasks are designed to measure and guide codebases toward **hexagonal architecture** (ports & adapters). They quantify how well your code separates domain logic from infrastructure, identify where coupling crosses boundaries, and suggest concrete improvements — from package cohesion scoring to class move suggestions.
 
+This is an attempt at making a useful tool for coding agents when navigating JVM based projects. It is tested on production code, but also some open source projects. If you find that something is missing or wrong, a public project to run on that illustrates the problem is appreciated.
+
 ## Getting started
 
 Copy-paste this to your agent:
