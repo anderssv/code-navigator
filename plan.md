@@ -37,6 +37,29 @@ The move operation appears to treat all same-package imports as belonging to the
 
 ---
 
+### BUG: `cnavMoveClass` strips same-package imports from the MOVED file itself
+
+**Value: high** | **Effort: medium**
+
+Reopens the "sibling import" bug (marked DONE in v0.1.80). The v0.1.80 fix stopped cnav from rewriting imports in *consumer* files, but the *source file being moved* still loses its sibling imports.
+
+**Reproduction** (greitt project, v0.1.81-SNAPSHOT):
+1. `PollsRepositoryFake` in package `no.mikill.greitt.polls` — implements `PollsRepository`, references `Poll` (same package, no explicit import needed)
+2. Run: `./gradlew cnavMoveClass -Pfrom=no.mikill.greitt.polls.PollsRepositoryFake -Pto=no.mikill.greitt.testutil.PollsRepositoryFake`
+3. Result: the moved file gets `package no.mikill.greitt.testutil` but NO imports added for `Poll`, `PollsRepository` (former same-package classes that now need explicit imports)
+
+Same issue with `DevicesRepositoryFake` (lost `Device`, `DevicesRepository` imports) and `DeviceMother.kt` (lost `Device` import).
+
+**Root cause**: When a class moves to a new package, references to former same-package classes were previously implicit (no import needed). After the move, they're in a different package and need explicit imports. `cnavMoveClass` doesn't add these.
+
+**Expected behavior**: After moving a file to a new package, any unqualified references to classes that were in the OLD package (and are NOT moving with it) should get new import statements added to the moved file.
+
+- **Approach**: After updating the package declaration in the moved file, scan it for unqualified type references. For each one that resolved to a class in the old package (detectable via the call graph / class index), add an explicit import for `oldPackage.ClassName`.
+
+**Additional symptom**: In consumer files that already imported the moved class, cnav sometimes swaps the import path for OTHER imports from the same package. Example: `TestUtils.kt` had `import no.mikill.greitt.auth.Device` and `import no.mikill.greitt.auth.DeviceMotherKt` (via extension `verified`). After moving `DeviceMotherKt` to `testutil`, cnav rewrote it as `import no.mikill.greitt.testutil.Device` (wrong — Device didn't move) and `import no.mikill.greitt.auth.verified` (wrong direction). This is a variant of the original sibling bug in consumer files.
+
+---
+
 ### `cnavMoveClass` / `cnavRenameClass`: handle files with multiple class declarations
 
 **Value: high** | **Effort: medium**
