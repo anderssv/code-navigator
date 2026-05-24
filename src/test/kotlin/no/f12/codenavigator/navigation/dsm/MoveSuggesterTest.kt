@@ -144,4 +144,73 @@ class MoveSuggesterTest {
 
         assertEquals(1, result.suggestions.size)
     }
+
+    @Test
+    fun `class with edges to 5+ distinct packages is suppressed as composition root`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.di"), PackageName("com.a"), ClassName("com.di.AppWiring"), ClassName("com.a.ServiceA")),
+            PackageDependency(PackageName("com.di"), PackageName("com.b"), ClassName("com.di.AppWiring"), ClassName("com.b.ServiceB")),
+            PackageDependency(PackageName("com.di"), PackageName("com.c"), ClassName("com.di.AppWiring"), ClassName("com.c.ServiceC")),
+            PackageDependency(PackageName("com.di"), PackageName("com.d"), ClassName("com.di.AppWiring"), ClassName("com.d.ServiceD")),
+            PackageDependency(PackageName("com.di"), PackageName("com.e"), ClassName("com.di.AppWiring"), ClassName("com.e.ServiceE")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        assertTrue(result.suggestions.none { it.className == ClassName("com.di.AppWiring") })
+    }
+
+    @Test
+    fun `class named Context is suppressed as composition root even with fewer package edges`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.app"), PackageName("com.domain"), ClassName("com.app.ApplicationContext"), ClassName("com.domain.Foo")),
+            PackageDependency(PackageName("com.app"), PackageName("com.domain"), ClassName("com.app.ApplicationContext"), ClassName("com.domain.Bar")),
+            PackageDependency(PackageName("com.app"), PackageName("com.domain"), ClassName("com.app.ApplicationContext"), ClassName("com.domain.Baz")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        assertTrue(result.suggestions.none { it.className == ClassName("com.app.ApplicationContext") })
+    }
+
+    @Test
+    fun `class with high fan-out to 4 packages is NOT suppressed`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.a"), PackageName("com.b"), ClassName("com.a.RegularService"), ClassName("com.b.X")),
+            PackageDependency(PackageName("com.a"), PackageName("com.c"), ClassName("com.a.RegularService"), ClassName("com.c.Y")),
+            PackageDependency(PackageName("com.a"), PackageName("com.d"), ClassName("com.a.RegularService"), ClassName("com.d.Z")),
+            PackageDependency(PackageName("com.a"), PackageName("com.e"), ClassName("com.a.RegularService"), ClassName("com.e.W")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        assertTrue(result.suggestions.any { it.className == ClassName("com.a.RegularService") })
+    }
+
+    @Test
+    fun `route handler is not suggested to move into a domain package`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.web"), PackageName("com.web"), ClassName("com.web.UserRoutes"), ClassName("com.web.WebUtil")),
+            PackageDependency(PackageName("com.web"), PackageName("com.auth"), ClassName("com.web.UserRoutes"), ClassName("com.auth.AuthService")),
+            PackageDependency(PackageName("com.web"), PackageName("com.auth"), ClassName("com.web.UserRoutes"), ClassName("com.auth.TokenValidator")),
+            PackageDependency(PackageName("com.web"), PackageName("com.auth"), ClassName("com.web.UserRoutes"), ClassName("com.auth.SessionManager")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        assertTrue(result.suggestions.none { it.className == ClassName("com.web.UserRoutes") })
+    }
+
+    @Test
+    fun `controller is not suggested to move into a domain package`() {
+        val deps = listOf(
+            PackageDependency(PackageName("com.api"), PackageName("com.service"), ClassName("com.api.OrderController"), ClassName("com.service.OrderService")),
+            PackageDependency(PackageName("com.api"), PackageName("com.service"), ClassName("com.api.OrderController"), ClassName("com.service.PaymentService")),
+            PackageDependency(PackageName("com.api"), PackageName("com.service"), ClassName("com.api.OrderController"), ClassName("com.service.ShippingService")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        assertTrue(result.suggestions.none { it.className == ClassName("com.api.OrderController") })
+    }
 }

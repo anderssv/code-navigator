@@ -18,6 +18,23 @@ data class MoveSuggestionResult(
 
 object MoveSuggester {
 
+    private val COMPOSITION_ROOT_PATTERNS = listOf(
+        Regex(".*Context$", RegexOption.IGNORE_CASE),
+        Regex(".*Module$", RegexOption.IGNORE_CASE),
+        Regex(".*Application.*", RegexOption.IGNORE_CASE),
+        Regex(".*Wiring.*", RegexOption.IGNORE_CASE),
+        Regex(".*Dependencies.*", RegexOption.IGNORE_CASE),
+    )
+
+    private val DRIVER_PATTERNS = listOf(
+        Regex(".*Routes.*", RegexOption.IGNORE_CASE),
+        Regex(".*Controller.*", RegexOption.IGNORE_CASE),
+        Regex(".*Endpoint.*", RegexOption.IGNORE_CASE),
+        Regex(".*Handler.*", RegexOption.IGNORE_CASE),
+    )
+
+    private const val COMPOSITION_ROOT_PACKAGE_THRESHOLD = 5
+
     fun suggest(
         dependencies: List<PackageDependency>,
         top: Int = Int.MAX_VALUE,
@@ -36,6 +53,8 @@ object MoveSuggester {
             val outgoing = filteredDeps.filter { it.sourceClass == cls }
             if (outgoing.isEmpty()) return@mapNotNull null
 
+            if (isCompositionRoot(cls, outgoing)) return@mapNotNull null
+
             val edgesByTarget = outgoing.groupBy { it.targetPackage }
                 .mapValues { (_, edges) -> edges.size }
 
@@ -44,6 +63,8 @@ object MoveSuggester {
                 .maxByOrNull { it.value } ?: return@mapNotNull null
 
             if (bestOther.value > edgesToOwn) {
+                if (isDriver(cls)) return@mapNotNull null
+
                 val total = outgoing.size
                 val confidence = bestOther.value.toDouble() / total
                 MoveSuggestion(cls, currentPkg, bestOther.key, edgesToOwn, bestOther.value, confidence)
@@ -55,5 +76,17 @@ object MoveSuggester {
             .take(top)
 
         return MoveSuggestionResult(suggestions)
+    }
+
+    private fun isCompositionRoot(cls: ClassName, outgoing: List<PackageDependency>): Boolean {
+        val simpleName = cls.simpleName()
+        if (COMPOSITION_ROOT_PATTERNS.any { it.matches(simpleName) }) return true
+        val distinctTargetPackages = outgoing.map { it.targetPackage }.distinct().size
+        return distinctTargetPackages >= COMPOSITION_ROOT_PACKAGE_THRESHOLD
+    }
+
+    private fun isDriver(cls: ClassName): Boolean {
+        val simpleName = cls.simpleName()
+        return DRIVER_PATTERNS.any { it.matches(simpleName) }
     }
 }
