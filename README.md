@@ -16,7 +16,7 @@ That's it. The agent will install the plugin, run the help task, and set up its 
 
 **Upgrading?** Tell your agent:
 
-> Upgrade code-navigator to 0.1.80, run cnavAgentHelp -Psection=install, and update the code-navigator section in AGENTS.md with the latest instructions.
+> Upgrade code-navigator to the newest version, run cnavAgentHelp -Psection=install, and update the code-navigator section in AGENTS.md with the latest instructions.
 
 **Gradle** (`build.gradle.kts`):
 ```kotlin
