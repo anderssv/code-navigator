@@ -136,6 +136,28 @@ Rules:
 - Peers within the same ring are forbidden by default in hexagonal mode (`peerForbidden: true`)
 - Composition root exempted from all rules (or uses `canReferenceAll`)
 
+### Sectors within rings
+
+**Value: medium** | **Effort: medium**
+
+Consider distinguishing **sectors** (role-based groupings) within the same ring. In hexagonal architecture, the adapter ring has two distinct sectors:
+- **Driving adapters (incoming)**: web controllers, API routes, CLI handlers — they call inward
+- **Driven adapters (outgoing)**: database clients, file writers, email senders — they are called from inward
+
+These sectors have different coupling rules:
+- Driving adapters should NOT depend on driven adapters (and vice versa)
+- Both sectors depend inward on ports, but they don't interact with each other
+
+Currently `cnavRings` treats all packages at the same ring level uniformly. Adding sector awareness would:
+1. Catch violations like a web route directly calling a `DatabaseClient` (bypassing ports)
+2. Make the ring output more readable — group by sector instead of flat list
+3. Reduce false-positive peer violations (two driving adapters referencing the same port isn't a problem)
+
+**Open questions:**
+- Can sectors be auto-detected (e.g., driving adapters have no incoming project edges, driven adapters have no outgoing project edges)?
+- Or does this require config: `{ "ring": "adapters", "sectors": [{ "name": "incoming", "packages": [...] }, { "name": "outgoing", "packages": [...] }] }`?
+- Is this already partially handled by `peerForbidden`? Peer violations between adapters *are* flagged, but without distinguishing why they're wrong (cross-sector vs. same-sector coupling).
+
 ---
 
 ## cnavMoveSuggest improvements
@@ -898,6 +920,26 @@ Analyze test code's call graph: if test methods directly call repository/adapter
 - **Output**: Per-test-class report showing which tests use data-oriented vs domain-oriented setup. Confidence score based on ratio.
 - **Heuristics**: Calls to repo methods inside a helper named `*setup*` or `*before*` are weighted differently. Calls to repo `get*`/`find*` for assertions are not flagged (reading state to verify is fine).
 - **Why**: Directly enforces Testing Through the Domain. The key insight: `test → repo.save()` = smell; `test → service.register()` = good.
+
+#### Field feedback (greitt run)
+
+All results came back as MIXED with no differentiation. Key improvements needed:
+
+1. **Distinguish adapter tests from domain tests** — If the class under test implements a port interface, classify as ADAPTER_TEST (not MIXED). Only flag port calls from tests whose subject is a domain service or route.
+
+2. **Separate fake setup calls from behavioral calls** — `fakeRAClient.willReturn(...)` is test arrangement, not a domain bypass. Distinguish calls to methods defined on the port interface vs. methods only on the fake (setup/verification helpers). Calls to fake-only methods aren't violations.
+
+3. **Richer verdict taxonomy** — MIXED for everything = no signal. Introduce: ADAPTER_TEST / SETUP_ONLY / MIXED / VIOLATION with a severity/confidence score based on port-call-to-domain-call ratio.
+
+4. **Exclusion parameter** — `-Pexclude=".*ImplTest|.*Fake|.*TestExtensions"` to filter known adapter test classes or patterns.
+
+5. **Show actual calls in detail mode** — With `-Pdetail=true`, show which methods on which ports are called:
+   ```
+   SearchServiceTest → RAClient.search() [SETUP?]
+   SearchServiceTest → SearchService.findUser() [DOMAIN]
+   ```
+
+**Priority**: Items 1-3 are essential for the tool to be actionable. Item 4 is easy. Item 5 needs call-graph detail already available.
 
 ### `cnavContextUsage` — verify consistent test context usage
 
