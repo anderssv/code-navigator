@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.83
+
+- **New:** `cnavRings` — auto-detects hexagonal architecture rings from bytecode dependencies. No config file needed. Reports ring assignments and peer violations (same-ring packages depending on each other).
+- **Improved:** All LLM formatter output now includes an interpretation section explaining what the results mean and how to act on them.
+- **Improved:** Shared logic consolidation — `TarjanSCC`, `BalanceOrchestrator`, `PackageHealthExtractor` extracted to reduce duplication.
+- **Fixed:** `cnavMoveClass` now adds imports for former same-package classes when moving a file to a different package. Previously, unqualified references to sibling classes were left broken.
+
 ## 0.1.82
 
 - **Improved:** `cnavMoveSuggest` callers-based confidence — incoming edges from same-package siblings reduce confidence score. A class with many callers from its own package is less likely to be misplaced.
