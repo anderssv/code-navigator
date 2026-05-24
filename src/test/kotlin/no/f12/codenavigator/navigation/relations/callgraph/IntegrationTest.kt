@@ -1,4 +1,4 @@
-package no.f12.codenavigator
+package no.f12.codenavigator.navigation.relations.callgraph
 
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraphBuilder
 import no.f12.codenavigator.navigation.relations.callgraph.CallDirection

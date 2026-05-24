@@ -1,4 +1,4 @@
-package no.f12.codenavigator.navigation.relations.callgraph
+package no.f12.codenavigator.formatting
 
 import no.f12.codenavigator.navigation.*
 
@@ -10,8 +10,6 @@ import no.f12.codenavigator.navigation.relations.callgraph.UsageSite
 import no.f12.codenavigator.navigation.relations.callgraph.CollapsedUsage
 import no.f12.codenavigator.navigation.relations.callgraph.SmartUsageResult
 import no.f12.codenavigator.navigation.relations.implementors.ImplementorInfo
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

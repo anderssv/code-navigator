@@ -1,4 +1,4 @@
-package no.f12.codenavigator
+package no.f12.codenavigator.registry
 
 import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.ParamDef

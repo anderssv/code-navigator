@@ -1,4 +1,4 @@
-package no.f12.codenavigator
+package no.f12.codenavigator.navigation.cache
 
 import no.f12.codenavigator.navigation.cache.CacheFreshness
 import org.junit.jupiter.api.BeforeEach

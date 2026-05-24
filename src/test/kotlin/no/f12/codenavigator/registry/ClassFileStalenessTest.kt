@@ -1,4 +1,4 @@
-package no.f12.codenavigator
+package no.f12.codenavigator.registry
 
 import no.f12.codenavigator.registry.ClassFileStaleness
 import no.f12.codenavigator.registry.StalenessResult
