@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.84
+
+- **New:** `cnavTestCoupling` — detects tests that bypass domain services by calling port interface methods directly (Testing Through the Domain violations). Reports per-class verdict: DOMAIN_ORIENTED, MIXED, or DATA_ORIENTED. Distinguishes interface methods from fake-only methods. Use `-Pports=".*Repository|.*Client"` to specify port interfaces.
+- **New:** `TaskGuidance` mechanism — structured context output (purpose, parameter guidance, interpretation) included in LLM format output. Helps AI agents understand what parameters to use and how to interpret results.
+
 ## 0.1.83
 
 - **New:** `cnavRings` — auto-detects hexagonal architecture rings from bytecode dependencies. No config file needed. Reports ring assignments and peer violations (same-ring packages depending on each other).
