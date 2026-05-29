@@ -31,4 +31,15 @@ object OutputWrapper {
         }
         return wrap(output, format)
     }
+
+    fun wrapWithGuidance(output: String, format: OutputFormat, guidance: TaskGuidance): String =
+        when (format) {
+            OutputFormat.TEXT -> output
+            OutputFormat.JSON -> wrap(output, format)
+            OutputFormat.LLM -> {
+                val rendered = guidance.render()
+                val combined = if (rendered.isBlank()) output else "$rendered\n\n$output"
+                wrap(combined, format)
+            }
+        }
 }

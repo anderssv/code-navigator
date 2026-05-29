@@ -1,0 +1,96 @@
+package no.f12.codenavigator.navigation.testcoupling
+
+import no.f12.codenavigator.navigation.relations.callgraph.CallGraph
+import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
+import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistry
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.types.SourceSet
+
+data class TestCouplingConfig(
+    val ports: Regex,
+)
+
+data class TestCouplingViolation(
+    val testClass: ClassName,
+    val testMethod: String,
+    val portInterface: ClassName,
+    val portMethod: MethodRef,
+)
+
+data class TestCouplingResult(
+    val violations: List<TestCouplingViolation>,
+    val testClassNonPortCalls: Map<ClassName, Int>,
+) {
+    fun verdictFor(testClass: ClassName): TestCouplingVerdict {
+        val classViolations = violations.filter { it.testClass == testClass }
+        val nonPortCalls = testClassNonPortCalls[testClass] ?: 0
+        return when {
+            classViolations.isEmpty() -> TestCouplingVerdict.DOMAIN_ORIENTED
+            nonPortCalls == 0 -> TestCouplingVerdict.DATA_ORIENTED
+            else -> TestCouplingVerdict.MIXED
+        }
+    }
+}
+
+enum class TestCouplingVerdict {
+    DOMAIN_ORIENTED,
+    MIXED,
+    DATA_ORIENTED,
+}
+
+object TestCouplingBuilder {
+
+    fun analyze(
+        callGraph: CallGraph,
+        interfaceRegistry: InterfaceRegistry,
+        config: TestCouplingConfig,
+    ): TestCouplingResult {
+        val portInterfaces = interfaceRegistry.findInterfaces(config.ports.pattern).toSet()
+        val portMethods: Map<ClassName, Set<String>> = portInterfaces.associateWith { iface ->
+            callGraph.declaredMethodsOf(iface)
+        }
+
+        val violations = mutableListOf<TestCouplingViolation>()
+        val nonPortCalls = mutableMapOf<ClassName, Int>()
+
+        callGraph.forEachEdge { caller, callee ->
+            if (callGraph.sourceSetOf(caller.className) != SourceSet.TEST) return@forEachEdge
+
+            val portInterface = resolvePortInterface(callee, portMethods, interfaceRegistry)
+
+            if (portInterface != null) {
+                violations.add(
+                    TestCouplingViolation(
+                        testClass = caller.className,
+                        testMethod = caller.methodName,
+                        portInterface = portInterface,
+                        portMethod = callee,
+                    )
+                )
+            } else {
+                nonPortCalls[caller.className] = (nonPortCalls[caller.className] ?: 0) + 1
+            }
+        }
+
+        return TestCouplingResult(violations = violations, testClassNonPortCalls = nonPortCalls)
+    }
+
+    private fun resolvePortInterface(
+        callee: MethodRef,
+        portMethods: Map<ClassName, Set<String>>,
+        interfaceRegistry: InterfaceRegistry,
+    ): ClassName? {
+        // Direct call to the port interface itself
+        portMethods[callee.className]?.let { methods ->
+            if (callee.methodName in methods) return callee.className
+        }
+
+        // Call to an implementor of a port interface, to a method declared on the interface
+        for (iface in interfaceRegistry.interfacesOf(callee.className)) {
+            val methods = portMethods[iface] ?: continue
+            if (callee.methodName in methods) return iface
+        }
+
+        return null
+    }
+}

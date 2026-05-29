@@ -253,6 +253,7 @@ object TaskRegistry {
     val MOVE_TO = ParamDef("to", "<fqcn>", "Target fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val FROM_PACKAGE = ParamDef("from-package", "<pkg>", "Source package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val TO_PACKAGE = ParamDef("to-package", "<pkg>", "Target package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val PORTS = ParamDef("ports", "<regex>", "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
     val FORMAT_PARAMS = listOf(FORMAT, LLM)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
@@ -837,6 +838,18 @@ object TaskRegistry {
         ),
     )
 
+    val TEST_COUPLING = TaskDef(
+        goal = "test-coupling",
+        description = "Detect tests that bypass domain services by calling port interface methods directly (TTTD violations)",
+        params = FORMAT_PARAMS + listOf(PORTS, DETAIL) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(listOf(PORTS to "\".*Repository|.*Client\"")),
+            UsageExample(listOf(PORTS to "\".*Repository|.*Client|.*Gateway\"", DETAIL to "true")),
+        ),
+    )
+
     val ALL_TASKS: List<TaskDef> = listOf(
         LIST_CLASSES,
         FIND_CLASS,
@@ -874,6 +887,7 @@ object TaskRegistry {
         RINGS,
         SIZE,
         DUPLICATES,
+        TEST_COUPLING,
         RENAME_PARAM_TASK,
         RENAME_METHOD_TASK,
         MOVE_CLASS_TASK,

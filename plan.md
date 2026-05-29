@@ -835,6 +835,94 @@ Items below are low-priority or may not be worth building. Revisit if demand eme
 
 ---
 
+## Task context guidance (generic mechanism)
+
+### `TaskGuidance` — structured context output for all tasks
+
+**Value: high** | **Effort: medium**
+
+When an LLM (or user) runs a task without required context parameters, or with default parameters, the output should include guidance explaining what the task checks, what parameters make sense, and how to determine the right values for the specific project. This is different from existing mechanisms:
+
+- `withInterpretation()` — explains results after the fact
+- `noResultsHints` — explains why nothing was found
+- `AgentHelpText` — general workflow guidance
+
+The new mechanism is **task context guidance**: "here's what this task needs to know about your project, here's how to figure it out, and here's what the output means."
+
+**Design**:
+
+```kotlin
+data class TaskGuidance(
+    val purpose: String,          // What this task checks and why
+    val parameterGuidance: String, // How to determine the right parameter values
+    val interpretation: String,   // How to read the results (replaces current INTERPRETATION constants)
+)
+```
+
+**Principle**: Avoid default values on `TaskGuidance` fields. Set explicitly at call sites if not resolved from a source. This makes it clear when guidance text is intentionally missing vs accidentally omitted.
+
+Each task defines a `TaskGuidance` instance. The same text is reused in:
+1. **LLM output header** — always shown when `format=llm`, before the results
+2. **AgentHelpText** — referenced in the task's section
+3. **No-params fallback** — when the task requires project-specific params and none are given, print the guidance and stop (or proceed with detected defaults and note what was assumed)
+
+This replaces the current scattered `internal const val *_INTERPRETATION` strings in `LlmFormatter` with a single source of truth per task, accessible from formatters, help text, and orchestrators.
+
+**Migration**: Existing `*_INTERPRETATION` constants move into `TaskGuidance.interpretation` on each task's config/orchestrator. Existing `noResultsHints` become part of the guidance or remain separate (they're conditional on empty results).
+
+---
+
+## TDD practice enforcement
+
+Tasks to help teams enforce the TDD triad: Test Setup, Fakes, and Testing Through the Domain.
+
+### `cnavFakeCoverage` — verify all ports have fakes
+
+**Value: high** | **Effort: medium**
+
+Scan interfaces matching a pattern (e.g., `*Repository`, `*Client`), check that each has at least one implementation in the test source set. Report missing fakes.
+
+- **Parameters**: `-Ppattern=<regex>` (interface name filter, default `".*Repository|.*Client"`), `-Pformat=text|llm|json`
+- **Builder**: Use `InterfaceRegistry` to find all interfaces matching pattern. For each, check if any implementor is in the test source set. Report interfaces with no test implementation.
+- **Output**: List of interfaces missing a fake, plus summary (e.g., "12/15 ports have fakes, 3 missing").
+- **Why**: Enforces "fake everything" principle. Teams adopting fakes can run this in CI to prevent regression.
+
+### `cnavTestCoupling` — detect tests bypassing the domain
+
+**Value: high** | **Effort: high**
+
+Analyze test code's call graph: if test methods directly call repository/adapter mutation methods (`add*`, `save*`, `store*`, `insert*`) instead of going through service-layer methods, flag them as "data-oriented setup" that violates Testing Through the Domain.
+
+- **Parameters**: `-Pservice-pattern=<regex>` (service layer, default `".*Service"`), `-Prepo-pattern=<regex>` (repos/adapters, default `".*Repository|.*Client"`), `-Pmutation-pattern=<regex>` (mutation methods, default `"add.*|save.*|store.*|insert.*|update.*|delete.*"`), `-Pformat=text|llm|json`
+- **Builder**: From test source set call graph, find test methods that call repo/adapter mutation methods directly (not via a service). Compare against test methods that set up state through service calls.
+- **Output**: Per-test-class report showing which tests use data-oriented vs domain-oriented setup. Confidence score based on ratio.
+- **Heuristics**: Calls to repo methods inside a helper named `*setup*` or `*before*` are weighted differently. Calls to repo `get*`/`find*` for assertions are not flagged (reading state to verify is fine).
+- **Why**: Directly enforces Testing Through the Domain. The key insight: `test → repo.save()` = smell; `test → service.register()` = good.
+
+### `cnavContextUsage` — verify consistent test context usage
+
+**Value: medium** | **Effort: medium**
+
+Check that test classes use a shared test context (matching a configurable pattern like `*TestContext`) rather than constructing dependencies ad-hoc.
+
+- **Parameters**: `-Pcontext-pattern=<regex>` (test context class, default `".*TestContext"`), `-Pformat=text|llm|json`
+- **Builder**: Find all test classes. For each, check if it references a class matching the context pattern. Flag tests that instantiate services/repos directly instead of getting them from the context.
+- **Output**: List of test classes not using the shared context, grouped by package.
+- **Why**: Enforces the Test Setup pattern — centralized, reusable system setup.
+
+### `cnavInterfacePurity` — check interfaces use domain types
+
+**Value: medium** | **Effort: medium**
+
+For interfaces matching a pattern, check that method signatures reference only domain-package types (not DTO/infrastructure types). Enforces that adapters convert at the boundary, keeping fakes simple.
+
+- **Parameters**: `-Ppattern=<regex>` (interface filter), `-Pdomain-packages=<csv>` (packages considered domain), `-Pinfra-packages=<csv>` (packages considered infrastructure/DTO), `-Pformat=text|llm|json`
+- **Builder**: For each interface method, inspect parameter types and return types. Flag methods whose signatures reference types from infra packages.
+- **Output**: Per-interface report of methods with non-domain types in their signatures.
+- **Why**: Ensures fakes remain simple (HashMap of domain objects) and the domain is protected from external format changes.
+
+---
+
 ## Future deterministic refactorings for LLMs
 
 `cnavRenameParam` (DONE), `cnavRenameMethod` (DONE — v0.1.55), `cnavRenameProperty` (DONE — v0.1.59), and `cnavMoveClass` (DONE — v0.1.56) are deterministic refactorings using OpenRewrite for AST-based source transformation. The key insight: LLMs are unreliable at multi-file refactorings because they guess at call sites, miss named arguments, forget string templates, and hallucinate file paths. A tool that knows all callers, implementors, and dependencies from bytecode can emit precise, correct source edits every time. The LLM's job reduces to deciding *what* to rename/move/extract — the tool handles the *how*.
