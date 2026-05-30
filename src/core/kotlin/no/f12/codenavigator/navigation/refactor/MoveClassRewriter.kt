@@ -112,6 +112,15 @@ object MoveClassRewriter {
                     }
                 }
             }
+
+            // Also update consumer imports for top-level declarations in the moved file
+            val movedFileSource = ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == movedFilePath }?.printAll()
+            if (movedFileSource != null) {
+                val topLevelNames = extractTopLevelNames(movedFileSource)
+                if (topLevelNames.isNotEmpty()) {
+                    updateTopLevelImportsInConsumers(ps, changes, oldPackage, newPackage, movedFilePath, topLevelNames)
+                }
+            }
         }
 
         if (!preview) {
@@ -366,5 +375,46 @@ object MoveClassRewriter {
 
         lines.addAll(insertIdx, importsToInsert)
         return lines.joinToString("\n")
+    }
+
+    private fun updateTopLevelImportsInConsumers(
+        ps: ParsedSources,
+        changes: MutableList<RenameChange>,
+        oldPackage: String,
+        newPackage: String,
+        movedFilePath: String,
+        topLevelNames: Set<String>,
+    ) {
+        val oldImportPrefix = "import $oldPackage."
+        for (sourceFile in ps.sources) {
+            val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
+            if (filePath == movedFilePath) continue
+
+            val existingChangeIdx = changes.indexOfFirst { it.filePath == filePath }
+            val currentContent = if (existingChangeIdx >= 0) changes[existingChangeIdx].after else sourceFile.printAll()
+            if (!currentContent.contains(oldImportPrefix)) continue
+
+            val updatedContent = currentContent.lines().joinToString("\n") { line ->
+                if (line.startsWith(oldImportPrefix)) {
+                    val importedName = line.removePrefix(oldImportPrefix).trimEnd()
+                    if (importedName in topLevelNames) {
+                        line.replace(oldImportPrefix, "import $newPackage.")
+                    } else {
+                        line
+                    }
+                } else {
+                    line
+                }
+            }
+
+            if (updatedContent != currentContent) {
+                val originalContent = if (existingChangeIdx >= 0) changes[existingChangeIdx].before else sourceFile.printAll()
+                if (existingChangeIdx >= 0) {
+                    changes[existingChangeIdx] = RenameChange(filePath, originalContent, updatedContent)
+                } else {
+                    changes.add(RenameChange(filePath, originalContent, updatedContent))
+                }
+            }
+        }
     }
 }

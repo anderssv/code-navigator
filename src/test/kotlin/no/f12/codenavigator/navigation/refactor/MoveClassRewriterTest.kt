@@ -497,4 +497,20 @@ class MoveClassRewriterTest {
         assertTrue(movedChange.after.contains("import com.example.variants.moveclass.original.Notifier"), "Should add import for Notifier (former same-package interface)")
     }
 
+    @Test
+    fun `moving named class also updates consumer imports of top-level declarations from same file`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.Metrics",
+            newFqcn = "com.example.variants.moveclass.billing.Metrics",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+        )
+
+        val consumerChange = result.changes.firstOrNull { it.filePath.endsWith("MetricsConsumer.kt") }
+        assertTrue(consumerChange != null, "Should update MetricsConsumer.kt. Changed files: ${result.changes.map { it.filePath }}")
+        assertTrue(consumerChange!!.after.contains("import com.example.variants.moveclass.billing.metricsRegistry"), "Should update top-level val import. Content:\n${consumerChange.after}")
+        assertTrue(!consumerChange.after.contains("import com.example.variants.moveclass.original.metricsRegistry"), "Old top-level val import should be gone. Content:\n${consumerChange.after}")
+    }
+
 }

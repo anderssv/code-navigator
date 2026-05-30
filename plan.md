@@ -15,7 +15,7 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 Related improvements to class and file moving. Ordered by dependency.
 
-### `cnavMoveClass`: top-level Kotlin declarations not updated when moving a file with a named class
+### ~~`cnavMoveClass`: top-level Kotlin declarations not updated when moving a file with a named class~~ — DONE (v0.1.89)
 
 **Value: high** | **Effort: medium**
 
@@ -37,7 +37,7 @@ The move operation appears to treat all same-package imports as belonging to the
 
 ---
 
-### BUG: `cnavMoveClass` strips same-package imports from the MOVED file itself
+### ~~BUG: `cnavMoveClass` strips same-package imports from the MOVED file itself~~ — DONE (v0.1.83)
 
 **Value: high** | **Effort: medium**
 
