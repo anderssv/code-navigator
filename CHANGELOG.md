@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.85
+
+- **Improved:** `cnavTestCoupling` — major noise reduction. Adapter tests auto-detected behaviorally (primary callee is port implementor or port interface with 3+ calls) and suppressed from output. Constructor calls (`<init>`) excluded. Inner-class coroutine lambdas aggregated to outer class. Test class detection uses `@Test` annotations instead of name suffixes (excludes fakes, utilities, extensions). Added confidence score, `-Pexclude` parameter, and `-Pdetail=true` mode showing per-call breakdown.
+- **Internal:** Moved 10 test classes to matching packages (formatting, registry, navigation.cache, navigation.relations.callgraph). Breaks the formatting↔relations prod cycle.
+
 ## 0.1.84
 
 - **New:** `cnavTestCoupling` — detects tests that bypass domain services by calling port interface methods directly (Testing Through the Domain violations). Reports per-class verdict: DOMAIN_ORIENTED, MIXED, or DATA_ORIENTED. Distinguishes interface methods from fake-only methods. Use `-Pports=".*Repository|.*Client"` to specify port interfaces.

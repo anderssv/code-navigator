@@ -925,21 +925,42 @@ Analyze test code's call graph: if test methods directly call repository/adapter
 
 All results came back as MIXED with no differentiation. Key improvements needed:
 
-1. **Distinguish adapter tests from domain tests** — If the class under test implements a port interface, classify as ADAPTER_TEST (not MIXED). Only flag port calls from tests whose subject is a domain service or route.
+1. ~~**Distinguish adapter tests from domain tests**~~ ✅ DONE (v0.1.85) — Behavioral detection: if primary callee (>50%) is a port implementor OR port interface with 3+ calls, classify as ADAPTER_TEST.
 
-2. **Separate fake setup calls from behavioral calls** — `fakeRAClient.willReturn(...)` is test arrangement, not a domain bypass. Distinguish calls to methods defined on the port interface vs. methods only on the fake (setup/verification helpers). Calls to fake-only methods aren't violations.
+2. ~~**Separate fake setup calls from behavioral calls**~~ ✅ DONE (pre-existing) — Only methods declared on the port interface are flagged. Fake-only methods (`willReturn`, `failOnNext`) are never violations.
 
-3. **Richer verdict taxonomy** — MIXED for everything = no signal. Introduce: ADAPTER_TEST / SETUP_ONLY / MIXED / VIOLATION with a severity/confidence score based on port-call-to-domain-call ratio.
+3. ~~**Richer verdict taxonomy**~~ ✅ DONE (v0.1.85) — ADAPTER_TEST / DOMAIN_ORIENTED / MIXED / DATA_ORIENTED + confidence score (port-calls / total-calls ratio).
 
-4. **Exclusion parameter** — `-Pexclude=".*ImplTest|.*Fake|.*TestExtensions"` to filter known adapter test classes or patterns.
+4. ~~**Exclusion parameter**~~ ✅ DONE (v0.1.85) — `-Pexclude=".*ImplTest|.*Fake|.*TestExtensions"` filters test classes by regex.
 
-5. **Show actual calls in detail mode** — With `-Pdetail=true`, show which methods on which ports are called:
+5. ~~**Show actual calls in detail mode**~~ ✅ DONE (v0.1.85) — `-Pdetail=true` shows per-call breakdown:
    ```
-   SearchServiceTest → RAClient.search() [SETUP?]
-   SearchServiceTest → SearchService.findUser() [DOMAIN]
+   SearchServiceTest  verdict=MIXED  confidence=0.25
+     testSearch → RARepository.search [PORT]
    ```
 
-**Priority**: Items 1-3 are essential for the tool to be actionable. Item 4 is easy. Item 5 needs call-graph detail already available.
+#### Additional improvements (v0.1.85)
+
+6. **Constructor exclusion** — `<init>` and `<clinit>` calls are never port violations (constructing result objects is test data setup).
+
+7. **Inner-class aggregation** — Coroutine lambdas (`$1` classes) are rolled up to their outer test class for verdict computation.
+
+8. **@Test annotation detection** — Uses bytecode annotations (JUnit4, JUnit5, kotlin.test, TestNG) instead of class name suffixes. Auto-excludes fakes, utilities, test extensions.
+
+9. **ADAPTER_TEST suppression** — Adapter test classes are filtered from all formatter output (they're expected, not violations).
+
+#### Field validation results (v0.1.85)
+
+| Project | Before | After |
+|---|---|---|
+| ra-backend | 60+ MIXED (all noise) | 0 violations |
+| greitt | 39 MIXED (all noise) | 0 violations |
+| terms-and-conditions | not tested | 3 findings (2 DAO tests + 1 integration test) |
+
+#### Remaining improvements
+
+- **DAO test threshold** — `TermsAndConditionsDaoTest` and `ParentalConsentDaoTest` are adapter tests but port calls are <50% due to assertion/setup noise. Consider: count only non-framework calls in the denominator, or add a port-method-diversity heuristic (multiple distinct port methods = likely adapter test).
+- **Sectors within rings** — see above section on ring sectors.
 
 ### `cnavContextUsage` — verify consistent test context usage
 
