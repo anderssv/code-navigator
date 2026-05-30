@@ -87,4 +87,58 @@ object MoveClassFormatter {
             }
         }.trimEnd()
     }
+
+    fun formatFileMove(result: MoveClassResult, config: MoveFileConfig): String =
+        when (config.format) {
+            OutputFormat.TEXT -> formatFileMoveText(result, config)
+            OutputFormat.JSON -> formatFileMoveJson(result, config)
+            OutputFormat.LLM -> formatFileMoveLlm(result, config)
+            OutputFormat.DIFF -> formatDiff(result)
+        }
+
+    private fun formatFileMoveText(result: MoveClassResult, config: MoveFileConfig): String {
+        if (result.changes.isEmpty()) return "No changes needed."
+        val mode = if (config.preview) "Preview" else "Applied"
+        val header = "$mode: move-file ${config.fromFile} -> ${config.toPackage} (${result.changes.size} file${if (result.changes.size != 1) "s" else ""})"
+        return buildString {
+            appendLine(header)
+            appendLine()
+            for (change in result.changes) {
+                appendLine("--- ${change.filePath}")
+                val diffLines = computeDiff(change.before, change.after)
+                for (line in diffLines) { appendLine(line) }
+                appendLine()
+            }
+            if (!config.preview) { appendLine(COMPILE_RECOMMENDATION) }
+        }.trimEnd()
+    }
+
+    private fun formatFileMoveJson(result: MoveClassResult, config: MoveFileConfig): String {
+        val changesJson = if (result.changes.isEmpty()) "[]" else {
+            result.changes.joinToString(",", "[", "]") { change ->
+                val diffLines = computeDiff(change.before, change.after)
+                val diffJson = diffLines.joinToString(",", "[", "]") { "\"${jsonEscape(it)}\"" }
+                """{"filePath":"${jsonEscape(change.filePath)}","diff":$diffJson}"""
+            }
+        }
+        val movedJson = result.movedFilePath?.let { ""","movedFilePath":"${jsonEscape(it)}"""" } ?: ""
+        val newFileJson = result.newFilePath?.let { ""","newFilePath":"${jsonEscape(it)}"""" } ?: ""
+        val recommendationJson = if (!config.preview) ""","recommendation":"${jsonEscape(COMPILE_RECOMMENDATION)}"""" else ""
+        return """{"preview":${config.preview},"fromFile":"${jsonEscape(config.fromFile)}","toPackage":"${jsonEscape(config.toPackage)}","changes":$changesJson$movedJson$newFileJson$recommendationJson}"""
+    }
+
+    private fun formatFileMoveLlm(result: MoveClassResult, config: MoveFileConfig): String {
+        if (result.changes.isEmpty()) return "No changes needed."
+        val mode = if (config.preview) "preview" else "applied"
+        val header = "move-file ${config.fromFile} -> ${config.toPackage} ($mode, ${result.changes.size} file${if (result.changes.size != 1) "s" else ""})"
+        return buildString {
+            appendLine(header)
+            appendLine()
+            for (change in result.changes) {
+                val diff = computeUnifiedDiff(change.filePath, change.before, change.after)
+                if (diff.isNotEmpty()) { appendLine(diff) }
+            }
+            if (!config.preview) { appendLine(COMPILE_RECOMMENDATION) }
+        }.trimEnd()
+    }
 }

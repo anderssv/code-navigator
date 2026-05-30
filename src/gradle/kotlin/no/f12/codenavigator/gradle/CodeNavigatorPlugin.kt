@@ -129,6 +129,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "cohesion" to CohesionTask::class.java,
             "move-suggest" to MoveSuggestTask::class.java,
             "suggest-structure" to SuggestStructureTask::class.java,
+            "move-file" to MoveFileTask::class.java,
             "volatility" to PackageVolatilityTask::class.java,
             "balance" to BalanceTask::class.java,
             "layer-check" to LayerCheckTask::class.java,

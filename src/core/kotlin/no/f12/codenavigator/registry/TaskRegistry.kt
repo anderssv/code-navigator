@@ -253,6 +253,7 @@ object TaskRegistry {
     val MIN_TOKENS = ParamDef("min-tokens", "<N>", "Minimum duplicate token sequence length", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
     val MOVE_FROM = ParamDef("from", "<fqcn>", "Fully qualified class name to move/rename", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MOVE_TO = ParamDef("to", "<fqcn>", "Target fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val FROM_FILE = ParamDef("from-file", "<path>", "Relative path to the source file to move (e.g. src/main/kotlin/com/example/Foo.kt)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val FROM_PACKAGE = ParamDef("from-package", "<pkg>", "Source package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val TO_PACKAGE = ParamDef("to-package", "<pkg>", "Target package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PORTS = ParamDef("ports", "<regex>", "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -842,6 +843,18 @@ object TaskRegistry {
         ),
     )
 
+    val MOVE_FILE_TASK = TaskDef(
+        goal = "move-file",
+        description = "Move a Kotlin source file to a new package, updating all class and top-level declaration references",
+        params = FORMAT_PARAMS + listOf(FROM_FILE, TO_PACKAGE, PREVIEW),
+        requiresCompilation = true,
+        category = TaskCategory.SOURCE,
+        examples = listOf(
+            UsageExample(listOf(FROM_FILE to "src/main/kotlin/com/example/Metrics.kt", TO_PACKAGE to "com.example.billing")),
+            UsageExample(listOf(FROM_FILE to "src/main/kotlin/com/example/Metrics.kt", TO_PACKAGE to "com.example.billing", PREVIEW to null)),
+        ),
+    )
+
     val RENAME_PROPERTY_TASK = TaskDef(
         goal = "rename-property",
         description = "Rename a property (val/var) and update all access sites, constructor call sites, and copy() calls",
@@ -922,6 +935,7 @@ object TaskRegistry {
         RENAME_PARAM_TASK,
         RENAME_METHOD_TASK,
         MOVE_CLASS_TASK,
+        MOVE_FILE_TASK,
         RENAME_PROPERTY_TASK,
         HELP,
         AGENT_HELP,
