@@ -59,10 +59,10 @@ abstract class TestCouplingTask : DefaultTask() {
 
         val guidance = TestCouplingGuidance.GUIDANCE
         logger.lifecycle(OutputWrapper.wrapWithGuidance(
-            when (config.format) {
-                OutputFormat.TEXT -> TestCouplingFormatter.formatText(result)
-                OutputFormat.JSON -> TestCouplingFormatter.formatText(result) // TODO: add JSON formatter
-                OutputFormat.LLM -> TestCouplingFormatter.formatLlm(result)
+            when {
+                config.format == OutputFormat.LLM -> TestCouplingFormatter.formatLlm(result)
+                config.detail -> TestCouplingFormatter.formatDetailText(result)
+                else -> TestCouplingFormatter.formatText(result)
             },
             config.format,
             guidance,

@@ -8,6 +8,7 @@ import no.f12.codenavigator.navigation.types.SourceSet
 
 data class TestCouplingConfig(
     val ports: Regex,
+    val exclude: Regex? = null,
 )
 
 data class TestCouplingViolation(
@@ -20,8 +21,12 @@ data class TestCouplingViolation(
 data class TestCouplingResult(
     val violations: List<TestCouplingViolation>,
     val testClassNonPortCalls: Map<ClassName, Int>,
+    val portImplementors: Set<ClassName> = emptySet(),
+    val testClassCallTargets: Map<ClassName, Map<ClassName, Int>> = emptyMap(),
 ) {
     fun verdictFor(testClass: ClassName): TestCouplingVerdict {
+        if (isAdapterTest(testClass)) return TestCouplingVerdict.ADAPTER_TEST
+
         val classViolations = violations.filter { it.testClass == testClass }
         val nonPortCalls = testClassNonPortCalls[testClass] ?: 0
         return when {
@@ -30,10 +35,28 @@ data class TestCouplingResult(
             else -> TestCouplingVerdict.MIXED
         }
     }
+
+    fun confidenceFor(testClass: ClassName): Double {
+        val portCalls = violations.count { it.testClass == testClass }
+        val nonPortCalls = testClassNonPortCalls[testClass] ?: 0
+        val total = portCalls + nonPortCalls
+        if (total == 0) return 0.0
+        return portCalls.toDouble() / total.toDouble()
+    }
+
+    private fun isAdapterTest(testClass: ClassName): Boolean {
+        val targets = testClassCallTargets[testClass] ?: return false
+        val totalCalls = targets.values.sum()
+        val primaryTarget = targets.maxByOrNull { it.value }?.key ?: return false
+        val primaryCalls = targets[primaryTarget] ?: 0
+        // Primary target must be a port implementor AND account for majority of calls
+        return primaryTarget in portImplementors && primaryCalls * 2 > totalCalls
+    }
 }
 
 enum class TestCouplingVerdict {
     DOMAIN_ORIENTED,
+    ADAPTER_TEST,
     MIXED,
     DATA_ORIENTED,
 }
@@ -49,12 +72,22 @@ object TestCouplingBuilder {
         val portMethods: Map<ClassName, Set<String>> = portInterfaces.associateWith { iface ->
             callGraph.declaredMethodsOf(iface)
         }
+        val portImplementors: Set<ClassName> = portInterfaces.flatMap { iface ->
+            interfaceRegistry.implementorsOf(iface).map { it.className }
+        }.toSet()
 
         val violations = mutableListOf<TestCouplingViolation>()
         val nonPortCalls = mutableMapOf<ClassName, Int>()
+        val testClassCallTargets = mutableMapOf<ClassName, MutableMap<ClassName, Int>>()
 
         callGraph.forEachEdge { caller, callee ->
             if (callGraph.sourceSetOf(caller.className) != SourceSet.TEST) return@forEachEdge
+            if (config.exclude != null && config.exclude.containsMatchIn(caller.className.value)) return@forEachEdge
+
+            // Track all call targets per test class
+            testClassCallTargets
+                .getOrPut(caller.className) { mutableMapOf() }
+                .merge(callee.className, 1) { a, b -> a + b }
 
             val portInterface = resolvePortInterface(callee, portMethods, interfaceRegistry)
 
@@ -72,7 +105,12 @@ object TestCouplingBuilder {
             }
         }
 
-        return TestCouplingResult(violations = violations, testClassNonPortCalls = nonPortCalls)
+        return TestCouplingResult(
+            violations = violations,
+            testClassNonPortCalls = nonPortCalls,
+            portImplementors = portImplementors,
+            testClassCallTargets = testClassCallTargets,
+        )
     }
 
     private fun resolvePortInterface(

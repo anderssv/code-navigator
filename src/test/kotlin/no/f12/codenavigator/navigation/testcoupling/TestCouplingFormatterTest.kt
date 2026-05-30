@@ -61,4 +61,27 @@ class TestCouplingFormatterTest {
 
         assertContains(output, "No TTTD violations")
     }
+
+    // [TEST] Detail text format shows per-call breakdown with verdict and confidence
+    @Test
+    fun detailTextFormatShowsCallBreakdown() {
+        val result = TestCouplingResult(
+            violations = listOf(
+                TestCouplingViolation(
+                    testClass = ClassName("com.example.SearchServiceTest"),
+                    testMethod = "testSearch",
+                    portInterface = ClassName("com.example.RARepository"),
+                    portMethod = MethodRef(ClassName("com.example.RAClient"), "search"),
+                ),
+            ),
+            testClassNonPortCalls = mapOf(ClassName("com.example.SearchServiceTest") to 3),
+        )
+
+        val output = TestCouplingFormatter.formatDetailText(result)
+
+        assertContains(output, "SearchServiceTest")
+        assertContains(output, "MIXED")
+        assertContains(output, "RARepository.search")
+        assertContains(output, "confidence=")
+    }
 }

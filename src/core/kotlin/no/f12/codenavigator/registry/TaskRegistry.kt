@@ -841,7 +841,7 @@ object TaskRegistry {
     val TEST_COUPLING = TaskDef(
         goal = "test-coupling",
         description = "Detect tests that bypass domain services by calling port interface methods directly (TTTD violations)",
-        params = FORMAT_PARAMS + listOf(PORTS, DETAIL) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(PORTS, DETAIL, EXCLUDE) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(

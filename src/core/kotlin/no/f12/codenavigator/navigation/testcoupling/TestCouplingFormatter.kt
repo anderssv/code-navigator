@@ -5,23 +5,49 @@ import no.f12.codenavigator.navigation.types.ClassName
 object TestCouplingFormatter {
 
     fun formatText(result: TestCouplingResult): String {
-        if (result.violations.isEmpty()) return "No TTTD violations found. All test classes use domain-oriented setup."
+        val actionableViolations = result.violations
+            .filter { result.verdictFor(it.testClass) != TestCouplingVerdict.ADAPTER_TEST }
+        if (actionableViolations.isEmpty()) return "No TTTD violations found. All test classes use domain-oriented setup."
 
-        val classSummaries = result.violations
+        val classSummaries = actionableViolations
             .groupBy { it.testClass }
             .map { (testClass, violations) ->
                 val verdict = result.verdictFor(testClass)
                 val shortName = testClass.value.substringAfterLast('.')
-                "$shortName  verdict=$verdict  port-calls=${violations.size}"
+                val confidence = result.confidenceFor(testClass)
+                "$shortName  verdict=$verdict  port-calls=${violations.size}  confidence=${"%.2f".format(confidence)}"
             }
 
         return classSummaries.joinToString("\n")
     }
 
-    fun formatLlm(result: TestCouplingResult): String {
-        if (result.violations.isEmpty()) return "No TTTD violations found. All test classes use domain-oriented setup."
+    fun formatDetailText(result: TestCouplingResult): String {
+        val actionableViolations = result.violations
+            .filter { result.verdictFor(it.testClass) != TestCouplingVerdict.ADAPTER_TEST }
+        if (actionableViolations.isEmpty()) return "No TTTD violations found. All test classes use domain-oriented setup."
 
-        return result.violations.joinToString("\n") { v ->
+        return actionableViolations
+            .groupBy { it.testClass }
+            .map { (testClass, violations) ->
+                val verdict = result.verdictFor(testClass)
+                val confidence = result.confidenceFor(testClass)
+                val shortName = testClass.value.substringAfterLast('.')
+                val header = "$shortName  verdict=$verdict  confidence=${"%.2f".format(confidence)}"
+                val calls = violations.map { v ->
+                    val shortPort = v.portInterface.value.substringAfterLast('.')
+                    "  ${v.testMethod} → ${shortPort}.${v.portMethod.methodName} [PORT]"
+                }
+                (listOf(header) + calls).joinToString("\n")
+            }
+            .joinToString("\n\n")
+    }
+
+    fun formatLlm(result: TestCouplingResult): String {
+        val actionableViolations = result.violations
+            .filter { result.verdictFor(it.testClass) != TestCouplingVerdict.ADAPTER_TEST }
+        if (actionableViolations.isEmpty()) return "No TTTD violations found. All test classes use domain-oriented setup."
+
+        return actionableViolations.joinToString("\n") { v ->
             val shortTestClass = v.testClass.value.substringAfterLast('.')
             val shortPort = v.portInterface.value.substringAfterLast('.')
             "$shortTestClass.${v.testMethod} -> ${shortPort}.${v.portMethod.methodName}"

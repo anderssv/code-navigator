@@ -42,7 +42,7 @@ object TestCouplingOrchestrator {
             )
         }
 
-        val couplingConfig = TestCouplingConfig(ports = config.ports)
+        val couplingConfig = TestCouplingConfig(ports = config.ports, exclude = config.exclude)
         val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, couplingConfig)
 
         return TestCouplingOutput(
