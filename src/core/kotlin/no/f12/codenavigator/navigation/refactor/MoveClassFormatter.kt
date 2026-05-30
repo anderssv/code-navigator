@@ -6,6 +6,15 @@ object MoveClassFormatter {
 
     private const val COMPILE_RECOMMENDATION = "IMPORTANT: Automated refactoring is not always fully accurate. Compile the project to verify all references were updated correctly."
 
+    private fun StringBuilder.appendWarnings(result: MoveClassResult) {
+        if (result.warnings.isNotEmpty()) {
+            appendLine()
+            for (warning in result.warnings) {
+                appendLine(warning)
+            }
+        }
+    }
+
     fun format(result: MoveClassResult, config: MoveClassConfig): String =
         when (config.format) {
             OutputFormat.TEXT -> formatText(result, config)
@@ -47,6 +56,7 @@ object MoveClassFormatter {
             if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)
             }
+            appendWarnings(result)
         }.trimEnd()
     }
 
@@ -85,6 +95,7 @@ object MoveClassFormatter {
             if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)
             }
+            appendWarnings(result)
         }.trimEnd()
     }
 

@@ -11,20 +11,27 @@ data class MoveClassResult(
     val changes: List<RenameChange>,
     val movedFilePath: String? = null,
     val newFilePath: String? = null,
+    val warnings: List<String> = emptyList(),
 ) {
     fun toJson(): String {
         val movedJson = movedFilePath?.let { ""","movedFilePath":"${jsonEscape(it)}"""" } ?: ""
         val newJson = newFilePath?.let { ""","newFilePath":"${jsonEscape(it)}"""" } ?: ""
-        return """{"changes":${changesToJson(changes)}$movedJson$newJson}"""
+        val warningsJson = if (warnings.isNotEmpty()) {
+            ""","warnings":${warnings.joinToString(",", "[", "]") { "\"${jsonEscape(it)}\"" }}"""
+        } else ""
+        return """{"changes":${changesToJson(changes)}$movedJson$newJson$warningsJson}"""
     }
 
     companion object {
         fun fromJson(json: String): MoveClassResult {
             val obj = parseJsonObject(json)
+            @Suppress("UNCHECKED_CAST")
+            val warnings = (obj["warnings"] as? List<String>) ?: emptyList()
             return MoveClassResult(
                 changes = changesFromJson(obj),
                 movedFilePath = obj["movedFilePath"] as? String,
                 newFilePath = obj["newFilePath"] as? String,
+                warnings = warnings,
             )
         }
     }
@@ -218,7 +225,8 @@ object MoveClassRewriter {
             applyChanges(changes, movedFilePath, newFilePath)
         }
 
-        return MoveClassResult(changes, movedFilePath, newFilePath)
+        val warnings = targetFileWarnings(newFilePath, movedFilePath)
+        return MoveClassResult(changes, movedFilePath, newFilePath, warnings)
     }
 
     private fun moveKtFacade(
@@ -283,7 +291,7 @@ object MoveClassRewriter {
             applyChanges(allChanges, movedFilePath, newFilePath)
         }
 
-        return MoveClassResult(allChanges, movedFilePath, newFilePath)
+        return MoveClassResult(allChanges, movedFilePath, newFilePath, targetFileWarnings(newFilePath, movedFilePath))
     }
 
     private fun moveMultiClassFile(
@@ -329,7 +337,7 @@ object MoveClassRewriter {
             applyChanges(allChanges, movedFilePath, newFilePath)
         }
 
-        return MoveClassResult(allChanges, movedFilePath, newFilePath)
+        return MoveClassResult(allChanges, movedFilePath, newFilePath, targetFileWarnings(newFilePath, movedFilePath))
     }
 
     private fun replacePackageImports(
@@ -427,6 +435,16 @@ object MoveClassRewriter {
     private fun isTargetClassFile(filePath: String, oldPackage: String, simpleClassName: String): Boolean {
         val expectedSuffix = oldPackage.replace(".", File.separator) + File.separator + "$simpleClassName.kt"
         return filePath.endsWith(expectedSuffix)
+    }
+
+    private fun targetFileWarnings(newFilePath: String?, movedFilePath: String?): List<String> {
+        if (newFilePath == null || movedFilePath == null || newFilePath == movedFilePath) return emptyList()
+        val targetFile = File(newFilePath)
+        if (!targetFile.exists()) return emptyList()
+        return listOf(
+            "WARNING: Target file already exists at '$newFilePath'. " +
+                "The move will overwrite it. Consider manually merging the class into the existing file instead.",
+        )
     }
 
     private fun isInPackage(source: String, packageName: String): Boolean =
