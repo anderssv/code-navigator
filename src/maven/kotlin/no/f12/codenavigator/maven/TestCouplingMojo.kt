@@ -80,7 +80,7 @@ class TestCouplingMojo : AbstractMojo() {
         val guidance = TestCouplingGuidance.GUIDANCE
         println(OutputWrapper.wrapWithGuidance(
             when (config.format) {
-                OutputFormat.TEXT -> TestCouplingFormatter.formatText(result)
+                OutputFormat.TEXT, OutputFormat.DIFF -> TestCouplingFormatter.formatText(result)
                 OutputFormat.JSON -> TestCouplingFormatter.formatText(result)
                 OutputFormat.LLM -> TestCouplingFormatter.formatLlm(result)
             },
