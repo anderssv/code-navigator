@@ -11,6 +11,8 @@ import no.f12.codenavigator.navigation.dsm.MoveSuggestOutput
 import no.f12.codenavigator.navigation.dsm.PackageDistanceFormatter
 import no.f12.codenavigator.navigation.dsm.StrengthFormatter
 import no.f12.codenavigator.navigation.dsm.StrengthOutput
+import no.f12.codenavigator.navigation.dsm.StructureFormatter
+import no.f12.codenavigator.navigation.dsm.SuggestStructureOutput
 
 object DsmOutputFormatter {
 
@@ -66,6 +68,17 @@ object DsmOutputFormatter {
             text = { BalanceFormatter.format(result) },
             json = { JsonFormatter.formatBalance(result) },
             llm = { LlmFormatter.formatBalance(result) },
+        )
+    }
+
+    fun format(output: SuggestStructureOutput, format: OutputFormat): String? {
+        val result = output.result
+            ?: return OutputWrapper.emptyResult(format, "No structural groups found.", output.noResultsHints)
+
+        return OutputWrapper.formatAndWrap(format,
+            text = { StructureFormatter.formatText(result) },
+            json = { StructureFormatter.formatJson(result) },
+            llm = { StructureFormatter.formatLlm(result) },
         )
     }
 }

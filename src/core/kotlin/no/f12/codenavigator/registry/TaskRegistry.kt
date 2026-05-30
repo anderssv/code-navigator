@@ -210,6 +210,7 @@ object TaskRegistry {
     val PACKAGE_FILTER = ParamDef("package-filter", "<pkg>", "Only include packages under this prefix", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MIN_EDGES = ParamDef("min-edges", "<N>", "Minimum total edges (internal+external) to include a package", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
     val MAX_FAN_IN = ParamDef("max-fan-in", "<N>", "Exclude ubiquitous types with fan-in above this threshold from move suggestions", flag = false, defaultValue = "10", enhancePattern = false, type = ParamType.INT)
+    val MIN_GROUP_SIZE = ParamDef("min-group-size", "<N>", "Minimum number of classes in a structure group", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
     val INCLUDE_EXTERNAL = ParamDef("include-external", "true", "Include dependencies on classes outside the project", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val DSM_DEPTH = ParamDef("dsm-depth", "<N>", "Package grouping depth", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
     val DSM_HTML = ParamDef("dsm-html", "<path>", "Write interactive HTML matrix to file", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -712,6 +713,20 @@ object TaskRegistry {
         ),
     )
 
+    val SUGGEST_STRUCTURE = TaskDef(
+        goal = "suggest-structure",
+        description = "Group misplaced classes by target package — shows which classes should move together and computes structural drift",
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP, MAX_FAN_IN, MIN_GROUP_SIZE) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        paramDefaultOverrides = mapOf("top" to "all"),
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(MIN_GROUP_SIZE to "3")),
+            UsageExample(listOf(PACKAGE_FILTER to "com.example")),
+        ),
+    )
+
     val VOLATILITY = TaskDef(
         goal = "volatility",
         description = "Show package-level volatility from git history (change frequency and churn)",
@@ -895,6 +910,7 @@ object TaskRegistry {
         STRENGTH,
         COHESION,
         MOVE_SUGGEST,
+        SUGGEST_STRUCTURE,
         VOLATILITY,
         BALANCE,
         LAYER_CHECK,

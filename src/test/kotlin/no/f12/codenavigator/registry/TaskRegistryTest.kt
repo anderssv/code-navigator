@@ -651,7 +651,7 @@ class TaskRegistryTest {
     fun `contains all 41 goals`() {
         val goals = TaskRegistry.ALL_TASKS.map { it.goal }.toSet()
 
-        assertEquals(45, goals.size)
+        assertEquals(46, goals.size)
         assertTrue(goals.contains("find-class"))
         assertTrue(goals.contains("hotspots"))
         assertTrue(goals.contains("complexity"))
@@ -683,7 +683,7 @@ class TaskRegistryTest {
             val gradleName = task.taskName(BuildTool.GRADLE)
             assertNotNull(gradleName, "Goal '${task.goal}' should resolve to a Gradle task name")
         }
-        assertEquals(45, registryGoals.size)
+        assertEquals(46, registryGoals.size)
     }
 
     @Test
@@ -1038,6 +1038,7 @@ class TaskRegistryTest {
             "include-impls" to ParamType.FLAG,
             "ports" to ParamType.STRING,
             "topic" to ParamType.STRING,
+            "min-group-size" to ParamType.INT,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }

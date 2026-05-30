@@ -128,6 +128,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "strength" to IntegrationStrengthTask::class.java,
             "cohesion" to CohesionTask::class.java,
             "move-suggest" to MoveSuggestTask::class.java,
+            "suggest-structure" to SuggestStructureTask::class.java,
             "volatility" to PackageVolatilityTask::class.java,
             "balance" to BalanceTask::class.java,
             "layer-check" to LayerCheckTask::class.java,
