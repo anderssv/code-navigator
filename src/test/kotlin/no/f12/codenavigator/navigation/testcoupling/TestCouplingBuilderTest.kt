@@ -280,6 +280,57 @@ class TestCouplingBuilderTest {
         assertEquals(listOf("com.example.ServiceTest"), violatingClasses)
     }
 
+    // [TEST] Constructor calls (<init>) on port classes are not flagged as violations
+    @Test
+    fun constructorCallsOnPortClassesAreNotFlagged() {
+        // RAClientResult implements RAClient (or is found via interfacesOf) and <init> is in declaredMethods
+        val graph = callGraphWithSourceSets(
+            edges = listOf(
+                method("com.example.ServiceTest", "testOrder") to method("com.example.RAClientResult", "<init>"),
+                method("com.example.ServiceTest", "testOrder") to method("com.example.OrderService", "placeOrder"),
+            ),
+            testClasses = setOf("com.example.ServiceTest"),
+            declaredMethods = mapOf(
+                ClassName("com.example.RAClient") to setOf("reissue", "getInfo", "<init>"),
+            ),
+        )
+        val interfaceRegistry = interfaceRegistryWith(
+            "com.example.RAClient" to listOf("com.example.RAClientResult"),
+        )
+        val config = TestCouplingConfig(ports = Regex(".*Client"))
+
+        val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, config)
+
+        assertEquals(0, result.violations.size)
+        assertEquals(TestCouplingVerdict.DOMAIN_ORIENTED, result.verdictFor(ClassName("com.example.ServiceTest")))
+    }
+
+    // [TEST] Test whose primary callee is a port interface gets ADAPTER_TEST verdict
+    @Test
+    fun testWhosePrimaryCalleeIsPortInterfaceGetsAdapterTestVerdict() {
+        // PollsRepositoryDatabaseTest primarily calls PollsRepository (the interface) directly
+        val graph = callGraphWithSourceSets(
+            edges = listOf(
+                method("com.example.PollsRepositoryDatabaseTest", "testAdd") to method("com.example.PollsRepository", "addPoll"),
+                method("com.example.PollsRepositoryDatabaseTest", "testGet") to method("com.example.PollsRepository", "getPoll"),
+                method("com.example.PollsRepositoryDatabaseTest", "testUpdate") to method("com.example.PollsRepository", "updatePoll"),
+            ),
+            testClasses = setOf("com.example.PollsRepositoryDatabaseTest"),
+            declaredMethods = mapOf(
+                ClassName("com.example.PollsRepository") to setOf("addPoll", "getPoll", "updatePoll"),
+            ),
+        )
+        val interfaceRegistry = interfaceRegistryWith(
+            "com.example.PollsRepository" to listOf("com.example.PollsRepositoryImpl"),
+        )
+        val config = TestCouplingConfig(ports = Regex(".*Repository"))
+
+        val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, config)
+
+        val verdict = result.verdictFor(ClassName("com.example.PollsRepositoryDatabaseTest"))
+        assertEquals(TestCouplingVerdict.ADAPTER_TEST, verdict)
+    }
+
     // --- Test helpers ---
 
     private fun callGraphWithSourceSets(

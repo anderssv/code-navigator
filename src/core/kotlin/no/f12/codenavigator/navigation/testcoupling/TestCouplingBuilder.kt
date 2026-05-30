@@ -22,6 +22,7 @@ data class TestCouplingResult(
     val violations: List<TestCouplingViolation>,
     val testClassNonPortCalls: Map<ClassName, Int>,
     val portImplementors: Set<ClassName> = emptySet(),
+    val portInterfaces: Set<ClassName> = emptySet(),
     val testClassCallTargets: Map<ClassName, Map<ClassName, Int>> = emptyMap(),
 ) {
     fun verdictFor(testClass: ClassName): TestCouplingVerdict {
@@ -49,8 +50,15 @@ data class TestCouplingResult(
         val totalCalls = targets.values.sum()
         val primaryTarget = targets.maxByOrNull { it.value }?.key ?: return false
         val primaryCalls = targets[primaryTarget] ?: 0
-        // Primary target must be a port implementor AND account for majority of calls
-        return primaryTarget in portImplementors && primaryCalls * 2 > totalCalls
+
+        // For port implementors: majority of calls is enough
+        if (primaryTarget in portImplementors && primaryCalls * 2 > totalCalls) return true
+
+        // For port interfaces: must be the dominant target with multiple calls
+        // (a single call to a port is more likely a violation than an adapter test)
+        if (primaryTarget in portInterfaces && primaryCalls * 2 > totalCalls && primaryCalls >= 3) return true
+
+        return false
     }
 }
 
@@ -109,6 +117,7 @@ object TestCouplingBuilder {
             violations = violations,
             testClassNonPortCalls = nonPortCalls,
             portImplementors = portImplementors,
+            portInterfaces = portInterfaces,
             testClassCallTargets = testClassCallTargets,
         )
     }
@@ -118,6 +127,9 @@ object TestCouplingBuilder {
         portMethods: Map<ClassName, Set<String>>,
         interfaceRegistry: InterfaceRegistry,
     ): ClassName? {
+        // Constructors and static initializers are never behavioral port calls
+        if (callee.methodName == "<init>" || callee.methodName == "<clinit>") return null
+
         // Direct call to the port interface itself
         portMethods[callee.className]?.let { methods ->
             if (callee.methodName in methods) return callee.className
