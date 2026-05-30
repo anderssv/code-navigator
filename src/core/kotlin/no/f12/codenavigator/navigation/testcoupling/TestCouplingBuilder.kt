@@ -90,11 +90,13 @@ object TestCouplingBuilder {
 
         callGraph.forEachEdge { caller, callee ->
             if (callGraph.sourceSetOf(caller.className) != SourceSet.TEST) return@forEachEdge
-            if (config.exclude != null && config.exclude.containsMatchIn(caller.className.value)) return@forEachEdge
+            val effectiveTestClass = outerClassName(caller.className)
+            if (!callGraph.hasTestAnnotations(effectiveTestClass)) return@forEachEdge
+            if (config.exclude != null && config.exclude.containsMatchIn(effectiveTestClass.value)) return@forEachEdge
 
-            // Track all call targets per test class
+            // Track all call targets per (outer) test class
             testClassCallTargets
-                .getOrPut(caller.className) { mutableMapOf() }
+                .getOrPut(effectiveTestClass) { mutableMapOf() }
                 .merge(callee.className, 1) { a, b -> a + b }
 
             val portInterface = resolvePortInterface(callee, portMethods, interfaceRegistry)
@@ -102,14 +104,14 @@ object TestCouplingBuilder {
             if (portInterface != null) {
                 violations.add(
                     TestCouplingViolation(
-                        testClass = caller.className,
+                        testClass = effectiveTestClass,
                         testMethod = caller.methodName,
                         portInterface = portInterface,
                         portMethod = callee,
                     )
                 )
             } else {
-                nonPortCalls[caller.className] = (nonPortCalls[caller.className] ?: 0) + 1
+                nonPortCalls[effectiveTestClass] = (nonPortCalls[effectiveTestClass] ?: 0) + 1
             }
         }
 
@@ -142,5 +144,11 @@ object TestCouplingBuilder {
         }
 
         return null
+    }
+
+    private fun outerClassName(className: ClassName): ClassName {
+        val name = className.value
+        val dollarIndex = name.indexOf('$')
+        return if (dollarIndex > 0) ClassName(name.substring(0, dollarIndex)) else className
     }
 }

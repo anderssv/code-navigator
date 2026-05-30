@@ -28,6 +28,7 @@ class CallGraph(
     private val lineNumbers: Map<MethodRef, Int> = emptyMap(),
     private val sourceSets: Map<ClassName, SourceSet> = emptyMap(),
     private val declaredMethods: Map<ClassName, Set<String>> = emptyMap(),
+    private val testAnnotatedClasses: Set<ClassName> = emptySet(),
 ) {
     private val calleeToCallers: Map<MethodRef, Set<MethodRef>> by lazy {
         val inverted = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
@@ -149,6 +150,8 @@ class CallGraph(
 
     fun allDeclaredMethods(): Map<ClassName, Set<String>> = declaredMethods
 
+    fun hasTestAnnotations(className: ClassName): Boolean = className in testAnnotatedClasses
+
     fun forEachDeclaredMethod(action: (className: ClassName, methods: Set<String>) -> Unit) {
         declaredMethods.forEach { (className, methods) -> action(className, methods) }
     }
@@ -164,6 +167,7 @@ object CallGraphBuilder {
         val lineNumbers = mutableMapOf<MethodRef, Int>()
         val sourceSets = mutableMapOf<ClassName, SourceSet>()
         val declaredMethods = mutableMapOf<ClassName, MutableSet<String>>()
+        val testAnnotatedClasses = mutableSetOf<ClassName>()
         val skipped = mutableListOf<UnsupportedBytecodeVersionException>()
 
         taggedDirectories
@@ -173,7 +177,7 @@ object CallGraphBuilder {
                     .filter { it.isFile && it.extension == "class" }
                     .forEach { classFile ->
                         try {
-                            val classNames = extractCalls(classFile, callerToCallees, sourceFiles, lineNumbers, declaredMethods)
+                            val classNames = extractCalls(classFile, callerToCallees, sourceFiles, lineNumbers, declaredMethods, testAnnotatedClasses)
                             classNames.forEach { className -> sourceSets[className] = sourceSet }
                         } catch (e: UnsupportedBytecodeVersionException) {
                             skipped.add(e)
@@ -182,7 +186,7 @@ object CallGraphBuilder {
             }
 
         return ScanResult(
-            data = CallGraph(callerToCallees, sourceFiles, lineNumbers, sourceSets, declaredMethods),
+            data = CallGraph(callerToCallees, sourceFiles, lineNumbers, sourceSets, declaredMethods, testAnnotatedClasses),
             skippedFiles = skipped,
         )
     }
@@ -193,6 +197,7 @@ object CallGraphBuilder {
         sourceFiles: MutableMap<ClassName, String>,
         lineNumbers: MutableMap<MethodRef, Int>,
         declaredMethods: MutableMap<ClassName, MutableSet<String>>,
+        testAnnotatedClasses: MutableSet<ClassName>,
     ): List<ClassName> {
         val reader = createClassReader(classFile)
         var ownerClassName = ClassName("")
@@ -230,6 +235,13 @@ object CallGraphBuilder {
 
                     return object : MethodVisitor(Opcodes.ASM9) {
                         private var firstLineNumber: Int? = null
+
+                        override fun visitAnnotation(descriptor: String, visible: Boolean): org.objectweb.asm.AnnotationVisitor? {
+                            if (isTestAnnotation(descriptor)) {
+                                testAnnotatedClasses.add(ownerClassName)
+                            }
+                            return null
+                        }
 
                         override fun visitLineNumber(line: Int, start: org.objectweb.asm.Label) {
                             if (firstLineNumber == null) {
@@ -295,4 +307,14 @@ object CallGraphBuilder {
         )
         return discoveredClasses
     }
+
+    private val TEST_ANNOTATION_DESCRIPTORS = setOf(
+        "Lorg/junit/Test;",
+        "Lorg/junit/jupiter/api/Test;",
+        "Lkotlin/test/Test;",
+        "Lorg/testng/annotations/Test;",
+    )
+
+    private fun isTestAnnotation(descriptor: String): Boolean =
+        descriptor in TEST_ANNOTATION_DESCRIPTORS
 }

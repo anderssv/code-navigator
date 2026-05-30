@@ -331,12 +331,76 @@ class TestCouplingBuilderTest {
         assertEquals(TestCouplingVerdict.ADAPTER_TEST, verdict)
     }
 
+    // [TEST] Inner class lambdas are aggregated with outer class for verdict
+    @Test
+    fun innerClassLambdasAggregatedWithOuterClassForVerdict() {
+        // RAClientTest$testReissue$1 calls RAClient.reissue — should be seen as part of RAClientTest
+        val graph = callGraphWithSourceSets(
+            edges = listOf(
+                method("com.example.RAClientTest\$testReissue\$1", "invokeSuspend") to method("com.example.RAClient", "reissue"),
+                method("com.example.RAClientTest\$testGetInfo\$1", "invokeSuspend") to method("com.example.RAClient", "getInfo"),
+                method("com.example.RAClientTest\$testUnblock\$1", "invokeSuspend") to method("com.example.RAClient", "unblock"),
+                method("com.example.RAClientTest", "setup") to method("com.example.TestUtils", "createConfig"),
+            ),
+            testClasses = setOf(
+                "com.example.RAClientTest\$testReissue\$1",
+                "com.example.RAClientTest\$testGetInfo\$1",
+                "com.example.RAClientTest\$testUnblock\$1",
+                "com.example.RAClientTest",
+            ),
+            declaredMethods = mapOf(
+                ClassName("com.example.RAClient") to setOf("reissue", "getInfo", "unblock"),
+            ),
+        )
+        val interfaceRegistry = interfaceRegistryWith(
+            "com.example.RAClient" to listOf("com.example.RAClientImpl"),
+        )
+        val config = TestCouplingConfig(ports = Regex(".*Client"))
+
+        val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, config)
+
+        // Inner class violations should be aggregated to outer class
+        val outerVerdict = result.verdictFor(ClassName("com.example.RAClientTest"))
+        assertEquals(TestCouplingVerdict.ADAPTER_TEST, outerVerdict)
+        // Inner classes should not appear separately in violations
+        val innerViolations = result.violations.filter { it.testClass.value.contains("\$") }
+        assertEquals(0, innerViolations.size)
+    }
+
+    // [TEST] Non-test classes (no @Test annotations) are excluded from results
+    @Test
+    fun nonTestClassesAreExcludedFromResults() {
+        val graph = callGraphWithSourceSets(
+            edges = listOf(
+                method("com.example.RAClientFake", "addResult") to method("com.example.RAClient", "reissue"),
+                method("com.example.TestExtensionsKt", "asErrResult") to method("com.example.RAClient", "getInfo"),
+                method("com.example.TestUtils", "setup") to method("com.example.RAClient", "unblock"),
+                method("com.example.SearchServiceTest", "testSearch") to method("com.example.RAClient", "getInfo"),
+            ),
+            testClasses = setOf("com.example.RAClientFake", "com.example.TestExtensionsKt", "com.example.TestUtils", "com.example.SearchServiceTest"),
+            declaredMethods = mapOf(
+                ClassName("com.example.RAClient") to setOf("reissue", "getInfo", "unblock"),
+            ),
+            testAnnotatedClasses = setOf("com.example.SearchServiceTest"),
+        )
+        val interfaceRegistry = interfaceRegistryWith(
+            "com.example.RAClient" to listOf("com.example.RAClientImpl"),
+        )
+        val config = TestCouplingConfig(ports = Regex(".*Client"))
+
+        val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, config)
+
+        val violatingClasses = result.violations.map { it.testClass.value }.distinct()
+        assertEquals(listOf("com.example.SearchServiceTest"), violatingClasses)
+    }
+
     // --- Test helpers ---
 
     private fun callGraphWithSourceSets(
         edges: List<Pair<MethodRef, MethodRef>>,
         testClasses: Set<String>,
         declaredMethods: Map<ClassName, Set<String>> = emptyMap(),
+        testAnnotatedClasses: Set<String>? = null,
     ): CallGraph {
         val callerToCallees = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
         val sourceFiles = mutableMapOf<ClassName, String>()
@@ -353,7 +417,8 @@ class TestCouplingBuilderTest {
             sourceSets[cn] = if (cls in testClasses) SourceSet.TEST else SourceSet.MAIN
         }
 
-        return CallGraph(callerToCallees, sourceFiles, sourceSets = sourceSets, declaredMethods = declaredMethods)
+        val annotated = (testAnnotatedClasses ?: testClasses).map { ClassName(it) }.toSet()
+        return CallGraph(callerToCallees, sourceFiles, sourceSets = sourceSets, declaredMethods = declaredMethods, testAnnotatedClasses = annotated)
     }
 
     private fun interfaceRegistryWith(vararg entries: Pair<String, List<String>>): InterfaceRegistry {
