@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.87
+
+- **New:** `cnavAgentHelp -Ptopic=<name>` — philosophy-specific guidance for AI agents. Topics: `hexagonal` (rings, layer-check, strength, cycles), `tttd` (test-coupling violations), `fakes` (missing fakes, mock replacement), `manual-di` (framework DI migration). Each topic covers philosophy, supporting tasks, result interpretation, and fix actions.
+
 ## 0.1.86
 
 - **New:** `cnavReport` — consolidated codebase health report running metrics, cycles, rings, move-suggest, cohesion, and dead code in a single pass. Produces a sectioned overview for quick assessment.
