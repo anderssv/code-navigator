@@ -104,7 +104,8 @@ class MoveClassFormatterTest {
         assertTrue(output.contains("move-class"), "Should contain move-class. Output:\n$output")
         assertTrue(output.contains("UserService"), "Should mention class. Output:\n$output")
         assertTrue(output.contains("preview"), "Should mention mode. Output:\n$output")
-        assertTrue(output.contains("lines="), "Should show line counts. Output:\n$output")
+        assertTrue(output.contains("--- a/"), "Should show unified diff headers. Output:\n$output")
+        assertTrue(output.contains("+++ b/"), "Should show unified diff headers. Output:\n$output")
     }
 
     @Test

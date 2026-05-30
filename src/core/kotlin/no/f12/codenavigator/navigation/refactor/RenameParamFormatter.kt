@@ -75,14 +75,16 @@ object RenameParamFormatter {
         if (result.changes.isEmpty()) return "No changes needed."
 
         val mode = if (config.preview) "preview" else "applied"
-        val header = "rename-param ${config.paramName} -> ${config.newName} in ${config.className}.${config.methodName} ($mode)"
+        val header = "rename-param ${config.paramName} -> ${config.newName} in ${config.className}.${config.methodName} ($mode, ${result.changes.size} file${if (result.changes.size != 1) "s" else ""})"
 
         return buildString {
             appendLine(header)
+            appendLine()
             for (change in result.changes) {
-                val fileName = change.filePath.substringAfterLast("/")
-                val changedLineCount = computeDiff(change.before, change.after).size
-                appendLine("  $fileName name -> ${config.newName} lines=$changedLineCount")
+                val diff = computeUnifiedDiff(change.filePath, change.before, change.after)
+                if (diff.isNotEmpty()) {
+                    appendLine(diff)
+                }
             }
             for (warning in result.warnings) {
                 appendLine(warning)

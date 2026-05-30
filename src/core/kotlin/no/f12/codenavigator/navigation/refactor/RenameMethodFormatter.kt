@@ -55,14 +55,16 @@ object RenameMethodFormatter {
         if (result.changes.isEmpty()) return "No changes needed."
 
         val mode = if (config.preview) "preview" else "applied"
-        val header = "rename-method ${config.methodName} -> ${config.newName} in ${config.className} ($mode)"
+        val header = "rename-method ${config.methodName} -> ${config.newName} in ${config.className} ($mode, ${result.changes.size} file${if (result.changes.size != 1) "s" else ""})"
 
         return buildString {
             appendLine(header)
+            appendLine()
             for (change in result.changes) {
-                val fileName = change.filePath.substringAfterLast("/")
-                val changedLineCount = computeDiff(change.before, change.after).size
-                appendLine("  $fileName ${config.methodName} -> ${config.newName} lines=$changedLineCount")
+                val diff = computeUnifiedDiff(change.filePath, change.before, change.after)
+                if (diff.isNotEmpty()) {
+                    appendLine(diff)
+                }
             }
             if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)
