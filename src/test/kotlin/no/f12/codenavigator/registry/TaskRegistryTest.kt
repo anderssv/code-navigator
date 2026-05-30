@@ -1037,6 +1037,7 @@ class TaskRegistryTest {
             "raw" to ParamType.FLAG,
             "include-impls" to ParamType.FLAG,
             "ports" to ParamType.STRING,
+            "topic" to ParamType.STRING,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }

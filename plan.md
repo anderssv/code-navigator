@@ -475,6 +475,16 @@ From user feedback (v0.38): the user had to mentally cross-reference 6 separate 
 
 Single task runs metrics, cycles, rings, move-suggest, cohesion, and dead code, producing sectioned output. Both Gradle and Maven.
 
+### ~~`cnavAgentHelp -Ptopic=<name>` — philosophy-specific guidance~~ — DONE (v0.1.87)
+
+**Value: high** | **Effort: low**
+
+Added `-Ptopic=` parameter to `cnavAgentHelp` for on-demand philosophy guidance. Each topic explains: the philosophy (2-3 sentences), which cnav tasks support it, how to interpret results toward that goal, and concrete actions when violations are found.
+
+Topics: `hexagonal` (rings, layer-check, strength, cycles), `tttd` (test-coupling), `fakes` (find-interfaces, test-coupling), `manual-di` (annotations, find-usages, rings, find-interfaces).
+
+Design principle: a topic exists only if cnav has tasks that actively detect violations or measure progress. Skills teach portable philosophy; topics teach how to use cnav to enforce it on a specific codebase.
+
 ### Per-package health dashboard — `[Balanced Coupling]`
 
 **Value: medium** | **Effort: medium**

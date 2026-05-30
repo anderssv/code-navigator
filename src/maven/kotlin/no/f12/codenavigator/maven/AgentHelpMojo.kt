@@ -12,7 +12,10 @@ class AgentHelpMojo : AbstractMojo() {
     @Parameter(property = "section")
     private var section: String? = null
 
+    @Parameter(property = "topic")
+    private var topic: String? = null
+
     override fun execute() {
-        println(AgentHelpText.generate(BuildTool.MAVEN, section))
+        println(AgentHelpText.generate(BuildTool.MAVEN, section, topic))
     }
 }

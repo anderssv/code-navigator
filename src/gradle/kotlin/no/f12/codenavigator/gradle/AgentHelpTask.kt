@@ -12,6 +12,7 @@ abstract class AgentHelpTask : DefaultTask() {
     @TaskAction
     fun showAgentHelp() {
         val section = project.findProperty("section")?.toString()
-        logger.lifecycle(AgentHelpText.generate(BuildTool.GRADLE, section))
+        val topic = project.findProperty("topic")?.toString()
+        logger.lifecycle(AgentHelpText.generate(BuildTool.GRADLE, section, topic))
     }
 }

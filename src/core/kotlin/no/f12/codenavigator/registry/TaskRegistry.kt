@@ -235,6 +235,7 @@ object TaskRegistry {
     val MAX_CHANGESET_SIZE = ParamDef("max-changeset-size", "<N>", "Skip commits touching more files", flag = false, defaultValue = "30", enhancePattern = false, type = ParamType.INT)
     val METRICS_TOP = ParamDef("top", "<N>", "Max results per section", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
     val SECTION = ParamDef("section", "<name>", "Help section: install, workflow, interpretation, schemas, extraction", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val TOPIC = ParamDef("topic", "<name>", "Philosophy topic: hexagonal, tttd, fakes, manual-di", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val JAR = ParamDef("jar", "<path-or-artifact>", "Scan a JAR file instead of project classes. Value: file path or artifact coordinate (group:name)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val REF = ParamDef("ref", "<git-ref>", "Git ref to compare against (branch, tag, or commit SHA)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val STRING_PATTERN = ParamDef("pattern", "<regex>", "Regex to match against string constant values", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -581,7 +582,7 @@ object TaskRegistry {
     val AGENT_HELP = TaskDef(
         goal = "agent-help",
         description = "Show workflow guidance for AI coding agents",
-        params = listOf(SECTION),
+        params = listOf(SECTION, TOPIC),
         requiresCompilation = false,
         category = TaskCategory.HELP,
         examples = listOf(
