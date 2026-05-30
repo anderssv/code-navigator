@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.89
+
+- **New:** `cnavSuggestStructure` — groups misplaced classes by target package, showing structural reorganization opportunities and computing a drift score (% of classes clustering outside their package).
+- **New:** `cnavMoveFile` — moves a Kotlin source file to a new package by relative path (`-Pfrom-file=<path> -Pto-package=<pkg>`), updating all class and top-level declaration references in consumers. Handles multi-class files, Kt facade files, and mixed declarations.
+- **Improved:** `cnavMoveClass` now handles classes living in files not named after them (e.g., secondary classes in multi-class files). Falls back to content-based search when filename doesn't match class name. When the file has multiple classes, all are moved together as a unit.
+- **Improved:** `cnavMoveClass` now warns when the target file already exists, suggesting manual merge instead of silently overwriting.
+- **Fixed:** `cnavMoveClass` — consumer imports of top-level declarations (val/fun) co-located with a named class are now updated when moving the class.
+- **Internal:** Fixed build warnings (Kotlin 2.2.0 in test-project, toolchain repositories, duplicate Maven source roots).
+
 ## 0.1.88
 
 - **Improved:** Refactoring tasks (rename-method, rename-property, rename-param, move-class) now show full unified diff in LLM format output instead of one-line change summaries.

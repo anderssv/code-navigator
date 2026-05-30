@@ -15,6 +15,9 @@ import java.io.File
 @Execute(phase = LifecyclePhase.COMPILE)
 class SuggestStructureMojo : AbstractMojo() {
 
+    @Parameter(defaultValue = "\${project}", readonly = true, required = true)
+    private lateinit var project: org.apache.maven.project.MavenProject
+
     @Parameter(property = "format")
     private var format: String? = null
 

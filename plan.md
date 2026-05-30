@@ -9,41 +9,23 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 Related improvements to class and file moving. Ordered by dependency.
 
-### `cnavMoveClass` / `cnavRenameClass`: handle files with multiple class declarations
+### ~~`cnavMoveClass` / `cnavRenameClass`: handle files with multiple class declarations~~ — DONE (v0.1.89)
 
 **Value: high** | **Effort: medium**
 
-When a Kotlin file contains multiple class declarations (e.g., a sealed class hierarchy, or a class with closely related types), `cnavMoveClass` currently only handles the single class specified in `-Pfrom`. The other classes in the file are left behind or not updated correctly.
+When a class lives in a file not named after it (multi-class file), the rewriter now falls back to content-based search. When the file contains multiple class declarations, all classes are moved together as a unit with consumer imports updated for each class.
 
-Scenarios to handle:
-- **Moving one class out of a multi-class file**: Should the other classes stay? Should the file be split? What happens to imports that referenced both classes?
-- **Renaming a class in a multi-class file**: Other classes in the same file may reference the renamed class by simple name (no import needed since they're in the same file). These references need updating.
-- **File naming**: Kotlin convention is that a file with a single public class is named after that class. If a class is moved out, should the remaining file be renamed?
-
-Needs investigation to determine the right behavior for each scenario before implementation.
-
-### `cnavMoveFile` — file-level move for Kotlin files with mixed declarations
+### ~~`cnavMoveFile` — file-level move for Kotlin files with mixed declarations~~ — DONE (v0.1.89)
 
 **Value: high** | **Effort: medium**
 
-From field test: a common Kotlin pattern is a `.kt` file containing a class plus top-level functions/properties. Currently you'd need to run `cnavMoveClass` for the class and then manually handle the top-level declarations. A file-level move command would handle both in one operation.
+New `cnavMoveFile` task moves a Kotlin source file to a new package by relative path (`-Pfrom-file=<path> -Pto-package=<pkg>`). Handles multi-class files, Kt facade files, and mixed declaration files. Gradle task, Maven mojo, formatter, and help text all wired.
 
-- **Parameters**: `-Pfrom-file=<relative-path>` (e.g., `src/main/kotlin/com/example/Metrics.kt`), `-Pto-package=<package>` (target package).
-- **Behavior**: Move the file, update package declaration, run `ChangeType` for every class in the file AND the `*Kt` facade class, rewrite imports in all consumer files.
-- **Relates to**: Top-level declaration handling and multi-class file handling above. Could subsume both if designed as the primary move mechanism, with `cnavMoveClass` as the single-class shorthand.
-
-### `cnavMoveClass`: no support for merging into an existing file
+### ~~`cnavMoveClass`: no support for merging into an existing file~~ — DONE (v0.1.89)
 
 **Value: medium** | **Effort: high**
 
-From field test: moving `CryptoProvider` object to `selvbetjening.di` package failed because `CryptoProvider.kt` already existed in the target package (containing a `createCryptoProvider()` function that called the object being moved). `cnavMoveClass` only creates new files — it has no concept of merging a class into an existing file.
-
-This is an inherently complex operation:
-- Import deduplication between the moved class and the existing file.
-- Handling conflicts (e.g., both files define a class with the same name).
-- Deciding placement within the target file.
-
-May not be worth automating — manual merge with cnav handling the reference updates could be the pragmatic answer. Consider adding detection: if the target file already exists, warn and suggest manual merge rather than silently failing or overwriting.
+Detection approach: when the target file already exists, the result includes a warning suggesting manual merge. Full automated merge deferred as too complex for marginal benefit.
 
 ---
 
