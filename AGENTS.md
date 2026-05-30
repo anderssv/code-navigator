@@ -130,4 +130,6 @@ Requires GPG key + Sonatype credentials in `~/.m2/settings.xml` (server id `cent
 
 ## Plan Management
 
-`plan.md` → active roadmap. When a feature is done, move its section to `plan-completed.md`.
+`plan.md` → active roadmap. `plan-completed.md` → archive of finished work.
+
+When a feature is done, mark it with `~~` strikethrough and `— DONE (vX.Y.Z)` in the heading, then move the section to `plan-completed.md`. Periodically batch-move all completed sections to keep `plan.md` focused on remaining work.
