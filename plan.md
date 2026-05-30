@@ -1019,3 +1019,40 @@ Extract a code block into a new function, or inline a function's body into its c
 1. **Extract interface** — high value for architecture improvement workflows, but more complex.
 2. **Change signature** — medium value, complex parameter manipulation.
 3. **Extract function** — low priority, IDEs handle this well already.
+
+---
+
+## Agent workflow improvements
+
+### Unified diff output for refactoring tasks
+
+**Value: high** | **Effort: low**
+
+Add `-Pformat=diff` (or similar) to refactoring tasks (`cnavMoveClass`, `cnavRenameMethod`, `cnavRenameProperty`, `cnavRenameParam`) that outputs standard unified diff format to stdout instead of writing to disk. Allows agents to verify changes before applying, or pipe through their own patch-apply workflow.
+
+Currently `-Ppreview` shows diffs in a custom format. This would standardize to `git diff` format for tool interop.
+
+### CI fail-on-violation mode
+
+**Value: high** | **Effort: low**
+
+Allow `cnavLayerCheck`, `cnavCycles`, and `cnavCohesion` to fail the build (non-zero exit code) when violations exceed a threshold. Transforms cnav from an exploration tool into an enforcement tool that blocks architectural decay in CI.
+
+- `-Pfail-on-violation=true` for `cnavLayerCheck` (any OUTWARD violation fails)
+- `-Pmax-cycles=0` for `cnavCycles` (fail if cycle count exceeds N)
+- Possible: `-Pmax-danger=0` for `cnavBalance` (fail if any DANGER verdict)
+
+---
+
+## Behavioral + structural fusion
+
+### Port volatility lockstep detector
+
+**Value: medium** | **Effort: medium**
+
+Cross-reference `cnavInterfaces` with `cnavVolatility`. If a port interface changes as frequently as its adapter implementation, the abstraction isn't stable — it's leaking implementation concerns upward.
+
+- **Input**: Port pattern (e.g. `.*Repository|.*Client`), git history window
+- **Builder**: For each interface, find implementors. Compare file-level change frequency (revisions, churn) between interface and implementor files. Flag pairs where the interface changes at >50% the rate of the implementor.
+- **Output**: Per-port report: interface revisions vs implementor revisions, lockstep percentage, verdict (STABLE / LEAKY)
+- **Why**: A stable port should rarely change. If it changes every time the adapter changes, the boundary isn't providing value. Suggests the interface needs to be more abstract or the adapter is doing work that belongs in the domain.
