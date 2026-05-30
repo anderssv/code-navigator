@@ -5,28 +5,6 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
-## MoveClass / file operations
-
-Related improvements to class and file moving. Ordered by dependency.
-
-### ~~`cnavMoveClass` / `cnavRenameClass`: handle files with multiple class declarations~~ — DONE (v0.1.89)
-
-**Value: high** | **Effort: medium**
-
-When a class lives in a file not named after it (multi-class file), the rewriter now falls back to content-based search. When the file contains multiple class declarations, all classes are moved together as a unit with consumer imports updated for each class.
-
-### ~~`cnavMoveFile` — file-level move for Kotlin files with mixed declarations~~ — DONE (v0.1.89)
-
-**Value: high** | **Effort: medium**
-
-New `cnavMoveFile` task moves a Kotlin source file to a new package by relative path (`-Pfrom-file=<path> -Pto-package=<pkg>`). Handles multi-class files, Kt facade files, and mixed declaration files. Gradle task, Maven mojo, formatter, and help text all wired.
-
-### ~~`cnavMoveClass`: no support for merging into an existing file~~ — DONE (v0.1.89)
-
-**Value: medium** | **Effort: high**
-
-Detection approach: when the target file already exists, the result includes a warning suggesting manual merge. Full automated merge deferred as too complex for marginal benefit.
-
 ---
 
 ## cnavLayerCheck: concentric ring / hexagonal architecture support
@@ -316,12 +294,6 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 ---
 
 ## Standalone new tasks
-
-### ~~`cnavSuggestStructure` — cluster analysis~~ — DONE (v0.1.89)
-
-**Value: high** | **Effort: high**
-
-Implemented as a simpler grouping approach: groups `cnavMoveSuggest` results by target package, filters by min-group-size, computes structural drift score. Full community detection deferred. StructureGrouper, StructureFormatter, SuggestStructureOrchestrator, Gradle task, Maven mojo all wired.
 
 ### `cnavTestHealth` — verify all test methods actually ran
 

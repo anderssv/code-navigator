@@ -1,5 +1,23 @@
 # Plan — Completed
 
+## ~~MoveClass / file operations~~ — DONE (v0.1.89)
+
+### `cnavMoveClass`: handle files with multiple class declarations
+
+When a class lives in a file not named after it (multi-class file), the rewriter falls back to content-based search. When the file contains multiple class declarations, all classes are moved together as a unit with consumer imports updated for each class.
+
+### `cnavMoveFile` — file-level move for Kotlin files with mixed declarations
+
+New `cnavMoveFile` task moves a Kotlin source file to a new package by relative path (`-Pfrom-file=<path> -Pto-package=<pkg>`). Handles multi-class files, Kt facade files, and mixed declaration files. Gradle task, Maven mojo, formatter, and help text all wired.
+
+### `cnavMoveClass`: merge detection (target file exists)
+
+Detection approach: when the target file already exists, the result includes a warning suggesting manual merge. Full automated merge deferred as too complex for marginal benefit.
+
+## ~~`cnavSuggestStructure` — cluster analysis~~ — DONE (v0.1.89)
+
+Implemented as a simpler grouping approach: groups `cnavMoveSuggest` results by target package, filters by min-group-size, computes structural drift score. Full community detection deferred. StructureGrouper, StructureFormatter, SuggestStructureOrchestrator, Gradle task, Maven mojo all wired.
+
 ## ~~`cnavFindUsages` summary mode — group by file~~ DONE
 
 Added `-Pgroup-by=file` parameter that collapses results to one line per source file with a reference count. Motivated by user feedback that `cnavFindUsages -Ptype=SignatureContext` returned 40+ lines of data class boilerplate (`copy`, `copy$default`, `componentN`, `getSignatureContext`, field refs) when the user really wanted to know which files reference the type.
