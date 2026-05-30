@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.88
+
+- **Improved:** Refactoring tasks (rename-method, rename-property, rename-param, move-class) now show full unified diff in LLM format output instead of one-line change summaries.
+- **New:** `format=diff` — raw unified diff output (no markers, no headers) for refactoring tasks. Without `-Ppreview`, changes are applied AND the diff is returned so the agent knows the file state without re-reading.
+
 ## 0.1.87
 
 - **New:** `cnavAgentHelp -Ptopic=<name>` — philosophy-specific guidance for AI agents. Topics: `hexagonal` (rings, layer-check, strength, cycles), `tttd` (test-coupling violations), `fakes` (missing fakes, mock replacement), `manual-di` (framework DI migration). Each topic covers philosophy, supporting tasks, result interpretation, and fix actions.
