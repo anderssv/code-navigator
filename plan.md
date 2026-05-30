@@ -164,43 +164,29 @@ Currently `cnavRings` treats all packages at the same ring level uniformly. Addi
 
 Reduce false positives from structural patterns that look like misplacement but are intentional.
 
-### Suppress composition root / DI container suggestions
+### ~~Suppress composition root / DI container suggestions~~ — DONE (v0.1.82)
 
 **Value: high** | **Effort: low**
 
-From field test: `cnavMoveSuggest` suggested moving `AppDependencies` → `polls` and `ApplicationDependencyContext` → `polls` because the context package has many edges to polls. A DI container will *always* have high fan-out to the things it wires — that's its job.
+Composition roots are detected by name patterns (`*Context`, `*Module`, `*Application*`, `*Wiring*`, `*Dependencies*`) and by fan-out heuristic (edges to 5+ distinct packages). Both suppress the class from suggestions.
 
-- **Detection heuristic**: Classes with high fan-out to many distinct packages (e.g., edges to 5+ packages) are likely composition roots, not misplaced classes. Suppress or flag as "composition root pattern".
-- Could also use naming heuristic: `*Context`, `*Module`, `*Application*`, `*Wiring*`.
-
-### Suppress route handler → domain service suggestions
+### ~~Suppress route handler → domain service suggestions~~ — DONE (v0.1.82)
 
 **Value: medium** | **Effort: low**
 
-From field test: suggested `TransferRoutesKt` → `auth` because it calls 3 auth functions. But routes are driving adapters that *use* domain services — that's hexagonal by design. A route calling auth services doesn't mean it belongs in auth.
+Driver patterns (`*Routes*`, `*Controller*`, `*Endpoint*`, `*Handler*`) are suppressed from suggestions since they're expected to call domain services.
 
-- **Detection heuristic**: Classes matching `*Routes*`, `*Controller*`, `*Endpoint*`, `*Handler*` are drivers. They're expected to have edges to domain/service packages. Suppress suggestions that would move a driver into a domain package.
-
-### Confidence should consider callers, not just callees
+### ~~Confidence should consider callers, not just callees~~ — DONE (v0.1.82)
 
 **Value: medium** | **Effort: medium**
 
-From field test: confidence=1.0 when `own=0` just means "this class has no edges to its own package". But for thin packages (2-3 classes with distinct responsibilities), that's expected and intentional.
+`callersFromSamePackage` is now factored into the confidence denominator. Classes heavily used by their own package get lower confidence scores.
 
-A class might have zero edges to siblings but many *callers* from its own package. Current confidence only looks at outgoing edges. Including incoming edges (who calls this class, and are those callers in the current package?) would reduce false positives for thin feature packages.
-
-- **Approach**: Factor in fan-in from same package. If the class is called by siblings, it likely belongs where it is despite having no outgoing same-package edges.
-
-### Account for self-package dependencies when suggesting moves
+### ~~Account for self-package dependencies when suggesting moves~~ — DONE (v0.1.82)
 
 **Value: high** | **Effort: low**
 
-From self-review (v0.1.83): `cnavMoveSuggest` suggested moving `DsmOutputFormatter` from `formatting` to `navigation.dsm` with confidence=1.0 (own=0, target=13). But `DsmOutputFormatter` references `JsonFormatter`, `LlmFormatter`, and `OutputWrapper` — all in its own `formatting` package. These self-package references aren't counted as "own edges" because the current algorithm only counts edges to *other* classes in the same package, not edges to classes the suggested class depends on within its package.
-
-Moving it would create a cycle (`navigation.dsm` → `formatting`), making the suggestion actively harmful.
-
-- **Fix**: Count edges the class has TO its own package's classes (not just FROM). If a class depends heavily on its current package's collaborators, suppress or reduce confidence even if it has no edges to sibling classes that depend on it.
-- **Display**: Show "depends-on-own=N" alongside "own=N" (which means "siblings-that-depend-on-me=N").
+`edgesToOwn` counts outgoing edges to own-package classes. Combined with `callersFromSamePackage` and `isFeatureSliceMember` checks, classes that depend on their package's collaborators are no longer falsely suggested for moves.
 
 ### Symbol-level move suggestions (intra-file analysis)
 
@@ -291,16 +277,11 @@ The DSM tells you which cycles exist, but not how to fix them. When `-Pcycles=tr
 - **Prerequisite**: Benefits from `cnavWhyDepends` infrastructure — same edge-explanation logic.
 - **Separate from DSM what-if**: What-if simulation is a distinct, higher-effort feature. Evaluate need after cycle fix suggestions ship.
 
-### `scope=prod` support for cycles and rings
+### ~~`scope=prod` support for cycles and rings~~ — DONE (v0.1.86)
 
 **Value: high** | **Effort: low**
 
-From self-review (v0.1.83): `cnavDsm -Pcycles=true` and `cnavRings` both include test class edges, which create false cycles and collapse intentional sub-layering into a single SCC. Code-navigator itself has clear hexagonal layering (types → bytecode → classinfo → callgraph), but test classes create reverse edges that merge everything into one ring.
-
-- `cnavDsm -Pcycles=true -Pscope=prod` — exclude test source set from cycle detection
-- `cnavRings -Pscope=prod` — exclude test edges from SCC analysis
-- **Expected impact**: Code-navigator's ring 1 (22 packages) would likely split into 4-5 distinct rings, revealing the actual layering
-- **Implementation**: Filter `ScanResult` by source set before building the package dependency graph. Both `CycleDetector` and `RingDetector` already receive edges from `DsmDependencyExtractor` — add scope filter there.
+`cnavRings -Pscope=prod` now filters test source set directories before building the dependency graph. `cnavCycles` already had scope support.
 
 ### High violation count warning for `cnavRings`
 
@@ -488,15 +469,11 @@ From user feedback (v0.38): the user had to mentally cross-reference 6 separate 
 - **Parameters**: `-Ptop=20` (default), `-Pformat=llm|json|text`, `-Psince=<git-ref>` (optional time window)
 - **Hybrid task**: Requires both git history and compiled bytecode (for complexity).
 
-### `cnavReport` — consolidated full analysis
+### ~~`cnavReport` — consolidated full analysis~~ — DONE (v0.1.86)
 
 **Value: high** | **Effort: low**
 
-Run all analysis tasks and produce a single consolidated report. `cnavMetrics` already exists for a summary snapshot; `cnavReport` runs everything and outputs all results in one pass.
-
-- **Parameters**: Inherits from constituent tasks. `-Pformat=json` produces a single JSON object with sections per analysis.
-- **Why useful**: Agents often want the full picture. A single task is faster (shared caching, one compilation) and produces a coherent snapshot.
-- **Self-review finding (v0.1.83)**: Reviewing code-navigator itself required running 7 separate tasks and manually synthesizing findings. A single command for "assess this codebase" is the biggest workflow gap.
+Single task runs metrics, cycles, rings, move-suggest, cohesion, and dead code, producing sectioned output. Both Gradle and Maven.
 
 ### Per-package health dashboard — `[Balanced Coupling]`
 
