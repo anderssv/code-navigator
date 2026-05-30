@@ -226,4 +226,37 @@ class RenameMethodRewriterTest {
 
         return tempDir
     }
+
+    @Test
+    fun `renames suspend function declaration`() {
+        val result = RenameMethodRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.routes.UserRoute",
+            methodName = "handleReset",
+            newName = "processReset",
+            preview = true,
+            parsedSources = cachedParsedSources,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Expected changes for suspend function rename")
+        val change = result.changes.first { it.filePath.endsWith("UserRoute.kt") }
+        assertTrue(change.after.contains("processReset"), "Expected renamed suspend function in output")
+        assertTrue(!change.after.contains("fun handleReset"), "Expected old name to be gone from declaration")
+    }
+
+    @Test
+    fun `renames call site of suspend function`() {
+        val result = RenameMethodRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.routes.UserRoute",
+            methodName = "handleReset",
+            newName = "processReset",
+            preview = true,
+            parsedSources = cachedParsedSources,
+        )
+
+        // Check that any callers of handleReset are also updated
+        val allAfter = result.changes.joinToString("\n") { it.after }
+        assertTrue(!allAfter.contains(".handleReset("), "Expected call sites to be renamed")
+    }
 }

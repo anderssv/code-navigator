@@ -49,7 +49,7 @@ object AgentHelpText {
         appendLine()
         appendLine("Find who uses a class: ${u("find-usages", p("type", "ClassName"))}")
         appendLine("Find who calls a method: ${u("find-callers", p("pattern", "methodName"))}")
-        appendLine("Inspect a class (fields, methods, supertypes): ${u("class", p("pattern", "ClassName"))}")
+        appendLine("Inspect a class (fields, methods, supertypes): ${u("class-detail", p("pattern", "ClassName"))}")
         appendLine("Find implementations: ${u("find-interfaces", p("pattern", "InterfaceName"))}")
         appendLine("Move a class: ${u("move-class", p("from", "com.example.Old"), p("to", "com.example.New"))}")
         appendLine("Rename a method: ${u("rename-method", p("target-class", "com.example.Service"), p("method", "old"), p("new-name", "new"))}")

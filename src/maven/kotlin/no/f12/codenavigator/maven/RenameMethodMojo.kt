@@ -64,7 +64,8 @@ class RenameMethodMojo : AbstractMojo() {
 
     private fun noResultsHints(config: RenameMethodConfig): List<String> = buildList {
         add("Ensure the class name is fully qualified (e.g., com.example.MyClass).")
-        add("Check that the method '${config.methodName}' exists in '${config.className}'.")
+        add("Use cnav:class-detail -Dpattern=${config.className.substringAfterLast('.')} to find the FQN if unsure.")
+        add("Check that the method '${config.methodName}' exists in '${config.className}' (use cnav:class-detail to verify).")
         add("Only Kotlin source files (.kt) are searched.")
     }
 
