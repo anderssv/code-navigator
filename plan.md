@@ -5,60 +5,9 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
-## ~~Stale class file warning and drop forced compilation~~ — DONE
-
-`ClassFileStaleness.check()` compares newest source vs class mtime. Warns when stale, errors when no class files. Gradle: removed `dependsOn("classes")`/`dependsOn("testClasses")`. Maven: `checkStaleness()` added to all bytecode mojos (`@Execute` still forces compilation). AgentHelpText updated with staleness guidance.
-
----
-
 ## MoveClass / file operations
 
 Related improvements to class and file moving. Ordered by dependency.
-
-### ~~`cnavMoveClass`: top-level Kotlin declarations not updated when moving a file with a named class~~ — DONE (v0.1.89)
-
-**Value: high** | **Effort: medium**
-
-From field test: moving `Metrics.kt` (which contains class `Metrics` plus top-level `val metricsRegistry`) correctly updated the class and its references, but the top-level `metricsRegistry` property was ignored. Files referencing `no.bankid.selvbetjening.metricsRegistry` still had stale imports after the move.
-
-v0.1.65 added `*Kt` facade class support (when `-Pfrom` ends with `Kt`), but that only handles the case where the *entire file* is top-level declarations. When a file has both a named class and top-level declarations, moving the named class doesn't update the top-level declaration references.
-
-- **Approach**: When moving a class from a file, also detect top-level declarations in the same file and update their `*Kt` facade references in consumer files. May need to run `ChangeType` for both the named class and the `*Kt` facade class in a single operation.
-
-### ~~BUG: `cnavMoveClass`: rewrites imports of sibling classes in the same package~~ — DONE (v0.1.80)
-
-**Value: high** | **Effort: medium**
-
-From field test: moving `CssUtilsKt` from `no.mikill.greitt.css` to `no.mikill.greitt.util`. The file only contains a top-level `buildCssUrl` function. However, the preview also rewrites imports of `LightningCssTransformer` (a separate class in `no.mikill.greitt.css` that is NOT being moved) from `no.mikill.greitt.css.LightningCssTransformer` to `no.mikill.greitt.util.LightningCssTransformer`.
-
-The move operation appears to treat all same-package imports as belonging to the moved class, rather than only rewriting references to the specific class being moved.
-
-- **Approach**: When rewriting imports, only update imports that resolve to the class actually being moved (the `*Kt` facade or named class). Do not touch imports of other classes that happen to share the source package.
-
----
-
-### ~~BUG: `cnavMoveClass` strips same-package imports from the MOVED file itself~~ — DONE (v0.1.83)
-
-**Value: high** | **Effort: medium**
-
-Reopens the "sibling import" bug (marked DONE in v0.1.80). The v0.1.80 fix stopped cnav from rewriting imports in *consumer* files, but the *source file being moved* still loses its sibling imports.
-
-**Reproduction** (greitt project, v0.1.81-SNAPSHOT):
-1. `PollsRepositoryFake` in package `no.mikill.greitt.polls` — implements `PollsRepository`, references `Poll` (same package, no explicit import needed)
-2. Run: `./gradlew cnavMoveClass -Pfrom=no.mikill.greitt.polls.PollsRepositoryFake -Pto=no.mikill.greitt.testutil.PollsRepositoryFake`
-3. Result: the moved file gets `package no.mikill.greitt.testutil` but NO imports added for `Poll`, `PollsRepository` (former same-package classes that now need explicit imports)
-
-Same issue with `DevicesRepositoryFake` (lost `Device`, `DevicesRepository` imports) and `DeviceMother.kt` (lost `Device` import).
-
-**Root cause**: When a class moves to a new package, references to former same-package classes were previously implicit (no import needed). After the move, they're in a different package and need explicit imports. `cnavMoveClass` doesn't add these.
-
-**Expected behavior**: After moving a file to a new package, any unqualified references to classes that were in the OLD package (and are NOT moving with it) should get new import statements added to the moved file.
-
-- **Approach**: After updating the package declaration in the moved file, scan it for unqualified type references. For each one that resolved to a class in the old package (detectable via the call graph / class index), add an explicit import for `oldPackage.ClassName`.
-
-**Additional symptom**: In consumer files that already imported the moved class, cnav sometimes swaps the import path for OTHER imports from the same package. Example: `TestUtils.kt` had `import no.mikill.greitt.auth.Device` and `import no.mikill.greitt.auth.DeviceMotherKt` (via extension `verified`). After moving `DeviceMotherKt` to `testutil`, cnav rewrote it as `import no.mikill.greitt.testutil.Device` (wrong — Device didn't move) and `import no.mikill.greitt.auth.verified` (wrong direction). This is a variant of the original sibling bug in consumer files.
-
----
 
 ### `cnavMoveClass` / `cnavRenameClass`: handle files with multiple class declarations
 
@@ -164,30 +113,6 @@ Currently `cnavRings` treats all packages at the same ring level uniformly. Addi
 
 Reduce false positives from structural patterns that look like misplacement but are intentional.
 
-### ~~Suppress composition root / DI container suggestions~~ — DONE (v0.1.82)
-
-**Value: high** | **Effort: low**
-
-Composition roots are detected by name patterns (`*Context`, `*Module`, `*Application*`, `*Wiring*`, `*Dependencies*`) and by fan-out heuristic (edges to 5+ distinct packages). Both suppress the class from suggestions.
-
-### ~~Suppress route handler → domain service suggestions~~ — DONE (v0.1.82)
-
-**Value: medium** | **Effort: low**
-
-Driver patterns (`*Routes*`, `*Controller*`, `*Endpoint*`, `*Handler*`) are suppressed from suggestions since they're expected to call domain services.
-
-### ~~Confidence should consider callers, not just callees~~ — DONE (v0.1.82)
-
-**Value: medium** | **Effort: medium**
-
-`callersFromSamePackage` is now factored into the confidence denominator. Classes heavily used by their own package get lower confidence scores.
-
-### ~~Account for self-package dependencies when suggesting moves~~ — DONE (v0.1.82)
-
-**Value: high** | **Effort: low**
-
-`edgesToOwn` counts outgoing edges to own-package classes. Combined with `callersFromSamePackage` and `isFeatureSliceMember` checks, classes that depend on their package's collaborators are no longer falsely suggested for moves.
-
 ### Symbol-level move suggestions (intra-file analysis)
 
 **Value: medium** | **Effort: high**
@@ -206,26 +131,6 @@ This is significantly more complex than file-level analysis — requires mapping
 ## Dead code improvements
 
 Related improvements to `cnavDead`. Ordered by dependency — ConfidenceScorer extraction enables the others.
-
-### ~~Extract ConfidenceScorer from DeadCodeFinder~~ — DONE
-
-Confidence scoring logic extracted to `ConfidenceScorer` object. `DeadCodeFinder` delegates to it. Independently testable with `ConfidenceScorerTest`.
-
-### ~~Introduce query/config objects for complex finders~~ — DONE
-
-`DeadCodeQuery` data class bundles 21 parameters. `DeadCodeFinder.find(query)` accepts it. Old overload preserved for backward compatibility.
-
-### ~~Dead class count mismatch between `cnavMetrics` and `cnavDead`~~ — DONE
-
-Extracted `DeadCodeOrchestrator` as single source of truth for dead code scanning. `MetricsTask`/`MetricsMojo` now use `DeadCodeConfig` + `DeadCodeOrchestrator` with same defaults as `DeadCodeTask`. Removed `excludeAnnotated` from `MetricsConfig`. Verified on realworld-springboot: metrics and dead both report 2 dead classes (was 8 vs 2).
-
-### ~~`@ControllerAdvice` not recognized as Spring entry point~~ — DONE
-
-Added `@RestControllerAdvice` to `FrameworkPresets.SPRING` (the actual missing annotation — `@ControllerAdvice` was already present).
-
-### ~~OVER_ENGINEERED false positives for standard domain layer packages~~ — DONE
-
-Nearby packages with MODEL/CONTRACT coupling are now classified as BALANCED (intentional layering) or TOLERABLE (if volatile). The OVER_ENGINEERED verdict is effectively retired. Help text updated.
 
 ### Meta-annotation traversal for dead code filtering
 
@@ -264,10 +169,6 @@ After triaging dead code and removing items, re-run `cnavDead` and see what chan
 
 Related improvements to package dependency analysis. `cnavWhyDepends` is a prerequisite for cycle fix suggestions, which in turn is a prerequisite for what-if simulation.
 
-### ~~`cnavWhyDepends` — dependency edge explanation~~ — DONE
-
-Implemented class-level dependency edge explanation. `WhyDependsBuilder` filters `PackageDependency` list by from/to package, collapses inner classes to top-level via `topLevelClass()`, groups by (source, target) pair with counts. Registered as `why-depends` goal with `from-package` and `to-package` params. Gradle task, Maven mojo, help text, and agent help all updated.
-
 ### Cycle fix suggestions in DSM
 
 **Value: high** | **Effort: medium**
@@ -276,12 +177,6 @@ The DSM tells you which cycles exist, but not how to fix them. When `-Pcycles=tr
 
 - **Prerequisite**: Benefits from `cnavWhyDepends` infrastructure — same edge-explanation logic.
 - **Separate from DSM what-if**: What-if simulation is a distinct, higher-effort feature. Evaluate need after cycle fix suggestions ship.
-
-### ~~`scope=prod` support for cycles and rings~~ — DONE (v0.1.86)
-
-**Value: high** | **Effort: low**
-
-`cnavRings -Pscope=prod` now filters test source set directories before building the dependency graph. `cnavCycles` already had scope support.
 
 ### High violation count warning for `cnavRings`
 
@@ -344,17 +239,6 @@ Add `-Pclasspath=true` to scan the full runtime classpath (project classes + all
 - **Considerations**: Significantly slower (thousands of classes). Combine with existing `-Ppattern` / `-Powner` filters to narrow scope. Consider caching scanned JARs by checksum.
 - **Why**: AI agents frequently need to check library API signatures to write correct code.
 
-### ~~Lazy JAR scanning for external class classification~~ — DONE (v0.1.80)
-
-**Value: medium** | **Effort: medium**
-
-When `include-external=true`, `ClassTypeCollector` only scans project class directories. External library classes aren't in the `classTypeRegistry`, so `classifyTarget` returns null and they're counted as `unknown`. The current workaround (FIX 5) tracks these as `unknownCount` and defaults all-unknown pairs to CONTRACT strength.
-
-- **Approach**: When a target class is not in the registry, lazily resolve its `.class` file from the runtime classpath JARs and classify it. Only scan the specific classes that appear in dependencies, not entire JARs.
-- **Reuses**: Classpath resolution infrastructure from `cnavJar`.
-- **Benefits**: Eliminates `unknownCount` entirely. Strength classifications for external dependencies become accurate instead of defaulting to CONTRACT.
-- **Trade-off**: Adds JAR I/O during classification. Mitigate with a per-run cache of resolved classes.
-
 ---
 
 ## Find-usages output quality
@@ -362,18 +246,6 @@ When `include-external=true`, `ClassTypeCollector` only scans project class dire
 From field test (v0.1.72): `cnavFindUsages` output is noisy at bytecode level. A single logical call site (e.g., constructing `RAClientImpl`) produces 3-4 lines (`.new` type ref + `.<init>` method call + `.checkcast` + field access). Lambda classes like `MonitorService$getCurrentStatus$2$raClientStatusDeferred$1` obscure the actual caller. Users pipe through `grep -v` to find meaningful results.
 
 Ordered by dependency — collapsing enables the summary mode, and smart usages builds on the cleaner output.
-
-### ~~Collapse bytecode noise in find-usages output~~ — DONE (v0.1.73)
-
-Implemented in `UsageCollapser`. Collapsed output is the default; `-Praw=true` for bytecode-level detail.
-
-### ~~Call-site summary mode for find-usages~~ — DONE (v0.1.73)
-
-Merged into the collapsing step. Each line is flat and self-contained with combined kind tags.
-
-### ~~Smart usages — auto-include interface implementations~~ — DONE (v0.1.73)
-
-Implemented: when `cnavFindUsages -Ptype=X` targets an interface, `[impl]` lines are auto-included. `-Pinclude-impls` expands the search to include usages of each implementor.
 
 ---
 
@@ -395,10 +267,6 @@ Partial progress (v0.1.72):
 Remaining:
 - Audit whether `cnavAgentHelp` mentions refactoring outcomes in other sections (`workflow`, `interpretation`) — currently they focus on analysis flow.
 - Consider a short "refactoring cheat sheet" as its own section (see "Goal-oriented task discovery" below).
-
-### ~~Goal-oriented task discovery — `-Psection=refactor`~~ — DONE
-
-Added `-Psection=refactor` to `cnavAgentHelp`. Groups tasks by intent: move/rename, explore before refactoring, find targets, verify after. Listed in the "More Detail" section of compact output.
 
 ### Preview-by-default for write commands
 
@@ -429,24 +297,6 @@ From self-review (v0.1.83): `cnavBalance` output showed `volatility=246/0` for a
 - **Option B**: Show relative to project mean — "volatility=246 (12x avg)"
 - **Option C**: Include the interpretation in the `withInterpretation()` text — "volatility numbers represent total git churn across all files in the package"
 
-### ~~Investigate `[prod]`/`[test]` misclassification on Maven projects~~ — DONE
-
-Fixed: `getOrBuildTagged` now validates that cached source sets match requested tags. Previously, a non-tagged `getOrBuild` call (from MetricsMojo, PackageDepsMojo, etc.) would write the cache with all classes tagged as MAIN, and subsequent `getOrBuildTagged` calls would read the stale cache with wrong source set tags.
-
-### ~~Default `cnavDead` to exclude test classes~~ — DONE
-
-Default scope for `cnavDead` changed from ALL to PROD. Test classes are excluded by default. Output includes notice: "Test classes excluded. Use scope=all to include test classes." Applies to TEXT and LLM formats.
-
-### ~~Filter non-source files from git analysis recommendations~~ — DONE
-
-Non-source files (paths not starting with `src/`) no longer get recommendation annotations in coupling and hotspot output. Files still appear in results but without `←` advice meant for source code.
-
-### ~~Add interpretation section to all analysis task output~~ ✅
-
-**Value: high** | **Effort: medium** | **Done**
-
-All analysis tasks now include a short interpretation section in their LLM output. Uses `withInterpretation()` helper that guards against empty output. Constants are `internal` for test access. Covers: hotspots, coupling, age, churn, volatility, rank, complexity, distance, strength, balance, cohesion, move-suggest, layer-check, cycles.
-
 ---
 
 ## Composite analysis tasks
@@ -469,22 +319,6 @@ From user feedback (v0.38): the user had to mentally cross-reference 6 separate 
 - **Parameters**: `-Ptop=20` (default), `-Pformat=llm|json|text`, `-Psince=<git-ref>` (optional time window)
 - **Hybrid task**: Requires both git history and compiled bytecode (for complexity).
 
-### ~~`cnavReport` — consolidated full analysis~~ — DONE (v0.1.86)
-
-**Value: high** | **Effort: low**
-
-Single task runs metrics, cycles, rings, move-suggest, cohesion, and dead code, producing sectioned output. Both Gradle and Maven.
-
-### ~~`cnavAgentHelp -Ptopic=<name>` — philosophy-specific guidance~~ — DONE (v0.1.87)
-
-**Value: high** | **Effort: low**
-
-Added `-Ptopic=` parameter to `cnavAgentHelp` for on-demand philosophy guidance. Each topic explains: the philosophy (2-3 sentences), which cnav tasks support it, how to interpret results toward that goal, and concrete actions when violations are found.
-
-Topics: `hexagonal` (rings, layer-check, strength, cycles), `tttd` (test-coupling), `fakes` (find-interfaces, test-coupling), `manual-di` (annotations, find-usages, rings, find-interfaces).
-
-Design principle: a topic exists only if cnav has tasks that actively detect violations or measure progress. Skills teach portable philosophy; topics teach how to use cnav to enforce it on a specific codebase.
-
 ### Per-package health dashboard — `[Balanced Coupling]`
 
 **Value: medium** | **Effort: medium**
@@ -501,36 +335,11 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 
 ## Standalone new tasks
 
-### ~~`cnavCohesion` — package cohesion scoring~~ — DONE (v0.1.79)
-
-Measures ratio of internal class dependencies to total outgoing dependencies per package. Includes class count, verdict (COHESIVE/REVIEW/THIN_LAYER), `min-edges` threshold filter, and `CohesionScorer.detail()` for per-class breakdown. `DsmDependencyExtractor` enhanced with `includeSamePackage` parameter.
-
-### ~~`cnavMoveSuggest` — misplaced class detection~~ — DONE (v0.1.79)
-
-Identifies classes with more outgoing edges to another package than their own. Filters ubiquitous types via `max-fan-in` parameter. Sorted by confidence (ratio of target edges to total). Validated on ra-backend (48 suggestions).
-
-### `cnavSuggestStructure` — cluster analysis
+### ~~`cnavSuggestStructure` — cluster analysis~~ — DONE (v0.1.89)
 
 **Value: high** | **Effort: high**
 
-Group classes by actual dependency affinity (classes that depend on each other more than on outsiders form a natural cluster). Compare actual packages to optimal clusters → quantify structural drift.
-- Algorithm: community detection on the class dependency graph (e.g. Louvain or label propagation)
-- Output: proposed package groupings, diff against current structure
-
-**Relation to existing goals:**
-- `cnavLayerCheck` enforces a *declared* structure — these goals help you *discover* what to declare
-- `cnavStrength` identifies strong coupling — cohesion analysis explains whether that coupling means "merge" or "add an interface"
-- `cnavDistance` measures abstract/stable balance — move suggestions address the concrete "what to do about it"
-
-### ~~Fix `type-hierarchy` to show full supertype/interface chain~~ — DONE (v0.1.80)
-
-**Value: high** | **Effort: medium**
-
-From evaluation on spring-petclinic and realworld-springboot: `type-hierarchy` only shows the class itself — not the inheritance chain. For `OwnerRepository` extending `JpaRepository`, the output is nearly empty. For framework types with deep hierarchies, the command is near-useless.
-
-- **Expected**: Show the full chain of supertypes and interfaces, including library types resolved from classpath JARs.
-- **Minimum**: Show supertypes/interfaces found in project bytecode. Extend with classpath scanning when that infrastructure is available.
-- **Relates to**: Classpath/JAR scanning section — full hierarchy requires resolving library types.
+Implemented as a simpler grouping approach: groups `cnavMoveSuggest` results by target package, filters by min-group-size, computes structural drift score. Full community detection deferred. StructureGrouper, StructureFormatter, SuggestStructureOrchestrator, Gradle task, Maven mojo all wired.
 
 ### `cnavTestHealth` — verify all test methods actually ran
 
@@ -648,18 +457,6 @@ Non-Gradle gaps to address:
 - ~~**Reduce duplication**~~ **DONE** — see `plan-completed.md`.
 - ~~**Align with kotlin-tdd**~~ **DONE** — already aligned.
 
-### ~~Break `formatting` ↔ `navigation.dsm` cycle~~ — DONE
-
-Orchestrators (`DistanceOrchestrator`, `StrengthOrchestrator`) now return result data classes instead of formatted strings. Formatting moved to `DsmOutputFormatter` in the `formatting` package. Callers (Gradle tasks / Maven mojos) use `DsmOutputFormatter.format(output, config.format)`. No production cycles remain.
-
-### ~~Align test packages with production packages~~ — DONE
-
-Moved ~95 test files from flat `navigation/` test package to sub-packages matching production structure (`annotation/`, `bytecode/`, `changedsince/`, `classinfo/`, `complexity/`, `context/`, `deadcode/`, `dsm/`, `metrics/`, `rank/`, `relations/callgraph/`, `relations/hierarchy/`, `relations/implementors/`, `stringconstant/`, `symbol/`, `types/`). Shared test utilities (`TestClassWriter`, `TestCallGraphBuilder`) remain in `navigation/` and are accessed via wildcard import.
-
-### ~~Move `DsmOutputFormatter` to `navigation.dsm`~~ — REJECTED
-
-Self-analysis (v0.1.83) suggested this move (confidence=1.0, own=0, target=13). However, `DsmOutputFormatter` depends on `JsonFormatter`, `LlmFormatter`, and `OutputWrapper` in its own `formatting` package. Moving it would create a cycle (`navigation.dsm` → `formatting`). This exposed a gap in `cnavMoveSuggest` — see "Account for self-package dependencies" above.
-
 ### Break `formatting` ↔ `navigation.relations` cycle
 
 **Value: medium** | **Effort: low**
@@ -680,10 +477,6 @@ Several test classes in the root `no.f12.codenavigator` test package belong in s
 - `IntegrationTest` → `navigation.relations.callgraph`
 
 Part of ongoing alignment with production package structure.
-
-### ~~Break 6-package core cycle~~ — DONE
-
-Resolved by the package restructure (commit `a3c3bf9`). Split `navigation.core` into `types/`, `bytecode/`, `cache/`. Moved `PatternEnhancer` to `types/`, `CacheFreshness` to `cache/`, `FrameworkPresets` to `types/`. No production cycles remain.
 
 ### Fix DANGER balance: root package → callgraph/implementors
 
@@ -738,14 +531,6 @@ Also found core duplication (lower priority):
 - `InlineMethodDetector.kt` ↔ `DelegationMethodDetector.kt` (227 tokens) — similar visitor patterns
 - `RenameMethodRewriter.kt` ↔ `RenamePropertyRewriter.kt` ↔ `RenameParamRewriter.kt` (117 tokens each) — shared rewriter boilerplate
 - `RenamePropertyFormatter.kt` ↔ `RenameMethodFormatter.kt` (101 tokens)
-
-### ~~Extract shared orchestration from Gradle tasks and Maven mojos~~ — DONE
-
-`StrengthOrchestrator` and `DistanceOrchestrator` extracted to core. Gradle tasks and Maven mojos are thin wrappers handling config parsing, directory resolution, and output routing.
-
-### ~~Make `DsmDependencyExtractor.packageFilter` nullable~~ — DONE
-
-Changed `packageFilter` from `PackageName` with `PackageName("")` magic value to `PackageName?` with null meaning "no filter." Updated all callers, config classes, and tests. No default values on parameters.
 
 ---
 
@@ -1023,12 +808,6 @@ Extract a code block into a new function, or inline a function's body into its c
 ---
 
 ## Agent workflow improvements
-
-### ~~Unified diff output for refactoring tasks~~ — DONE (v0.1.88)
-
-**Value: high** | **Effort: low**
-
-Refactoring tasks' LLM format now produces standard unified diff (--- a/ +++ b/ @@ @@) with context lines instead of one-line summaries. Agents can read the exact edit plan from `-Ppreview -Pllm=true` and verify changes before applying. Uses LCS-based diff algorithm in `computeUnifiedDiff()`. Updated AgentHelpText to document the preview workflow for agents.
 
 ### CI fail-on-violation mode
 
