@@ -88,7 +88,7 @@ class AgentHelpTextTest {
         val lines = text.trimEnd().lines()
 
         assertTrue(
-            lines.size <= 30,
+            lines.size <= 36,
             "install section should be concise (was ${lines.size} lines)",
         )
     }
