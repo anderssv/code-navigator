@@ -513,4 +513,33 @@ class MoveClassRewriterTest {
         assertTrue(!consumerChange.after.contains("import com.example.variants.moveclass.original.metricsRegistry"), "Old top-level val import should be gone. Content:\n${consumerChange.after}")
     }
 
+    @Test
+    fun `moving named class from multi-class file detects file not matching class name and finds it by content`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.EventProcessor",
+            newFqcn = "com.example.variants.moveclass.events.EventProcessor",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+        )
+
+        // EventProcessor lives in Events.kt — the rewriter should still find and move it
+        assertTrue(
+            result.movedFilePath != null && result.movedFilePath!!.endsWith("Events.kt"),
+            "Should find Events.kt even though class name doesn't match filename. movedFilePath: ${result.movedFilePath}",
+        )
+
+        // Both classes in the file should have their consumer imports updated
+        val consumerChange = result.changes.firstOrNull { it.filePath.endsWith("EventConsumer.kt") }
+        assertTrue(consumerChange != null, "Should update EventConsumer.kt. Changed files: ${result.changes.map { it.filePath }}")
+        assertTrue(
+            consumerChange!!.after.contains("import com.example.variants.moveclass.events.EventProcessor"),
+            "Should update EventProcessor import",
+        )
+        assertTrue(
+            consumerChange.after.contains("import com.example.variants.moveclass.events.Event"),
+            "Should also update Event import (co-located in same file, moves with it). Content:\n${consumerChange.after}",
+        )
+    }
+
 }

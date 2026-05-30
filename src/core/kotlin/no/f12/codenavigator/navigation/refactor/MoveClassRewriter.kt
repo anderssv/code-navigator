@@ -67,14 +67,53 @@ object MoveClassRewriter {
         val newPackage = newFqcn.substringBeforeLast(".")
         val targetName = newFqcn.substringAfterLast(".")
 
+        // Check if the class lives in a file NOT named after it (multi-class file scenario)
+        var foundByContent = false
+        var movedFilePath: String? = null
+        var newFilePath: String? = null
+
+        for (sourceFile in ps.sources) {
+            val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
+            if (isTargetClassFile(filePath, oldPackage, simpleClassName)) {
+                movedFilePath = filePath
+                newFilePath = computeNewFilePath(filePath, oldPackage, simpleClassName, newPackage, targetName, sourceRoots)
+                break
+            }
+        }
+
+        // Fallback: search by content + package when filename doesn't match
+        if (movedFilePath == null) {
+            for (sourceFile in ps.sources) {
+                val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
+                val content = sourceFile.printAll()
+                if (isInPackage(content, oldPackage) && declaresClass(content, simpleClassName)) {
+                    movedFilePath = filePath
+                    val fileName = File(filePath).nameWithoutExtension
+                    newFilePath = computeNewFilePath(filePath, oldPackage, fileName, newPackage, fileName, sourceRoots)
+                    foundByContent = true
+                    break
+                }
+            }
+        }
+
+        // If file contains multiple classes, delegate to moveKtFacade-style logic
+        // which handles all classes in the file as a unit
+        if (movedFilePath != null && foundByContent) {
+            val movedSource = ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == movedFilePath }?.printAll()
+            if (movedSource != null) {
+                val allClasses = extractDeclaredClassNames(movedSource)
+                if (allClasses.size > 1) {
+                    return moveMultiClassFile(oldPackage, newPackage, movedFilePath, movedSource, allClasses, ps, sourceRoots, preview, newFilePath)
+                }
+            }
+        }
+
         val recipe = ChangeType(className, newFqcn, null)
         val sourceSet = InMemoryLargeSourceSet(ps.sources)
         val recipeRun = recipe.run(sourceSet, ps.ctx)
         val results = recipeRun.changeset.allResults
 
         val changes = mutableListOf<RenameChange>()
-        var movedFilePath: String? = null
-        var newFilePath: String? = null
 
         for (result in results) {
             val before = result.before?.printAll() ?: continue
@@ -85,12 +124,64 @@ object MoveClassRewriter {
             changes.add(RenameChange(filePath, before, after))
         }
 
+        // Check if standard-named file also has sibling classes
+        if (movedFilePath != null && !foundByContent) {
+            val movedSource = ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == movedFilePath }?.printAll()
+            if (movedSource != null) {
+                val allClasses = extractDeclaredClassNames(movedSource)
+                if (allClasses.size > 1) {
+                    return moveMultiClassFile(oldPackage, newPackage, movedFilePath, movedSource, allClasses, ps, sourceRoots, preview, newFilePath)
+                }
+            }
+        }
+
         for (sourceFile in ps.sources) {
             val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
             if (isTargetClassFile(filePath, oldPackage, simpleClassName)) {
                 movedFilePath = filePath
                 newFilePath = computeNewFilePath(filePath, oldPackage, simpleClassName, newPackage, targetName, sourceRoots)
                 break
+            }
+        }
+
+        // Fallback: if filename doesn't match class name, search by content + package
+        if (movedFilePath == null) {
+            for (sourceFile in ps.sources) {
+                val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
+                val content = sourceFile.printAll()
+                if (isInPackage(content, oldPackage) && declaresClass(content, simpleClassName)) {
+                    movedFilePath = filePath
+                    val fileName = File(filePath).nameWithoutExtension
+                    newFilePath = computeNewFilePath(filePath, oldPackage, fileName, newPackage, fileName, sourceRoots)
+                    break
+                }
+            }
+        }
+
+        // If file contains sibling classes, also run ChangeType for them
+        if (movedFilePath != null) {
+            val movedSource = ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == movedFilePath }?.printAll()
+            if (movedSource != null) {
+                val siblingClasses = extractDeclaredClassNames(movedSource).filter { it != simpleClassName }
+                for (sibling in siblingClasses) {
+                    val oldSiblingFqcn = "$oldPackage.$sibling"
+                    val newSiblingFqcn = "$newPackage.$sibling"
+                    val recipe = ChangeType(oldSiblingFqcn, newSiblingFqcn, null)
+                    val sourceSet = InMemoryLargeSourceSet(ps.sources)
+                    val recipeRun = recipe.run(sourceSet, ps.ctx)
+                    for (result in recipeRun.changeset.allResults) {
+                        val before = result.before?.printAll() ?: continue
+                        val after = result.after?.printAll() ?: continue
+                        if (before == after) continue
+                        val filePath = resolveOriginalPath(result.before!!, ps.sourceRoots)
+                        val existingIdx = changes.indexOfFirst { it.filePath == filePath }
+                        if (existingIdx >= 0) {
+                            changes[existingIdx] = RenameChange(filePath, changes[existingIdx].before, after)
+                        } else {
+                            changes.add(RenameChange(filePath, before, after))
+                        }
+                    }
+                }
             }
         }
 
@@ -186,6 +277,52 @@ object MoveClassRewriter {
 
         val allChanges = replacePackageImports(
             changes, ps, oldPackage, newPackage, movedFilePath, sourceContent, movedNames,
+        )
+
+        if (!preview) {
+            applyChanges(allChanges, movedFilePath, newFilePath)
+        }
+
+        return MoveClassResult(allChanges, movedFilePath, newFilePath)
+    }
+
+    private fun moveMultiClassFile(
+        oldPackage: String,
+        newPackage: String,
+        movedFilePath: String,
+        movedSource: String,
+        allClasses: List<String>,
+        ps: ParsedSources,
+        sourceRoots: List<File>,
+        preview: Boolean,
+        newFilePath: String?,
+    ): MoveClassResult {
+        val changes = mutableMapOf<String, RenameChange>()
+
+        for (declaredClass in allClasses) {
+            val oldFqcn = "$oldPackage.$declaredClass"
+            val newFqcn = "$newPackage.$declaredClass"
+            val recipe = ChangeType(oldFqcn, newFqcn, null)
+            val sourceSet = InMemoryLargeSourceSet(ps.sources)
+            val recipeRun = recipe.run(sourceSet, ps.ctx)
+            for (result in recipeRun.changeset.allResults) {
+                val before = result.before?.printAll() ?: continue
+                val after = result.after?.printAll() ?: continue
+                if (before == after) continue
+                val filePath = resolveOriginalPath(result.before!!, ps.sourceRoots)
+                val existing = changes[filePath]
+                if (existing != null) {
+                    changes[filePath] = RenameChange(filePath, existing.before, after)
+                } else {
+                    changes[filePath] = RenameChange(filePath, before, after)
+                }
+            }
+        }
+
+        val movedNames = allClasses.toSet() + extractTopLevelNames(movedSource)
+
+        val allChanges = replacePackageImports(
+            changes, ps, oldPackage, newPackage, movedFilePath, movedSource, movedNames,
         )
 
         if (!preview) {
@@ -291,6 +428,12 @@ object MoveClassRewriter {
         val expectedSuffix = oldPackage.replace(".", File.separator) + File.separator + "$simpleClassName.kt"
         return filePath.endsWith(expectedSuffix)
     }
+
+    private fun isInPackage(source: String, packageName: String): Boolean =
+        source.contains("package $packageName")
+
+    private fun declaresClass(source: String, className: String): Boolean =
+        extractDeclaredClassNames(source).contains(className)
 
     private val CLASS_DECLARATION_PATTERN = Regex(
         """^\s*(?:(?:data|sealed|enum|abstract|open|inner|value|annotation)\s+)*(?:class|interface|object)\s+(\w+)""",
