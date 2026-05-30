@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.86
+
+- **New:** `cnavReport` — consolidated codebase health report running metrics, cycles, rings, move-suggest, cohesion, and dead code in a single pass. Produces a sectioned overview for quick assessment.
+- **Improved:** `cnavRings` now supports `-Pscope=prod` to exclude test edges from ring detection (previously only `cnavCycles` supported scope filtering).
+
 ## 0.1.85
 
 - **Improved:** `cnavTestCoupling` — major noise reduction. Adapter tests auto-detected behaviorally (primary callee is port implementor or port interface with 3+ calls) and suppressed from output. Constructor calls (`<init>`) excluded. Inner-class coroutine lambdas aggregated to outer class. Test class detection uses `@Test` annotations instead of name suffixes (excludes fakes, utilities, extensions). Added confidence score, `-Pexclude` parameter, and `-Pdetail=true` mode showing per-call breakdown.
