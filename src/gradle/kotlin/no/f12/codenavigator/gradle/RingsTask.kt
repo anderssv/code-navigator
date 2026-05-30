@@ -7,6 +7,7 @@ import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.RingDetector
 import no.f12.codenavigator.navigation.dsm.RingFormatter
+import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.TaskRegistry
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.TaskAction
@@ -23,8 +24,11 @@ abstract class RingsTask : DefaultTask() {
         val props = extension.resolveProperties(cliProps)
 
         val format = ParamDef.parseFormat(props)
+        val scope = Scope.parse(props["scope"])
 
-        val classDirectories = project.taggedClassDirectories().map { it.first }
+        val classDirectories = project.taggedClassDirectories()
+            .filter { scope.matchesSourceSet(it.second) }
+            .map { it.first }
         val projectClasses = scanProjectClasses(classDirectories)
 
         val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)

@@ -132,6 +132,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "balance" to BalanceTask::class.java,
             "layer-check" to LayerCheckTask::class.java,
             "rings" to RingsTask::class.java,
+            "report" to ReportTask::class.java,
             "size" to SizeTask::class.java,
             "duplicates" to DuplicatesTask::class.java,
             "test-coupling" to TestCouplingTask::class.java,

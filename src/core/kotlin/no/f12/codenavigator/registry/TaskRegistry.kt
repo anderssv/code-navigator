@@ -850,6 +850,19 @@ object TaskRegistry {
         ),
     )
 
+    val REPORT = TaskDef(
+        goal = "report",
+        description = "Consolidated codebase health report: metrics, cycles, rings, move-suggest, cohesion, dead code",
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, TOP, AFTER, NO_FOLLOW, EXCLUDE_ANNOTATED, TREAT_AS_DEAD) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        requiresTestCompilation = true,
+        category = TaskCategory.COMPOSITE,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(SCOPE to "prod")),
+        ),
+    )
+
     val ALL_TASKS: List<TaskDef> = listOf(
         LIST_CLASSES,
         FIND_CLASS,
@@ -885,6 +898,7 @@ object TaskRegistry {
         BALANCE,
         LAYER_CHECK,
         RINGS,
+        REPORT,
         SIZE,
         DUPLICATES,
         TEST_COUPLING,

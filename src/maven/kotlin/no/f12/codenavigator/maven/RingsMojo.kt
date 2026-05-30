@@ -6,6 +6,7 @@ import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.RingDetector
 import no.f12.codenavigator.navigation.dsm.RingFormatter
+import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import org.apache.maven.plugin.AbstractMojo
@@ -29,13 +30,19 @@ class RingsMojo : AbstractMojo() {
     @Parameter(property = "llm")
     private var llm: String? = null
 
+    @Parameter(property = "scope")
+    private var scope: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
         val props = TaskRegistry.RINGS.enhanceProperties(buildPropertyMap())
         val outputFormat = ParamDef.parseFormat(props)
+        val scopeFilter = Scope.parse(props["scope"])
 
-        val classDirectories = project.taggedClassDirectories().map { it.first }
+        val classDirectories = project.taggedClassDirectories()
+            .filter { scopeFilter.matchesSourceSet(it.second) }
+            .map { it.first }
 
         if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
             log.warn("Classes directory does not exist — run 'mvn compile' first.")
@@ -60,5 +67,6 @@ class RingsMojo : AbstractMojo() {
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
         llm?.let { put("llm", it) }
+        scope?.let { put("scope", it) }
     }
 }
