@@ -1024,13 +1024,11 @@ Extract a code block into a new function, or inline a function's body into its c
 
 ## Agent workflow improvements
 
-### Unified diff output for refactoring tasks
+### ~~Unified diff output for refactoring tasks~~ — DONE (v0.1.88)
 
 **Value: high** | **Effort: low**
 
-Add `-Pformat=diff` (or similar) to refactoring tasks (`cnavMoveClass`, `cnavRenameMethod`, `cnavRenameProperty`, `cnavRenameParam`) that outputs standard unified diff format to stdout instead of writing to disk. Allows agents to verify changes before applying, or pipe through their own patch-apply workflow.
-
-Currently `-Ppreview` shows diffs in a custom format. This would standardize to `git diff` format for tool interop.
+Refactoring tasks' LLM format now produces standard unified diff (--- a/ +++ b/ @@ @@) with context lines instead of one-line summaries. Agents can read the exact edit plan from `-Ppreview -Pllm=true` and verify changes before applying. Uses LCS-based diff algorithm in `computeUnifiedDiff()`. Updated AgentHelpText to document the preview workflow for agents.
 
 ### CI fail-on-violation mode
 
