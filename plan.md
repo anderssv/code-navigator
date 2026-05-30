@@ -1054,3 +1054,34 @@ Cross-reference `cnavInterfaces` with `cnavVolatility`. If a port interface chan
 - **Builder**: For each interface, find implementors. Compare file-level change frequency (revisions, churn) between interface and implementor files. Flag pairs where the interface changes at >50% the rate of the implementor.
 - **Output**: Per-port report: interface revisions vs implementor revisions, lockstep percentage, verdict (STABLE / LEAKY)
 - **Why**: A stable port should rarely change. If it changes every time the adapter changes, the boundary isn't providing value. Suggests the interface needs to be more abstract or the adapter is doing work that belongs in the domain.
+
+### `cnavChangedSince` → layered impact predictor
+
+**Value: high** | **Effort: medium-large**
+
+Expand `cnavChangedSince` from single-hop blast radius into a multi-signal impact predictor with confidence tiers.
+
+#### Confidence layers
+
+1. **Direct callers** (high confidence) — already implemented
+2. **Transitive callers** up to configurable depth (medium confidence) — use `CallTreeBuilder`
+3. **Interface implementor callers** (medium-high) — wire `InterfaceRegistry` to detect polymorphic impact
+4. **Historically co-changed classes** (empirical signal) — join with `ChangeCouplingBuilder` data
+5. **Same-package structural peers** (low confidence) — cheap heuristic from DSM data
+
+#### Output shape
+
+Each impacted class gets a confidence tier + reason. Agent/CI chooses threshold.
+
+#### Infrastructure already available
+
+- `CallTreeBuilder` — transitive caller expansion
+- `InterfaceRegistry` — interface → implementor mapping
+- `ChangeCouplingBuilder` — temporal coupling from git history
+- `DsmDependencyExtractor` / `PackageDependencyBuilder` — structural coupling
+
+#### Known limits
+
+- Reflection / dynamic dispatch invisible to bytecode analysis
+- Semantic changes (behaviour change without signature change) produce false negatives
+- Test↔production mapping not available (future: combine with test-coupling task)
