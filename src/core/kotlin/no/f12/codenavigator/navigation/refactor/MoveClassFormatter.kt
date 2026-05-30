@@ -11,7 +11,11 @@ object MoveClassFormatter {
             OutputFormat.TEXT -> formatText(result, config)
             OutputFormat.JSON -> formatJson(result, config)
             OutputFormat.LLM -> formatLlm(result, config)
+            OutputFormat.DIFF -> formatDiff(result)
         }
+
+    private fun formatDiff(result: MoveClassResult): String =
+        formatChangesAsUnifiedDiff(result.changes).ifEmpty { "No changes needed." }
 
     private fun operationDescription(config: MoveClassConfig): String {
         val isMove = config.fromPackage != config.toPackage

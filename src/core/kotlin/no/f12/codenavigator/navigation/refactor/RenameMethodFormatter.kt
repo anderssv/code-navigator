@@ -11,7 +11,11 @@ object RenameMethodFormatter {
             OutputFormat.TEXT -> formatText(result, config)
             OutputFormat.JSON -> formatJson(result, config)
             OutputFormat.LLM -> formatLlm(result, config)
+            OutputFormat.DIFF -> formatDiff(result) // Raw unified diff, no headers/markers
         }
+
+    private fun formatDiff(result: RenameMethodResult): String =
+        formatChangesAsUnifiedDiff(result.changes).ifEmpty { "No changes needed." }
 
     private fun formatText(result: RenameMethodResult, config: RenameMethodConfig): String {
         if (result.changes.isEmpty()) return "No changes needed."

@@ -5,13 +5,13 @@ import no.f12.codenavigator.config.OutputFormat
 object OutputWrapper {
     fun wrap(output: String, format: OutputFormat): String =
         when (format) {
-            OutputFormat.TEXT -> output
+            OutputFormat.TEXT, OutputFormat.DIFF -> output
             OutputFormat.JSON, OutputFormat.LLM -> "---CNAV_BEGIN---\n$output\n---CNAV_END---"
         }
 
     fun emptyResult(format: OutputFormat, textMessage: String, hints: List<String> = emptyList()): String =
         when (format) {
-            OutputFormat.TEXT -> if (hints.isEmpty()) textMessage else textMessage + "\n" + hints.joinToString("\n")
+            OutputFormat.TEXT, OutputFormat.DIFF -> if (hints.isEmpty()) textMessage else textMessage + "\n" + hints.joinToString("\n")
             OutputFormat.JSON, OutputFormat.LLM -> {
                 val hintsJson = hints.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" }
                 wrap("{\"results\":[],\"hints\":[$hintsJson]}", format)
@@ -28,13 +28,14 @@ object OutputWrapper {
             OutputFormat.TEXT -> text()
             OutputFormat.JSON -> json()
             OutputFormat.LLM -> llm()
+            OutputFormat.DIFF -> text() // DIFF is only meaningful for refactoring tasks; fallback to text
         }
         return wrap(output, format)
     }
 
     fun wrapWithGuidance(output: String, format: OutputFormat, guidance: TaskGuidance): String =
         when (format) {
-            OutputFormat.TEXT -> output
+            OutputFormat.TEXT, OutputFormat.DIFF -> output
             OutputFormat.JSON -> wrap(output, format)
             OutputFormat.LLM -> {
                 val rendered = guidance.render()

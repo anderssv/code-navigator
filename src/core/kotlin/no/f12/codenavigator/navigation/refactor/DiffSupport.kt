@@ -153,3 +153,15 @@ private fun groupIntoHunks(edits: List<Edit>, contextLines: Int): List<UnifiedHu
         )
     }
 }
+
+/**
+ * Formats a list of RenameChange as concatenated unified diffs.
+ * Raw output with no headers or markers — suitable for `git apply`.
+ */
+fun formatChangesAsUnifiedDiff(changes: List<RenameChange>): String {
+    if (changes.isEmpty()) return ""
+    return changes.mapNotNull { change ->
+        val diff = computeUnifiedDiff(change.filePath, change.before, change.after)
+        diff.ifEmpty { null }
+    }.joinToString("\n")
+}

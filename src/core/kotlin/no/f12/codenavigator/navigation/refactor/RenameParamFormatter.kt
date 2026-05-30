@@ -11,7 +11,11 @@ object RenameParamFormatter {
             OutputFormat.TEXT -> formatText(result, config)
             OutputFormat.JSON -> formatJson(result, config)
             OutputFormat.LLM -> formatLlm(result, config)
+            OutputFormat.DIFF -> formatDiff(result)
         }
+
+    private fun formatDiff(result: RenameResult): String =
+        formatChangesAsUnifiedDiff(result.changes).ifEmpty { "No changes needed." }
 
     private fun formatText(result: RenameResult, config: RenameParamConfig): String {
         if (result.changes.isEmpty()) return "No changes needed."

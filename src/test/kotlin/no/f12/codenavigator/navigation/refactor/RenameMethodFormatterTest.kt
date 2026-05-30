@@ -2,6 +2,7 @@ package no.f12.codenavigator.navigation.refactor
 
 import no.f12.codenavigator.config.OutputFormat
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class RenameMethodFormatterTest {
@@ -146,5 +147,29 @@ class RenameMethodFormatterTest {
         val output = RenameMethodFormatter.format(emptyResult, config)
 
         assertTrue(!output.contains("Compile"), "Empty result should not have recommendation")
+    }
+
+    @Test
+    fun `DIFF format produces raw unified diff with no header`() {
+        val diffConfig = config.copy(format = OutputFormat.DIFF)
+        val output = RenameMethodFormatter.format(singleChange, diffConfig)
+
+        assertTrue(output.startsWith("--- a/"), "Should start with unified diff header. Got:\n$output")
+        assertTrue(output.contains("+++ b/"), "Should contain +++ header")
+        assertTrue(output.contains("@@ "), "Should contain hunk header")
+        assertTrue(output.contains("-    fun formatAuditEntry"), "Should contain removed line")
+        assertTrue(output.contains("+    fun buildAuditLine"), "Should contain added line")
+        assertTrue(!output.contains("Applied"), "Should not contain text header")
+        assertTrue(!output.contains("Preview"), "Should not contain preview header")
+        assertTrue(!output.contains("Compile"), "Should not contain recommendation")
+    }
+
+    @Test
+    fun `DIFF format returns no-changes message for empty result`() {
+        val diffConfig = config.copy(format = OutputFormat.DIFF)
+        val emptyResult = RenameMethodResult(emptyList())
+        val output = RenameMethodFormatter.format(emptyResult, diffConfig)
+
+        assertEquals("No changes needed.", output)
     }
 }
