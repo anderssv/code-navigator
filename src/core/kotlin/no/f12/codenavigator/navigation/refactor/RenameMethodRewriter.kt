@@ -1,9 +1,5 @@
 package no.f12.codenavigator.navigation.refactor
 
-import org.openrewrite.ExecutionContext
-import org.openrewrite.SourceFile
-import org.openrewrite.java.tree.J
-import org.openrewrite.kotlin.KotlinIsoVisitor
 import java.io.File
 
 data class RenameMethodResult(
@@ -27,81 +23,11 @@ object RenameMethodRewriter {
         methodName: String,
         newName: String,
         preview: Boolean = false,
-        parsedSources: ParsedSources? = null,
-    ): RenameMethodResult {
-        val ps = parsedSources ?: run {
-            val sourceFiles = collectSourceFiles(sourceRoots)
-            if (sourceFiles.isEmpty()) return RenameMethodResult(emptyList())
-            parseKotlinSources(sourceRoots)
-        }
-        if (ps.sources.isEmpty()) return RenameMethodResult(emptyList())
-
-        val visitor = RenameMethodVisitor(className, methodName, newName)
-
-        val changes = mutableListOf<RenameChange>()
-        for (sourceFile in ps.sources) {
-            val before = sourceFile.printAll()
-            val modified = visitor.visit(sourceFile, ps.ctx) as? SourceFile ?: continue
-            val after = modified.printAll()
-            if (before != after) {
-                val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
-                changes.add(RenameChange(filePath, before, after))
-            }
-        }
-
-        if (!preview) {
-            for (change in changes) {
-                File(change.filePath).writeText(change.after)
-            }
-        }
-
-        return RenameMethodResult(changes)
-    }
-
-}
-
-private class RenameMethodVisitor(
-    private val className: String,
-    private val methodName: String,
-    private val newName: String,
-) : KotlinIsoVisitor<ExecutionContext>() {
-
-    private var inTargetClassOrImplementor = false
-
-    override fun visitClassDeclaration(
-        classDecl: J.ClassDeclaration,
-        ctx: ExecutionContext,
-    ): J.ClassDeclaration {
-        val wasInTarget = inTargetClassOrImplementor
-        inTargetClassOrImplementor = isTargetOrImplementor(classDecl)
-        val result = super.visitClassDeclaration(classDecl, ctx)
-        inTargetClassOrImplementor = wasInTarget
-        return result
-    }
-
-    private fun isTargetOrImplementor(classDecl: J.ClassDeclaration): Boolean {
-        val classType = classDecl.type ?: return false
-        if (matchesClassOrCompanion(classType.fullyQualifiedName, className)) return true
-        return classType.interfaces.any { it.fullyQualifiedName == className }
-            || classType.supertype?.fullyQualifiedName == className
-    }
-
-    override fun visitMethodDeclaration(
-        method: J.MethodDeclaration,
-        ctx: ExecutionContext,
-    ): J.MethodDeclaration {
-        val m = super.visitMethodDeclaration(method, ctx)
-        if (!inTargetClassOrImplementor || m.simpleName != methodName) return m
-        return m.withName(m.name.withSimpleName(newName))
-    }
-
-    override fun visitMethodInvocation(
-        method: J.MethodInvocation,
-        ctx: ExecutionContext,
-    ): J.MethodInvocation {
-        val m = super.visitMethodInvocation(method, ctx)
-        val targetType = m.methodType?.declaringType?.fullyQualifiedName
-        if (!matchesClassOrCompanion(targetType, className) || m.simpleName != methodName) return m
-        return m.withName(m.name.withSimpleName(newName))
-    }
+    ): RenameMethodResult = PsiRenameMethodRewriter.rename(
+        sourceRoots = sourceRoots,
+        className = className,
+        methodName = methodName,
+        newName = newName,
+        preview = preview,
+    )
 }

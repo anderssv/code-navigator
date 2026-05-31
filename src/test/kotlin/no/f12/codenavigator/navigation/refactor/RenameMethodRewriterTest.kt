@@ -10,12 +10,6 @@ class RenameMethodRewriterTest {
 
     private val testProjectSrc = File("test-project/src/main/kotlin")
 
-    companion object {
-        private val cachedParsedSources by lazy {
-            parseKotlinSources(listOf(File("test-project/src/main/kotlin")))
-        }
-    }
-
     @Test
     fun `returns change with before and after content`() {
         val result = RenameMethodRewriter.rename(
@@ -24,11 +18,11 @@ class RenameMethodRewriterTest {
             methodName = "formatAuditEntry",
             newName = "buildAuditLine",
             preview = true,
-            parsedSources = cachedParsedSources,
+
         )
 
-        assertTrue(result.changes.isNotEmpty())
-        val change = result.changes.first()
+        assertTrue(result.changes.isNotEmpty(), "Should have changes. Files: ${result.changes.map { it.filePath }}")
+        val change = result.changes.first { it.filePath.endsWith("services/AuditService.kt") }
         assertTrue(change.before.contains("formatAuditEntry"))
         assertTrue(change.after.contains("buildAuditLine"))
         assertTrue(change.filePath.endsWith("AuditService.kt"))
@@ -42,7 +36,7 @@ class RenameMethodRewriterTest {
             methodName = "formatAuditEntry",
             newName = "buildAuditLine",
             preview = true,
-            parsedSources = cachedParsedSources,
+
         )
 
         val changedFiles = result.changes.map { it.filePath }
@@ -78,7 +72,7 @@ class RenameMethodRewriterTest {
             methodName = "findById",
             newName = "lookupById",
             preview = true,
-            parsedSources = cachedParsedSources,
+
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have changes. Result: $result")
@@ -104,7 +98,7 @@ class RenameMethodRewriterTest {
             methodName = "formatAuditEntry",
             newName = "buildAuditLine",
             preview = true,
-            parsedSources = cachedParsedSources,
+
         )
 
         assertTrue(result.changes.size >= 2, "Should have changes in at least 2 files. Changes: ${result.changes.map { it.filePath }}")
@@ -122,7 +116,7 @@ class RenameMethodRewriterTest {
             methodName = "formatAuditEntry",
             newName = "buildAuditLine",
             preview = true,
-            parsedSources = cachedParsedSources,
+
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have at least one change")
@@ -141,7 +135,7 @@ class RenameMethodRewriterTest {
             methodName = "create",
             newName = "build",
             preview = true,
-            parsedSources = cachedParsedSources,
+
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should have changes for companion method. Changes: ${result.changes.map { it.filePath }}")
@@ -158,7 +152,7 @@ class RenameMethodRewriterTest {
             methodName = "create",
             newName = "build",
             preview = true,
-            parsedSources = cachedParsedSources,
+
         )
 
         val callerChange = result.changes.firstOrNull { it.filePath.endsWith("companion/UserService.kt") }
@@ -235,7 +229,7 @@ class RenameMethodRewriterTest {
             methodName = "handleReset",
             newName = "processReset",
             preview = true,
-            parsedSources = cachedParsedSources,
+
         )
 
         assertTrue(result.changes.isNotEmpty(), "Expected changes for suspend function rename")
@@ -252,7 +246,7 @@ class RenameMethodRewriterTest {
             methodName = "handleReset",
             newName = "processReset",
             preview = true,
-            parsedSources = cachedParsedSources,
+
         )
 
         // Check that any callers of handleReset are also updated
