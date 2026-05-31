@@ -250,6 +250,8 @@ object TaskRegistry {
     val RENAME_PROPERTY = ParamDef("property", "<name>", "Current property name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_NEW_NAME = ParamDef("new-name", "<name>", "New name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PREVIEW = ParamDef("preview", "true", "Preview changes without writing to source files", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
+    val CHANGE_SIG_PARAMS = ParamDef("params", "<params>", "New parameter list (e.g. \"limit: Int, offset: Int, query: String\")", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val CHANGE_SIG_DEFAULTS = ParamDef("defaults", "<defaults>", "Default values for new params at call sites (e.g. \"query=\\\"\\\"\") comma-separated name=value pairs", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MIN_TOKENS = ParamDef("min-tokens", "<N>", "Minimum duplicate token sequence length", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
     val MOVE_FROM = ParamDef("from", "<fqcn>", "Fully qualified class name to move/rename", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MOVE_TO = ParamDef("to", "<fqcn>", "Target fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -867,6 +869,18 @@ object TaskRegistry {
         ),
     )
 
+    val CHANGE_SIGNATURE_TASK = TaskDef(
+        goal = "change-signature",
+        description = "Change method signature: add, remove, or reorder parameters. Rewrites declaration and all call sites.",
+        params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, CHANGE_SIG_PARAMS, CHANGE_SIG_DEFAULTS, PREVIEW),
+        requiresCompilation = true,
+        category = TaskCategory.SOURCE,
+        examples = listOf(
+            UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", CHANGE_SIG_PARAMS to "\"limit: Int, offset: Int, query: String\"", CHANGE_SIG_DEFAULTS to "\"query=\\\"\\\"\"")),
+            UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", CHANGE_SIG_PARAMS to "\"offset: Int, limit: Int\"", PREVIEW to null)),
+        ),
+    )
+
     val SAFE_DELETE_TASK = TaskDef(
         goal = "safe-delete",
         description = "Delete a class or method only if it has no usages (verified via bytecode analysis)",
@@ -950,6 +964,7 @@ object TaskRegistry {
         MOVE_CLASS_TASK,
         MOVE_FILE_TASK,
         RENAME_PROPERTY_TASK,
+        CHANGE_SIGNATURE_TASK,
         SAFE_DELETE_TASK,
         HELP,
         AGENT_HELP,

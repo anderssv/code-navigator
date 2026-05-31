@@ -104,6 +104,9 @@ class CodeNavigatorPlugin : Plugin<Project> {
                 if (this is SafeDeleteTask) {
                     psiClasspath.from(psiConfig)
                 }
+                if (this is ChangeSignatureTask) {
+                    psiClasspath.from(psiConfig)
+                }
             }
         }
 
@@ -153,6 +156,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "move-class" to MoveClassTask::class.java,
             "rename-property" to RenamePropertyTask::class.java,
             "safe-delete" to SafeDeleteTask::class.java,
+            "change-signature" to ChangeSignatureTask::class.java,
             "help" to CodeNavigatorHelpTask::class.java,
             "agent-help" to AgentHelpTask::class.java,
             "config-help" to ConfigHelpTask::class.java,

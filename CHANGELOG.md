@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.96
+
+- **New:** `cnavChangeSignature` — change method signature: add, remove, or reorder parameters. Rewrites declaration and all positional call sites. Named arguments are preserved. New parameters require defaults for existing call sites (inserted as positional args, not Kotlin default values).
+- **Internal:** PSI-based rewriting in classloader-isolated worker; supports preview mode.
+
 ## 0.1.95
 
 - **New:** `cnavSafeDelete` — deletes a class or method only if it has no usages, verified via bytecode analysis. Refuses deletion and reports usage sites when references exist. Supports preview mode.
