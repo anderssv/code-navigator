@@ -935,3 +935,75 @@ Integration shape:
 - cnav tasks shell out to Martin daemon (start if not running)
 - cnav wraps Martin output in standard LLM/JSON/TEXT format
 - Falls back to "not available" guidance if Martin isn't installed
+
+---
+
+## Test-source separation in structural analysis
+
+From field testing on Greitt: cycles, DSM, balance, and rings all treat test classes as production dependencies. This creates massive noise — `polls→testutil`, `admin→testutil` edges aren't architectural problems, yet they dominate cycle output and inflate DANGER verdicts.
+
+### Exclude test-source edges from cycles/DSM/balance by default
+
+**Value: high** | **Effort: medium**
+
+The single 18-package cycle in Greitt is mostly caused by test classes importing `testutil`, `context`, and fakes. Production code alone likely has far fewer (or no) cycles.
+
+- Add `-Pinclude-test-edges=true` param (default false for cycles/DSM/balance/rings)
+- Use `CallGraph.sourceSetOf()` to identify test classes and filter edges where BOTH source and target are in test, or source is test and target is testutil
+- Consider: edges from test→production are valid (they show test coupling to prod structure), but test→test infrastructure is noise
+
+### Cycle edge ranking — "which edge to break first"
+
+**Value: high** | **Effort: medium**
+
+When a cycle has 18 packages, the output is overwhelming. Users need to know which single edge removal would have the most impact.
+
+- Compute "break score" per edge: how many SCCs would split if this edge were removed
+- Show top 3-5 "weakest links" at the top of cycle output
+- Consider showing edge weight (reference count) — a 1-reference edge is easier to break than a 21-reference edge
+
+---
+
+## cnavSuggestStructure improvements
+
+### Label or exclude test classes from move suggestions
+
+**Value: medium** | **Effort: low**
+
+Field testing showed suggestions like "move `MenuItemTest` to `web.components`" — confusing because test classes should follow their subject, not be independently relocated. Options:
+- Add "(test)" label to test-class suggestions
+- Default to excluding test classes (add `-Pinclude-tests=true` to override)
+- Or: only suggest moving a test class if its subject is also being suggested for the same target
+
+---
+
+## cnavTestCoupling UX
+
+### Concise "all clear" output
+
+**Value: medium** | **Effort: low**
+
+When no violations are found, the current output is ~15 lines of guidance text followed by one line saying "no violations." For a passing check, a one-liner confirmation is sufficient. Move guidance to the no-params/help case only.
+
+---
+
+## cnavRings actionability
+
+### Suggest "first package to extract" when rings degenerate
+
+**Value: low** | **Effort: medium**
+
+When one giant cycle collapses everything into a single ring (Ring 2 in Greitt had 18 packages), the 87 PEER/CYCLE violations are not actionable. Instead:
+- Identify which package has the fewest inward edges from the cycle (easiest to extract)
+- Show "Extract X first — it only has N inward edges to break"
+- Combine with cycle edge ranking to suggest a path forward
+
+---
+
+## Deprecation warning cleanup
+
+### Suppress root-package warning when auto-detection matches
+
+**Value: low** | **Effort: low**
+
+Projects with `codeNavigator { rootPackage = "..." }` configured see `'root-package' is deprecated` on every task. If auto-detection produces the same result, suppress the warning entirely. If they differ, suggest removal with a note that auto-detection now handles it.
