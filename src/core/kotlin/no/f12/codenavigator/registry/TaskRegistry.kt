@@ -246,8 +246,6 @@ object TaskRegistry {
     val STRING_PATTERN = ParamDef("pattern", "<regex>", "Regex to match against string constant values", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val METHODS = ParamDef("methods", "true", "Also search method-level annotations", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val CONTEXT_MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth (default: 2)", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
-    val LAYER_CONFIG = ParamDef("config", "<path>", "Path to layer config file", flag = false, defaultValue = ".cnav-layers.json", enhancePattern = false, type = ParamType.STRING)
-    val INIT = ParamDef("init", "true", "Generate starter config file", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val RENAME_CLASS = ParamDef("target-class", "<fqcn>", "Fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_METHOD = ParamDef("method", "<name>", "Method name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_PARAM = ParamDef("param", "<name>", "Current parameter name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -760,19 +758,6 @@ object TaskRegistry {
         ),
     )
 
-    val LAYER_CHECK = TaskDef(
-        goal = "layer-check",
-        description = "Check architecture layer conformance against config",
-        params = FORMAT_PARAMS + listOf(LAYER_CONFIG, INIT),
-        requiresCompilation = true,
-        category = TaskCategory.NAVIGATION,
-        examples = listOf(
-            UsageExample(emptyList()),
-            UsageExample(listOf(INIT to "true")),
-            UsageExample(listOf(LAYER_CONFIG to "custom-layers.json")),
-        ),
-    )
-
     val RINGS = TaskDef(
         goal = "rings",
         description = "Auto-detect hexagonal architecture rings and report violations (outward deps, peer/cycle deps)",
@@ -975,7 +960,6 @@ object TaskRegistry {
         SUGGEST_STRUCTURE,
         VOLATILITY,
         BALANCE,
-        LAYER_CHECK,
         RINGS,
         REPORT,
         SIZE,

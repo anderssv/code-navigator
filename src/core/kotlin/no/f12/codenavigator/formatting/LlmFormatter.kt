@@ -40,7 +40,6 @@ import no.f12.codenavigator.navigation.relations.callgraph.AnnotationTag
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.context.ContextResult
 import no.f12.codenavigator.navigation.dsm.BalanceResult
-import no.f12.codenavigator.navigation.dsm.LayerCheckResult
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.CohesionResult
 import no.f12.codenavigator.navigation.dsm.MoveSuggestionResult
@@ -122,23 +121,6 @@ object LlmFormatter {
         groups.joinToString("\n\n") { group ->
             "tokens=${group.tokenCount}\n" + group.locations.joinToString("\n") { "  ${it.file}:${it.startLine}-${it.endLine}" }
         }
-
-    fun formatLayerCheck(result: LayerCheckResult): String = buildString {
-        if (result.violations.isEmpty()) {
-            append("No layer violations found.")
-        } else {
-            appendLine("${result.violations.size} violation(s):")
-            for (v in result.violations) {
-                appendLine("${v.type.name}: ${v.sourceLayer} → ${v.targetLayer}: ${v.sourceClass} → ${v.targetClass}")
-            }
-        }
-        if (result.unassignedClasses.isNotEmpty()) {
-            appendLine()
-            appendLine("Unassigned: ${result.unassignedClasses.sorted().joinToString(", ")}")
-        }
-        appendLine()
-        append(LAYER_CHECK_INTERPRETATION)
-    }.trimEnd()
 
     fun formatVolatility(result: PackageVolatilityResult): String =
         result.entries.joinToString("\n") { "${it.packageName} revisions=${it.revisions} churn=${it.totalChurn} files=${it.fileCount} avgRev=${"%.1f".format(it.avgRevisionsPerFile)}" }
@@ -447,8 +429,6 @@ object LlmFormatter {
     internal const val COHESION_INTERPRETATION = "Interpretation: Cohesion ratio = internal edges / total edges. COHESIVE (>0.5) = classes collaborate more with each other than with outsiders. REVIEW (<0.5) = package may contain unrelated classes. THIN_LAYER (0.0) = no internal collaboration, consider merging into a neighbor."
 
     internal const val MOVE_SUGGEST_INTERPRETATION = "Interpretation: Classes with more edges to another package than their own are potentially misplaced. High confidence + low own-edges = strong signal. Verify intent before moving — composition roots, drivers, and thin adapters are expected to have outward edges."
-
-    internal const val LAYER_CHECK_INTERPRETATION = "Interpretation: UPWARD violations mean an inner layer depends on an outer layer (breaks dependency rule). PEER violations mean same-layer classes reference each other (may indicate missing extraction). Unassigned classes don't match any layer pattern — add them to the config."
 
     internal const val CYCLES_INTERPRETATION = "Interpretation: Package cycles prevent independent compilation and deployment. To break a cycle, identify the weakest edge (fewest class references) and extract an interface or move the referenced class. Use cnavWhyDepends for edge details."
 

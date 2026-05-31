@@ -145,7 +145,6 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "move-file" to MoveFileTask::class.java,
             "volatility" to PackageVolatilityTask::class.java,
             "balance" to BalanceTask::class.java,
-            "layer-check" to LayerCheckTask::class.java,
             "rings" to RingsTask::class.java,
             "report" to ReportTask::class.java,
             "size" to SizeTask::class.java,

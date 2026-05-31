@@ -1147,12 +1147,11 @@ class AgentHelpTextTest {
     }
 
     @Test
-    fun `recommendations section covers architecture conformance with layer-check`() {
+    fun `recommendations section covers architecture conformance with rings`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE, section = "recommendations")
 
-        val layerCheckTask = TaskRegistry.LAYER_CHECK.taskName(BuildTool.GRADLE)
-        assertTrue(text.contains(layerCheckTask), "Should mention $layerCheckTask")
-        assertTrue(text.contains(".cnav-layers.json"), "Should mention the config file")
+        val ringsTask = TaskRegistry.RINGS.taskName(BuildTool.GRADLE)
+        assertTrue(text.contains(ringsTask), "Should mention $ringsTask")
     }
 
     @Test

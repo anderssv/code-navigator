@@ -1,5 +1,13 @@
 # Plan — Completed
 
+## ~~cnavChangeSignature~~ — DONE (v0.1.96)
+
+PSI-based method signature refactoring: add, remove, or reorder parameters. Rewrites declaration and all call sites. Positional args reordered; named args preserved. New params require defaults for existing call sites (inserted as arguments, not Kotlin default values). Preview mode supported. 8 tests.
+
+## ~~cnavLayerCheck removed~~ — DONE (v0.1.97)
+
+Removed `cnavLayerCheck` (config-driven linear layer conformance). Superseded by `cnavRings` which auto-detects hexagonal architecture rings from the dependency graph without requiring configuration.
+
 ## ~~MoveClass / file operations~~ — DONE (v0.1.89)
 
 ### `cnavMoveClass`: handle files with multiple class declarations
