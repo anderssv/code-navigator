@@ -1331,4 +1331,26 @@ class AgentHelpTextTest {
             )
         }
     }
+
+    @Test
+    fun `all task names referenced in AgentHelpText exist in TaskRegistry`() {
+        val allGoals = TaskRegistry.ALL_TASKS.map { it.goal }.toSet()
+        val allGradleNames = TaskRegistry.ALL_TASKS.flatMap {
+            listOf(it.gradleTaskName) + it.aliasGradleTaskNames
+        }.toSet()
+
+        val sections = listOf(null, "install", "setup", "workflow", "interpretation", "schemas", "extraction", "recommendations", "refactor", "getting-started")
+        val cnavPattern = Regex("""cnav[A-Z][A-Za-z]+""")
+
+        for (section in sections) {
+            val text = AgentHelpText.generate(BuildTool.GRADLE, section = section)
+            val mentioned = cnavPattern.findAll(text).map { it.value }.toSet()
+            for (name in mentioned) {
+                assertTrue(
+                    allGradleNames.contains(name),
+                    "AgentHelpText (section=${section ?: "default"}) references '$name' which is not a registered task. Known: ${allGradleNames.sorted()}",
+                )
+            }
+        }
+    }
 }
