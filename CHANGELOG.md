@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.97
+
+- **Removed:** `cnavLayerCheck` — superseded by `cnavRings` which auto-detects hexagonal architecture rings without configuration.
+- **Improved:** Refactoring task lists in `cnavAgentHelp` are now generated from `TaskRegistry` metadata, preventing documentation drift when tasks are added or removed.
+- **Internal:** Added `intent`/`intentDetail` fields to `TaskDef` for SOURCE-category tasks. New tests enforce that all SOURCE tasks have metadata, appear in help text, and that all task names referenced in agent help actually exist in the registry.
+
 ## 0.1.96
 
 - **New:** `cnavChangeSignature` — change method signature: add, remove, or reorder parameters. Rewrites declaration and all positional call sites. Named arguments are preserved. New parameters require defaults for existing call sites (inserted as positional args, not Kotlin default values).
