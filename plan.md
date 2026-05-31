@@ -823,7 +823,7 @@ Each impacted class gets a confidence tier + reason. Agent/CI chooses threshold.
 
 ## Future: Compiler-based refactoring operations (inspired by Martin)
 
-Potential refactoring operations requiring Kotlin compiler frontend for full type resolution. These go beyond bytecode analysis — they need source-level AST manipulation. Could be implemented via Kotlin compiler plugin, OpenRewrite recipes, or integration with an external tool like [Martin](https://github.com/audunstrand/martin).
+Potential refactoring operations requiring Kotlin compiler frontend for full type resolution. These go beyond bytecode analysis — they need source-level AST manipulation. Could be implemented via Kotlin compiler plugin, OpenRewrite recipes, or integration with an external tool like [Martin](https://github.com/audunstrand/martin). Martin is a CLI tool for semantically-correct Kotlin refactorings using the embedded Kotlin compiler frontend — it serves as the primary inspiration for this section and the architectural patterns below.
 
 **Value: varies** | **Effort: high (compiler integration)**
 
