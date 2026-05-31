@@ -23,7 +23,7 @@ That's it. The agent will install the plugin, run the help task, and set up its 
 **Gradle** (`build.gradle.kts`):
 ```kotlin
 plugins {
-    id("no.f12.code-navigator") version "0.1.89"
+    id("no.f12.code-navigator") version "0.1.93"
 }
 ```
 
@@ -167,6 +167,10 @@ Run `cnavHelpConfig` / `cnav:config-help` to see all available parameters. CLI f
 ```
 
 Requires Gradle 9.4+ (included via the Gradle wrapper).
+
+## Acknowledgements
+
+The PSI-based refactoring architecture was inspired by Audun Fauchald Strand's [martin](https://github.com/audunstrand/martin) — a CLI tool for semantically-correct Kotlin refactorings using the embedded Kotlin compiler frontend. Its clean design demonstrated that `kotlin-compiler-embeddable` is viable outside an IDE and influenced our two-phase approach (bytecode location finding + PSI editing).
 
 ## License
 

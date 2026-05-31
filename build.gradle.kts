@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "no.f12"
-version = "0.1.90-SNAPSHOT"
+version = "0.1.93"
 
 gradlePlugin {
     website.set("https://github.com/anderssv/gradle-code-navigator")
@@ -41,12 +41,12 @@ dependencies {
     compileOnly("org.openrewrite:rewrite-core:8.78.6")
     compileOnly("org.openrewrite:rewrite-java:8.78.6")
     compileOnly("org.openrewrite:rewrite-kotlin:8.78.6")
-    compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.0.21")
+    compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.2.0")
     testImplementation("org.openrewrite:rewrite-core:8.78.6")
     testImplementation("org.openrewrite:rewrite-java:8.78.6")
     testImplementation("org.openrewrite:rewrite-kotlin:8.78.6")
     testRuntimeOnly("org.openrewrite:rewrite-java-21:8.78.6")
-    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.0.21")
+    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.2.0")
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

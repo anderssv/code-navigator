@@ -848,49 +848,66 @@ Each impacted class gets a confidence tier + reason. Agent/CI chooses threshold.
 
 ## Future: Compiler-based refactoring operations (inspired by Martin)
 
-Potential refactoring operations requiring Kotlin compiler frontend for full type resolution. These go beyond bytecode analysis — they need source-level AST manipulation. Could be implemented via Kotlin compiler plugin, OpenRewrite recipes, or integration with an external tool like [Martin](https://github.com/audunstrand/martin). Martin is a CLI tool for semantically-correct Kotlin refactorings using the embedded Kotlin compiler frontend — it serves as the primary inspiration for this section and the architectural patterns below.
+Potential refactoring operations using our PSI infrastructure. Now that `cnavRenameMethod` has been migrated to PSI (v0.1.90), the compiler integration barrier is gone — we have a working two-phase architecture (ASM location finding → PSI editing in isolated classloader) that new operations can reuse.
 
-**Value: varies** | **Effort: high (compiler integration)**
+Inspired by [Martin](https://github.com/audunstrand/martin) by Audun Fauchald Strand — a CLI tool for semantically-correct Kotlin refactorings using the embedded Kotlin compiler frontend. Martin's clean design (especially the TextEdit primitive and warm daemon pattern) was instrumental in showing that `kotlin-compiler-embeddable` is viable outside an IDE. Thanks Audun!
+
+**Effort key (post-PSI migration):**
+- **Low** = PSI tree walking + text replacement, no type resolution needed. Reuses existing `KotlinCoreEnvironment` setup.
+- **Medium** = Needs bytecode-guided location finding (like rename) or cross-file coordination.
+- **High** = Needs `BindingContext` / full type resolution (not yet implemented).
 
 ### Extract operations
 
-- **`cnavExtractFunction`** — Extract a range of lines into a new function, automatically determining parameters and return values.
-- **`cnavExtractVariable`** — Extract an expression at cursor into a named `val`.
-- **`cnavExtractConstant`** — Extract a literal into a companion object constant.
-- **`cnavExtractParameter`** — Extract a hardcoded value into a function parameter.
-- **`cnavExtractInterface`** — Extract an interface from a class (public methods become interface contract).
-- **`cnavExtractSuperclass`** — Extract a superclass from a class.
+- **`cnavExtractFunction`** — Extract a range of lines into a new function, automatically determining parameters and return values. **Effort: high** (needs data flow analysis via BindingContext to determine params/return).
+- **`cnavExtractVariable`** — Extract an expression at cursor into a named `val`. **Effort: low** (single-file PSI transform, no type resolution needed).
+- **`cnavExtractConstant`** — Extract a literal into a companion object constant. **Effort: low** (single-file, find literal → add to companion).
+- **`cnavExtractParameter`** — Extract a hardcoded value into a function parameter. **Effort: medium** (single-file extraction is easy, but updating call sites needs ASM location finding).
+- **`cnavExtractInterface`** — Extract an interface from a class (public methods become interface contract). **Effort: medium** (PSI can enumerate public methods; updating implementors needs bytecode scan).
+- **`cnavExtractSuperclass`** — Extract a superclass from a class. **Effort: medium** (similar to ExtractInterface).
 
 ### Inline / simplify operations
 
-- **`cnavInline`** — Replace all usages of a variable or function with its definition, remove the declaration.
-- **`cnavConvertToExpressionBody`** — Convert block body `{ return x }` to `= x`.
-- **`cnavConvertToBlockBody`** — Convert expression body `= x` to `{ return x }`.
+- **`cnavInline`** — Replace all usages of a variable or function with its definition, remove the declaration. **Effort: medium** (local inline is low; cross-file inline needs ASM + multi-file PSI edits).
+- **`cnavConvertToExpressionBody`** — Convert block body `{ return x }` to `= x`. **Effort: low** (pure PSI pattern match on single function).
+- **`cnavConvertToBlockBody`** — Convert expression body `= x` to `{ return x }`. **Effort: low** (inverse of above).
 
 ### Signature & structure changes
 
-- **`cnavChangeSignature`** — Add, remove, or reorder function parameters (updating all call sites).
-- **`cnavAddNamedArguments`** — Add explicit parameter names to call arguments.
-- **`cnavIntroduceParameterObject`** — Group function parameters into a data class.
-- **`cnavPullUpMethod`** — Move a method from a subclass to its superclass.
-- **`cnavReplaceConstructorWithFactory`** — Replace a constructor with a factory function.
+- **`cnavChangeSignature`** — Add, remove, or reorder function parameters (updating all call sites). **Effort: medium** (declaration change is trivial; call-site updates reuse RenameLocationFinder pattern — find via ASM, edit via PSI).
+- **`cnavAddNamedArguments`** — Add explicit parameter names to call arguments. **Effort: medium** (needs to resolve parameter names from declaration, then find call sites via ASM).
+- **`cnavIntroduceParameterObject`** — Group function parameters into a data class. **Effort: medium** (compose: create data class + ChangeSignature).
+- **`cnavPullUpMethod`** — Move a method from a subclass to its superclass. **Effort: medium** (hierarchy already known from bytecode; PSI does the move).
+- **`cnavReplaceConstructorWithFactory`** — Replace a constructor with a factory function. **Effort: medium** (declaration change + ASM finds constructor call sites).
 
 ### Type conversion operations
 
-- **`cnavConvertToDataClass`** — Convert a class to a data class.
-- **`cnavConvertToExtensionFunction`** — Convert a method to an extension function.
-- **`cnavConvertToSealedClass`** — Convert a class hierarchy to a sealed class.
-- **`cnavTypeMigration`** — Change a type and update all related code.
-- **`cnavConvertPropertyToFunction`** — Convert a property to a function.
+- **`cnavConvertToDataClass`** — Convert a class to a data class. **Effort: low** (single-file: add `data` modifier, verify requirements via PSI).
+- **`cnavConvertToExtensionFunction`** — Convert a method to an extension function. **Effort: medium** (move + update call sites from `obj.method()` to `obj.method()` extension — call sites don't change syntactically but imports do).
+- **`cnavConvertToSealedClass`** — Convert a class hierarchy to a sealed class. **Effort: medium** (needs hierarchy from bytecode, then multi-file PSI edits to add `sealed` + move subclasses).
+- **`cnavTypeMigration`** — Change a type and update all related code. **Effort: high** (needs BindingContext for full type inference across assignments/returns).
+- **`cnavConvertPropertyToFunction`** — Convert a property to a function. **Effort: medium** (declaration + call-site syntax change from `x.prop` to `x.prop()`).
 
 ### Safety operations
 
-- **`cnavSafeDelete`** — Delete a declaration only if it has no usages (like dead code removal but interactive/targeted).
-- **`cnavEncapsulateField`** — Make a public property private and generate accessors.
+- **`cnavSafeDelete`** — Delete a declaration only if it has no usages (like dead code removal but interactive/targeted). **Effort: low** (combine existing `cnavDeadCode` logic with targeted PSI deletion).
+- **`cnavEncapsulateField`** — Make a public property private and generate accessors. **Effort: medium** (single-file property change + ASM finds direct field access sites).
+
+### Recommended implementation order (quick wins first)
+
+1. **`cnavConvertToExpressionBody`** / **`cnavConvertToBlockBody`** — trivial, good for validating the pattern
+2. **`cnavExtractVariable`** / **`cnavExtractConstant`** — single-file, builds confidence
+3. **`cnavSafeDelete`** — leverages existing dead code detection
+4. **`cnavConvertToDataClass`** — single-file with PSI validation
+5. **`cnavChangeSignature`** — reuses RenameLocationFinder, high value for agents
+6. **`cnavExtractParameter`** — combines single-file + cross-file (medium complexity)
+7. **`cnavExtractInterface`** — medium, high value for architecture improvements
 
 ### Notes
 
-- Many of these require source-level analysis (not just bytecode). Could integrate with Martin as an external tool, or implement via K2 compiler plugin.
+- All "medium" operations follow the same two-phase pattern proven by `cnavRenameMethod`: ASM finds locations → PSI edits at those locations.
+- "Low" operations can skip Phase 1 entirely — they're single-file PSI transforms.
+- "High" operations (ExtractFunction, TypeMigration) are blocked on BindingContext integration. Consider Martin delegation for these until we add BindingContext support.
 - `cnavSafeDelete` overlaps with existing `cnavDeadCode` but is targeted (single symbol) rather than whole-project scan.
 - `cnavExtractInterface` and `cnavExtractSuperclass` overlap with existing hierarchy analysis — could use `cnavTypeHierarchy` to inform decisions.
 
@@ -900,11 +917,27 @@ Potential refactoring operations requiring Kotlin compiler frontend for full typ
 
 Techniques observed in [Martin](https://github.com/audunstrand/martin) source code that could improve code-navigator.
 
-### Embedded Kotlin Compiler Frontend (`kotlin-compiler-embeddable`)
+### ~~Embedded Kotlin Compiler Frontend (`kotlin-compiler-embeddable`)~~ — DONE (v0.1.90)
 
 **Value: high** | **Effort: high**
 
 Martin uses `kotlin-compiler-embeddable` as a library dependency to get full PSI trees + `BindingContext` for type resolution — no IDE plugin required. This unlocks source-level transformations that bytecode analysis can't provide.
+
+**K2 PSI trial results (Greitt, 140 .kt files, rename `toggleAdminDate`):**
+
+| Approach | Cold | Warm | Notes |
+|----------|------|------|-------|
+| OpenRewrite | 16s | 7s | Full type resolution, heavy deps (~40MB) |
+| PSI all files | 2s | 678ms | env=229ms, parse=370ms, find=72ms |
+| PSI targeted (projected) | — | ~220ms | Parse only affected files |
+
+**Decision (ADR-0001):** Two-phase architecture implemented in v0.1.90:
+- Phase 1 (ASM, main classpath): `RenameLocationFinder` scans bytecode for call-site files + implementors
+- Phase 2 (PSI, isolated classpath): `PsiRenameMethodRewriter` edits only identified files
+
+**Current status:** `cnavRenameMethod` fully migrated from OpenRewrite to PSI. Uses `kotlin-compiler-embeddable:2.0.21` as `compileOnly` dep with classloader isolation. Bytecode guidance catches cross-package call sites (e.g., injected dependencies without explicit imports).
+
+**Remaining:** BindingContext not yet used — current approach relies on bytecode for type resolution instead. Full BindingContext would enable extract/inline/change-signature operations listed above.
 
 Evaluation questions:
 - Could be added as an optional dependency for refactoring tasks that need source-level analysis.

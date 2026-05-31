@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.93
+
+- **New:** `cnavRenameMethod` migrated from OpenRewrite to PSI-based refactoring. Two-phase architecture: ASM bytecode scanning finds call-site files and implementors (Phase 1), then PSI edits at those locations in isolated classloader (Phase 2).
+- **Improved:** `cnavRenameMethod` now finds cross-package call sites where the target class is injected without explicit imports (e.g., dependency injection). Previously missed by import-only heuristics.
+- **Performance:** `cnavRenameMethod` reduced from 16s cold / 7s warm (OpenRewrite) to ~2s total (PSI + bytecode guidance) on a 140-file project.
+- **New:** `RenameLocationFinder` — ASM-based scanner that identifies call-site source files and interface implementors from compiled bytecode, including lambda classes.
+- **Fixed:** Maven build compatibility — upgraded `kotlin-compiler-embeddable` to 2.2.0 to match `rewrite-kotlin` dependency.
+- **Internal:** Added 8 ADRs documenting architectural decisions (PSI migration, classloader isolation, bytecode analysis, etc.).
+- **Docs:** Added Acknowledgements section crediting Audun Fauchald Strand's [martin](https://github.com/audunstrand/martin) as architectural inspiration.
+
 ## 0.1.89
 
 - **New:** `cnavSuggestStructure` — groups misplaced classes by target package, showing structural reorganization opportunities and computing a drift score (% of classes clustering outside their package).

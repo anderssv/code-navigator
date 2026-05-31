@@ -129,12 +129,14 @@ Formatters never reach back into parsed data. When two formatters need the same 
 2. Remove `-SNAPSHOT` from `build.gradle.kts` and `pom.xml`
 3. Update version in `README.md` installation examples
 4. `git commit -am "Release X.Y.Z"` && `git tag vX.Y.Z`
-5. `mise exec -- ./gradlew publishPlugins`
-6. `mise exec -- ./mvnw clean deploy -Prelease` (signs + publishes to Central)
+5. `mise exec -- ./mvnw clean deploy -Prelease` (signs + publishes to Central — do this FIRST, it's more likely to fail)
+6. `mise exec -- ./gradlew publishPlugins`
 7. Bump to `X.Y.(Z+1)-SNAPSHOT` in `build.gradle.kts` and `pom.xml`
 8. `git commit -am "Bump to X.Y.Z-SNAPSHOT"` && `git push && git push --tags`
 
 Requires GPG key + Sonatype credentials in `~/.m2/settings.xml` (server id `central`).
+
+**Important:** If one publish target succeeds but the other fails (e.g., Gradle Plugin Portal succeeds but Maven Central fails), you must bump to the next version and release again. Published versions cannot be overwritten.
 
 ## Plan Management
 
