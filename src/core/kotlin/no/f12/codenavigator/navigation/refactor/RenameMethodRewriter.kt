@@ -36,7 +36,7 @@ object RenameMethodRewriter {
             implementorFqns = emptySet()
         }
 
-        return PsiRenameMethodRewriter.rename(
+        return RenameMethodEditor.rename(
             sourceRoots = sourceRoots,
             className = className,
             methodName = methodName,

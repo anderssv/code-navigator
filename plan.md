@@ -373,12 +373,23 @@ Improvements to cnav's own codebase — not user-facing features.
 Several tasks (especially refactoring and composite analysis) contain logic that spans multiple concerns in a single function. The principle should be: an orchestrator calls single-purpose tasks that are as specific (and reusable) as possible.
 
 Review areas:
-- `RenameMethodRewriter` / `PsiRenameMethodRewriter`: location finding + PSI editing should be clearly separated (partially done with `RenameLocationFinder`)
+- `RenameMethodRewriter` / `RenameMethodEditor`: location finding + PSI editing should be clearly separated (partially done with `RenameLocationFinder`)
 - `MoveClassRewriter`: import updating, content extraction, file writing — are these reusable?
 - DSM orchestrator: does it compose focused builders, or does it inline resolution logic?
 - Formatter classes: some may contain query logic that belongs in builders
 
 Goal: each unit does one thing; composition happens at the orchestrator level. This makes individual steps testable, cacheable, and reusable across tasks.
+
+### Evaluate other JVM languages to support
+
+**Value: medium** | **Effort: low (research)**
+
+With the `LanguageRenameRewriter` abstraction in place (v0.1.94), adding new languages is straightforward — implement the interface and register in `RenameMethodEditor`. Java support is done. Evaluate:
+
+- **Groovy** — common in Gradle build scripts and older JVM projects. IntelliJ Groovy PSI may be available.
+- **Scala** — has its own compiler/PSI ecosystem; likely high effort unless a suitable library exists.
+
+Criteria: Is PSI available in `kotlin-compiler-embeddable` or a lightweight dep? Is the language common enough in projects that also use Kotlin?
 
 ### Potentially dead code in cnav's own codebase (from self-analysis)
 

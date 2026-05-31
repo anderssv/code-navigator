@@ -9,87 +9,62 @@ import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
-import java.io.File
 
 /**
- * PSI-based rename method rewriter. Replaces OpenRewrite for method renaming.
- *
- * Strategy:
- * - Declarations: match by FQN (package + class name) + implementor FQNs from bytecode
- * - Call sites: rename in files identified by bytecode as calling the target method,
- *   plus files reachable via import/package analysis (Phase A fallback)
+ * Kotlin-specific rename method rewriter using Kotlin PSI.
+ * Handles .kt files: finds declarations and call sites using KtPsiFactory.
  */
-object PsiRenameMethodRewriter {
+class KotlinRenameMethodRewriter : LanguageRenameRewriter {
 
-    /**
-     * @param callSiteFiles Relative source paths (from bytecode) that call the target method.
-     *   When provided, these files are also scanned for call sites regardless of imports.
-     * @param implementorFqns FQNs of classes that implement/extend the target (from bytecode).
-     *   When provided, declarations in these classes are also renamed.
-     */
-    fun rename(
-        sourceRoots: List<File>,
+    override val supportedExtensions = setOf("kt")
+
+    private var cachedEnvironment: Pair<Any, KtPsiFactory>? = null
+
+    override fun findEdits(
+        content: String,
+        fileName: String,
         className: String,
         methodName: String,
         newName: String,
-        preview: Boolean = false,
-        callSiteFiles: Set<String> = emptySet(),
-        implementorFqns: Set<String> = emptySet(),
-    ): RenameMethodResult {
-        val sourceFiles = collectSourceFiles(sourceRoots)
-        if (sourceFiles.isEmpty()) return RenameMethodResult(emptyList())
+        isBytecodeCallSite: Boolean,
+        implementorFqns: Set<String>,
+    ): List<TextEdit> {
+        val (_, psiFactory) = getOrCreateEnvironment()
+        val ktFile = psiFactory.createFile(fileName, content)
 
-        val disposable = Disposer.newDisposable("psi-rename")
-        try {
-            val configuration = CompilerConfiguration().apply {
-                put(
-                    CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,
-                    PrintingMessageCollector(System.err, MessageRenderer.PLAIN_RELATIVE_PATHS, false),
-                )
-                put(CommonConfigurationKeys.MODULE_NAME, "rename-target")
-            }
-            val environment = KotlinCoreEnvironment.createForProduction(
-                disposable, configuration, EnvironmentConfigFiles.JVM_CONFIG_FILES,
+        val targetSimpleName = className.substringAfterLast(".")
+        val targetPackage = className.substringBeforeLast(".", "")
+
+        return findEditsInFile(
+            ktFile, className, targetSimpleName, targetPackage,
+            methodName, newName, isBytecodeCallSite, implementorFqns,
+        )
+    }
+
+    private fun getOrCreateEnvironment(): Pair<Any, KtPsiFactory> {
+        cachedEnvironment?.let { return it }
+        val disposable = Disposer.newDisposable("kotlin-rename")
+        val configuration = CompilerConfiguration().apply {
+            put(
+                CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,
+                PrintingMessageCollector(System.err, MessageRenderer.PLAIN_RELATIVE_PATHS, false),
             )
-            val psiFactory = KtPsiFactory(environment.project)
-
-            val targetSimpleName = className.substringAfterLast(".")
-            val targetPackage = className.substringBeforeLast(".", "")
-
-            val changes = mutableListOf<RenameChange>()
-
-            for (file in sourceFiles) {
-                val content = file.readText()
-                val ktFile = psiFactory.createFile(file.name, content)
-
-                // Check if this file is bytecode-identified as a call site
-                val relativePath = sourceRoots.firstNotNullOfOrNull { root ->
-                    val rel = file.toRelativeString(root)
-                    if (!rel.startsWith("..")) rel else null
-                } ?: file.name
-                val isBytecodeCallSite = callSiteFiles.any { relativePath.endsWith(it) || it.endsWith(relativePath) }
-
-                val edits = findEditsInFile(
-                    ktFile, className, targetSimpleName, targetPackage,
-                    methodName, newName, isBytecodeCallSite, implementorFqns,
-                )
-
-                if (edits.isNotEmpty()) {
-                    val after = applyEdits(content, edits)
-                    changes.add(RenameChange(file.absolutePath, content, after))
-                }
-            }
-
-            if (!preview) {
-                for (change in changes) {
-                    File(change.filePath).writeText(change.after)
-                }
-            }
-
-            return RenameMethodResult(changes)
-        } finally {
-            Disposer.dispose(disposable)
+            put(CommonConfigurationKeys.MODULE_NAME, "rename-target")
         }
+        val environment = KotlinCoreEnvironment.createForProduction(
+            disposable, configuration, EnvironmentConfigFiles.JVM_CONFIG_FILES,
+        )
+        val psiFactory = KtPsiFactory(environment.project)
+        val pair = Pair(disposable as Any, psiFactory)
+        cachedEnvironment = pair
+        return pair
+    }
+
+    fun dispose() {
+        cachedEnvironment?.let { (disposable, _) ->
+            Disposer.dispose(disposable as org.jetbrains.kotlin.com.intellij.openapi.Disposable)
+        }
+        cachedEnvironment = null
     }
 
     private fun findEditsInFile(
@@ -142,7 +117,6 @@ object PsiRenameMethodRewriter {
 
         // Find call sites in files that reference the target class OR are bytecode-identified
         if (isBytecodeCallSite || fileReferencesClass(ktFile, targetSimpleName, targetFqn, targetPackage)) {
-            // Find call sites outside of target class declarations
             findCallSiteEditsInFile(ktFile, classDecls, targetFqn, targetSimpleName, filePackage, methodName, newName, edits, implementorFqns)
         }
 
@@ -175,8 +149,6 @@ object PsiRenameMethodRewriter {
         edits: MutableList<TextEdit>,
         implementorFqns: Set<String> = emptySet(),
     ) {
-        // Find all call expressions in the file that are NOT inside a target/implementor class
-        // (those were already handled above)
         val targetClassRanges = classDecls
             .filter { clazz ->
                 val fqn = buildFqn(filePackage, clazz)
@@ -188,9 +160,7 @@ object PsiRenameMethodRewriter {
         for (call in allCalls) {
             val callee = call.calleeExpression
             if (callee is KtNameReferenceExpression && callee.getReferencedName() == methodName) {
-                // Skip if inside a target class (already handled)
                 if (targetClassRanges.any { it.contains(callee.textRange) }) continue
-                // Only rename dot-qualified calls or calls where we're confident about the target
                 val parent = call.parent
                 if (parent is KtDotQualifiedExpression) {
                     edits.add(TextEdit(callee.textOffset, callee.textLength, newName))
@@ -200,7 +170,6 @@ object PsiRenameMethodRewriter {
     }
 
     private fun buildFqn(filePackage: String, clazz: KtClass): String {
-        // Handle nested classes by walking up
         val names = mutableListOf(clazz.name ?: "")
         var parent = clazz.parent
         while (parent != null) {
@@ -215,7 +184,6 @@ object PsiRenameMethodRewriter {
 
     private fun matchesFqn(classFqn: String, targetFqn: String): Boolean {
         if (classFqn == targetFqn) return true
-        // Companion: "com.example.Foo.Companion" matches target "com.example.Foo"
         if (classFqn == "$targetFqn.Companion") return true
         return false
     }
@@ -231,7 +199,6 @@ object PsiRenameMethodRewriter {
             val typeRef = entry.typeReference?.text?.substringBefore("<") ?: continue
             val simpleName = typeRef.substringAfterLast(".")
             if (simpleName == targetSimpleName) {
-                // Verify via imports that this refers to the target
                 if (isImportedOrSamePackage(ktFile, targetFqn)) return true
             }
         }
@@ -245,9 +212,7 @@ object PsiRenameMethodRewriter {
         targetPackage: String,
     ): Boolean {
         val filePackage = ktFile.packageFqName.asString()
-        // Same package — always visible
         if (filePackage == targetPackage) return true
-        // Check imports
         return isImportedOrSamePackage(ktFile, targetFqn)
     }
 
@@ -260,20 +225,8 @@ object PsiRenameMethodRewriter {
         for (imp in imports) {
             val importedFqn = imp.importedFqName?.asString() ?: continue
             if (importedFqn == targetFqn) return true
-            // Star import of the package
             if (imp.isAllUnder && importedFqn == targetPackage) return true
         }
         return false
     }
-
-    private fun applyEdits(content: String, edits: List<TextEdit>): String {
-        var result = content
-        // Apply in reverse offset order to preserve positions
-        for (edit in edits.sortedByDescending { it.offset }) {
-            result = result.substring(0, edit.offset) + edit.replacement + result.substring(edit.offset + edit.length)
-        }
-        return result
-    }
-
-    private data class TextEdit(val offset: Int, val length: Int, val replacement: String)
 }

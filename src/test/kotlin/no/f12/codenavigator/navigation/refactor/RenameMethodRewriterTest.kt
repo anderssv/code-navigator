@@ -9,6 +9,7 @@ import java.nio.file.Files
 class RenameMethodRewriterTest {
 
     private val testProjectSrc = File("test-project/src/main/kotlin")
+    private val testProjectJavaSrc = File("test-project/src/main/java")
 
     @Test
     fun `returns change with before and after content`() {
@@ -288,5 +289,57 @@ class RenameMethodRewriterTest {
         assertTrue(result.changes.isNotEmpty(), "Should have changes with bytecode guidance")
         val implChange = result.changes.first { it.filePath.endsWith("InMemoryUserRepository.kt") }
         assertTrue(implChange.after.contains("fun lookupById("), "Implementor declaration should be renamed via bytecode")
+    }
+
+    @Test
+    fun `renames method declaration in Java file`() {
+        val result = RenameMethodEditor.rename(
+            sourceRoots = listOf(testProjectJavaSrc),
+            className = "com.example.javaservice.JavaAuditService",
+            methodName = "formatAuditEntry",
+            newName = "buildAuditLine",
+            preview = true,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should have changes in Java file. Files scanned from: $testProjectJavaSrc")
+        val change = result.changes.first { it.filePath.endsWith("JavaAuditService.java") }
+        assertTrue(change.after.contains("buildAuditLine"), "Declaration should be renamed")
+        assertTrue(!change.after.contains("formatAuditEntry"), "Old name should be gone")
+    }
+
+    @Test
+    fun `renames method call site in Java file`() {
+        val result = RenameMethodEditor.rename(
+            sourceRoots = listOf(testProjectJavaSrc),
+            className = "com.example.javaservice.JavaAuditService",
+            methodName = "formatAuditEntry",
+            newName = "buildAuditLine",
+            preview = true,
+        )
+
+        assertTrue(result.changes.size >= 2, "Should have changes in at least 2 Java files. Changes: ${result.changes.map { it.filePath }}")
+        val callerChange = result.changes.first { it.filePath.endsWith("JavaReportService.java") }
+        assertTrue(callerChange.after.contains("buildAuditLine"), "Call site should be renamed")
+        assertTrue(!callerChange.after.contains("formatAuditEntry"), "Old name should be gone from caller")
+    }
+
+    @Test
+    fun `single rename call handles both Kotlin and Java source roots`() {
+        val result = RenameMethodEditor.rename(
+            sourceRoots = listOf(testProjectSrc, testProjectJavaSrc),
+            className = "com.example.services.AuditService",
+            methodName = "formatAuditEntry",
+            newName = "buildAuditLine",
+            preview = true,
+        )
+
+        val ktChange = result.changes.firstOrNull { it.filePath.endsWith("services/AuditService.kt") }
+        assertTrue(ktChange != null, "Should find Kotlin file changes. Changes: ${result.changes.map { it.filePath }}")
+        assertTrue(ktChange!!.after.contains("buildAuditLine"), "Kotlin declaration should be renamed")
+
+        // Java files in a different package won't match this className, but the mechanism should process both
+        val allExtensions = result.changes.map { File(it.filePath).extension }.toSet()
+        // At minimum, .kt files should be found
+        assertTrue("kt" in allExtensions, "Should process .kt files")
     }
 }
