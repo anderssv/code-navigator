@@ -1,6 +1,7 @@
 package no.f12.codenavigator
 
 import no.f12.codenavigator.registry.BuildTool
+import no.f12.codenavigator.registry.TaskCategory
 import no.f12.codenavigator.registry.TaskRegistry
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -1295,5 +1296,40 @@ class AgentHelpTextTest {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
 
         assertContains(text, "section=refactor")
+    }
+
+    @Test
+    fun `all SOURCE tasks have intent metadata`() {
+        val sourceTasks = TaskRegistry.ALL_TASKS.filter { it.category == TaskCategory.SOURCE }
+        for (task in sourceTasks) {
+            assertTrue(task.intent != null, "SOURCE task '${task.goal}' is missing 'intent' metadata")
+            assertTrue(task.intentDetail != null, "SOURCE task '${task.goal}' is missing 'intentDetail' metadata")
+        }
+    }
+
+    @Test
+    fun `all SOURCE tasks appear in refactor section`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE, section = "refactor")
+        val sourceTasks = TaskRegistry.ALL_TASKS.filter { it.category == TaskCategory.SOURCE }
+        for (task in sourceTasks) {
+            assertTrue(
+                text.contains(task.taskName(BuildTool.GRADLE)),
+                "Refactor section should mention ${task.taskName(BuildTool.GRADLE)} (goal: ${task.goal})",
+            )
+        }
+    }
+
+    @Test
+    fun `all SOURCE tasks with preview appear in default output`() {
+        val text = AgentHelpText.generate(BuildTool.GRADLE)
+        val sourceTasksWithPreview = TaskRegistry.ALL_TASKS.filter {
+            it.category == TaskCategory.SOURCE && it.params.any { p -> p.name == "preview" }
+        }
+        for (task in sourceTasksWithPreview) {
+            assertTrue(
+                text.contains(task.taskName(BuildTool.GRADLE)),
+                "Default output should mention ${task.taskName(BuildTool.GRADLE)} (goal: ${task.goal})",
+            )
+        }
     }
 }

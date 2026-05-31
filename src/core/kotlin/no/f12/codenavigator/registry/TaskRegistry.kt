@@ -114,6 +114,10 @@ data class TaskDef(
     val paramDefaultOverrides: Map<String, String> = emptyMap(),
     val aliases: List<String> = emptyList(),
     val examples: List<UsageExample> = emptyList(),
+    /** Short intent phrase for "I want to..." lists (e.g. "Change method parameters"). Only for SOURCE tasks. */
+    val intent: String? = null,
+    /** Brief explanation of what the task does for summaries (e.g. "add/remove/reorder params, updates call sites"). */
+    val intentDetail: String? = null,
 ) {
     init {
         val paramNames = params.map { it.name }.toSet()
@@ -786,6 +790,8 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(TOP, OVER),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        intent = "List files by size",
+        intentDetail = "sorts source files by line count",
         examples = listOf(
             UsageExample(emptyList()),
             UsageExample(listOf(OVER to "100")),
@@ -799,6 +805,8 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(TOP, MIN_TOKENS, SCOPE),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        intent = "Find duplicate code",
+        intentDetail = "token-based duplicate detection across source files",
         examples = listOf(
             UsageExample(emptyList()),
             UsageExample(listOf(SCOPE to "prod")),
@@ -813,6 +821,8 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, RENAME_PARAM, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        intent = "Rename a parameter",
+        intentDetail = "updates named-argument call sites",
         examples = listOf(
             UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", RENAME_PARAM to "limit", RENAME_NEW_NAME to "maxResults")),
             UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", RENAME_PARAM to "limit", RENAME_NEW_NAME to "maxResults", PREVIEW to null)),
@@ -825,6 +835,8 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        intent = "Rename a method",
+        intentDetail = "updates all call sites incl. interface impls",
         examples = listOf(
             UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", RENAME_NEW_NAME to "searchUsers")),
             UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", RENAME_NEW_NAME to "searchUsers", PREVIEW to null)),
@@ -837,6 +849,8 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(MOVE_FROM, MOVE_TO, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
+        intent = "Move/rename a class",
+        intentDetail = "rewrites package decl, all imports, same-package refs",
         aliases = listOf("rename-class"),
         examples = listOf(
             UsageExample(listOf(MOVE_FROM to "com.example.services.UserService", MOVE_TO to "com.example.domain.UserService")),
@@ -851,6 +865,8 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(FROM_FILE, TO_PACKAGE, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
+        intent = "Move a file to another package",
+        intentDetail = "updates package declaration + all imports + references",
         examples = listOf(
             UsageExample(listOf(FROM_FILE to "src/main/kotlin/com/example/Metrics.kt", TO_PACKAGE to "com.example.billing")),
             UsageExample(listOf(FROM_FILE to "src/main/kotlin/com/example/Metrics.kt", TO_PACKAGE to "com.example.billing", PREVIEW to null)),
@@ -863,6 +879,8 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_PROPERTY, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        intent = "Rename a property",
+        intentDetail = "updates access sites, constructors, copy() calls",
         examples = listOf(
             UsageExample(listOf(RENAME_CLASS to "com.example.UserProfile", RENAME_PROPERTY to "fullName", RENAME_NEW_NAME to "displayName")),
             UsageExample(listOf(RENAME_CLASS to "com.example.UserProfile", RENAME_PROPERTY to "fullName", RENAME_NEW_NAME to "displayName", PREVIEW to null)),
@@ -875,6 +893,8 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, CHANGE_SIG_PARAMS, CHANGE_SIG_DEFAULTS, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
+        intent = "Change method parameters",
+        intentDetail = "add/remove/reorder params, updates call sites",
         examples = listOf(
             UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", CHANGE_SIG_PARAMS to "\"limit: Int, offset: Int, query: String\"", CHANGE_SIG_DEFAULTS to "\"query=\\\"\\\"\"")),
             UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", CHANGE_SIG_PARAMS to "\"offset: Int, limit: Int\"", PREVIEW to null)),
@@ -887,6 +907,8 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
+        intent = "Safely delete unused code",
+        intentDetail = "verifies zero usages via bytecode before deleting",
         examples = listOf(
             UsageExample(listOf(RENAME_CLASS to "com.example.UnusedService")),
             UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "unusedMethod")),
@@ -970,4 +992,9 @@ object TaskRegistry {
         AGENT_HELP,
         CONFIG_HELP,
     )
+
+    /** All SOURCE-category tasks that have refactoring intent metadata. */
+    val REFACTORING_TASKS: List<TaskDef> = ALL_TASKS.filter {
+        it.category == TaskCategory.SOURCE && it.intent != null
+    }
 }

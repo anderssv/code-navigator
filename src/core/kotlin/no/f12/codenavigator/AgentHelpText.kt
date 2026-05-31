@@ -65,6 +65,7 @@ object AgentHelpText {
         appendLine("Find implementations: ${u("find-interfaces", p("pattern", "InterfaceName"))}")
         appendLine("Move a class: ${u("move-class", p("from", "com.example.Old"), p("to", "com.example.New"))}")
         appendLine("Rename a method: ${u("rename-method", p("target-class", "com.example.Service"), p("method", "old"), p("new-name", "new"))}")
+        appendLine("Change a method signature: ${u("change-signature", p("target-class", "com.example.Service"), p("method", "find"), p("params", "\"limit: Int, query: String\""), p("defaults", "\"query=\\\"\\\"\""))}")
         appendLine("Assess change impact: ${u("changed-since", p("ref", "main"))}")
         appendLine("Package deps: ${t("package-deps")} or ${t("dsm")}")
         appendLine()
@@ -151,9 +152,12 @@ object AgentHelpText {
         appendLine("cnav's value is highest at decision points. Use these before any rename, move, or delete:")
         appendLine()
         appendLine("1. Before renaming/moving: use ${pf("preview")} to see the complete edit plan")
-        appendLine("   ${u("move-class", p("from", "com.example.OldName"), p("to", "com.example.NewName"), pf("preview"))}")
-        appendLine("   ${u("rename-method", p("target-class", "com.example.Service"), p("method", "old"), p("new-name", "new"), pf("preview"))}")
-        appendLine("   ${u("rename-property", p("target-class", "com.example.Config"), p("property", "old"), p("new-name", "new"), pf("preview"))}")
+        for (task in TaskRegistry.REFACTORING_TASKS) {
+            val previewExample = task.examples.firstOrNull { ex -> ex.params.any { it.first.name == "preview" } }
+            if (previewExample != null) {
+                appendLine("   ${previewExample.render(task.goal, tool)}")
+            }
+        }
         appendLine("   Preview with ${p("llm", "true")} produces standard unified diff (--- a/ +++ b/ @@ @@)")
         appendLine("   that shows exactly what will change. Review the diff, then re-run without ${pf("preview")} to apply.")
         appendLine("   Use ${p("format", "diff")} to get raw unified diff output (no markers, no headers) —")
@@ -212,11 +216,10 @@ object AgentHelpText {
         appendLine()
         appendLine("--- Common Refactoring Tasks ---")
         appendLine()
-        appendLine("  Moving a class?        → ${t("move-class")}  (rewrites package decl, all imports, same-package refs)")
-        appendLine("  Renaming a method?     → ${t("rename-method")}  (updates all call sites incl. interface impls)")
-        appendLine("  Renaming a property?   → ${t("rename-property")}  (updates access sites, constructors, copy() calls)")
-        appendLine("  Renaming a parameter?  → ${t("rename-param")}  (updates named-argument call sites)")
-        appendLine("  Just finding callers?  → ${t("find-usages")} / ${t("find-callers")}")
+        for (task in TaskRegistry.REFACTORING_TASKS) {
+            val paddedIntent = (task.intent!! + "?").padEnd(25)
+            appendLine("  $paddedIntent → ${t(task.goal)}  (${task.intentDetail})")
+        }
         appendLine()
         appendLine("  These are deterministic refactorings — prefer over manual edits. Use ${pf("preview")} to")
         appendLine("  see the edit plan before applying.")
@@ -294,6 +297,10 @@ object AgentHelpText {
         appendLine("  \"Rename a property?\"")
         appendLine("    → ${u("rename-property", p("target-class", "com.example.UserProfile"), p("property", "fullName"), p("new-name", "displayName"))}")
         appendLine("    # Renames val/var property + all access sites, constructor named args, copy() calls; add ${pf("preview")} for dry-run")
+        appendLine()
+        appendLine("  \"Change a method's parameters?\" / \"Add/remove/reorder parameters?\"")
+        appendLine("    → ${u("change-signature", p("target-class", "com.example.Service"), p("method", "find"), p("params", "\"limit: Int, offset: Int, query: String\""), p("defaults", "\"query=\\\"\\\"\""))}")
+        appendLine("    # Rewrites declaration + all call sites; new params get default values at call sites; add ${pf("preview")} for dry-run")
         appendLine()
         appendLine("  \"Where is string X hardcoded?\"")
         appendLine("    → ${u("find-string-constant", p("pattern", "X"))}")
@@ -1051,12 +1058,13 @@ object AgentHelpText {
         appendLine()
         appendLine("I want to...")
         appendLine()
-        appendLine("MOVE / RENAME:")
-        appendLine("  Move a class to another package   → ${u("move-class", p("from", "com.old.Foo"), p("to", "com.new.Foo"))}")
-        appendLine("  Rename a class                    → ${u("move-class", p("from", "com.example.OldName"), p("to", "com.example.NewName"))}")
-        appendLine("  Rename a method                   → ${u("rename-method", p("class", "com.example.Svc"), p("method", "old"), p("new-name", "new"))}")
-        appendLine("  Rename a property (val/var)       → ${u("rename-property", p("class", "com.example.Cfg"), p("property", "old"), p("new-name", "new"))}")
-        appendLine("  Rename a parameter                → ${u("rename-param", p("class", "com.example.Svc"), p("method", "find"), p("param", "old"), p("new-name", "new"))}")
+        appendLine("REFACTORING COMMANDS:")
+        for (task in TaskRegistry.REFACTORING_TASKS) {
+            val example = task.examples.firstOrNull()
+            if (example != null) {
+                appendLine("  ${(task.intent!! + " ").padEnd(33)}→ ${example.render(task.goal, tool)}")
+            }
+        }
         appendLine()
         appendLine("  All write commands support ${pf("preview")} to see the edit plan before applying.")
         appendLine("  With ${p("llm", "true")}, preview output is a standard unified diff (git diff format).")
