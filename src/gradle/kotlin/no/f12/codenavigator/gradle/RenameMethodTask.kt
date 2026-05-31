@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.navigation.refactor.RenameLocationFinder
 import no.f12.codenavigator.navigation.refactor.RenameMethodConfig
 import no.f12.codenavigator.navigation.refactor.RenameMethodFormatter
 import no.f12.codenavigator.navigation.refactor.RenameMethodResult
@@ -9,6 +10,7 @@ import no.f12.codenavigator.registry.TaskRegistry
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 import org.gradle.workers.WorkerExecutor
@@ -29,8 +31,17 @@ abstract class RenameMethodTask @Inject constructor(
         )
 
         val sourceRootPaths = project.sourceDirectories().map { it.absolutePath }
+        val classesRoots = project.extensions.getByType(SourceSetContainer::class.java)
+            .flatMap { it.output.classesDirs.files }
+            .filter { it.exists() }
+
+        // Phase 1: Bytecode analysis (runs in main classpath where ASM is available)
+        val callSiteFiles = RenameLocationFinder.findCallSiteFiles(classesRoots, config.className, config.methodName)
+        val implementorFqns = RenameLocationFinder.findImplementors(classesRoots, config.className)
+
         val resultFileLocation = temporaryDir.resolve("rename-result.json")
 
+        // Phase 2: PSI rewriting (runs in isolated classpath with kotlin-compiler-embeddable)
         val workQueue = workerExecutor.classLoaderIsolation {
             classpath.from(psiClasspath)
         }
@@ -41,6 +52,8 @@ abstract class RenameMethodTask @Inject constructor(
             newName.set(config.newName)
             preview.set(config.preview)
             sourceRoots.set(sourceRootPaths)
+            this.callSiteFiles.set(callSiteFiles.toList())
+            this.implementorFqns.set(implementorFqns.toList())
             resultFile.set(resultFileLocation)
         }
 

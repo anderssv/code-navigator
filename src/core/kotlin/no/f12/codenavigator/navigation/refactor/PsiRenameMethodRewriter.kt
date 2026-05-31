@@ -14,21 +14,27 @@ import java.io.File
 /**
  * PSI-based rename method rewriter. Replaces OpenRewrite for method renaming.
  *
- * Strategy (Phase A — name-based with class context):
- * - Declarations: match by FQN (file package + enclosing class name)
- * - Implementors: match supertypes by short name + import analysis
- * - Call sites: rename method calls in files that reference the target class
- *
- * Phase B (future): bytecode-guided precision using ASM line numbers.
+ * Strategy:
+ * - Declarations: match by FQN (package + class name) + implementor FQNs from bytecode
+ * - Call sites: rename in files identified by bytecode as calling the target method,
+ *   plus files reachable via import/package analysis (Phase A fallback)
  */
 object PsiRenameMethodRewriter {
 
+    /**
+     * @param callSiteFiles Relative source paths (from bytecode) that call the target method.
+     *   When provided, these files are also scanned for call sites regardless of imports.
+     * @param implementorFqns FQNs of classes that implement/extend the target (from bytecode).
+     *   When provided, declarations in these classes are also renamed.
+     */
     fun rename(
         sourceRoots: List<File>,
         className: String,
         methodName: String,
         newName: String,
         preview: Boolean = false,
+        callSiteFiles: Set<String> = emptySet(),
+        implementorFqns: Set<String> = emptySet(),
     ): RenameMethodResult {
         val sourceFiles = collectSourceFiles(sourceRoots)
         if (sourceFiles.isEmpty()) return RenameMethodResult(emptyList())
@@ -56,7 +62,17 @@ object PsiRenameMethodRewriter {
                 val content = file.readText()
                 val ktFile = psiFactory.createFile(file.name, content)
 
-                val edits = findEditsInFile(ktFile, className, targetSimpleName, targetPackage, methodName, newName)
+                // Check if this file is bytecode-identified as a call site
+                val relativePath = sourceRoots.firstNotNullOfOrNull { root ->
+                    val rel = file.toRelativeString(root)
+                    if (!rel.startsWith("..")) rel else null
+                } ?: file.name
+                val isBytecodeCallSite = callSiteFiles.any { relativePath.endsWith(it) || it.endsWith(relativePath) }
+
+                val edits = findEditsInFile(
+                    ktFile, className, targetSimpleName, targetPackage,
+                    methodName, newName, isBytecodeCallSite, implementorFqns,
+                )
 
                 if (edits.isNotEmpty()) {
                     val after = applyEdits(content, edits)
@@ -83,6 +99,8 @@ object PsiRenameMethodRewriter {
         targetPackage: String,
         methodName: String,
         newName: String,
+        isBytecodeCallSite: Boolean,
+        implementorFqns: Set<String>,
     ): List<TextEdit> {
         val edits = mutableListOf<TextEdit>()
         val filePackage = ktFile.packageFqName.asString()
@@ -92,7 +110,8 @@ object PsiRenameMethodRewriter {
         for (clazz in classDecls) {
             val classFqn = buildFqn(filePackage, clazz)
             val isTarget = matchesFqn(classFqn, targetFqn)
-            val isImplementor = !isTarget && implementsTarget(clazz, targetSimpleName, targetFqn, ktFile)
+            val isBytecodeImplementor = implementorFqns.contains(classFqn)
+            val isImplementor = !isTarget && (isBytecodeImplementor || implementsTarget(clazz, targetSimpleName, targetFqn, ktFile))
 
             if (isTarget || isImplementor) {
                 // Rename method declarations
@@ -121,10 +140,10 @@ object PsiRenameMethodRewriter {
             }
         }
 
-        // Find call sites in files that reference the target class
-        if (fileReferencesClass(ktFile, targetSimpleName, targetFqn, targetPackage)) {
+        // Find call sites in files that reference the target class OR are bytecode-identified
+        if (isBytecodeCallSite || fileReferencesClass(ktFile, targetSimpleName, targetFqn, targetPackage)) {
             // Find call sites outside of target class declarations
-            findCallSiteEditsInFile(ktFile, classDecls, targetFqn, targetSimpleName, filePackage, methodName, newName, edits)
+            findCallSiteEditsInFile(ktFile, classDecls, targetFqn, targetSimpleName, filePackage, methodName, newName, edits, implementorFqns)
         }
 
         return edits.distinctBy { it.offset }
@@ -154,13 +173,14 @@ object PsiRenameMethodRewriter {
         methodName: String,
         newName: String,
         edits: MutableList<TextEdit>,
+        implementorFqns: Set<String> = emptySet(),
     ) {
         // Find all call expressions in the file that are NOT inside a target/implementor class
         // (those were already handled above)
         val targetClassRanges = classDecls
             .filter { clazz ->
                 val fqn = buildFqn(filePackage, clazz)
-                matchesFqn(fqn, targetFqn) || implementsTarget(clazz, targetSimpleName, targetFqn, ktFile)
+                matchesFqn(fqn, targetFqn) || implementorFqns.contains(fqn) || implementsTarget(clazz, targetSimpleName, targetFqn, ktFile)
             }
             .map { it.textRange }
 

@@ -213,6 +213,17 @@ Ordered by dependency — collapsing enables the summary mode, and smart usages 
 
 Improvements to task output, discoverability, and agent experience.
 
+### Refactoring result LLM hints for follow-up actions
+
+**Value: high** | **Effort: low**
+
+After a successful refactoring (rename, move, etc.), the LLM output should include contextual hints suggesting further analysis or refactoring steps using cnav. Examples:
+- After `cnavRenameMethod`: suggest `cnavFindUsages` to verify no remaining references, or `cnavRenameParam` if related parameters should also be renamed.
+- After `cnavMoveClass`: suggest `cnavPackageDeps` to verify the move improved structure, or `cnavCycles` to check for new cycles.
+- After any refactoring: suggest running tests, and hint at related refactorings (e.g., "consider `cnavRenameProperty` for fields that reference the old name").
+
+This helps agents chain operations and discover related tasks they might not know about.
+
 ### Refactoring task discoverability
 
 **Value: high** | **Effort: low**
@@ -354,6 +365,20 @@ Find entire libraries that could be removed. For each declared dependency JAR, e
 ## Internal code quality
 
 Improvements to cnav's own codebase — not user-facing features.
+
+### Review implementations for spread logic
+
+**Value: high** | **Effort: medium**
+
+Several tasks (especially refactoring and composite analysis) contain logic that spans multiple concerns in a single function. The principle should be: an orchestrator calls single-purpose tasks that are as specific (and reusable) as possible.
+
+Review areas:
+- `RenameMethodRewriter` / `PsiRenameMethodRewriter`: location finding + PSI editing should be clearly separated (partially done with `RenameLocationFinder`)
+- `MoveClassRewriter`: import updating, content extraction, file writing — are these reusable?
+- DSM orchestrator: does it compose focused builders, or does it inline resolution logic?
+- Formatter classes: some may contain query logic that belongs in builders
+
+Goal: each unit does one thing; composition happens at the orchestrator level. This makes individual steps testable, cacheable, and reusable across tasks.
 
 ### Potentially dead code in cnav's own codebase (from self-analysis)
 

@@ -253,4 +253,40 @@ class RenameMethodRewriterTest {
         val allAfter = result.changes.joinToString("\n") { it.after }
         assertTrue(!allAfter.contains(".handleReset("), "Expected call sites to be renamed")
     }
+
+    // --- Phase B: Bytecode-guided tests ---
+
+    private val testProjectClasses = File("test-project/build/classes/kotlin/main")
+
+    @Test
+    fun `bytecode-guided rename finds cross-file call sites without imports`() {
+        val result = RenameMethodRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.crossfilecallmethod.AuditService",
+            methodName = "formatAuditEntry",
+            newName = "buildAuditLine",
+            preview = true,
+            classesRoots = listOf(testProjectClasses),
+        )
+
+        assertTrue(result.changes.size >= 2, "Should have changes in at least 2 files with bytecode guidance. Changes: ${result.changes.map { it.filePath }}")
+        val callerChange = result.changes.first { it.filePath.endsWith("crossfilecallmethod/ReportService.kt") }
+        assertTrue(callerChange.after.contains("buildAuditLine("), "Cross-file call site should be renamed via bytecode guidance")
+    }
+
+    @Test
+    fun `bytecode-guided rename finds implementor declarations`() {
+        val result = RenameMethodRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.domain.UserRepository",
+            methodName = "findById",
+            newName = "lookupById",
+            preview = true,
+            classesRoots = listOf(testProjectClasses),
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should have changes with bytecode guidance")
+        val implChange = result.changes.first { it.filePath.endsWith("InMemoryUserRepository.kt") }
+        assertTrue(implChange.after.contains("fun lookupById("), "Implementor declaration should be renamed via bytecode")
+    }
 }

@@ -13,6 +13,14 @@ When working on a project that has code-navigator installed, run `./gradlew cnav
 - **Version**: `build.gradle.kts` + `pom.xml` (keep in sync, `-SNAPSHOT` for dev)
 - **Plan**: `plan.md` (roadmap), `plan-completed.md` (done)
 
+### Testing in local projects
+
+When testing changes in a local project (e.g., Greitt):
+1. Publish locally: `mise exec -- ./gradlew publishToMavenLocal`
+2. In the target project, update `settings.gradle.kts` to include `mavenLocal()` in `pluginManagement { repositories { ... } }`
+3. Update the plugin version to the current SNAPSHOT (e.g., `0.1.90-SNAPSHOT`)
+4. Revert the target project changes after testing (`git checkout -- .`)
+
 ## Source Layout
 
 ```

@@ -1,6 +1,7 @@
 package no.f12.codenavigator.gradle
 
-import no.f12.codenavigator.navigation.refactor.RenameMethodRewriter
+import no.f12.codenavigator.navigation.refactor.PsiRenameMethodRewriter
+import no.f12.codenavigator.navigation.refactor.RenameMethodResult
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
@@ -13,6 +14,8 @@ interface RenameMethodWorkParameters : WorkParameters {
     val newName: Property<String>
     val preview: Property<Boolean>
     val sourceRoots: ListProperty<String>
+    val callSiteFiles: ListProperty<String>
+    val implementorFqns: ListProperty<String>
     val resultFile: RegularFileProperty
 }
 
@@ -22,12 +25,14 @@ abstract class RenameMethodWorkAction : WorkAction<RenameMethodWorkParameters> {
         val params = parameters
         val sourceRootFiles = params.sourceRoots.get().map { java.io.File(it) }
 
-        val result = RenameMethodRewriter.rename(
+        val result = PsiRenameMethodRewriter.rename(
             sourceRoots = sourceRootFiles,
             className = params.className.get(),
             methodName = params.methodName.get(),
             newName = params.newName.get(),
             preview = params.preview.get(),
+            callSiteFiles = params.callSiteFiles.get().toSet(),
+            implementorFqns = params.implementorFqns.get().toSet(),
         )
 
         params.resultFile.get().asFile.writeText(result.toJson())

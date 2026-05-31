@@ -23,11 +23,27 @@ object RenameMethodRewriter {
         methodName: String,
         newName: String,
         preview: Boolean = false,
-    ): RenameMethodResult = PsiRenameMethodRewriter.rename(
-        sourceRoots = sourceRoots,
-        className = className,
-        methodName = methodName,
-        newName = newName,
-        preview = preview,
-    )
+        classesRoots: List<File> = emptyList(),
+    ): RenameMethodResult {
+        // Phase B: Use bytecode to find call sites and implementors when classes are available
+        val callSiteFiles: Set<String>
+        val implementorFqns: Set<String>
+        if (classesRoots.isNotEmpty()) {
+            callSiteFiles = RenameLocationFinder.findCallSiteFiles(classesRoots, className, methodName)
+            implementorFqns = RenameLocationFinder.findImplementors(classesRoots, className)
+        } else {
+            callSiteFiles = emptySet()
+            implementorFqns = emptySet()
+        }
+
+        return PsiRenameMethodRewriter.rename(
+            sourceRoots = sourceRoots,
+            className = className,
+            methodName = methodName,
+            newName = newName,
+            preview = preview,
+            callSiteFiles = callSiteFiles,
+            implementorFqns = implementorFqns,
+        )
+    }
 }
