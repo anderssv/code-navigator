@@ -818,3 +818,113 @@ Each impacted class gets a confidence tier + reason. Agent/CI chooses threshold.
 - Reflection / dynamic dispatch invisible to bytecode analysis
 - Semantic changes (behaviour change without signature change) produce false negatives
 - Test↔production mapping not available (future: combine with test-coupling task)
+
+---
+
+## Future: Compiler-based refactoring operations (inspired by Martin)
+
+Potential refactoring operations requiring Kotlin compiler frontend for full type resolution. These go beyond bytecode analysis — they need source-level AST manipulation. Could be implemented via Kotlin compiler plugin, OpenRewrite recipes, or integration with an external tool like [Martin](https://github.com/audunstrand/martin).
+
+**Value: varies** | **Effort: high (compiler integration)**
+
+### Extract operations
+
+- **`cnavExtractFunction`** — Extract a range of lines into a new function, automatically determining parameters and return values.
+- **`cnavExtractVariable`** — Extract an expression at cursor into a named `val`.
+- **`cnavExtractConstant`** — Extract a literal into a companion object constant.
+- **`cnavExtractParameter`** — Extract a hardcoded value into a function parameter.
+- **`cnavExtractInterface`** — Extract an interface from a class (public methods become interface contract).
+- **`cnavExtractSuperclass`** — Extract a superclass from a class.
+
+### Inline / simplify operations
+
+- **`cnavInline`** — Replace all usages of a variable or function with its definition, remove the declaration.
+- **`cnavConvertToExpressionBody`** — Convert block body `{ return x }` to `= x`.
+- **`cnavConvertToBlockBody`** — Convert expression body `= x` to `{ return x }`.
+
+### Signature & structure changes
+
+- **`cnavChangeSignature`** — Add, remove, or reorder function parameters (updating all call sites).
+- **`cnavAddNamedArguments`** — Add explicit parameter names to call arguments.
+- **`cnavIntroduceParameterObject`** — Group function parameters into a data class.
+- **`cnavPullUpMethod`** — Move a method from a subclass to its superclass.
+- **`cnavReplaceConstructorWithFactory`** — Replace a constructor with a factory function.
+
+### Type conversion operations
+
+- **`cnavConvertToDataClass`** — Convert a class to a data class.
+- **`cnavConvertToExtensionFunction`** — Convert a method to an extension function.
+- **`cnavConvertToSealedClass`** — Convert a class hierarchy to a sealed class.
+- **`cnavTypeMigration`** — Change a type and update all related code.
+- **`cnavConvertPropertyToFunction`** — Convert a property to a function.
+
+### Safety operations
+
+- **`cnavSafeDelete`** — Delete a declaration only if it has no usages (like dead code removal but interactive/targeted).
+- **`cnavEncapsulateField`** — Make a public property private and generate accessors.
+
+### Notes
+
+- Many of these require source-level analysis (not just bytecode). Could integrate with Martin as an external tool, or implement via K2 compiler plugin.
+- `cnavSafeDelete` overlaps with existing `cnavDeadCode` but is targeted (single symbol) rather than whole-project scan.
+- `cnavExtractInterface` and `cnavExtractSuperclass` overlap with existing hierarchy analysis — could use `cnavTypeHierarchy` to inform decisions.
+
+---
+
+## Future: Architectural patterns from Martin worth evaluating
+
+Techniques observed in [Martin](https://github.com/audunstrand/martin) source code that could improve code-navigator.
+
+### Embedded Kotlin Compiler Frontend (`kotlin-compiler-embeddable`)
+
+**Value: high** | **Effort: high**
+
+Martin uses `kotlin-compiler-embeddable` as a library dependency to get full PSI trees + `BindingContext` for type resolution — no IDE plugin required. This unlocks source-level transformations that bytecode analysis can't provide.
+
+Evaluation questions:
+- Could be added as an optional dependency for refactoring tasks that need source-level analysis.
+- How does it interact with code-navigator's current OpenRewrite-based rewriting?
+- Startup cost is ~3s for `KotlinCoreEnvironment` creation — acceptable inside Gradle daemon?
+- K2 compiler (new frontend) may offer a lighter alternative in future Kotlin versions.
+
+### TextEdit as universal edit primitive
+
+**Value: medium** | **Effort: low**
+
+Martin's `SourceRewriter` is 43 lines: all refactorings produce `List<TextEdit(file, offset, length, replacement)>`, applied in reverse offset order per file. Simpler than OpenRewrite's recipe/change-set model for targeted operations.
+
+Evaluation questions:
+- Could complement OpenRewrite for operations where recipe composition isn't needed.
+- Offset-based approach requires source positions — available from PSI but not from bytecode.
+- Mixing TextEdit and OpenRewrite in the same codebase: worth the dual model?
+
+### Classpath discovery via Gradle init script
+
+**Value: low (we run inside Gradle)** | **Effort: low**
+
+Martin injects a temporary `--init-script` that registers a `martinPrintClasspath` task and prints resolved classpath entries. Clever for standalone CLI tools that need the project's dependency graph without the Tooling API.
+
+Relevance: Only useful if code-navigator ever supports a standalone CLI mode outside Gradle/Maven. Low priority.
+
+### Daemon mode with warm compiler environment
+
+**Value: medium** | **Effort: medium**
+
+Martin keeps `KotlinCoreEnvironment` alive across TCP socket invocations (`warmUp()` / `disposeEnvironment()`), reducing per-operation time from ~3s to <2s. Port file at `.martin/daemon.port` with auto-delegation from CLI.
+
+Relevance: code-navigator already benefits from Gradle/Maven daemon JVM reuse. But if we add `kotlin-compiler-embeddable` operations, caching the analysis environment across task invocations (e.g., via a Gradle shared service) would be analogous.
+
+### Martin as external tool integration
+
+**Value: high** | **Effort: medium**
+
+Rather than reimplementing compiler-based refactorings, code-navigator could delegate to Martin's daemon for extract/inline/change-signature operations. This gives:
+- Unified UX (agent sees cnav tasks, doesn't need to know Martin exists)
+- No compiler dependency bloat in code-navigator itself
+- Martin handles the hard parts (data flow, type inference, scope analysis)
+
+Integration shape:
+- Optional Martin jar path in cnav config
+- cnav tasks shell out to Martin daemon (start if not running)
+- cnav wraps Martin output in standard LLM/JSON/TEXT format
+- Falls back to "not available" guidance if Martin isn't installed
