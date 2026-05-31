@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.95
+
+- **New:** `cnavSafeDelete` — deletes a class or method only if it has no usages, verified via bytecode analysis. Refuses deletion and reports usage sites when references exist. Supports preview mode.
+- **Internal:** PSI-based deletion in classloader-isolated worker; usage scanning via ASM `UsageScanner`.
+
 ## 0.1.94
 
 - **New:** `cnavRenameParam` migrated from OpenRewrite to PSI-based refactoring. Handles parameter declaration, body references, named arguments at call sites (including self-calls within the same class), and cascade detection.

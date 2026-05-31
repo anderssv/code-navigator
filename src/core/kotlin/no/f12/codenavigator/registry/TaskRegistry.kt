@@ -867,6 +867,19 @@ object TaskRegistry {
         ),
     )
 
+    val SAFE_DELETE_TASK = TaskDef(
+        goal = "safe-delete",
+        description = "Delete a class or method only if it has no usages (verified via bytecode analysis)",
+        params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, PREVIEW),
+        requiresCompilation = true,
+        category = TaskCategory.SOURCE,
+        examples = listOf(
+            UsageExample(listOf(RENAME_CLASS to "com.example.UnusedService")),
+            UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "unusedMethod")),
+            UsageExample(listOf(RENAME_CLASS to "com.example.UnusedService", PREVIEW to null)),
+        ),
+    )
+
     val TEST_COUPLING = TaskDef(
         goal = "test-coupling",
         description = "Detect tests that bypass domain services by calling port interface methods directly (TTTD violations)",
@@ -937,6 +950,7 @@ object TaskRegistry {
         MOVE_CLASS_TASK,
         MOVE_FILE_TASK,
         RENAME_PROPERTY_TASK,
+        SAFE_DELETE_TASK,
         HELP,
         AGENT_HELP,
         CONFIG_HELP,
