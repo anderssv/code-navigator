@@ -5,6 +5,8 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
+import no.f12.codenavigator.navigation.deadcode.DeadCodeBaselineDiff
+import no.f12.codenavigator.navigation.deadcode.DeadCodeBaselineDiffFormatter
 import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
 import no.f12.codenavigator.navigation.deadcode.DeadCodeOrchestrator
@@ -64,6 +66,22 @@ abstract class DeadCodeTask : DefaultTask() {
 
         if (dead.isEmpty()) {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No potential dead code found."))
+            return
+        }
+
+        if (config.baseline != null) {
+            val baselineFile = project.file(config.baseline)
+            if (!baselineFile.exists()) {
+                logger.lifecycle("Baseline file not found: ${baselineFile.absolutePath}")
+                return
+            }
+            val baselineItems = DeadCodeBaselineDiff.parseBaseline(baselineFile.readText())
+            val diff = DeadCodeBaselineDiff.compare(baselineItems, dead)
+            logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
+                text = { DeadCodeBaselineDiffFormatter.format(diff) },
+                json = { DeadCodeBaselineDiffFormatter.formatJson(diff) },
+                llm = { DeadCodeBaselineDiffFormatter.format(diff) },
+            ))
             return
         }
 

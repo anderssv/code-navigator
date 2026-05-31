@@ -17,6 +17,7 @@ data class DeadCodeConfig(
     val receiverTypeEntryPoints: Set<ClassName>,
     val scope: Scope,
     val format: OutputFormat,
+    val baseline: String?,
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): DeadCodeConfig {
@@ -39,6 +40,7 @@ data class DeadCodeConfig(
                 receiverTypeEntryPoints = receiverTypes,
                 scope = parseDeadCodeScope(properties),
                 format = ParamDef.parseFormat(properties),
+                baseline = TaskRegistry.BASELINE.parseFrom(properties),
             )
         }
         private fun parseDeadCodeScope(properties: Map<String, String?>): Scope {

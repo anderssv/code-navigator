@@ -5,6 +5,8 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
+import no.f12.codenavigator.navigation.deadcode.DeadCodeBaselineDiff
+import no.f12.codenavigator.navigation.deadcode.DeadCodeBaselineDiffFormatter
 import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
 import no.f12.codenavigator.navigation.deadcode.DeadCodeOrchestrator
@@ -47,6 +49,9 @@ class DeadCodeMojo : AbstractMojo() {
 
     @Parameter(property = "treat-as-dead")
     private var treatAsDead: String? = null
+
+    @Parameter(property = "baseline")
+    private var baseline: String? = null
 
     override fun execute() {
         project.checkStaleness(log)
@@ -92,6 +97,22 @@ class DeadCodeMojo : AbstractMojo() {
             return
         }
 
+        if (config.baseline != null) {
+            val baselineFile = File(config.baseline!!)
+            if (!baselineFile.exists()) {
+                log.warn("Baseline file not found: ${baselineFile.absolutePath}")
+                return
+            }
+            val baselineItems = DeadCodeBaselineDiff.parseBaseline(baselineFile.readText())
+            val diff = DeadCodeBaselineDiff.compare(baselineItems, dead)
+            println(OutputWrapper.formatAndWrap(config.format,
+                text = { DeadCodeBaselineDiffFormatter.format(diff) },
+                json = { DeadCodeBaselineDiffFormatter.formatJson(diff) },
+                llm = { DeadCodeBaselineDiffFormatter.format(diff) },
+            ))
+            return
+        }
+
         println(OutputWrapper.formatAndWrap(config.format,
             text = { DeadCodeFormatter.format(dead, config.scope) },
             json = { JsonFormatter.formatDead(dead, config.scope) },
@@ -108,5 +129,6 @@ class DeadCodeMojo : AbstractMojo() {
         excludeAnnotated?.let { put("exclude-annotated", it) }
         scope?.let { put("scope", it) }
         treatAsDead?.let { put("treat-as-dead", it) }
+        baseline?.let { put("baseline", it) }
     }
 }

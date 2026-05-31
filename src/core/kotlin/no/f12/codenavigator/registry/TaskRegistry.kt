@@ -233,6 +233,7 @@ object TaskRegistry {
     val RAW = ParamDef("raw", "", "Show raw bytecode-level output without collapsing", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val INCLUDE_IMPLS = ParamDef("include-impls", "", "When target is an interface, also search usages of implementors", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val TREAT_AS_DEAD = ParamDef("treat-as-dead", "<name>", "Treat framework-annotated code as potentially dead (all frameworks protected by default). Available: ${FrameworkPresets.availablePresets().sorted().joinToString(", ")}. Use ALL to remove all framework protections.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
+    val BASELINE = ParamDef("baseline", "<path>", "Path to a previous cnavDead JSON output file. Shows diff: removed, remaining, and new dead code since baseline.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val DETAIL = ParamDef("detail", "true", "Show individual call details", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val COLLAPSE_LAMBDAS = ParamDef("collapse-lambdas", "false", "Set false to show lambda classes separately", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val MIN_SHARED_REVS = ParamDef("min-shared-revs", "<N>", "Min shared commits", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
@@ -469,7 +470,7 @@ object TaskRegistry {
     val DEAD = TaskDef(
         goal = "dead",
         description = "Detect dead code (unreferenced classes and methods)",
-        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, SCOPE, TREAT_AS_DEAD),
+        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, SCOPE, TREAT_AS_DEAD, BASELINE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         requiresTestCompilation = true,
@@ -483,6 +484,7 @@ object TaskRegistry {
             UsageExample(listOf(SCOPE to "prod")),
             UsageExample(listOf(TREAT_AS_DEAD to "spring")),
             UsageExample(listOf(TREAT_AS_DEAD to "ALL")),
+            UsageExample(listOf(BASELINE to "build/cnav/dead-baseline.json")),
         ),
     )
 
