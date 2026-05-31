@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.94
+
+- **New:** `cnavRenameParam` migrated from OpenRewrite to PSI-based refactoring. Handles parameter declaration, body references, named arguments at call sites (including self-calls within the same class), and cascade detection.
+- **New:** `cnavRenameProperty` migrated from OpenRewrite to PSI-based refactoring. Handles val/var constructor declaration, property access sites, named arguments at constructor and copy() call sites.
+- **New:** `cnavRenameMethod` multi-language support — `LanguageRenameRewriter` interface with `KotlinRenameMethodRewriter` and `JavaRenameMethodRewriter`, orchestrated by `RenameMethodEditor` which dispatches by file extension.
+- **New:** ADR-0009 documenting refactoring technology preference order (PSI > OpenRewrite > regex).
+- **Docs:** README now notes that refactoring operations use heuristics when full type resolution is unavailable.
+- **Internal:** Removed OpenRewrite dependency from rename-param and rename-property code paths. OpenRewrite retained for move-class (`ChangeType` recipe) where type-resolved import rewriting is needed.
+
 ## 0.1.93
 
 - **New:** `cnavRenameMethod` migrated from OpenRewrite to PSI-based refactoring. Two-phase architecture: ASM bytecode scanning finds call-site files and implementors (Phase 1), then PSI edits at those locations in isolated classloader (Phase 2).

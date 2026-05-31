@@ -4,6 +4,8 @@
 
 When working on a project that has code-navigator installed, run `./gradlew cnavAgentHelp -Pllm=true` (or `mvn cnav:agent-help -Dllm=true` for Maven) to get detailed, up-to-date instructions on available tasks, parameters, recommended workflows, result interpretation heuristics, and JSON schemas. That output is the primary reference for using code-navigator as an agent.
 
+Refactoring operations try to be as deterministic as possible, but sometimes resort to heuristics when full type resolution is unavailable. Your LLM should be able to solve the remaining issues if the result is incorrect.
+
 ## Developing code-navigator itself
 
 ### Quick Reference

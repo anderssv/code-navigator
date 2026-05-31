@@ -8,6 +8,8 @@ Built primarily for **coding agents** (AI assistants that write and refactor cod
 
 This is an attempt at making a useful tool for coding agents when navigating JVM based projects. It is tested on production code, but also some open source projects. If you find that something is missing or wrong, a public project to run on that illustrates the problem is appreciated.
 
+Refactoring operations try to be as deterministic as possible, but sometimes resort to heuristics when full type resolution is unavailable. Your LLM should be able to solve the remaining issues if the result is incorrect.
+
 ## Getting started
 
 Copy-paste this to your agent:
@@ -23,7 +25,7 @@ That's it. The agent will install the plugin, run the help task, and set up its 
 **Gradle** (`build.gradle.kts`):
 ```kotlin
 plugins {
-    id("no.f12.code-navigator") version "0.1.93"
+    id("no.f12.code-navigator") version "0.1.94"
 }
 ```
 
