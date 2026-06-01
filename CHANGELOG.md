@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.100 (UNRELEASED)
+## 0.1.100
 
 ### ⚠️ Breaking change: `--llm` removed, use `--format=llm`
 
