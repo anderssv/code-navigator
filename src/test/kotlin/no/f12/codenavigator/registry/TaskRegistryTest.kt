@@ -1008,7 +1008,6 @@ class TaskRegistryTest {
     fun `all ParamDef instances have correct ParamType`() {
         val expectedTypes = mapOf(
             "format" to ParamType.STRING,
-            "llm" to ParamType.BOOLEAN,
             "pattern" to ParamType.STRING,
             "method" to ParamType.STRING,
             "maxdepth" to ParamType.INT,

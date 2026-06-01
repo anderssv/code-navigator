@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
@@ -76,10 +78,12 @@ abstract class TypeHierarchyTask : CodeNavigatorTask() {
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { TypeHierarchyFormatter.format(results) },
-            json = { JsonFormatter.formatTypeHierarchy(results) },
-            llm = { LlmFormatter.formatTypeHierarchy(results) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> TypeHierarchyFormatter.format(results)
+        OutputFormat.JSON -> JsonFormatter.formatTypeHierarchy(results)
+        OutputFormat.LLM -> LlmFormatter.formatTypeHierarchy(results)
+    }
+})
     }
 }

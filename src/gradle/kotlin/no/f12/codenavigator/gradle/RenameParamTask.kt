@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.navigation.refactor.RenameParamConfig
 import no.f12.codenavigator.navigation.refactor.RenameParamFormatter
 import no.f12.codenavigator.navigation.refactor.RenameResult
@@ -83,11 +85,13 @@ abstract class RenameParamTask @Inject constructor(
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { RenameParamFormatter.format(result, config) },
-            json = { RenameParamFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON)) },
-            llm = { RenameParamFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM)) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> RenameParamFormatter.format(result, config)
+        OutputFormat.JSON -> RenameParamFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
+        OutputFormat.LLM -> RenameParamFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
+    }
+})
     }
 
     private fun noResultsHints(config: RenameParamConfig): List<String> = buildList {

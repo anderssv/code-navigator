@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -90,12 +92,13 @@ abstract class ChangedSinceTask : CodeNavigatorTask() {
         val impacts = allImpacts.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         logger.lifecycle(
-            OutputWrapper.formatAndWrap(
-                config.format,
-                text = { ChangedSinceFormatter.format(impacts, resolution.unresolved) },
-                json = { JsonFormatter.formatChangedSince(impacts, resolution.unresolved) },
-                llm = { LlmFormatter.formatChangedSince(impacts, resolution.unresolved) },
-            ),
+            OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> ChangedSinceFormatter.format(impacts, resolution.unresolved)
+        OutputFormat.JSON -> JsonFormatter.formatChangedSince(impacts, resolution.unresolved)
+        OutputFormat.LLM -> LlmFormatter.formatChangedSince(impacts, resolution.unresolved)
+    }
+},
         )
     }
 }

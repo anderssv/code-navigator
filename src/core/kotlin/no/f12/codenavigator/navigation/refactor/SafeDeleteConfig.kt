@@ -15,7 +15,7 @@ data class SafeDeleteConfig(
                 ?: error("Missing required parameter: ${TaskRegistry.RENAME_CLASS.name}")
             val methodName = properties[TaskRegistry.RENAME_METHOD.name]
             val preview = properties.containsKey(TaskRegistry.PREVIEW.name)
-            val format = OutputFormat.from(properties["format"], properties.containsKey("llm").takeIf { it })
+            val format = OutputFormat.from(properties["format"])
             return SafeDeleteConfig(className, methodName, preview, format)
         }
     }

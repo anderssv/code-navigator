@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -116,18 +118,22 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
             }
             val baselineItems = DeadCodeBaselineDiff.parseBaseline(baselineFile.readText())
             val diff = DeadCodeBaselineDiff.compare(baselineItems, dead)
-            logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-                text = { DeadCodeBaselineDiffFormatter.format(diff) },
-                json = { DeadCodeBaselineDiffFormatter.formatJson(diff) },
-                llm = { DeadCodeBaselineDiffFormatter.format(diff) },
-            ))
+            logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> DeadCodeBaselineDiffFormatter.format(diff)
+        OutputFormat.JSON -> DeadCodeBaselineDiffFormatter.formatJson(diff)
+        OutputFormat.LLM -> DeadCodeBaselineDiffFormatter.format(diff)
+    }
+})
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { DeadCodeFormatter.format(dead, config.scope) },
-            json = { JsonFormatter.formatDead(dead, config.scope) },
-            llm = { LlmFormatter.formatDead(dead, config.scope) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> DeadCodeFormatter.format(dead, config.scope)
+        OutputFormat.JSON -> JsonFormatter.formatDead(dead, config.scope)
+        OutputFormat.LLM -> LlmFormatter.formatDead(dead, config.scope)
+    }
+})
     }
 }

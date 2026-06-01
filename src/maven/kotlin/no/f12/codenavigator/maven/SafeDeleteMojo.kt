@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.refactor.SafeDeleteConfig
 import no.f12.codenavigator.navigation.refactor.SafeDeleteFormatter
@@ -21,8 +23,6 @@ class SafeDeleteMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "target-class")
     private var targetClass: String? = null
@@ -56,11 +56,13 @@ class SafeDeleteMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { SafeDeleteFormatter.format(result, config) },
-            json = { SafeDeleteFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON)) },
-            llm = { SafeDeleteFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM)) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> SafeDeleteFormatter.format(result, config)
+        OutputFormat.JSON -> SafeDeleteFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
+        OutputFormat.LLM -> SafeDeleteFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
+    }
+})
     }
 
     private fun noResultsHints(config: SafeDeleteConfig): List<String> = buildList {
@@ -71,7 +73,6 @@ class SafeDeleteMojo : AbstractMojo() {
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         targetClass?.let { put("target-class", it) }
         method?.let { put("method", it) }
         preview?.let { put("preview", it) }

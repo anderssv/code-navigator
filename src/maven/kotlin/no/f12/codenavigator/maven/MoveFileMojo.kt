@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.refactor.MoveClassFormatter
 import no.f12.codenavigator.navigation.refactor.MoveFileConfig
@@ -20,8 +22,6 @@ class MoveFileMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "from-file")
     private var fromFile: String? = null
@@ -57,16 +57,17 @@ class MoveFileMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { MoveClassFormatter.formatFileMove(result, config) },
-            json = { MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON)) },
-            llm = { MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM)) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.formatFileMove(result, config)
+        OutputFormat.JSON -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
+        OutputFormat.LLM -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         fromFile?.let { put("from-file", it) }
         toPackage?.let { put("to-package", it) }
         preview?.let { put("preview", it) }

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.navigation.refactor.SafeDeleteConfig
 import no.f12.codenavigator.navigation.refactor.SafeDeleteFormatter
 import no.f12.codenavigator.navigation.refactor.SafeDeleteResult
@@ -75,11 +77,13 @@ abstract class SafeDeleteTask @Inject constructor(
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { SafeDeleteFormatter.format(result, config) },
-            json = { SafeDeleteFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON)) },
-            llm = { SafeDeleteFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM)) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> SafeDeleteFormatter.format(result, config)
+        OutputFormat.JSON -> SafeDeleteFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
+        OutputFormat.LLM -> SafeDeleteFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
+    }
+})
     }
 
     private fun noResultsHints(config: SafeDeleteConfig): List<String> = buildList {

@@ -31,7 +31,7 @@ data class ChangeSignatureConfig(
                 ?: error("Missing required parameter: ${TaskRegistry.CHANGE_SIG_PARAMS.name}")
             val defaults = properties[TaskRegistry.CHANGE_SIG_DEFAULTS.name]
             val preview = properties.containsKey(TaskRegistry.PREVIEW.name)
-            val format = OutputFormat.from(properties["format"], properties.containsKey("llm").takeIf { it })
+            val format = OutputFormat.from(properties["format"])
             return ChangeSignatureConfig(className, methodName, params, defaults, preview, format)
         }
     }

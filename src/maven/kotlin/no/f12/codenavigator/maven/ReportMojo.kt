@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
@@ -49,8 +51,6 @@ class ReportMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "after")
     private var after: String? = null
@@ -186,16 +186,17 @@ class ReportMojo : AbstractMojo() {
         }
 
         val output = sections.joinToString("\n\n---\n\n")
-        println(OutputWrapper.formatAndWrap(outputFormat,
-            text = { output },
-            json = { output },
-            llm = { output },
-        ))
+        println(OutputWrapper.formatAndWrap(outputFormat) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> output
+        OutputFormat.JSON -> output
+        OutputFormat.LLM -> output
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         after?.let { put("after", it) }
         top?.let { put("top", it) }
         packageFilter?.let { put("package-filter", it) }

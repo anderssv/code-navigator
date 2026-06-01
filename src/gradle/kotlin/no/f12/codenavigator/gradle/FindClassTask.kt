@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
@@ -82,10 +84,12 @@ abstract class FindClassTask : CodeNavigatorTask() {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No classes matching '${config.pattern}' found."))
             return
         }
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { TableFormatter.format(matches) },
-            json = { JsonFormatter.formatClasses(matches) },
-            llm = { LlmFormatter.formatClasses(matches) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> TableFormatter.format(matches)
+        OutputFormat.JSON -> JsonFormatter.formatClasses(matches)
+        OutputFormat.LLM -> LlmFormatter.formatClasses(matches)
+    }
+})
     }
 }

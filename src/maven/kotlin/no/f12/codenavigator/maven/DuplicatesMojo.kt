@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.analysis.DuplicateConfig
 import no.f12.codenavigator.analysis.DuplicateFormatter
 import no.f12.codenavigator.analysis.DuplicateScanner
@@ -23,8 +25,6 @@ class DuplicatesMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "top")
     private var top: String? = null
@@ -49,16 +49,17 @@ class DuplicatesMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { DuplicateFormatter.format(groups) },
-            json = { JsonFormatter.formatDuplicates(groups) },
-            llm = { LlmFormatter.formatDuplicates(groups) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> DuplicateFormatter.format(groups)
+        OutputFormat.JSON -> JsonFormatter.formatDuplicates(groups)
+        OutputFormat.LLM -> LlmFormatter.formatDuplicates(groups)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         top?.let { put("top", it) }
         minTokens?.let { put("min-tokens", it) }
         scope?.let { put("scope", it) }

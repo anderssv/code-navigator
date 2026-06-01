@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.analysis.DuplicateConfig
 import no.f12.codenavigator.analysis.DuplicateFormatter
 import no.f12.codenavigator.analysis.DuplicateScanner
@@ -48,10 +50,12 @@ abstract class DuplicatesTask : CodeNavigatorTask() {
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { DuplicateFormatter.format(groups) },
-            json = { JsonFormatter.formatDuplicates(groups) },
-            llm = { LlmFormatter.formatDuplicates(groups) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> DuplicateFormatter.format(groups)
+        OutputFormat.JSON -> JsonFormatter.formatDuplicates(groups)
+        OutputFormat.LLM -> LlmFormatter.formatDuplicates(groups)
+    }
+})
     }
 }

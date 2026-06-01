@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
@@ -104,28 +106,24 @@ abstract class FindUsagesTask : CodeNavigatorTask() {
 
         val smartResult = output.toSmartResult()
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = {
-                when {
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+            when (format) {
+                OutputFormat.TEXT, OutputFormat.DIFF -> when {
                     config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummary(output.usages)
                     config.raw -> UsageFormatter.format(output.usages)
                     else -> UsageFormatter.formatSmartUsages(smartResult, output.collapsed)
                 }
-            },
-            json = {
-                when {
+                OutputFormat.JSON -> when {
                     config.groupBy == GroupBy.FILE -> JsonFormatter.formatUsagesSummary(output.usages)
                     config.raw -> JsonFormatter.formatUsages(output.usages)
                     else -> JsonFormatter.formatSmartUsages(smartResult, output.collapsed)
                 }
-            },
-            llm = {
-                when {
+                OutputFormat.LLM -> when {
                     config.groupBy == GroupBy.FILE -> LlmFormatter.formatUsagesSummary(output.usages)
                     config.raw -> LlmFormatter.formatUsages(output.usages)
                     else -> LlmFormatter.formatSmartUsages(smartResult, output.collapsed)
                 }
-            },
-        ))
+            }
+        })
     }
 }

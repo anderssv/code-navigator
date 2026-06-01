@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -29,8 +31,6 @@ class TypeHierarchyMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "pattern", required = true)
     private var pattern: String? = null
@@ -79,16 +79,17 @@ class TypeHierarchyMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { TypeHierarchyFormatter.format(results) },
-            json = { JsonFormatter.formatTypeHierarchy(results) },
-            llm = { LlmFormatter.formatTypeHierarchy(results) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> TypeHierarchyFormatter.format(results)
+        OutputFormat.JSON -> JsonFormatter.formatTypeHierarchy(results)
+        OutputFormat.LLM -> LlmFormatter.formatTypeHierarchy(results)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         projectOnly?.let { put("project-only", it) }
         scope?.let { put("scope", it) }

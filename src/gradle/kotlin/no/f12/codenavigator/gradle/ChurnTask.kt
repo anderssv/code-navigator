@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -49,10 +51,12 @@ abstract class ChurnTask : CodeNavigatorTask() {
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { ChurnFormatter.format(churn) },
-            json = { JsonFormatter.formatChurn(churn) },
-            llm = { LlmFormatter.formatChurn(churn) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> ChurnFormatter.format(churn)
+        OutputFormat.JSON -> JsonFormatter.formatChurn(churn)
+        OutputFormat.LLM -> LlmFormatter.formatChurn(churn)
+    }
+})
     }
 }

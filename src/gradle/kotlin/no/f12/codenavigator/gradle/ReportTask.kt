@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.DsmOutputFormatter
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
@@ -195,10 +197,12 @@ abstract class ReportTask : CodeNavigatorTask() {
         }
 
         val output = sections.joinToString("\n\n---\n\n")
-        logger.lifecycle(OutputWrapper.formatAndWrap(format,
-            text = { output },
-            json = { output },
-            llm = { output },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> output
+        OutputFormat.JSON -> output
+        OutputFormat.LLM -> output
+    }
+})
     }
 }

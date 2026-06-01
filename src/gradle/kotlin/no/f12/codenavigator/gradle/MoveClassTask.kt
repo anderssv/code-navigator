@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.navigation.refactor.MoveClassConfig
 import no.f12.codenavigator.navigation.refactor.MoveClassFormatter
 import no.f12.codenavigator.navigation.refactor.MoveClassResult
@@ -73,11 +75,13 @@ abstract class MoveClassTask @Inject constructor(
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { MoveClassFormatter.format(result, config) },
-            json = { MoveClassFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON)) },
-            llm = { MoveClassFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM)) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.format(result, config)
+        OutputFormat.JSON -> MoveClassFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
+        OutputFormat.LLM -> MoveClassFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
+    }
+})
     }
 
     private fun noResultsHints(config: MoveClassConfig): List<String> = buildList {

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -79,10 +81,12 @@ abstract class ListClassesTask : CodeNavigatorTask() {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No classes found."))
             return
         }
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { TableFormatter.format(filtered) },
-            json = { JsonFormatter.formatClasses(filtered) },
-            llm = { LlmFormatter.formatClasses(filtered) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> TableFormatter.format(filtered)
+        OutputFormat.JSON -> JsonFormatter.formatClasses(filtered)
+        OutputFormat.LLM -> LlmFormatter.formatClasses(filtered)
+    }
+})
     }
 }

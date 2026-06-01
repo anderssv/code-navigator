@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -22,8 +24,6 @@ class ChangeCouplingMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "after")
     private var after: String? = null
@@ -54,16 +54,17 @@ class ChangeCouplingMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { ChangeCouplingFormatter.format(pairs) },
-            json = { JsonFormatter.formatCoupling(pairs) },
-            llm = { LlmFormatter.formatCoupling(pairs) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> ChangeCouplingFormatter.format(pairs)
+        OutputFormat.JSON -> JsonFormatter.formatCoupling(pairs)
+        OutputFormat.LLM -> LlmFormatter.formatCoupling(pairs)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         after?.let { put("after", it) }
         minSharedRevs?.let { put("min-shared-revs", it) }
         minCoupling?.let { put("min-coupling", it) }

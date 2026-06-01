@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
@@ -61,10 +63,12 @@ abstract class WhyDependsTask : CodeNavigatorTask() {
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { WhyDependsFormatter.format(result) },
-            json = { WhyDependsFormatter.format(result) },
-            llm = { WhyDependsFormatter.format(result) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> WhyDependsFormatter.format(result)
+        OutputFormat.JSON -> WhyDependsFormatter.format(result)
+        OutputFormat.LLM -> WhyDependsFormatter.format(result)
+    }
+})
     }
 }

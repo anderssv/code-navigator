@@ -74,7 +74,7 @@ object AgentHelpText {
         appendLine()
         appendLine("Run ${tool.usage("agent-help")} for full usage instructions optimized for AI agents.")
         appendLine()
-        appendLine("ALWAYS pass ${tool.param("llm", "true")} on every cnav command — this is required.")
+        appendLine("ALWAYS pass ${tool.param("format", "llm")} on every cnav command — this is required.")
         appendLine("It produces compact output wrapped in ---CNAV_BEGIN---/---CNAV_END--- markers")
         appendLine("that separate results from build tool noise. Read full output directly;")
         appendLine("NEVER pipe through head, tail, or grep (output is short and specific).")
@@ -99,7 +99,7 @@ object AgentHelpText {
         when (tool) {
             BuildTool.GRADLE -> {
                 appendLine("Example — if the prompt shows:")
-                appendLine("  `./gradlew cnavListClasses --llm`")
+                appendLine("  `./gradlew cnavListClasses --format=llm`")
                 appendLine("Add: `\"Bash(./gradlew cnav*)\"`")
                 appendLine()
                 appendLine("If your command has a preamble (e.g. `eval \"\$(mise activate bash)\" && ./gradlew cnavListClasses ...`),")
@@ -107,7 +107,7 @@ object AgentHelpText {
             }
             BuildTool.MAVEN -> {
                 appendLine("Example — if the prompt shows:")
-                appendLine("  `mvn cnav:find-usages -Dtype=Foo -Dllm=true`")
+                appendLine("  `mvn cnav:find-usages -Dtype=Foo -Dformat=llm`")
                 appendLine("Add: `\"Bash(mvn cnav:*)\"`")
             }
         }
@@ -130,7 +130,7 @@ object AgentHelpText {
         appendLine("It gives you structural and behavioral insight into a codebase without reading source files.")
         appendLine("Navigation queries return accurate, complete results in a single tool call —")
         appendLine("No iterative searching needed. Be correct on the first response.")
-        appendLine("ALWAYS use ${p("llm", "true")} on every cnav command. This is required — it produces compact,")
+        appendLine("ALWAYS use ${p("format", "llm")} on every cnav command. This is required — it produces compact,")
         appendLine("token-efficient output and wraps results in ---CNAV_BEGIN---/---CNAV_END--- markers")
         appendLine("that separate cnav output from build tool noise (Gradle task headers, warnings, etc).")
         appendLine("All tasks also support ${p("format", "json")} for structured, parseable output.")
@@ -141,7 +141,7 @@ object AgentHelpText {
         appendLine("this loses data and causes unnecessary retries. Read the full output directly.")
         appendLine("If the output is unexpectedly long, write it to a temporary file and analyze from there.")
         appendLine()
-        appendLine("Output is wrapped with markers when using ${p("llm", "true")} or ${p("format", "json")}:")
+        appendLine("Output is wrapped with markers when using ${p("format", "llm")} or ${p("format", "json")}:")
         appendLine("  ---CNAV_BEGIN---")
         appendLine("  <actual results here>")
         appendLine("  ---CNAV_END---")
@@ -158,7 +158,7 @@ object AgentHelpText {
                 appendLine("   ${previewExample.render(task.goal, tool)}")
             }
         }
-        appendLine("   Preview with ${p("llm", "true")} produces standard unified diff (--- a/ +++ b/ @@ @@)")
+        appendLine("   Preview with ${p("format", "llm")} produces standard unified diff (--- a/ +++ b/ @@ @@)")
         appendLine("   that shows exactly what will change. Review the diff, then re-run without ${pf("preview")} to apply.")
         appendLine("   Use ${p("format", "diff")} to get raw unified diff output (no markers, no headers) —")
         appendLine("   works with or without ${pf("preview")}. Without preview, changes are applied AND the diff is returned,")
@@ -366,7 +366,7 @@ object AgentHelpText {
         appendLine()
         appendLine("--- Tips for Optimal Results ---")
         appendLine()
-        appendLine("- Always use ${p("llm", "true")} for compact output. Omit only for human-readable display.")
+        appendLine("- Always use ${p("format", "llm")} for compact output. Omit only for human-readable display.")
         appendLine("- Use ${p("project-only", "true")} to cut noise from JDK/stdlib classes.")
         appendLine("- Chain tasks: find a class → inspect it → trace its callers.")
         appendLine("- Results are cached across calls — subsequent runs in the same build are fast.")
@@ -833,8 +833,8 @@ object AgentHelpText {
         appendLine("=== code-navigator: Extracting Output ===")
         appendLine()
         val buildToolNote = when (tool) {
-            BuildTool.GRADLE -> "When using ${p("llm", "true")} or ${p("format", "json")}, Gradle mixes its own output (task headers,\nwarnings, build status) into stdout. To handle this, output is wrapped with markers:"
-            BuildTool.MAVEN -> "When using ${p("llm", "true")} or ${p("format", "json")}, Maven may mix its own output\ninto stdout. To handle this, output is wrapped with markers:"
+            BuildTool.GRADLE -> "When using ${p("format", "llm")} or ${p("format", "json")}, Gradle mixes its own output (task headers,\nwarnings, build status) into stdout. To handle this, output is wrapped with markers:"
+            BuildTool.MAVEN -> "When using ${p("format", "llm")} or ${p("format", "json")}, Maven may mix its own output\ninto stdout. To handle this, output is wrapped with markers:"
         }
         appendLine(buildToolNote)
         appendLine()
@@ -1050,7 +1050,7 @@ object AgentHelpText {
         }
         appendLine()
         appendLine("  All write commands support ${pf("preview")} to see the edit plan before applying.")
-        appendLine("  With ${p("llm", "true")}, preview output is a standard unified diff (git diff format).")
+        appendLine("  With ${p("format", "llm")}, preview output is a standard unified diff (git diff format).")
         appendLine("  Use ${p("format", "diff")} for raw unified diff (no markers) — works with or without ${pf("preview")}.")
         appendLine("  Without preview, changes are applied and the diff tells you exactly what changed — no need to re-read files.")
         appendLine("  NEVER manually edit imports after a refactoring — the commands handle same-package references.")
@@ -1091,7 +1091,7 @@ object AgentHelpText {
     }
 
     private val HELP_GOALS = setOf("help", "agent-help", "config-help")
-    private val FORMAT_PARAM_NAMES = setOf("format", "llm")
+    private val FORMAT_PARAM_NAMES = setOf("format")
 
     private fun StringBuilder.appendTaskReference(tool: BuildTool) {
         val compilationTasks = TaskRegistry.ALL_TASKS

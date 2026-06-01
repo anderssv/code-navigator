@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -83,10 +85,12 @@ abstract class PackageDepsTask : CodeNavigatorTask() {
             all
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { PackageDependencyFormatter.format(deps, packages, config.reverse) },
-            json = { JsonFormatter.formatPackageDeps(deps, packages, config.reverse) },
-            llm = { LlmFormatter.formatPackageDeps(deps, packages, config.reverse) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> PackageDependencyFormatter.format(deps, packages, config.reverse)
+        OutputFormat.JSON -> JsonFormatter.formatPackageDeps(deps, packages, config.reverse)
+        OutputFormat.LLM -> LlmFormatter.formatPackageDeps(deps, packages, config.reverse)
+    }
+})
     }
 }

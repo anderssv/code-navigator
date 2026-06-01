@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -34,8 +36,6 @@ class ContextMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "pattern")
     private var pattern: String? = null
@@ -135,18 +135,18 @@ class ContextMojo : AbstractMojo() {
         }
 
         println(
-            OutputWrapper.formatAndWrap(
-                config.format,
-                text = { results.joinToString("\n\n") { ContextFormatter.format(it) } },
-                json = { "[${results.joinToString(",") { JsonFormatter.formatContext(it) }}]" },
-                llm = { results.joinToString("\n\n") { LlmFormatter.formatContext(it) } },
-            ),
+            OutputWrapper.formatAndWrap(config.format) { format ->
+                when (format) {
+                    OutputFormat.TEXT, OutputFormat.DIFF -> results.joinToString("\n\n") { ContextFormatter.format(it) }
+                    OutputFormat.JSON -> "[${results.joinToString(",") { JsonFormatter.formatContext(it) }}]"
+                    OutputFormat.LLM -> results.joinToString("\n\n") { LlmFormatter.formatContext(it) }
+                }
+            },
         )
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         maxdepth?.let { put("maxdepth", it) }
         projectOnly?.let { put("project-only", it) }

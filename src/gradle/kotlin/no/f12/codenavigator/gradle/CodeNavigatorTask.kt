@@ -8,18 +8,14 @@ import org.gradle.api.tasks.options.Option
 
 /**
  * Base class for all code-navigator tasks.
- * Provides shared options (format, llm), a helper to build the options map
+ * Provides shared options (format), a helper to build the options map
  * that Config.parse() methods expect, and detection of legacy -P property usage.
  */
 abstract class CodeNavigatorTask : DefaultTask() {
 
-    @Option(option = "format", description = "Output format: TEXT, JSON, or LLM")
+    @Option(option = "format", description = "Output format: text, json, llm, or diff")
     @get:Internal
     var format: String? = null
-
-    @Option(option = "llm", description = "Use LLM-optimized output (compact, token-efficient)")
-    @get:Internal
-    var llm: Boolean = false
 
     /**
      * Builds the property map from @Option-annotated fields on this task.
@@ -30,7 +26,6 @@ abstract class CodeNavigatorTask : DefaultTask() {
         checkForLegacyProperties()
         val map = mutableMapOf<String, String?>()
         format?.let { map["format"] = it }
-        if (llm) map["llm"] = "true"
         map.putAll(taskOptionsMap())
         return map
     }

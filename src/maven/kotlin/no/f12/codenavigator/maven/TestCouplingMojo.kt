@@ -25,8 +25,6 @@ class TestCouplingMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "ports")
     private var ports: String? = null
@@ -94,7 +92,6 @@ class TestCouplingMojo : AbstractMojo() {
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         ports?.let { put("ports", it) }
         detail?.let { put("detail", it) }
         exclude?.let { put("exclude", it) }

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
@@ -73,12 +75,13 @@ object CallTreeTaskSupport {
         val classHint = CallTreeFormatter.classMatchHint(config.method, methods)
 
         logger.lifecycle(
-            OutputWrapper.formatAndWrap(
-                config.format,
-                text = { CallTreeFormatter.renderTrees(trees, direction) + (classHint?.let { "\n\n$it" } ?: "") },
-                json = { JsonFormatter.renderCallTrees(trees, direction) },
-                llm = { LlmFormatter.renderCallTrees(trees, direction) + (classHint?.let { "\n\n$it" } ?: "") },
-            ),
+            OutputWrapper.formatAndWrap(config.format) { format ->
+                when (format) {
+                    OutputFormat.TEXT, OutputFormat.DIFF -> CallTreeFormatter.renderTrees(trees, direction) + (classHint?.let { "\n\n$it" } ?: "")
+                    OutputFormat.JSON -> JsonFormatter.renderCallTrees(trees, direction)
+                    OutputFormat.LLM -> LlmFormatter.renderCallTrees(trees, direction) + (classHint?.let { "\n\n$it" } ?: "")
+                }
+            },
         )
     }
 }

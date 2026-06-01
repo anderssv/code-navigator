@@ -4,7 +4,7 @@ enum class OutputFormat {
     TEXT, JSON, LLM, DIFF;
 
     companion object {
-        fun from(format: String?, llm: Boolean?): OutputFormat = when {
+        fun from(format: String?, llm: Boolean? = null): OutputFormat = when {
             format == "diff" -> DIFF
             llm == true -> LLM
             format == "llm" -> LLM

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -27,8 +29,6 @@ class RankMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "top")
     private var top: String? = null
@@ -66,16 +66,17 @@ class RankMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { RankFormatter.format(filtered) },
-            json = { JsonFormatter.formatRank(filtered) },
-            llm = { LlmFormatter.formatRank(filtered) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> RankFormatter.format(filtered)
+        OutputFormat.JSON -> JsonFormatter.formatRank(filtered)
+        OutputFormat.LLM -> LlmFormatter.formatRank(filtered)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         top?.let { put("top", it) }
         projectOnly?.let { put("project-only", it) }
         collapseLambdas?.let { put("collapse-lambdas", it) }

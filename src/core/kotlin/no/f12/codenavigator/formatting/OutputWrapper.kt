@@ -20,16 +20,9 @@ object OutputWrapper {
 
     fun formatAndWrap(
         format: OutputFormat,
-        text: () -> String,
-        json: () -> String,
-        llm: () -> String,
+        produce: (OutputFormat) -> String,
     ): String {
-        val output = when (format) {
-            OutputFormat.TEXT -> text()
-            OutputFormat.JSON -> json()
-            OutputFormat.LLM -> llm()
-            OutputFormat.DIFF -> text() // DIFF is only meaningful for refactoring tasks; fallback to text
-        }
+        val output = produce(format)
         return wrap(output, format)
     }
 

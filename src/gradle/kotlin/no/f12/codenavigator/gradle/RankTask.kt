@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -65,10 +67,12 @@ abstract class RankTask : CodeNavigatorTask() {
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { RankFormatter.format(filtered) },
-            json = { JsonFormatter.formatRank(filtered) },
-            llm = { LlmFormatter.formatRank(filtered) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> RankFormatter.format(filtered)
+        OutputFormat.JSON -> JsonFormatter.formatRank(filtered)
+        OutputFormat.LLM -> LlmFormatter.formatRank(filtered)
+    }
+})
     }
 }

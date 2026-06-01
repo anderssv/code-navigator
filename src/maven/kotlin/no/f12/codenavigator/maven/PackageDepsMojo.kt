@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -28,8 +30,6 @@ class PackageDepsMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "package")
     private var packagePattern: String? = null
@@ -85,16 +85,17 @@ class PackageDepsMojo : AbstractMojo() {
             all
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { PackageDependencyFormatter.format(deps, packages, config.reverse) },
-            json = { JsonFormatter.formatPackageDeps(deps, packages, config.reverse) },
-            llm = { LlmFormatter.formatPackageDeps(deps, packages, config.reverse) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> PackageDependencyFormatter.format(deps, packages, config.reverse)
+        OutputFormat.JSON -> JsonFormatter.formatPackageDeps(deps, packages, config.reverse)
+        OutputFormat.LLM -> LlmFormatter.formatPackageDeps(deps, packages, config.reverse)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         packagePattern?.let { put("package", it) }
         projectOnly?.let { put("project-only", it) }
         reverse?.let { put("reverse", it) }

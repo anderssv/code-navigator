@@ -22,8 +22,6 @@ class PackageDistanceMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "package-filter")
     private var packageFilter: String? = null
@@ -63,7 +61,6 @@ class PackageDistanceMojo : AbstractMojo() {
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
         dsmDepth?.let { put("dsm-depth", it) }

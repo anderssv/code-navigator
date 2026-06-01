@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.refactor.RenameMethodConfig
 import no.f12.codenavigator.navigation.refactor.RenameMethodFormatter
@@ -20,8 +22,6 @@ class RenameMethodMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "target-class")
     private var targetClass: String? = null
@@ -55,11 +55,13 @@ class RenameMethodMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { RenameMethodFormatter.format(result, config) },
-            json = { RenameMethodFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON)) },
-            llm = { RenameMethodFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM)) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> RenameMethodFormatter.format(result, config)
+        OutputFormat.JSON -> RenameMethodFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
+        OutputFormat.LLM -> RenameMethodFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
+    }
+})
     }
 
     private fun noResultsHints(config: RenameMethodConfig): List<String> = buildList {
@@ -71,7 +73,6 @@ class RenameMethodMojo : AbstractMojo() {
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         targetClass?.let { put("target-class", it) }
         method?.let { put("method", it) }
         newName?.let { put("new-name", it) }

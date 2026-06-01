@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -81,10 +83,12 @@ abstract class CyclesTask : CodeNavigatorTask() {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No package cycles detected."))
             return
         }
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { CyclesFormatter.format(details, displayPrefix = displayPrefix) },
-            json = { JsonFormatter.formatCycles(details, displayPrefix = displayPrefix) },
-            llm = { LlmFormatter.formatCycles(details, displayPrefix = displayPrefix) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(details, displayPrefix = displayPrefix)
+        OutputFormat.JSON -> JsonFormatter.formatCycles(details, displayPrefix = displayPrefix)
+        OutputFormat.LLM -> LlmFormatter.formatCycles(details, displayPrefix = displayPrefix)
+    }
+})
     }
 }

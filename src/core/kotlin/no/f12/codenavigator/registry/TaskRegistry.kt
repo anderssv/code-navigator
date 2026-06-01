@@ -86,8 +86,7 @@ data class ParamDef<T>(
     companion object {
         fun parseFormat(properties: Map<String, String?>): OutputFormat =
             OutputFormat.from(
-                format = properties["format"],
-                llm = properties["llm"]?.toBoolean(),
+                format = properties["format"] ?: if (properties["llm"]?.toBoolean() == true) "llm" else null,
             )
     }
 }
@@ -201,7 +200,7 @@ object TaskRegistry {
     // --- Shared parameter definitions ---
 
     val FORMAT = ParamDef("format", "json", "Output as machine-readable JSON", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val LLM = ParamDef("llm", "true", "Output in compact, token-efficient LLM format", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
+    val LLM = ParamDef("llm", "true", "Deprecated: use --format=llm instead", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'llm' is deprecated. Use 'format=llm' instead (Gradle: --format=llm, Maven: -Dformat=llm).")
     val PATTERN = ParamDef("pattern", "<regex>", "Class/symbol name regex (camelCase-aware: MyService matches com.example.MyService)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
     val CALL_PATTERN = ParamDef("pattern", "<regex>", "Class.method name regex (camelCase-aware: MyService.doWork matches com.example.MyService.doWork)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
     val LEGACY_METHOD = ParamDef("method", "<regex>", "Deprecated: use pattern instead", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'method' is deprecated for find-callers/find-callees. Use 'pattern' instead (Gradle: --pattern=MyClass.myMethod, Maven: -Dpattern=MyClass.myMethod).")
@@ -273,7 +272,7 @@ object TaskRegistry {
     val TO_PACKAGE = ParamDef("to-package", "<pkg>", "Target package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PORTS = ParamDef("ports", "<regex>", "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
-    val FORMAT_PARAMS = listOf(FORMAT, LLM)
+    val FORMAT_PARAMS = listOf(FORMAT)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
 
     // --- Task definitions ---

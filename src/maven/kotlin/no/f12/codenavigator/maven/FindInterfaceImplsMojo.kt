@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -28,8 +30,6 @@ class FindInterfaceImplsMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "pattern", required = true)
     private var pattern: String? = null
@@ -70,16 +70,17 @@ class FindInterfaceImplsMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { InterfaceFormatter.format(registry, matchingInterfaces) },
-            json = { JsonFormatter.formatInterfaces(registry, matchingInterfaces) },
-            llm = { LlmFormatter.formatInterfaces(registry, matchingInterfaces) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> InterfaceFormatter.format(registry, matchingInterfaces)
+        OutputFormat.JSON -> JsonFormatter.formatInterfaces(registry, matchingInterfaces)
+        OutputFormat.LLM -> LlmFormatter.formatInterfaces(registry, matchingInterfaces)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         includeTest?.let { put("include-test", it) }
         scope?.let { put("scope", it) }

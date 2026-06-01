@@ -1,13 +1,28 @@
 # Changelog
 
-## 0.1.99 (UNRELEASED)
+## 0.1.100 (UNRELEASED)
+
+### ⚠️ Breaking change: `--llm` removed, use `--format=llm`
+
+The `--llm` flag has been removed. Use `--format=llm` instead (Gradle: `--format=llm`, Maven: `-Dformat=llm`).
+
+Before: `./gradlew cnavDead --llm`
+After:  `./gradlew cnavDead --format=llm`
+
+### Internal cleanup
+
+- **Removed:** `--llm` option from all Gradle tasks and `-Dllm` from Maven mojos
+- **Refactored:** `OutputWrapper.formatAndWrap` now takes a single `(OutputFormat) -> String` lambda instead of three named lambdas (`text`, `json`, `llm`)
+- **Added:** Feedback section to README
+
+## 0.1.99
 
 ### ⚠️ Breaking change: Gradle parameter syntax
 
 **Gradle tasks now use `--option=value` syntax instead of `-Pkey=value`.**
 
-Before: `./gradlew cnavDead -Pfilter=Service -Pllm=true`
-After:  `./gradlew cnavDead --filter=Service --llm`
+Before: `./gradlew cnavDead -Pfilter=Service -Pformat=llm`
+After:  `./gradlew cnavDead --filter=Service --format=llm`
 
 Maven is unchanged (`-Dkey=value`).
 
@@ -17,7 +32,7 @@ If you pass the old `-P` syntax, you'll get a clear error message showing the ne
 
 ### Other changes
 
-- **New:** `CodeNavigatorTask` base class provides shared `--format` and `--llm` options to all tasks
+- **New:** `CodeNavigatorTask` base class provides shared `--format` option to all tasks
 - **New:** Legacy `-P` property detection — passing old-style properties shows a migration guide with the correct `--option` syntax
 - **Improved:** `./gradlew help --task cnavDead` now lists all available options (powered by Gradle's native `@Option` support)
 - **Improved:** Unknown options are rejected by Gradle with "Unknown command-line option" error

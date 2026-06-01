@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
@@ -131,12 +133,13 @@ abstract class ContextTask : CodeNavigatorTask() {
         }
 
         logger.lifecycle(
-            OutputWrapper.formatAndWrap(
-                config.format,
-                text = { results.joinToString("\n\n") { ContextFormatter.format(it) } },
-                json = { "[${results.joinToString(",") { JsonFormatter.formatContext(it) }}]" },
-                llm = { results.joinToString("\n\n") { LlmFormatter.formatContext(it) } },
-            ),
+            OutputWrapper.formatAndWrap(config.format) { format ->
+                when (format) {
+                    OutputFormat.TEXT, OutputFormat.DIFF -> results.joinToString("\n\n") { ContextFormatter.format(it) }
+                    OutputFormat.JSON -> "[${results.joinToString(",") { JsonFormatter.formatContext(it) }}]"
+                    OutputFormat.LLM -> results.joinToString("\n\n") { LlmFormatter.formatContext(it) }
+                }
+            },
         )
     }
 }

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.navigation.refactor.RenamePropertyConfig
 import no.f12.codenavigator.navigation.refactor.RenamePropertyFormatter
 import no.f12.codenavigator.navigation.refactor.RenamePropertyResult
@@ -77,11 +79,13 @@ abstract class RenamePropertyTask @Inject constructor(
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { RenamePropertyFormatter.format(result, config) },
-            json = { RenamePropertyFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON)) },
-            llm = { RenamePropertyFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM)) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> RenamePropertyFormatter.format(result, config)
+        OutputFormat.JSON -> RenamePropertyFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
+        OutputFormat.LLM -> RenamePropertyFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
+    }
+})
     }
 
     private fun noResultsHints(config: RenamePropertyConfig): List<String> = buildList {

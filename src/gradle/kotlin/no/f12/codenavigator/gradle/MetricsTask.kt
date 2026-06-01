@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -149,10 +151,12 @@ abstract class MetricsTask : CodeNavigatorTask() {
             hotspots = hotspots,
         )
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { MetricsFormatter.format(metrics) },
-            json = { JsonFormatter.formatMetrics(metrics) },
-            llm = { LlmFormatter.formatMetrics(metrics) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> MetricsFormatter.format(metrics)
+        OutputFormat.JSON -> JsonFormatter.formatMetrics(metrics)
+        OutputFormat.LLM -> LlmFormatter.formatMetrics(metrics)
+    }
+})
     }
 }

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -22,8 +24,6 @@ class HotspotsMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "after")
     private var after: String? = null
@@ -48,16 +48,17 @@ class HotspotsMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { HotspotFormatter.format(hotspots) },
-            json = { JsonFormatter.formatHotspots(hotspots) },
-            llm = { LlmFormatter.formatHotspots(hotspots) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> HotspotFormatter.format(hotspots)
+        OutputFormat.JSON -> JsonFormatter.formatHotspots(hotspots)
+        OutputFormat.LLM -> LlmFormatter.formatHotspots(hotspots)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         after?.let { put("after", it) }
         minRevs?.let { put("min-revs", it) }
         top?.let { put("top", it) }

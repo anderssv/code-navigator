@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.navigation.refactor.ChangeSignatureConfig
 import no.f12.codenavigator.navigation.refactor.ChangeSignatureFormatter
 import no.f12.codenavigator.navigation.refactor.ChangeSignatureResult
@@ -87,11 +89,13 @@ abstract class ChangeSignatureTask @Inject constructor(
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { ChangeSignatureFormatter.format(result, config) },
-            json = { ChangeSignatureFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON)) },
-            llm = { ChangeSignatureFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM)) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> ChangeSignatureFormatter.format(result, config)
+        OutputFormat.JSON -> ChangeSignatureFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
+        OutputFormat.LLM -> ChangeSignatureFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
+    }
+})
     }
 
     private fun noResultsHints(config: ChangeSignatureConfig): List<String> = buildList {

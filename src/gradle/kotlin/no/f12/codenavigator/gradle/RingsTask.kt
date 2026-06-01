@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
@@ -47,10 +49,12 @@ abstract class RingsTask : CodeNavigatorTask() {
         val result = RingDetector.detect(dependencies)
         val output = RingFormatter.format(result)
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(format,
-            text = { output },
-            json = { output },
-            llm = { output },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> output
+        OutputFormat.JSON -> output
+        OutputFormat.LLM -> output
+    }
+})
     }
 }

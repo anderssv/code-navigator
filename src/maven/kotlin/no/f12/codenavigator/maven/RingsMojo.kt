@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
@@ -27,8 +29,6 @@ class RingsMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "scope")
     private var scope: String? = null
@@ -57,16 +57,17 @@ class RingsMojo : AbstractMojo() {
         val result = RingDetector.detect(extractResult.data)
         val output = RingFormatter.format(result)
 
-        println(OutputWrapper.formatAndWrap(outputFormat,
-            text = { output },
-            json = { output },
-            llm = { output },
-        ))
+        println(OutputWrapper.formatAndWrap(outputFormat) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> output
+        OutputFormat.JSON -> output
+        OutputFormat.LLM -> output
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         scope?.let { put("scope", it) }
     }
 }

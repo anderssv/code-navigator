@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -27,8 +29,6 @@ class AnnotationsMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "pattern")
     private var pattern: String? = null
@@ -64,16 +64,17 @@ class AnnotationsMojo : AbstractMojo() {
         val allMatches = AnnotationQueryBuilder.query(resolver.classDirectories, config.pattern, config.methods)
         val matches = allMatches.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { AnnotationQueryFormatter.format(matches) },
-            json = { JsonFormatter.formatAnnotations(matches) },
-            llm = { LlmFormatter.formatAnnotations(matches) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> AnnotationQueryFormatter.format(matches)
+        OutputFormat.JSON -> JsonFormatter.formatAnnotations(matches)
+        OutputFormat.LLM -> LlmFormatter.formatAnnotations(matches)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         methods?.let { put("methods", it) }
         includeTest?.let { put("include-test", it) }

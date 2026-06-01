@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.analysis.FileSizeConfig
 import no.f12.codenavigator.analysis.FileSizeFormatter
 import no.f12.codenavigator.analysis.FileSizeScanner
@@ -43,10 +45,12 @@ abstract class SizeTask : CodeNavigatorTask() {
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { FileSizeFormatter.format(entries) },
-            json = { JsonFormatter.formatSize(entries) },
-            llm = { LlmFormatter.formatSize(entries) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> FileSizeFormatter.format(entries)
+        OutputFormat.JSON -> JsonFormatter.formatSize(entries)
+        OutputFormat.LLM -> LlmFormatter.formatSize(entries)
+    }
+})
     }
 }

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
@@ -66,10 +68,12 @@ abstract class AnnotationsTask : CodeNavigatorTask() {
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format,
-            text = { AnnotationQueryFormatter.format(matches) },
-            json = { JsonFormatter.formatAnnotations(matches) },
-            llm = { LlmFormatter.formatAnnotations(matches) },
-        ))
+        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> AnnotationQueryFormatter.format(matches)
+        OutputFormat.JSON -> JsonFormatter.formatAnnotations(matches)
+        OutputFormat.LLM -> LlmFormatter.formatAnnotations(matches)
+    }
+})
     }
 }

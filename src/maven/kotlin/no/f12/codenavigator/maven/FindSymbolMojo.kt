@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -33,8 +35,6 @@ class FindSymbolMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "pattern", required = true)
     private var pattern: String? = null
@@ -90,16 +90,17 @@ class FindSymbolMojo : AbstractMojo() {
             println(OutputWrapper.emptyResult(config.format, "No symbols matching '${config.pattern}' found."))
             return
         }
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { SymbolTableFormatter.format(matches) },
-            json = { JsonFormatter.formatSymbols(matches) },
-            llm = { LlmFormatter.formatSymbols(matches) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> SymbolTableFormatter.format(matches)
+        OutputFormat.JSON -> JsonFormatter.formatSymbols(matches)
+        OutputFormat.LLM -> LlmFormatter.formatSymbols(matches)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         jar?.let { put("jar", it) }
         includeTest?.let { put("include-test", it) }

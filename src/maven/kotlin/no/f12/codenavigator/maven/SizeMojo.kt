@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.analysis.FileSizeConfig
 import no.f12.codenavigator.analysis.FileSizeFormatter
 import no.f12.codenavigator.analysis.FileSizeScanner
@@ -22,8 +24,6 @@ class SizeMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "top")
     private var top: String? = null
@@ -45,16 +45,17 @@ class SizeMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { FileSizeFormatter.format(entries) },
-            json = { JsonFormatter.formatSize(entries) },
-            llm = { LlmFormatter.formatSize(entries) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> FileSizeFormatter.format(entries)
+        OutputFormat.JSON -> JsonFormatter.formatSize(entries)
+        OutputFormat.LLM -> LlmFormatter.formatSize(entries)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         top?.let { put("top", it) }
         over?.let { put("over", it) }
     }

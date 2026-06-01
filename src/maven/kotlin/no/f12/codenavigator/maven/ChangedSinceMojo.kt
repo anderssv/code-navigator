@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -31,8 +33,6 @@ class ChangedSinceMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "ref")
     private var ref: String? = null
@@ -97,18 +97,18 @@ class ChangedSinceMojo : AbstractMojo() {
         val impacts = allImpacts.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         println(
-            OutputWrapper.formatAndWrap(
-                config.format,
-                text = { ChangedSinceFormatter.format(impacts, resolution.unresolved) },
-                json = { JsonFormatter.formatChangedSince(impacts, resolution.unresolved) },
-                llm = { LlmFormatter.formatChangedSince(impacts, resolution.unresolved) },
-            ),
+            OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> ChangedSinceFormatter.format(impacts, resolution.unresolved)
+        OutputFormat.JSON -> JsonFormatter.formatChangedSince(impacts, resolution.unresolved)
+        OutputFormat.LLM -> LlmFormatter.formatChangedSince(impacts, resolution.unresolved)
+    }
+},
         )
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         ref?.let { put("ref", it) }
         projectOnly?.let { put("project-only", it) }
         scope?.let { put("scope", it) }

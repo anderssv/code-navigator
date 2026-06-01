@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.refactor.MoveClassConfig
 import no.f12.codenavigator.navigation.refactor.MoveClassFormatter
@@ -21,8 +23,6 @@ open class MoveClassMojo : AbstractMojo() {
     @Parameter(property = "format")
     protected var format: String? = null
 
-    @Parameter(property = "llm")
-    protected var llm: String? = null
 
     @Parameter(property = "from")
     protected var from: String? = null
@@ -58,11 +58,13 @@ open class MoveClassMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { MoveClassFormatter.format(result, config) },
-            json = { MoveClassFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON)) },
-            llm = { MoveClassFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM)) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.format(result, config)
+        OutputFormat.JSON -> MoveClassFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
+        OutputFormat.LLM -> MoveClassFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
+    }
+})
     }
 
     private fun noResultsHints(config: MoveClassConfig): List<String> = buildList {
@@ -73,7 +75,6 @@ open class MoveClassMojo : AbstractMojo() {
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         from?.let { put("from", it) }
         to?.let { put("to", it) }
         preview?.let { put("preview", it) }

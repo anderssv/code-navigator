@@ -156,6 +156,16 @@ codeNavigator {
 
 Run `cnavHelpConfig` / `cnav:config-help` to see all available parameters. CLI options (`--option` for Gradle / `-D` for Maven) always override the config block.
 
+## Feedback
+
+To give feedback, ask your agent:
+
+> "Review the usage of code-navigator. What was good? What was bad? What could be improved?"
+
+Then submit the feedback as an issue at https://github.com/anderssv/code-navigator/issues. I will try to accommodate special cases you have stumbled upon.
+
+More about the project at https://www.mikill.no
+
 ## Further reading
 
 - [doc/tasks.md](doc/tasks.md) — detailed task usage with examples

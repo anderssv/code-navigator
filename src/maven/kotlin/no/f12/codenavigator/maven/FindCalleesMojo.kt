@@ -19,8 +19,6 @@ class FindCalleesMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "pattern")
     private var pattern: String? = null
@@ -55,7 +53,6 @@ class FindCalleesMojo : AbstractMojo() {
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         maxdepth?.let { put("maxdepth", it) }
         projectOnly?.let { put("project-only", it) }

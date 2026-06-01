@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -41,8 +43,6 @@ class ComplexityMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "collapse-lambdas")
     private var collapseLambdas: String? = null
@@ -84,11 +84,13 @@ class ComplexityMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { ComplexityFormatter.format(truncated) },
-            json = { JsonFormatter.formatComplexity(truncated) },
-            llm = { LlmFormatter.formatComplexity(truncated) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> ComplexityFormatter.format(truncated)
+        OutputFormat.JSON -> JsonFormatter.formatComplexity(truncated)
+        OutputFormat.LLM -> LlmFormatter.formatComplexity(truncated)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
@@ -98,7 +100,6 @@ class ComplexityMojo : AbstractMojo() {
         top?.let { put("top", it) }
         collapseLambdas?.let { put("collapse-lambdas", it) }
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         scope?.let { put("scope", it) }
     }
 }

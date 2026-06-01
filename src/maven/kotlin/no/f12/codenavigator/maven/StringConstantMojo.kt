@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.registry.TaskRegistry
@@ -27,8 +29,6 @@ class StringConstantMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "pattern")
     private var pattern: String? = null
@@ -61,16 +61,17 @@ class StringConstantMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { StringConstantFormatter.format(matches) },
-            json = { JsonFormatter.formatStringConstants(matches) },
-            llm = { LlmFormatter.formatStringConstants(matches) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> StringConstantFormatter.format(matches)
+        OutputFormat.JSON -> JsonFormatter.formatStringConstants(matches)
+        OutputFormat.LLM -> LlmFormatter.formatStringConstants(matches)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         pattern?.let { put("pattern", it) }
         scope?.let { put("scope", it) }
     }

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
@@ -32,8 +34,6 @@ class WhyDependsMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-    @Parameter(property = "llm")
-    private var llm: String? = null
 
     @Parameter(property = "scope")
     private var scope: String? = null
@@ -68,18 +68,19 @@ class WhyDependsMojo : AbstractMojo() {
             return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format,
-            text = { WhyDependsFormatter.format(result) },
-            json = { WhyDependsFormatter.format(result) },
-            llm = { WhyDependsFormatter.format(result) },
-        ))
+        println(OutputWrapper.formatAndWrap(config.format) { format ->
+    when (format) {
+        OutputFormat.TEXT, OutputFormat.DIFF -> WhyDependsFormatter.format(result)
+        OutputFormat.JSON -> WhyDependsFormatter.format(result)
+        OutputFormat.LLM -> WhyDependsFormatter.format(result)
+    }
+})
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         fromPackage?.let { put("from-package", it) }
         toPackage?.let { put("to-package", it) }
         format?.let { put("format", it) }
-        llm?.let { put("llm", it) }
         scope?.let { put("scope", it) }
     }
 }
