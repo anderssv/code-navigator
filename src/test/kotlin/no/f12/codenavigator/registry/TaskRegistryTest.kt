@@ -976,6 +976,35 @@ class TaskRegistryTest {
     }
 
     @Test
+    fun `warnUnknownProperties returns warning with usage hint for property not known to any cnav task`() {
+        val task = TaskRegistry.DEAD
+
+        val warnings = task.warnUnknownProperties(setOf("filter", "className"))
+
+        assertEquals(1, warnings.size)
+        assertTrue(warnings[0].contains("className"))
+        assertTrue(warnings[0].contains("Usage:"))
+    }
+
+    @Test
+    fun `warnUnknownProperties returns empty when all properties are known cnav params`() {
+        val task = TaskRegistry.DEAD
+
+        val warnings = task.warnUnknownProperties(setOf("filter", "scope"))
+
+        assertEquals(emptyList<String>(), warnings)
+    }
+
+    @Test
+    fun `warnUnknownProperties ignores common Gradle properties`() {
+        val task = TaskRegistry.DEAD
+
+        val warnings = task.warnUnknownProperties(setOf("filter", "org.gradle.parallel"))
+
+        assertEquals(emptyList<String>(), warnings)
+    }
+
+    @Test
     fun `all ParamDef instances have correct ParamType`() {
         val expectedTypes = mapOf(
             "format" to ParamType.STRING,

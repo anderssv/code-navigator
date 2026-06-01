@@ -168,6 +168,16 @@ data class TaskDef(
         }
     }
 
+    fun warnUnknownProperties(availablePropertyNames: Set<String>): List<String> {
+        val allCnavParamNames = TaskRegistry.ALL_TASKS.flatMap { it.params }.map { it.name }.toSet()
+        val unknown = availablePropertyNames
+            .filter { it !in allCnavParamNames && !it.startsWith("org.gradle.") && !it.startsWith("android.") }
+            .sorted()
+        return unknown.map { name ->
+            "Unknown parameter '$name' is not recognized by any code-navigator task.\n${usageHint(BuildTool.GRADLE)}"
+        }
+    }
+
     fun enhanceProperties(properties: Map<String, String?>): Map<String, String?> {
         val knownNames = params.map { it.name }.toSet()
         val unknown = properties.keys - knownNames

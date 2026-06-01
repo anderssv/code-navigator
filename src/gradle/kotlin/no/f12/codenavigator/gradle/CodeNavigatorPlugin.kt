@@ -98,6 +98,9 @@ class CodeNavigatorPlugin : Plugin<Project> {
                 if (this is MoveClassTask) {
                     openRewriteClasspath.from(openRewriteConfig)
                 }
+                if (this is MoveFileTask) {
+                    openRewriteClasspath.from(openRewriteConfig)
+                }
                 if (this is RenamePropertyTask) {
                     openRewriteClasspath.from(openRewriteConfig)
                 }

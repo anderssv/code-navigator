@@ -78,12 +78,32 @@ object ChangeSignatureRewriter {
                 val filePackage = ktFile.packageFqName.asString()
                 if (filePackage != targetPackage) continue
 
-                val classDecls = ktFile.collectDescendantsOfType<KtClass>()
+                val classDecls = ktFile.collectDescendantsOfType<KtClassOrObject>()
                 for (clazz in classDecls) {
                     if (clazz.name != targetSimpleName) continue
                     val method = clazz.declarations
                         .filterIsInstance<KtNamedFunction>()
-                        .firstOrNull { it.name == methodName } ?: continue
+                        .firstOrNull { it.name == methodName }
+                    if (method == null) {
+                        // Also check companion objects
+                        val companionMethod = (clazz as? KtClass)?.companionObjects
+                            ?.flatMap { it.declarations.filterIsInstance<KtNamedFunction>() }
+                            ?.firstOrNull { it.name == methodName }
+                        if (companionMethod != null) {
+                            currentParams = companionMethod.valueParameters.map { p ->
+                                ParamSpec(p.name ?: "", p.text.substringAfter(p.name ?: "").trimStart().removePrefix(":").trim())
+                            }
+                            val paramList = companionMethod.valueParameterList ?: continue
+                            val newParamText = newParamSpecs.joinToString(", ") { "${it.name}: ${it.typeAndDefault}" }
+                            val edits = listOf(TextEdit(paramList.textOffset + 1, paramList.textLength - 2, newParamText))
+                            val after = applyEdits(content, edits)
+                            if (after != content) {
+                                changes.add(RenameChange(file.absolutePath, content, after))
+                            }
+                            break
+                        }
+                        continue
+                    }
 
                     currentParams = method.valueParameters.map { p ->
                         ParamSpec(p.name ?: "", p.text.substringAfter(p.name ?: "").trimStart().removePrefix(":").trim())

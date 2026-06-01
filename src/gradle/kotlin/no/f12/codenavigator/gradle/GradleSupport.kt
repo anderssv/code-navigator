@@ -24,6 +24,9 @@ fun Project.buildPropertyMap(
     val warnings = taskDef.warnUnsupportedProperties(presentCnavProperties)
     require(warnings.isEmpty()) { warnings.joinToString("\n") }
 
+    val unknownWarnings = taskDef.warnUnknownProperties(cliProperties)
+    require(unknownWarnings.isEmpty()) { unknownWarnings.joinToString("\n") }
+
     return taskDef.enhanceProperties(raw)
 }
 

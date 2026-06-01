@@ -1077,3 +1077,41 @@ When one giant cycle collapses everything into a single ring (Ring 2 in Greitt h
 **Value: low** | **Effort: low**
 
 Projects with `codeNavigator { rootPackage = "..." }` configured see `'root-package' is deprecated` on every task. If auto-detection produces the same result, suppress the warning entirely. If they differ, suggest removal with a note that auto-detection now handles it.
+
+---
+
+## Internal architecture improvements
+
+### Shared method/class lookup across refactoring commands
+
+**Value: high** | **Effort: medium**
+
+Lookups like class resolution and method finding are duplicated across ChangeSignature, RenameMethod, RenameProperty, SafeDelete. These should be shared where relevant.
+
+**Design principle**: Think like streams. The most general lookup first (e.g., find all source files → parse → find classes matching a filter), then filtered down (e.g., by method name), then filtered down further (e.g., by parameter signature). This makes the logic more reusable. The general step should take _some_ parameters at least so we don't end up loading too much every time.
+
+Currently each rewriter has its own bespoke file-walking + PSI-parsing + class-matching code. Extract a shared `ClassLookup` or `DeclarationFinder` that all refactoring commands use. Benefits:
+- Bug fixes (e.g., companion objects, body properties) apply everywhere
+- Consistent handling of edge cases (nested classes, object declarations, Companion)
+- Easier to add bytecode-assisted pre-filtering (like RenameMethod already does)
+
+### Migrate from -P properties to @Option task options (Gradle) / proper Mojo parameters (Maven)
+
+**Value: medium** | **Effort: high**
+
+Currently all task parameters are passed via `-P` project properties in Gradle. This has downsides:
+- Properties are global — any `-P` is accepted by Gradle without error, even typos
+- We need custom unknown-param detection (added in v0.1.98)
+- No built-in `--help` per task showing available options
+
+**Gradle `@Option` migration**: Annotate task properties with `@Option(option = "target-class", description = "...")`. Users would run `./gradlew cnavDead --filter=com.example` instead of `-Pfilter=com.example`. Gradle provides:
+- Automatic rejection of unknown options with "did you mean?" suggestions
+- `./gradlew help --task cnavDead` lists all available options
+- Type validation (boolean flags, enums)
+
+**Maven**: Already uses `@Parameter` annotations on mojo fields, which is the correct pattern. Maven `-D` properties only reach the mojo if a matching field exists. However, Maven doesn't reject unknown `-D` properties globally (they're just ignored). Consider adding validation in a shared `AbstractCodeNavigatorMojo` base class that checks `session.userProperties` against known param names — similar to the Gradle `warnUnknownProperties` approach.
+
+**Migration path**:
+1. Support both `-P` and `--option` syntax simultaneously (deprecate `-P`)
+2. Update `cnavAgentHelp` to show `--option` syntax
+3. Eventually remove `-P` support in a major version
