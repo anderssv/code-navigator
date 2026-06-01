@@ -563,7 +563,7 @@ object HelpText {
         appendLine()
         appendLine("If you are an AI coding agent, run ${TaskRegistry.AGENT_HELP.renderExamples(tool).first()} for optimized guidance.")
         appendLine()
-        appendLine("Feedback and more: https://www.mikill.no")
+        appendLine("Made by Anders Sveen / https://www.mikill.no")
     }
 
     private fun paramDoc(param: ParamDef<*>, tool: BuildTool, description: String? = null, task: TaskDef? = null): String {
