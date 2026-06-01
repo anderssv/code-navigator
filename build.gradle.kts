@@ -10,8 +10,8 @@ group = "no.f12"
 version = "0.1.102-SNAPSHOT"
 
 gradlePlugin {
-    website.set("https://github.com/anderssv/gradle-code-navigator")
-    vcsUrl.set("https://github.com/anderssv/gradle-code-navigator")
+    website.set("https://github.com/anderssv/code-navigator")
+    vcsUrl.set("https://github.com/anderssv/code-navigator")
 
     plugins {
         create("code-navigator") {
