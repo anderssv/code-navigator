@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.98
+
+- **Fixed:** `cnavChangeSignature` now finds methods in `object` declarations (not just `class`), fixing lookup failures for suspend functions and other methods in objects/companions.
+- **Fixed:** `cnavMoveFile` no longer throws `ClassNotFoundException` for `KotlinParser` — the OpenRewrite classpath was not wired to the worker task.
+- **New:** Unknown parameter detection — passing an unrecognized `-P` property (not known to any cnav task) now produces an error with the correct usage hint, helping catch typos.
+- **Improved:** `cnavChangeSignature` also checks companion objects when the method isn't found directly on the class.
+
 ## 0.1.97
 
 - **Removed:** `cnavLayerCheck` — superseded by `cnavRings` which auto-detects hexagonal architecture rings without configuration.
