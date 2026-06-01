@@ -21,9 +21,17 @@ object MoveFileRewriter {
         if (ps.sources.isEmpty()) return MoveClassResult(emptyList())
 
         // Find the source file matching the given path
+        val normalizedFrom = fromFile.replace("\\", "/")
         val resolvedFile = ps.sources.firstOrNull { sourceFile ->
             val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
-            filePath == fromFile || filePath.endsWith(fromFile)
+            val normalizedFilePath = filePath.replace("\\", "/")
+            normalizedFilePath == normalizedFrom ||
+                normalizedFilePath.endsWith("/$normalizedFrom") ||
+                normalizedFilePath.endsWith(normalizedFrom) ||
+                sourceFile.sourcePath.toString().let { sp ->
+                    val normalizedSp = sp.replace("\\", "/")
+                    normalizedSp == normalizedFrom || normalizedSp.endsWith("/$normalizedFrom") || normalizedSp.endsWith(normalizedFrom)
+                }
         } ?: return MoveClassResult(emptyList())
 
         val filePath = resolveOriginalPath(resolvedFile, ps.sourceRoots)

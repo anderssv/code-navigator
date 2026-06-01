@@ -34,6 +34,12 @@ object ConfidenceScorer {
 
         if (testGraph != null && referencedInTests) return DeadCodeConfidence.MEDIUM
 
+        // Kotlin file facade classes (*Kt) contain top-level functions/extensions.
+        // They are never referenced at class level — only their methods are called via INVOKESTATIC.
+        // If no method-level callers are detected, it may be due to multi-module boundaries
+        // or other scanning limitations. Lower confidence for these containers.
+        if (method == null && className.isKtFacade()) return DeadCodeConfidence.MEDIUM
+
         return DeadCodeConfidence.HIGH
     }
 

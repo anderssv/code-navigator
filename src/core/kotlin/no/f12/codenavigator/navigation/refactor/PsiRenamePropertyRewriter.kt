@@ -75,6 +75,14 @@ object PsiRenamePropertyRewriter {
                             }
                         }
                     }
+
+                    // Rename val/var declared in class body
+                    for (decl in clazz.declarations) {
+                        if (decl is KtProperty && decl.name == propertyName) {
+                            val nameId = decl.nameIdentifier ?: continue
+                            edits.add(TextEdit(nameId.textOffset, nameId.textLength, newName))
+                        }
+                    }
                 }
 
                 // Rename property access sites and named args across the file

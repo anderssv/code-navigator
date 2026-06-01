@@ -202,4 +202,19 @@ class RenamePropertyRewriterTest {
 
         return tempDir
     }
+
+    @Test
+    fun `renames body property declaration`() {
+        val result = RenamePropertyRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.property.SearchService",
+            propertyName = "raClient",
+            newName = "httpClient",
+            preview = true,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should find body property. Result: $result")
+        val change = result.changes.first { it.filePath.endsWith("SearchService.kt") }
+        assertTrue(change.after.contains("private val httpClient"), "Body property should be renamed. Content:\n${change.after}")
+    }
 }

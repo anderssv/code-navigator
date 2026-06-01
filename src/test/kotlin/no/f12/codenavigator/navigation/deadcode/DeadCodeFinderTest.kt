@@ -1599,4 +1599,32 @@ class DeadCodeFinderTest {
         assertTrue("com.example.NinError" in deadClasses, "Marker interface should be dead if no implementors are alive")
         assertTrue("com.example.DeadImpl" in deadClasses, "DeadImpl should be dead — no calls to it")
     }
+
+    @Test
+    fun `Kt facade class without callers gets MEDIUM confidence`() {
+        val graph = testCallGraph(
+            method("com.example.TimerHelpersKt", "doSomething") to method("com.example.External", "run"),
+            projectClasses = setOf("com.example.TimerHelpersKt"),
+        )
+
+        val dead = findDead(graph)
+
+        val deadClasses = dead.deadClasses()
+        assertEquals(1, deadClasses.size)
+        assertEquals("com.example.TimerHelpersKt", deadClasses[0].className.value)
+        assertEquals(DeadCodeConfidence.MEDIUM, deadClasses[0].confidence, "Kt facade classes should get MEDIUM confidence since they are file-level containers")
+    }
+
+    @Test
+    fun `Kt facade class with cross-class callers is not dead`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.TimerHelpersKt", "doSomething"),
+            projectClasses = setOf("com.example.Controller", "com.example.TimerHelpersKt"),
+        )
+
+        val dead = findDead(graph)
+
+        val deadClasses = dead.deadClassNames()
+        assertTrue("com.example.TimerHelpersKt" !in deadClasses, "Kt facade with callers should not be dead")
+    }
 }

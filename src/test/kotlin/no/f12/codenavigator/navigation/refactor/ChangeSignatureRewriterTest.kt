@@ -179,6 +179,26 @@ class ChangeSignatureRewriterTest {
         kotlin.test.assertEquals(before, file.readText(), "File should not be modified on disk")
     }
 
+    @Test
+    fun `finds and changes suspend function signature`() {
+        val sourceDir = copySourcesToTemp("changesig-suspend", "com/example/variants/changesig")
+
+        val result = ChangeSignatureRewriter.change(
+            sourceRoots = listOf(sourceDir),
+            classDirectories = listOf(testProjectClasses),
+            className = "com.example.variants.changesig.UserService",
+            methodName = "fetchRemote",
+            newParams = "url: String, timeout: Int, retries: Int",
+            defaults = mapOf("retries" to "3"),
+            preview = true,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should find suspend function. Result: $result")
+        val declChange = result.changes.first { it.filePath.endsWith("UserService.kt") }
+        assertTrue(declChange.after.contains("retries: Int"), "Declaration should contain new param")
+        assertTrue(declChange.after.contains("fetchRemote(\"http://example.com\", 5000, 3)"), "Call site should have default. Content:\n${declChange.after}")
+    }
+
     private fun copySourcesToTemp(label: String, vararg packages: String): File {
         val tempDir = Files.createTempDirectory("cnav-test-$label").toFile()
         for (pkg in packages) {

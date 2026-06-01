@@ -73,6 +73,12 @@ value class ClassName(val value: String) : Comparable<ClassName> {
 
     fun isPackageInfo(): Boolean = value.endsWith(".package-info")
 
+    /** Kotlin file facade classes end with "Kt" and contain top-level functions/extensions. */
+    fun isKtFacade(): Boolean {
+        val simple = simpleName()
+        return simple.endsWith("Kt") && !simple.endsWith("\$Kt") && '$' !in simple
+    }
+
     fun isSynthetic(): Boolean =
         TRAILING_NUMERIC_SEGMENT.containsMatchIn(value) ||
             LAMBDA_PATTERN.containsMatchIn(value)

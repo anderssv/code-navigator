@@ -5,6 +5,76 @@ Value and effort are qualitative assessments to aid prioritization, not estimate
 
 ---
 
+## Bugs from v0.1.97 field test
+
+Critical issues found during real-project testing. Fix before new features.
+
+### cnavSafeDelete crashes with JSON parse error
+
+**Value: high** | **Effort: low**
+
+Crashes with "Unexpected character at position 11" regardless of input class/method. Completely broken — likely a regression in JSON input parsing.
+
+### cnavChangeSignature can't find suspend functions
+
+**Value: high** | **Effort: medium**
+
+Reports "method not found" for suspend functions even though `cnavClassDetail` and `cnavRenameMethod` handle the same method fine. Inconsistency in how continuation parameters are resolved during method lookup.
+
+### cnavMoveFile produces no output
+
+**Value: medium** | **Effort: low**
+
+No CNAV_BEGIN markers, no success/failure feedback. Hard to tell if it did anything or silently failed. Likely missing `logger.lifecycle()` calls or early silent return.
+
+### cnavRenameProperty inconsistent resolution
+
+**Value: medium** | **Effort: medium**
+
+Can't find properties on some classes (works on MerchantService but fails on SearchService with same property name `raClient`). Likely a Kotlin compiler artifact issue — some classes compile properties differently (e.g., with `@JvmField`, or as constructor params vs body properties).
+
+### cnavDead false positive on extension functions
+
+**Value: high** | **Effort: medium**
+
+`TimerHelpersKt` flagged as dead (HIGH confidence) but contains extension functions called from 4+ places. The `*Kt` facade class has no direct class references — callers use `INVOKESTATIC` on the facade. Dead code detection sees zero class-level references but the methods inside are live. Need to check method-level references for `*Kt` facade classes before marking the class as dead.
+
+---
+
+## UX improvements from v0.1.97 field test
+
+### cnavAnnotations: methods=true as default for common annotations
+
+**Value: medium** | **Effort: low**
+
+Searching for `@Test` returns empty results without `-Pmethods=true`. Since method-level annotations are the most common use case, consider making it the default or auto-enabling when results are empty.
+
+### cnavFindCallees: hide library internals by default
+
+**Value: medium** | **Effort: medium**
+
+Output is noisy for methods that call Java library code — shows raw JAXB getters/setters at leaf nodes with long annotation metadata. Consider collapsing or hiding library-internal methods by default (controlled by `-Pproject-only`).
+
+### cnavMoveSuggest: hexagonal architecture awareness
+
+**Value: medium** | **Effort: high**
+
+Suggests moving ports (interfaces) into domain packages and services into wrong packages. Algorithm optimizes for dependency-count proximity without understanding that ports belong in port packages regardless of who calls them. Could benefit from `cnavRings` ring detection to suppress suggestions that would violate ring boundaries.
+
+### cnavRings: external protocol classes misclassified
+
+**Value: medium** | **Effort: medium**
+
+External protocol Java classes (e.g., `no.bankid.ra`) placed in Ring 0 (domain) alongside actual domain classes. Classes with zero outgoing project dependencies default to innermost ring. Need heuristic: classes in packages that don't match the project's root package should be categorized separately or excluded.
+
+### Per-task -Phelp with usage on error
+
+**Value: high** | **Effort: medium**
+
+When wrong parameters are passed, users get a stack trace rather than usage examples. Only `cnavSafeDelete` shows usage in the error message. Add consistent per-task help: on missing required params or parse errors, show the task's examples from TaskRegistry.
+
+---
+
 ---
 
 ## cnavMoveSuggest improvements

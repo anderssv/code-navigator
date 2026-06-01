@@ -37,12 +37,22 @@ fun parseJsonObject(json: String): Map<String, Any?> {
 
 private fun parseValue(json: String, pos: Int): Pair<Any?, Int> {
     val i = skipWs(json, pos)
-    return when (json[i]) {
-        '"' -> parseString(json, i)
-        '{' -> parseObj(json, i)
-        '[' -> parseArr(json, i)
+    return when {
+        json[i] == '"' -> parseString(json, i)
+        json[i] == '{' -> parseObj(json, i)
+        json[i] == '[' -> parseArr(json, i)
+        json.startsWith("true", i) -> true to i + 4
+        json.startsWith("false", i) -> false to i + 5
+        json.startsWith("null", i) -> null to i + 4
+        json[i].isDigit() || json[i] == '-' -> parseNumber(json, i)
         else -> throw IllegalArgumentException("Unexpected character '${json[i]}' at position $i")
     }
+}
+
+private fun parseNumber(json: String, pos: Int): Pair<String, Int> {
+    var i = pos
+    while (i < json.length && (json[i].isDigit() || json[i] == '.' || json[i] == '-' || json[i] == 'e' || json[i] == 'E' || json[i] == '+')) i++
+    return json.substring(pos, i) to i
 }
 
 private fun parseString(json: String, pos: Int): Pair<String, Int> {
