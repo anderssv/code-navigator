@@ -12,14 +12,14 @@ class TaskGuidanceTest {
     fun rendersAllSectionsWhenPresent() {
         val guidance = TaskGuidance(
             purpose = "Detects tests that bypass domain services.",
-            parameterGuidance = "Set -Pports to match your boundary interfaces (e.g. .*Repository|.*Client).",
+            parameterGuidance = "Set --ports to match your boundary interfaces (e.g. .*Repository|.*Client).",
             interpretation = "Tests calling port methods directly use data-oriented setup.",
         )
 
         val rendered = guidance.render()
 
         assertContains(rendered, "Detects tests that bypass domain services.")
-        assertContains(rendered, "Set -Pports to match your boundary interfaces")
+        assertContains(rendered, "Set --ports to match your boundary interfaces")
         assertContains(rendered, "Tests calling port methods directly use data-oriented setup.")
     }
 
@@ -44,7 +44,7 @@ class TaskGuidanceTest {
     fun rendersSectionHeaders() {
         val guidance = TaskGuidance(
             purpose = "Checks coupling.",
-            parameterGuidance = "Use -Pports to specify boundaries.",
+            parameterGuidance = "Use --ports to specify boundaries.",
             interpretation = "High coupling is bad.",
         )
 
@@ -72,7 +72,7 @@ class TaskGuidanceTest {
     fun outputWrapperIncludesGuidanceInLlmFormat() {
         val guidance = TaskGuidance(
             purpose = "Detects TTTD violations.",
-            parameterGuidance = "Set -Pports to match port interfaces.",
+            parameterGuidance = "Set --ports to match port interfaces.",
             interpretation = "Direct port calls from tests bypass the domain.",
         )
 
@@ -88,7 +88,7 @@ class TaskGuidanceTest {
     fun outputWrapperOmitsGuidanceInTextFormat() {
         val guidance = TaskGuidance(
             purpose = "Detects TTTD violations.",
-            parameterGuidance = "Set -Pports.",
+            parameterGuidance = "Set --ports.",
             interpretation = "Bad coupling.",
         )
 

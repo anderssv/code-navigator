@@ -15,20 +15,39 @@ import no.f12.codenavigator.navigation.classinfo.ClassInfoExtractor
 import no.f12.codenavigator.navigation.classinfo.FindClassConfig
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class FindClassTask : DefaultTask() {
+abstract class FindClassTask : CodeNavigatorTask() {
+
+    @Option(option = "pattern", description = "Class/symbol name regex (camelCase-aware: MyService matches com.example.MyService)")
+    @get:Internal
+    var pattern: String? = null
+
+    @Option(option = "jar", description = "Scan a JAR file instead of project classes. Value: file path or artifact coordinate (group:name)")
+    @get:Internal
+    var jar: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        pattern?.let { put("pattern", it) }
+        jar?.let { put("jar", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun findClass() {
         val config = try {
             FindClassConfig.parse(
-                project.buildPropertyMap(TaskRegistry.FIND_CLASS),
+                TaskRegistry.FIND_CLASS.enhanceProperties(buildOptionsMap()),
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(

@@ -7,11 +7,12 @@ import no.f12.codenavigator.navigation.refactor.RenameMethodResult
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import org.gradle.workers.WorkerExecutor
 import javax.inject.Inject
@@ -19,15 +20,38 @@ import javax.inject.Inject
 @DisableCachingByDefault(because = "Modifies source files")
 abstract class RenameMethodTask @Inject constructor(
     private val workerExecutor: WorkerExecutor,
-) : DefaultTask() {
+) : CodeNavigatorTask() {
 
     @get:Classpath
     abstract val psiClasspath: ConfigurableFileCollection
 
+    @Option(option = "target-class", description = "Fully qualified class name")
+    @get:Internal
+    var targetClass: String? = null
+
+    @Option(option = "method", description = "Method name")
+    @get:Internal
+    var method: String? = null
+
+    @Option(option = "new-name", description = "New name")
+    @get:Internal
+    var newName: String? = null
+
+    @Option(option = "preview", description = "Preview changes without writing to source files")
+    @get:Internal
+    var preview: Boolean = false
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        targetClass?.let { put("target-class", it) }
+        method?.let { put("method", it) }
+        newName?.let { put("new-name", it) }
+        if (preview) put("preview", "true")
+    }
+
     @TaskAction
     fun renameMethod() {
         val config = RenameMethodConfig.parse(
-            project.buildPropertyMap(TaskRegistry.RENAME_METHOD_TASK),
+            TaskRegistry.RENAME_METHOD_TASK.enhanceProperties(buildOptionsMap()),
         )
 
         val sourceRootPaths = project.sourceDirectories().map { it.absolutePath }
@@ -49,8 +73,8 @@ abstract class RenameMethodTask @Inject constructor(
         workQueue.submit(RenameMethodWorkAction::class.java) {
             className.set(config.className)
             methodName.set(config.methodName)
-            newName.set(config.newName)
-            preview.set(config.preview)
+            this.newName.set(config.newName)
+            this.preview.set(config.preview)
             sourceRoots.set(sourceRootPaths)
             this.callSiteFiles.set(callSiteFiles.toList())
             this.implementorFqns.set(implementorFqns.toList())
@@ -75,7 +99,7 @@ abstract class RenameMethodTask @Inject constructor(
 
     private fun noResultsHints(config: RenameMethodConfig): List<String> = buildList {
         add("Ensure the class name is fully qualified (e.g., com.example.MyClass).")
-        add("Use cnavClassDetail -Ppattern=${config.className.substringAfterLast('.')} to find the FQN if unsure.")
+        add("Use cnavClassDetail --pattern=${config.className.substringAfterLast('.')} to find the FQN if unsure.")
         add("Check that the method '${config.methodName}' exists in '${config.className}' (use cnavClassDetail to verify).")
         add("Only Kotlin source files (.kt) are searched.")
     }

@@ -4,19 +4,43 @@ import no.f12.codenavigator.formatting.DsmOutputFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.MoveSuggestConfig
 import no.f12.codenavigator.navigation.dsm.MoveSuggestOrchestrator
-import org.gradle.api.DefaultTask
+
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class MoveSuggestTask : DefaultTask() {
+abstract class MoveSuggestTask : CodeNavigatorTask() {
+
+    @Option(option = "package-filter", description = "Only include packages under this prefix")
+    @get:Internal
+    var packageFilter: String? = null
+
+    @Option(option = "top", description = "Max results")
+    @get:Internal
+    var top: String? = null
+
+    @Option(option = "max-fan-in", description = "Exclude ubiquitous types with fan-in above this threshold from move suggestions")
+    @get:Internal
+    var maxFanIn: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        packageFilter?.let { put("package-filter", it) }
+        top?.let { put("top", it) }
+        maxFanIn?.let { put("max-fan-in", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun showMoveSuggestions() {
         val extension = project.codeNavigatorExtension()
-        val cliProps = project.buildPropertyMap(TaskRegistry.MOVE_SUGGEST)
-        val props = extension.resolveProperties(cliProps)
+        val props = extension.resolveProperties(TaskRegistry.MOVE_SUGGEST.enhanceProperties(buildOptionsMap()))
 
         val config = MoveSuggestConfig.parse(props)
 

@@ -16,18 +16,42 @@ import no.f12.codenavigator.navigation.symbol.SymbolFilter
 import no.f12.codenavigator.navigation.symbol.SymbolIndexCache
 import no.f12.codenavigator.navigation.symbol.SymbolTableFormatter
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class FindSymbolTask : DefaultTask() {
+abstract class FindSymbolTask : CodeNavigatorTask() {
+
+    @Option(option = "pattern", description = "Class/symbol name regex (camelCase-aware: MyService matches com.example.MyService)")
+    @get:Internal
+    var pattern: String? = null
+
+    @Option(option = "jar", description = "Scan a JAR file instead of project classes. Value: file path or artifact coordinate (group:name)")
+    @get:Internal
+    var jar: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    @Option(option = "include-test", description = "Deprecated: test sources are now included by default. Use scope=prod to see only production code.")
+    @get:Internal
+    var includeTest: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        pattern?.let { put("pattern", it) }
+        jar?.let { put("jar", it) }
+        scope?.let { put("scope", it) }
+        includeTest?.let { put("include-test", it) }
+    }
 
     @TaskAction
     fun findSymbol() {
-        val properties = project.buildPropertyMap(TaskRegistry.FIND_SYMBOL)
+        val properties = TaskRegistry.FIND_SYMBOL.enhanceProperties(buildOptionsMap())
         TaskRegistry.FIND_SYMBOL.deprecations(properties).forEach { logger.warn(it) }
         val config = try {
             FindSymbolConfig.parse(properties)

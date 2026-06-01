@@ -94,6 +94,6 @@ object CallTreeFormatter {
         if (anyMethodMatchesDirectly) return null
 
         return "Hint: Pattern '$pattern' matched all methods in $className. " +
-            "If you want type-level references instead, use: cnavFindUsages -Ptype=$classSimpleName"
+            "If you want type-level references instead, use: cnavFindUsages --type=$classSimpleName"
     }
 }

@@ -6,10 +6,11 @@ import no.f12.codenavigator.navigation.refactor.ChangeSignatureResult
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import org.gradle.workers.WorkerExecutor
 import javax.inject.Inject
@@ -17,15 +18,43 @@ import javax.inject.Inject
 @DisableCachingByDefault(because = "Modifies source files")
 abstract class ChangeSignatureTask @Inject constructor(
     private val workerExecutor: WorkerExecutor,
-) : DefaultTask() {
+) : CodeNavigatorTask() {
 
     @get:Classpath
     abstract val psiClasspath: ConfigurableFileCollection
 
+    @Option(option = "target-class", description = "Fully qualified class name")
+    @get:Internal
+    var targetClass: String? = null
+
+    @Option(option = "method", description = "Method name")
+    @get:Internal
+    var method: String? = null
+
+    @Option(option = "params", description = "New parameter list (e.g. \"limit: Int, offset: Int, query: String\")")
+    @get:Internal
+    var params: String? = null
+
+    @Option(option = "defaults", description = "Default values for new params at call sites (e.g. \"query=\\\"\\\"\") comma-separated name=value pairs")
+    @get:Internal
+    var defaults: String? = null
+
+    @Option(option = "preview", description = "Preview changes without writing to source files")
+    @get:Internal
+    var preview: Boolean = false
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        targetClass?.let { put("target-class", it) }
+        method?.let { put("method", it) }
+        params?.let { put("params", it) }
+        defaults?.let { put("defaults", it) }
+        if (preview) put("preview", "true")
+    }
+
     @TaskAction
     fun changeSignature() {
         val config = ChangeSignatureConfig.parse(
-            project.buildPropertyMap(TaskRegistry.CHANGE_SIGNATURE_TASK),
+            TaskRegistry.CHANGE_SIGNATURE_TASK.enhanceProperties(buildOptionsMap()),
         )
 
         val sourceSets = project.extensions.getByType(org.gradle.api.tasks.SourceSetContainer::class.java)
@@ -41,9 +70,9 @@ abstract class ChangeSignatureTask @Inject constructor(
         workQueue.submit(ChangeSignatureWorkAction::class.java) {
             className.set(config.className)
             methodName.set(config.methodName)
-            params.set(config.params)
-            defaults.set(config.parsedDefaults())
-            preview.set(config.preview)
+            this.params.set(config.params)
+            this.defaults.set(config.parsedDefaults())
+            this.preview.set(config.preview)
             sourceRoots.set(sourceRootPaths)
             this.classDirectories.set(classDirectories)
             resultFile.set(resultFileLocation)
@@ -70,7 +99,7 @@ abstract class ChangeSignatureTask @Inject constructor(
         add("Check that the method '${config.methodName}' exists in '${config.className}'.")
         add("The project must be compiled before running change-signature (bytecode analysis required).")
         if (config.defaults.isNullOrBlank()) {
-            add("If adding new parameters, provide defaults for existing call sites via -Pdefaults=\"name=value\".")
+            add("If adding new parameters, provide defaults for existing call sites via --defaults=\"name=value\".")
         }
     }
 }

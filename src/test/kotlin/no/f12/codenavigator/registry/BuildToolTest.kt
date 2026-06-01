@@ -39,8 +39,8 @@ class BuildToolTest {
     }
 
     @Test
-    fun `GRADLE param returns -P prefix`() {
-        assertEquals("-Ppattern=Service", BuildTool.GRADLE.param("pattern", "Service"))
+    fun `GRADLE param returns -- prefix`() {
+        assertEquals("--pattern=Service", BuildTool.GRADLE.param("pattern", "Service"))
     }
 
     @Test
@@ -49,8 +49,8 @@ class BuildToolTest {
     }
 
     @Test
-    fun `GRADLE param flag returns -P prefix without value`() {
-        assertEquals("-Pno-follow", BuildTool.GRADLE.paramFlag("no-follow"))
+    fun `GRADLE param flag returns -- prefix without value`() {
+        assertEquals("--no-follow", BuildTool.GRADLE.paramFlag("no-follow"))
     }
 
     @Test
@@ -70,9 +70,9 @@ class BuildToolTest {
 
     @Test
     fun `GRADLE usage formats full command with task and params`() {
-        val result = BuildTool.GRADLE.usage("find-class", "-Ppattern=Service")
+        val result = BuildTool.GRADLE.usage("find-class", "--pattern=Service")
 
-        assertEquals("./gradlew cnavFindClass -Ppattern=Service", result)
+        assertEquals("./gradlew cnavFindClass --pattern=Service", result)
     }
 
     @Test

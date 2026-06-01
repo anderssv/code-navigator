@@ -25,12 +25,12 @@ class ConfigHelpTextTest {
     }
 
     @Test
-    fun `Gradle uses -P prefix and gradlew command`() {
+    fun `Gradle uses -- prefix and gradlew command`() {
         val text = ConfigHelpText.generate(BuildTool.GRADLE)
 
         assertTrue(text.contains(TaskRegistry.PATTERN.render(BuildTool.GRADLE)))
         assertTrue(text.contains("./gradlew"))
-        assertTrue(text.contains("Gradle project properties (-P flags)"))
+        assertTrue(text.contains("Gradle task options (--option flags)"))
     }
 
     @Test
@@ -153,8 +153,8 @@ class ConfigHelpTextTest {
     fun `lists find-usages parameters for Gradle`() {
         val text = ConfigHelpText.generate(BuildTool.GRADLE)
 
-        assertTrue(text.contains("-Powner-class="), "Should list owner-class parameter")
-        assertTrue(text.contains("-Ptype="), "Should list type parameter")
+        assertTrue(text.contains("--owner-class="), "Should list owner-class parameter")
+        assertTrue(text.contains("--type="), "Should list type parameter")
         assertTrue(
             text.contains(TaskRegistry.FIND_USAGES.taskName(BuildTool.GRADLE)),
             "owner/type should reference usages task",

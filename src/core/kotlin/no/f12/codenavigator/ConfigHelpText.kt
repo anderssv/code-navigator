@@ -9,7 +9,7 @@ import no.f12.codenavigator.registry.TaskRegistry
 object ConfigHelpText {
     fun generate(tool: BuildTool = BuildTool.GRADLE): String = buildString {
         val propType = when (tool) {
-            BuildTool.GRADLE -> "Gradle project properties (-P flags)"
+            BuildTool.GRADLE -> "Gradle task options (--option flags)"
             BuildTool.MAVEN -> "Maven system properties (-D flags)"
         }
 
@@ -26,7 +26,7 @@ object ConfigHelpText {
             appendLine("  }")
             appendLine()
             appendLine("  Properties set in the config block are used as defaults.")
-            appendLine("  -P flags always override the config block.")
+            appendLine("  CLI options (--option for Gradle, -D for Maven) always override the config block.")
         }
         appendLine()
         appendLine("--- Global Parameters (all tasks) ---")

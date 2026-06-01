@@ -331,7 +331,7 @@ class AgentHelpTextTest {
     }
 
     @Test
-    fun `Gradle agent help text uses -P parameters and gradlew command`() {
+    fun `Gradle agent help text uses -- parameters and gradlew command`() {
         val text = AgentHelpText.generate(BuildTool.GRADLE)
 
         assertTrue(text.contains(TaskRegistry.LLM.render(BuildTool.GRADLE)))
@@ -349,7 +349,7 @@ class AgentHelpTextTest {
         assertFalse(text.contains("./gradlew"), "Maven agent help should not contain ./gradlew")
         assertFalse(
             text.contains(TaskRegistry.LLM.render(BuildTool.GRADLE)),
-            "Maven agent help should not contain -P params",
+            "Maven agent help should not contain -- params",
         )
     }
 
@@ -708,7 +708,7 @@ class AgentHelpTextTest {
 
         assertTrue(taskReferenceSection.contains(callersTask), "Should use Maven task names")
         assertTrue(taskReferenceSection.contains(patternParam), "Should use -D params")
-        assertFalse(taskReferenceSection.contains(gradlePatternParam), "Should not use -P params")
+        assertFalse(taskReferenceSection.contains(gradlePatternParam), "Should not use -- params")
     }
 
 
@@ -726,8 +726,8 @@ class AgentHelpTextTest {
             "Common Questions should mention $findUsagesTask for type usage",
         )
         assertTrue(
-            commonQuestionsSection.contains(typeParam) || commonQuestionsSection.contains("-Ptype"),
-            "Common Questions should mention -Ptype param for type usage",
+            commonQuestionsSection.contains(typeParam) || commonQuestionsSection.contains("--type"),
+            "Common Questions should mention --type param for type usage",
         )
     }
 
@@ -745,8 +745,8 @@ class AgentHelpTextTest {
             "Common Questions should mention $findCallersTask",
         )
         assertTrue(
-            commonQuestionsSection.contains(patternParam) || commonQuestionsSection.contains("-Ppattern"),
-            "Common Questions should mention -Ppattern param",
+            commonQuestionsSection.contains(patternParam) || commonQuestionsSection.contains("--pattern"),
+            "Common Questions should mention --pattern param",
         )
     }
 

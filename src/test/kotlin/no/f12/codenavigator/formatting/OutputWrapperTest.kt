@@ -90,11 +90,11 @@ class OutputWrapperTest {
         val result = OutputWrapper.emptyResult(
             OutputFormat.JSON,
             "No annotations found.",
-            hints = listOf("Use -Pmethods=true to search method-level annotations."),
+            hints = listOf("Use --methods=true to search method-level annotations."),
         )
 
         assertEquals(
-            "---CNAV_BEGIN---\n{\"results\":[],\"hints\":[\"Use -Pmethods=true to search method-level annotations.\"]}\n---CNAV_END---",
+            "---CNAV_BEGIN---\n{\"results\":[],\"hints\":[\"Use --methods=true to search method-level annotations.\"]}\n---CNAV_END---",
             result,
         )
     }
@@ -118,11 +118,11 @@ class OutputWrapperTest {
         val result = OutputWrapper.emptyResult(
             OutputFormat.TEXT,
             "No annotations found.",
-            hints = listOf("Use -Pmethods=true to search method-level annotations."),
+            hints = listOf("Use --methods=true to search method-level annotations."),
         )
 
         assertEquals(
-            "No annotations found.\nUse -Pmethods=true to search method-level annotations.",
+            "No annotations found.\nUse --methods=true to search method-level annotations.",
             result,
         )
     }

@@ -99,7 +99,7 @@ object AgentHelpText {
         when (tool) {
             BuildTool.GRADLE -> {
                 appendLine("Example — if the prompt shows:")
-                appendLine("  `./gradlew cnavListClasses -Pllm=true`")
+                appendLine("  `./gradlew cnavListClasses --llm`")
                 appendLine("Add: `\"Bash(./gradlew cnav*)\"`")
                 appendLine()
                 appendLine("If your command has a preamble (e.g. `eval \"\$(mise activate bash)\" && ./gradlew cnavListClasses ...`),")
@@ -584,7 +584,7 @@ object AgentHelpText {
         appendLine("  Modifier annotations (e.g. @Transactional, @Cacheable) → reported with LOW confidence.")
         appendLine("  Supertype entry points (e.g. JpaRepository, PanacheRepository) → excluded from results.")
         appendLine("  Receiver type entry points (e.g. Ktor Route/Application extension functions) → excluded from results.")
-        appendLine("- Use -Pexclude-annotated to suppress additional entry points not covered by presets.")
+        appendLine("- Use ${p("exclude-annotated", "<ann1>,<ann2>")} to suppress additional entry points not covered by presets.")
         appendLine("- Use ${p("exclude", "<regex>")} to exclude entire packages (e.g. generated protobuf code).")
         appendLine("- Companion object members and data class copy()/componentN() are auto-filtered.")
         appendLine()
@@ -820,7 +820,7 @@ object AgentHelpText {
         appendLine()
         appendLine("Empty Results:")
         appendLine("  When a query returns no results, JSON/LLM output uses a wrapper with hints:")
-        appendLine("  {\"results\":[],\"hints\":[\"Try -Pmethods=true to include method-level annotations\"]}")
+        appendLine("  {\"results\":[],\"hints\":[\"Try --methods to include method-level annotations\"]}")
         appendLine("  The hints array contains actionable suggestions. It may be empty: {\"results\":[],\"hints\":[]}")
         appendLine("  TEXT output appends hints as plain text lines after the message.")
     }

@@ -34,6 +34,9 @@ class TestCouplingMojo : AbstractMojo() {
     @Parameter(property = "detail")
     private var detail: String? = null
 
+    @Parameter(property = "exclude")
+    private var exclude: String? = null
+
     @Parameter(property = "scope")
     private var scope: String? = null
 
@@ -94,6 +97,7 @@ class TestCouplingMojo : AbstractMojo() {
         llm?.let { put("llm", it) }
         ports?.let { put("ports", it) }
         detail?.let { put("detail", it) }
+        exclude?.let { put("exclude", it) }
         scope?.let { put("scope", it) }
     }
 }

@@ -182,7 +182,7 @@ object LlmFormatter {
             appendLine("[matched] $typeLabels")
             val firstInterface = result.matchedTypes.filter { it in result.interfaceTypes }.minOrNull()
             if (firstInterface != null) {
-                appendLine("[hint] For exact match, use FQN: -Ptype=$firstInterface")
+                appendLine("[hint] For exact match, use FQN: --type=$firstInterface / -Dtype=$firstInterface")
             }
         }
     }

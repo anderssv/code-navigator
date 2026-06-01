@@ -248,14 +248,14 @@ class UsageFormatterTest {
     fun `noResultsHints with ownerClass suggests trying type`() {
         val hints = UsageFormatter.noResultsHints(ownerClass = "com.example.Target", method = null, field = null, type = null)
 
-        assertTrue(hints.any { it.contains("type") }, "Should suggest trying -Ptype")
+        assertTrue(hints.any { it.contains("type") }, "Should suggest trying --type")
     }
 
     @Test
     fun `noResultsHints with method suggests trying field`() {
         val hints = UsageFormatter.noResultsHints(ownerClass = "com.example.Target", method = "accountNumber", field = null, type = null)
 
-        assertTrue(hints.any { it.contains("-Pfield=accountNumber") }, "Should suggest trying -Pfield")
+        assertTrue(hints.any { it.contains("--field=accountNumber") }, "Should suggest trying --field")
     }
 
     @Test
@@ -477,7 +477,7 @@ class UsageFormatterTest {
         assertTrue(result.contains("com.example.Target (interface)"), "Should label interface")
         assertTrue(result.contains("com.example.TargetImpl"), "Should list non-interface type")
         assertTrue(result.contains("[hint]"), "Should contain hint")
-        assertTrue(result.contains("-Ptype=com.example.Target"), "Hint should suggest FQN")
+        assertTrue(result.contains("--type=com.example.Target"), "Hint should suggest FQN")
     }
 
     @Test

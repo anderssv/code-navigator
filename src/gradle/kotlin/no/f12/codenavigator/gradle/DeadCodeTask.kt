@@ -12,19 +12,58 @@ import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
 import no.f12.codenavigator.navigation.deadcode.DeadCodeOrchestrator
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 
-import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class DeadCodeTask : DefaultTask() {
+abstract class DeadCodeTask : CodeNavigatorTask() {
+
+    @Option(option = "filter", description = "Only show results matching this regex")
+    @get:Internal
+    var filter: String? = null
+
+    @Option(option = "exclude", description = "Exclude results matching this regex")
+    @get:Internal
+    var exclude: String? = null
+
+    @Option(option = "classes-only", description = "Show only unreferenced classes, skip dead methods")
+    @get:Internal
+    var classesOnly: Boolean = false
+
+    @Option(option = "exclude-annotated", description = "Exclude classes/methods bearing these annotations (simple names, comma-separated)")
+    @get:Internal
+    var excludeAnnotated: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    @Option(option = "treat-as-dead", description = "Treat framework-annotated code as potentially dead. Use ALL to remove all framework protections.")
+    @get:Internal
+    var treatAsDead: String? = null
+
+    @Option(option = "baseline", description = "Path to a previous cnavDead JSON output. Shows diff: removed, remaining, and new dead code.")
+    @get:Internal
+    var baseline: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        filter?.let { put("filter", it) }
+        exclude?.let { put("exclude", it) }
+        if (classesOnly) put("classes-only", "true")
+        excludeAnnotated?.let { put("exclude-annotated", it) }
+        scope?.let { put("scope", it) }
+        treatAsDead?.let { put("treat-as-dead", it) }
+        baseline?.let { put("baseline", it) }
+    }
 
     @TaskAction
     fun showDeadCode() {
         val config = DeadCodeConfig.parse(
-            project.buildPropertyMap(TaskRegistry.DEAD),
+            TaskRegistry.DEAD.enhanceProperties(buildOptionsMap()),
         )
 
         val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)

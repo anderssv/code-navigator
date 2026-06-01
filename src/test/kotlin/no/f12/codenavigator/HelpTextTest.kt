@@ -34,7 +34,7 @@ class HelpTextTest {
     }
 
     @Test
-    fun `Gradle help text uses -P parameters and gradlew command`() {
+    fun `Gradle help text uses -- parameters and gradlew command`() {
         val text = HelpText.generate(BuildTool.GRADLE)
 
         assertTrue(text.contains(TaskRegistry.PATTERN.render(BuildTool.GRADLE)))
@@ -50,7 +50,7 @@ class HelpTextTest {
         assertFalse(text.contains("./gradlew"), "Maven help should not contain ./gradlew")
         assertFalse(
             text.contains(TaskRegistry.PATTERN.render(BuildTool.GRADLE)),
-            "Maven help should not contain -P params",
+            "Maven help should not contain -- params",
         )
     }
 
@@ -62,7 +62,7 @@ class HelpTextTest {
         val gradleFindClass = TaskRegistry.FIND_CLASS.taskName(BuildTool.GRADLE)
         val mavenFindClass = TaskRegistry.FIND_CLASS.taskName(BuildTool.MAVEN)
 
-        assertTrue(gradleText.contains("./gradlew $gradleFindClass -Ppattern=Service"))
+        assertTrue(gradleText.contains("./gradlew $gradleFindClass --pattern=Service"))
         assertTrue(mavenText.contains("mvn $mavenFindClass -Dpattern=Service"))
     }
 

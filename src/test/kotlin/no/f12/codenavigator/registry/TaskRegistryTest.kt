@@ -31,7 +31,7 @@ class ParamDefTest {
     fun `renders as Gradle parameter syntax`() {
         val param = ParamDef("pattern", "<regex>", "Class/symbol regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
-        assertEquals("-Ppattern=<regex>", param.render(BuildTool.GRADLE))
+        assertEquals("--pattern=<regex>", param.render(BuildTool.GRADLE))
     }
 
     @Test
@@ -45,7 +45,7 @@ class ParamDefTest {
     fun `flag param renders without value`() {
         val param = ParamDef("no-follow", "", "Disable rename tracking", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
-        assertEquals("-Pno-follow", param.render(BuildTool.GRADLE))
+        assertEquals("--no-follow", param.render(BuildTool.GRADLE))
         assertEquals("-Dno-follow", param.render(BuildTool.MAVEN))
     }
 
@@ -457,7 +457,7 @@ class TaskDefTest {
 
         val hint = task.usageHint(BuildTool.GRADLE)
 
-        assertEquals("Usage: ./gradlew cnavFindClass -Ppattern=<regex>", hint)
+        assertEquals("Usage: ./gradlew cnavFindClass --pattern=<regex>", hint)
     }
 
     @Test
@@ -474,7 +474,7 @@ class TaskDefTest {
 
         val hint = task.usageHint(BuildTool.GRADLE)
 
-        assertEquals("Usage: ./gradlew cnavFindCallers -Ppattern=<regex> [-Pmaxdepth=<N>]", hint)
+        assertEquals("Usage: ./gradlew cnavFindCallers --pattern=<regex> [--maxdepth=<N>]", hint)
     }
 
     @Test
@@ -492,7 +492,7 @@ class TaskDefTest {
 
         val hint = task.usageHint(BuildTool.GRADLE)
 
-        assertEquals("Usage: ./gradlew cnavFindClass -Ppattern=<regex>", hint)
+        assertEquals("Usage: ./gradlew cnavFindClass --pattern=<regex>", hint)
     }
 
     @Test
@@ -509,7 +509,7 @@ class TaskDefTest {
 
         val hint = task.usageHint(BuildTool.GRADLE)
 
-        assertEquals("Usage: ./gradlew cnavFindClass -Ppattern=<regex>", hint)
+        assertEquals("Usage: ./gradlew cnavFindClass --pattern=<regex>", hint)
     }
 
     @Test
@@ -533,7 +533,7 @@ class TaskDefTest {
         val hint = TaskRegistry.FIND_CALLERS.usageHint(BuildTool.GRADLE)
 
         assertTrue(hint.contains("cnavFindCallers"), "Should use canonical name, not legacy 'cnavCallers'")
-        assertTrue(hint.contains("-Ppattern="), "Should include required pattern param")
+        assertTrue(hint.contains("--pattern="), "Should include required pattern param")
     }
 
     @Test
@@ -559,7 +559,7 @@ class UsageExampleTest {
 
         val rendered = example.render("find-callers", BuildTool.GRADLE)
 
-        assertEquals("./gradlew cnavFindCallers -Ppattern=Service -Pmaxdepth=3", rendered)
+        assertEquals("./gradlew cnavFindCallers --pattern=Service --maxdepth=3", rendered)
     }
 
     @Test
@@ -577,7 +577,7 @@ class UsageExampleTest {
 
         val rendered = example.render("rename-method", BuildTool.GRADLE)
 
-        assertEquals("./gradlew cnavRenameMethod -Ptarget-class=com.example.UserService -Pmethod=find -Pnew-name=search -Ppreview", rendered)
+        assertEquals("./gradlew cnavRenameMethod --target-class=com.example.UserService --method=find --new-name=search --preview", rendered)
     }
 
     @Test
@@ -606,8 +606,8 @@ class UsageExampleTest {
         val lines = task.renderExamples(BuildTool.GRADLE)
 
         assertEquals(2, lines.size)
-        assertEquals("Usage: ./gradlew cnavFindClass -Ppattern=Service", lines[0])
-        assertEquals("Usage: ./gradlew cnavFindClass -Ppattern=\".*Reset.*\"", lines[1])
+        assertEquals("Usage: ./gradlew cnavFindClass --pattern=Service", lines[0])
+        assertEquals("Usage: ./gradlew cnavFindClass --pattern=\".*Reset.*\"", lines[1])
     }
 
     @Test

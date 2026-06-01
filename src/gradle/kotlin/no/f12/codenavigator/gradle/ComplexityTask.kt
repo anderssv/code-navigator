@@ -12,18 +12,52 @@ import no.f12.codenavigator.navigation.complexity.ComplexityFormatter
 import no.f12.codenavigator.navigation.bytecode.LambdaCollapser
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 
-import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class ComplexityTask : DefaultTask() {
+abstract class ComplexityTask : CodeNavigatorTask() {
+
+    @Option(option = "pattern", description = "Class/symbol name regex (camelCase-aware: MyService matches com.example.MyService)")
+    @get:Internal
+    var pattern: String? = null
+
+    @Option(option = "project-only", description = "Hide JDK/stdlib/library classes (default: on)")
+    @get:Internal
+    var projectOnly: String? = null
+
+    @Option(option = "detail", description = "Show individual call details")
+    @get:Internal
+    var detail: String? = null
+
+    @Option(option = "collapse-lambdas", description = "Set false to show lambda classes separately")
+    @get:Internal
+    var collapseLambdas: String? = null
+
+    @Option(option = "top", description = "Max results")
+    @get:Internal
+    var top: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        pattern?.let { put("pattern", it) }
+        projectOnly?.let { put("project-only", it) }
+        detail?.let { put("detail", it) }
+        collapseLambdas?.let { put("collapse-lambdas", it) }
+        top?.let { put("top", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun showComplexity() {
         val config = ComplexityConfig.parse(
-            project.buildPropertyMap(TaskRegistry.COMPLEXITY),
+            TaskRegistry.COMPLEXITY.enhanceProperties(buildOptionsMap()),
         )
 
         val taggedDirs = project.taggedClassDirectories()

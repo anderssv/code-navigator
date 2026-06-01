@@ -20,7 +20,7 @@ That's it. The agent will install the plugin, run the help task, and set up its 
 
 **Upgrading?** Tell your agent:
 
-> Upgrade code-navigator to the newest version, run cnavAgentHelp -Psection=install, and update the code-navigator section in AGENTS.md with the latest instructions.
+> Upgrade code-navigator to the newest version, run cnavAgentHelp --section=install, and update the code-navigator section in AGENTS.md with the latest instructions.
 
 **Gradle** (`build.gradle.kts`):
 ```kotlin
@@ -57,7 +57,7 @@ Code Navigator sidesteps this entirely. All syntax variants compile to the same 
 
 ## Tasks
 
-All tasks support `-Pformat=json` / `-Dformat=json` and `-Pllm=true` / `-Dllm=true` for compact agent output. See [doc/tasks.md](doc/tasks.md) for detailed usage with examples.
+All tasks support `--format=json` / `-Dformat=json` and `--llm` / `-Dllm=true` for compact agent output. See [doc/tasks.md](doc/tasks.md) for detailed usage with examples.
 
 | Task (Gradle / Maven) | Description |
 |---|---|
@@ -114,7 +114,7 @@ All tasks support `-Pformat=json` / `-Dformat=json` and `-Pllm=true` / `-Dllm=tr
 
 `cnavDead` finds unreferenced classes and methods. It includes built-in awareness of common JVM frameworks — classes annotated with framework entry-point annotations (e.g. `@RestController`, `@Scheduled`, `@Entity`, `@Test`) are automatically excluded.
 
-Supported presets (all active by default): **Spring**, **Quarkus**, **JPA**, **Jackson**, **JAX-RS**, **CDI**, **MicroProfile**, **gRPC**, **Jakarta**, **Bean Validation**, and **JUnit**. Use `-Pexclude-framework=<name>` to disable a specific preset, or `-Pexclude-framework=ALL` to disable all.
+Supported presets (all active by default): **Spring**, **Quarkus**, **JPA**, **Jackson**, **JAX-RS**, **CDI**, **MicroProfile**, **gRPC**, **Jakarta**, **Bean Validation**, and **JUnit**. Use `--exclude-framework=<name>` to disable a specific preset, or `--exclude-framework=ALL` to disable all.
 
 ### Where to start improving code quality
 
@@ -134,7 +134,7 @@ The ideal hexagonal structure:
 - **Adapter packages**: Depend inward on ports, never referenced by domain
 - **No cycles** between layers; dependencies flow inward only
 
-Run `cnavAgentHelp -Psection=getting-started` for detailed guidance with examples.
+Run `cnavAgentHelp --section=getting-started` for detailed guidance with examples.
 
 ## Configuration
 
@@ -154,7 +154,7 @@ codeNavigator {
 </configuration>
 ```
 
-Run `cnavHelpConfig` / `cnav:config-help` to see all available parameters. CLI flags (`-P` / `-D`) always override the config block.
+Run `cnavHelpConfig` / `cnav:config-help` to see all available parameters. CLI options (`--option` for Gradle / `-D` for Maven) always override the config block.
 
 ## Further reading
 

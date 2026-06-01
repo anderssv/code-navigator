@@ -6,10 +6,11 @@ import no.f12.codenavigator.navigation.refactor.MoveClassResult
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import org.gradle.workers.WorkerExecutor
 import javax.inject.Inject
@@ -17,15 +18,33 @@ import javax.inject.Inject
 @DisableCachingByDefault(because = "Modifies source files")
 abstract class MoveClassTask @Inject constructor(
     private val workerExecutor: WorkerExecutor,
-) : DefaultTask() {
+) : CodeNavigatorTask() {
 
     @get:Classpath
     abstract val openRewriteClasspath: ConfigurableFileCollection
 
+    @Option(option = "from", description = "Fully qualified class name to move/rename")
+    @get:Internal
+    var from: String? = null
+
+    @Option(option = "to", description = "Target fully qualified class name")
+    @get:Internal
+    var to: String? = null
+
+    @Option(option = "preview", description = "Preview changes without writing to source files")
+    @get:Internal
+    var preview: Boolean = false
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        from?.let { put("from", it) }
+        to?.let { put("to", it) }
+        if (preview) put("preview", "true")
+    }
+
     @TaskAction
     fun moveClass() {
         val config = MoveClassConfig.parse(
-            project.buildPropertyMap(TaskRegistry.MOVE_CLASS_TASK),
+            TaskRegistry.MOVE_CLASS_TASK.enhanceProperties(buildOptionsMap()),
         )
 
         val sourceRootPaths = project.sourceDirectories().map { it.absolutePath }

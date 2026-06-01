@@ -12,18 +12,37 @@ import no.f12.codenavigator.navigation.relations.implementors.InterfaceFormatter
 import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistryCache
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class FindInterfaceImplsTask : DefaultTask() {
+abstract class FindInterfaceImplsTask : CodeNavigatorTask() {
+
+    @Option(option = "pattern", description = "Class/symbol name regex (camelCase-aware: MyService matches com.example.MyService)")
+    @get:Internal
+    var pattern: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    @Option(option = "include-test", description = "Deprecated: test sources are now included by default. Use scope=prod to see only production code.")
+    @get:Internal
+    var includeTest: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        pattern?.let { put("pattern", it) }
+        scope?.let { put("scope", it) }
+        includeTest?.let { put("include-test", it) }
+    }
 
     @TaskAction
     fun findImplementors() {
-        val properties = project.buildPropertyMap(TaskRegistry.FIND_INTERFACES)
+        val properties = TaskRegistry.FIND_INTERFACES.enhanceProperties(buildOptionsMap())
         TaskRegistry.FIND_INTERFACES.deprecations(properties).forEach { logger.warn(it) }
         val config = try {
             FindInterfaceImplsConfig.parse(properties)

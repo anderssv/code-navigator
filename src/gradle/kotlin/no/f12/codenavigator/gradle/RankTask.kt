@@ -11,18 +11,42 @@ import no.f12.codenavigator.navigation.rank.RankConfig
 import no.f12.codenavigator.navigation.rank.RankFormatter
 import no.f12.codenavigator.navigation.rank.TypeRanker
 
-import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class RankTask : DefaultTask() {
+abstract class RankTask : CodeNavigatorTask() {
+
+    @Option(option = "top", description = "Max results")
+    @get:Internal
+    var top: String? = null
+
+    @Option(option = "project-only", description = "Hide JDK/stdlib/library classes (default: on)")
+    @get:Internal
+    var projectOnly: String? = null
+
+    @Option(option = "collapse-lambdas", description = "Set false to show lambda classes separately")
+    @get:Internal
+    var collapseLambdas: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        top?.let { put("top", it) }
+        projectOnly?.let { put("project-only", it) }
+        collapseLambdas?.let { put("collapse-lambdas", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun showRank() {
         val config = RankConfig.parse(
-            project.buildPropertyMap(TaskRegistry.RANK),
+            TaskRegistry.RANK.enhanceProperties(buildOptionsMap()),
         )
 
         val taggedDirs = project.taggedClassDirectories()

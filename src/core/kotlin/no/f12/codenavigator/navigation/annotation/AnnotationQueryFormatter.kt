@@ -26,7 +26,7 @@ object AnnotationQueryFormatter {
 
     fun noResultsHints(pattern: String, methods: Boolean): List<String> = buildList {
         if (!methods) {
-            add("Only class-level annotations are searched by default. Use -Pmethods=true to also search method-level annotations (e.g. @Test, @Override).")
+            add("Only class-level annotations are searched by default. Use --methods=true to also search method-level annotations (e.g. @Test, @Override).")
         }
         add("Only RUNTIME and CLASS retention annotations are visible in bytecode. SOURCE retention annotations (e.g. @Suppress) cannot be found.")
     }

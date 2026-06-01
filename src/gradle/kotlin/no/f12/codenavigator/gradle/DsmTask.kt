@@ -13,18 +13,62 @@ import no.f12.codenavigator.navigation.dsm.DsmFormatter
 import no.f12.codenavigator.navigation.dsm.DsmHtmlRenderer
 import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
-import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class DsmTask : DefaultTask() {
+abstract class DsmTask : CodeNavigatorTask() {
+
+    @Option(option = "package-filter", description = "Only include packages under this prefix")
+    @get:Internal
+    var packageFilter: String? = null
+
+    @Option(option = "include-external", description = "Include dependencies on classes outside the project")
+    @get:Internal
+    var includeExternal: String? = null
+
+    @Option(option = "dsm-depth", description = "Package grouping depth")
+    @get:Internal
+    var dsmDepth: String? = null
+
+    @Option(option = "dsm-html", description = "Write interactive HTML matrix to file")
+    @get:Internal
+    var dsmHtml: String? = null
+
+    @Option(option = "cycles", description = "Show only cyclic dependencies with class-level edges")
+    @get:Internal
+    var cycles: String? = null
+
+    @Option(option = "cycle", description = "Show only the cycle between two specific packages")
+    @get:Internal
+    var cycle: String? = null
+
+    @Option(option = "root-package", description = "Deprecated: use package-filter instead. Only include packages under this prefix")
+    @get:Internal
+    var rootPackage: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        packageFilter?.let { put("package-filter", it) }
+        includeExternal?.let { put("include-external", it) }
+        dsmDepth?.let { put("dsm-depth", it) }
+        dsmHtml?.let { put("dsm-html", it) }
+        cycles?.let { put("cycles", it) }
+        cycle?.let { put("cycle", it) }
+        rootPackage?.let { put("root-package", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun showDsm() {
         val extension = project.codeNavigatorExtension()
-        val cliProps = project.buildPropertyMap(TaskRegistry.DSM)
+        val cliProps = TaskRegistry.DSM.enhanceProperties(buildOptionsMap())
         val props = extension.resolveProperties(cliProps)
 
         val config = DsmConfig.parse(props)

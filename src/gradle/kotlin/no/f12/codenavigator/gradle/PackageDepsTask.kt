@@ -12,18 +12,42 @@ import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDepsConfig
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 
-import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class PackageDepsTask : DefaultTask() {
+abstract class PackageDepsTask : CodeNavigatorTask() {
+
+    @Option(option = "package", description = "Filter packages by regex")
+    @get:Internal
+    var pkg: String? = null
+
+    @Option(option = "project-only", description = "Hide JDK/stdlib/library classes (default: on)")
+    @get:Internal
+    var projectOnly: String? = null
+
+    @Option(option = "reverse", description = "Show reverse dependencies")
+    @get:Internal
+    var reverse: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        pkg?.let { put("package", it) }
+        projectOnly?.let { put("project-only", it) }
+        reverse?.let { put("reverse", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun showDeps() {
         val config = PackageDepsConfig.parse(
-            project.buildPropertyMap(TaskRegistry.PACKAGE_DEPS),
+            TaskRegistry.PACKAGE_DEPS.enhanceProperties(buildOptionsMap()),
         )
 
         val taggedDirs = project.taggedClassDirectories()

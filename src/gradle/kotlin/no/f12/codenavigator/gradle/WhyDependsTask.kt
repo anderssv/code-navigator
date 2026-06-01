@@ -8,18 +8,37 @@ import no.f12.codenavigator.navigation.dsm.WhyDependsBuilder
 import no.f12.codenavigator.navigation.dsm.WhyDependsConfig
 import no.f12.codenavigator.navigation.dsm.WhyDependsFormatter
 import no.f12.codenavigator.navigation.types.PackageName
-import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class WhyDependsTask : DefaultTask() {
+abstract class WhyDependsTask : CodeNavigatorTask() {
+
+    @Option(option = "from-package", description = "Source package (dot-separated)")
+    @get:Internal
+    var fromPackage: String? = null
+
+    @Option(option = "to-package", description = "Target package (dot-separated)")
+    @get:Internal
+    var toPackage: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        fromPackage?.let { put("from-package", it) }
+        toPackage?.let { put("to-package", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun showWhyDepends() {
         val config = WhyDependsConfig.parse(
-            project.buildPropertyMap(TaskRegistry.WHY_DEPENDS),
+            TaskRegistry.WHY_DEPENDS.enhanceProperties(buildOptionsMap()),
         )
 
         val taggedDirs = project.taggedClassDirectories()

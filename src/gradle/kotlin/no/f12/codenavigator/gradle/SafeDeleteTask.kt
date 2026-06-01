@@ -6,10 +6,11 @@ import no.f12.codenavigator.navigation.refactor.SafeDeleteResult
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import org.gradle.workers.WorkerExecutor
 import javax.inject.Inject
@@ -17,15 +18,33 @@ import javax.inject.Inject
 @DisableCachingByDefault(because = "Modifies source files")
 abstract class SafeDeleteTask @Inject constructor(
     private val workerExecutor: WorkerExecutor,
-) : DefaultTask() {
+) : CodeNavigatorTask() {
 
     @get:Classpath
     abstract val psiClasspath: ConfigurableFileCollection
 
+    @Option(option = "target-class", description = "Fully qualified class name")
+    @get:Internal
+    var targetClass: String? = null
+
+    @Option(option = "method", description = "Method name")
+    @get:Internal
+    var method: String? = null
+
+    @Option(option = "preview", description = "Preview changes without writing to source files")
+    @get:Internal
+    var preview: Boolean = false
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        targetClass?.let { put("target-class", it) }
+        method?.let { put("method", it) }
+        if (preview) put("preview", "true")
+    }
+
     @TaskAction
     fun safeDelete() {
         val config = SafeDeleteConfig.parse(
-            project.buildPropertyMap(TaskRegistry.SAFE_DELETE_TASK),
+            TaskRegistry.SAFE_DELETE_TASK.enhanceProperties(buildOptionsMap()),
         )
 
         val sourceSets = project.extensions.getByType(org.gradle.api.tasks.SourceSetContainer::class.java)
@@ -41,7 +60,7 @@ abstract class SafeDeleteTask @Inject constructor(
         workQueue.submit(SafeDeleteWorkAction::class.java) {
             className.set(config.className)
             methodName.set(config.methodName ?: "")
-            preview.set(config.preview)
+            this.preview.set(config.preview)
             sourceRoots.set(sourceRootPaths)
             this.classDirectories.set(classDirectories)
             resultFile.set(resultFileLocation)

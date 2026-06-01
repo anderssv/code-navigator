@@ -381,7 +381,7 @@ object HelpText {
         appendLine("  ${t("agent-help")}")
         appendLine("    Shows detailed instructions for AI coding agents on how to use code-navigator effectively.")
         appendLine("    Includes recommended workflows, task selection guidance, and tips for optimal results.")
-        appendLine("    Use -Ptopic=<name> for philosophy-specific guidance: hexagonal, tttd, fakes, manual-di.")
+        appendLine("    Use --topic=<name> / -Dtopic=<name> for philosophy-specific guidance: hexagonal, tttd, fakes, manual-di.")
         examples(TaskRegistry.AGENT_HELP)
         appendLine()
         appendLine("  ${t("config-help")}")

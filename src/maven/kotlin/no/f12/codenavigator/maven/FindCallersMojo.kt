@@ -37,6 +37,9 @@ class FindCallersMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "method")
+    private var method: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -58,5 +61,6 @@ class FindCallersMojo : AbstractMojo() {
         projectOnly?.let { put("project-only", it) }
         filterSynthetic?.let { put("filter-synthetic", it) }
         scope?.let { put("scope", it) }
+        method?.let { put("method", it) }
     }
 }

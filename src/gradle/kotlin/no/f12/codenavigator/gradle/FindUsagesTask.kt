@@ -10,27 +10,81 @@ import no.f12.codenavigator.navigation.relations.callgraph.FindUsagesOrchestrato
 import no.f12.codenavigator.navigation.types.GroupBy
 import no.f12.codenavigator.navigation.relations.callgraph.UsageFormatter
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class FindUsagesTask : DefaultTask() {
+abstract class FindUsagesTask : CodeNavigatorTask() {
+
+    @Option(option = "owner-class", description = "Class name or pattern — matches method call and field owners (camelCase-aware: MyService matches com.example.MyService)")
+    @get:Internal
+    var ownerClass: String? = null
+
+    @Option(option = "method", description = "Method name regex")
+    @get:Internal
+    var method: String? = null
+
+    @Option(option = "field", description = "Field/property name — also finds getter/setter calls")
+    @get:Internal
+    var field: String? = null
+
+    @Option(option = "type", description = "Find ALL references to a class: calls, fields, casts, signatures (camelCase-aware)")
+    @get:Internal
+    var type: String? = null
+
+    @Option(option = "outside-package", description = "Exclude callers inside this package")
+    @get:Internal
+    var outsidePackage: String? = null
+
+    @Option(option = "filter-synthetic", description = "Set false to include synthetic methods (equals, hashCode, copy, componentN, etc.)")
+    @get:Internal
+    var filterSynthetic: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    @Option(option = "group-by", description = "Group results: none (default, per-reference) or file (collapse to one line per source file with count)")
+    @get:Internal
+    var groupBy: String? = null
+
+    @Option(option = "raw", description = "Show raw bytecode-level output without collapsing")
+    @get:Internal
+    var raw: Boolean = false
+
+    @Option(option = "include-impls", description = "When target is an interface, also search usages of implementors")
+    @get:Internal
+    var includeImpls: Boolean = false
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        ownerClass?.let { put("owner-class", it) }
+        method?.let { put("method", it) }
+        field?.let { put("field", it) }
+        type?.let { put("type", it) }
+        outsidePackage?.let { put("outside-package", it) }
+        filterSynthetic?.let { put("filter-synthetic", it) }
+        scope?.let { put("scope", it) }
+        groupBy?.let { put("group-by", it) }
+        if (raw) put("raw", "true")
+        if (includeImpls) put("include-impls", "true")
+    }
 
     @TaskAction
     fun findUsages() {
         val config = try {
             FindUsagesConfig.parse(
-                project.buildPropertyMap(TaskRegistry.FIND_USAGES),
+                TaskRegistry.FIND_USAGES.enhanceProperties(buildOptionsMap()),
             )
         } catch (e: IllegalArgumentException) {
             val taskName = TaskRegistry.FIND_USAGES.taskName(BuildTool.GRADLE)
             throw GradleException(
                 "${e.message}\n" +
-                    "Usage: ./gradlew $taskName -Powner-class=<class> [-Pmethod=<name>] [-Pfield=<name>]\n" +
-                    "       ./gradlew $taskName -Ptype=<class>",
+                    "Usage: ./gradlew $taskName --owner-class=<class> [--method=<name>] [--field=<name>]\n" +
+                    "       ./gradlew $taskName --type=<class>",
             )
         }
 

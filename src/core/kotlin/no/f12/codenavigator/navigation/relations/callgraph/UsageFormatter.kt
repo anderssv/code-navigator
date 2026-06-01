@@ -12,7 +12,7 @@ object UsageFormatter {
             appendLine("[matched] $typeLabels")
             val firstInterface = result.matchedTypes.filter { it in result.interfaceTypes }.minOrNull()
             if (firstInterface != null) {
-                appendLine("[hint] For exact match, use FQN: -Ptype=$firstInterface")
+                appendLine("[hint] For exact match, use FQN: --type=$firstInterface / -Dtype=$firstInterface")
             }
         }
     }
@@ -78,10 +78,10 @@ object UsageFormatter {
         add("Short names and camelCase patterns are supported (e.g., MyService matches com.example.MyService).")
         add("For exact matching, use a fully-qualified class name (e.g., com.example.MyClass).")
         if (ownerClass != null && method != null && field == null) {
-            add("Try -Pfield=$method to also find getter/setter calls for Kotlin properties.")
+            add("Try --field=$method / -Dfield=$method to also find getter/setter calls for Kotlin properties.")
         }
         if (ownerClass != null) {
-            add("Try -Ptype=$ownerClass to also search type references, casts, and signatures.")
+            add("Try --type=$ownerClass / -Dtype=$ownerClass to also search type references, casts, and signatures.")
         }
     }
 }

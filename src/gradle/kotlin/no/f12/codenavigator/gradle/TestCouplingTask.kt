@@ -9,18 +9,42 @@ import no.f12.codenavigator.navigation.testcoupling.TestCouplingGuidance
 import no.f12.codenavigator.navigation.testcoupling.TestCouplingOrchestrator
 import no.f12.codenavigator.navigation.testcoupling.TestCouplingTaskConfig
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class TestCouplingTask : DefaultTask() {
+abstract class TestCouplingTask : CodeNavigatorTask() {
+
+    @Option(option = "ports", description = "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)")
+    @get:Internal
+    var ports: String? = null
+
+    @Option(option = "detail", description = "Show individual call details")
+    @get:Internal
+    var detail: String? = null
+
+    @Option(option = "exclude", description = "Exclude results matching this regex")
+    @get:Internal
+    var exclude: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        ports?.let { put("ports", it) }
+        detail?.let { put("detail", it) }
+        exclude?.let { put("exclude", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun showTestCoupling() {
-        val properties = project.buildPropertyMap(TaskRegistry.TEST_COUPLING)
+        val properties = TaskRegistry.TEST_COUPLING.enhanceProperties(buildOptionsMap())
         val config = try {
             TestCouplingTaskConfig.parse(properties)
         } catch (e: IllegalArgumentException) {
@@ -40,7 +64,7 @@ abstract class TestCouplingTask : DefaultTask() {
         if (output.noPortsFound) {
             val guidance = TestCouplingGuidance.GUIDANCE
             logger.lifecycle(OutputWrapper.wrapWithGuidance(
-                "No interfaces matching '${config.ports.pattern}' found. Adjust -Pports to match your port interface names.",
+                "No interfaces matching '${config.ports.pattern}' found. Adjust --ports to match your port interface names.",
                 config.format,
                 guidance,
             ))

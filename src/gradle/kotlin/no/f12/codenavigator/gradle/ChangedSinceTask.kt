@@ -14,22 +14,41 @@ import no.f12.codenavigator.navigation.changedsince.GitDiffRunner
 import no.f12.codenavigator.navigation.changedsince.SourceFileResolver
 import no.f12.codenavigator.navigation.classinfo.ClassIndexCache
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
-import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class ChangedSinceTask : DefaultTask() {
+abstract class ChangedSinceTask : CodeNavigatorTask() {
+
+    @Option(option = "ref", description = "Git ref to compare against (branch, tag, or commit SHA)")
+    @get:Internal
+    var ref: String? = null
+
+    @Option(option = "project-only", description = "Hide JDK/stdlib/library classes (default: on)")
+    @get:Internal
+    var projectOnly: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        ref?.let { put("ref", it) }
+        projectOnly?.let { put("project-only", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun showChangedSince() {
         val config = ChangedSinceConfig.parse(
-            project.buildPropertyMap(TaskRegistry.CHANGED_SINCE),
+            TaskRegistry.CHANGED_SINCE.enhanceProperties(buildOptionsMap()),
         )
 
         if (config.ref == null) {
-            logger.error("Required parameter 'ref' not set. Usage: -Pref=<git-ref> (branch, tag, or commit SHA)")
+            logger.error("Required parameter 'ref' not set. Usage: --ref=<git-ref> (branch, tag, or commit SHA)")
             return
         }
 

@@ -15,7 +15,7 @@ data class TestCouplingTaskConfig(
     companion object {
         fun parse(properties: Map<String, String?>): TestCouplingTaskConfig {
             val portsString = TaskRegistry.PORTS.parseFrom(properties)
-                ?: error("Required parameter 'ports' not specified. Set -Pports to a regex matching your port interface names (e.g. \".*Repository|.*Client\").")
+                ?: error("Required parameter 'ports' not specified. Set --ports to a regex matching your port interface names (e.g. \".*Repository|.*Client\").")
             val excludeString = TaskRegistry.EXCLUDE.parseFrom(properties)
             return TestCouplingTaskConfig(
                 ports = Regex(portsString),

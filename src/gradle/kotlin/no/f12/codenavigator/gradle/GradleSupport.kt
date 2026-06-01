@@ -1,7 +1,5 @@
 package no.f12.codenavigator.gradle
 
-import no.f12.codenavigator.registry.TaskDef
-import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.types.SourceSet
 import org.gradle.api.GradleException
 import org.gradle.api.Project
@@ -10,25 +8,6 @@ import java.io.File
 
 fun Project.codeNavigatorExtension(): CodeNavigatorExtension =
     extensions.getByType(CodeNavigatorExtension::class.java)
-
-fun Project.buildPropertyMap(
-    taskDef: TaskDef,
-): Map<String, String?> {
-    val propertyNames = taskDef.params.filter { !it.flag }.map { it.name }
-    val flagNames = taskDef.params.filter { it.flag }.map { it.name }
-    val raw = buildPropertyMap(propertyNames, flagNames)
-
-    val allCnavParamNames = TaskRegistry.ALL_TASKS.flatMap { it.params }.map { it.name }.toSet()
-    val cliProperties = project.gradle.startParameter.projectProperties.keys
-    val presentCnavProperties = allCnavParamNames.intersect(cliProperties)
-    val warnings = taskDef.warnUnsupportedProperties(presentCnavProperties)
-    require(warnings.isEmpty()) { warnings.joinToString("\n") }
-
-    val unknownWarnings = taskDef.warnUnknownProperties(cliProperties)
-    require(unknownWarnings.isEmpty()) { unknownWarnings.joinToString("\n") }
-
-    return taskDef.enhanceProperties(raw)
-}
 
 fun Project.taggedClassDirectories(): List<Pair<File, SourceSet>> {
     val sourceSets = extensions.getByType(SourceSetContainer::class.java)
@@ -79,39 +58,8 @@ fun Project.taggedSourceDirectories(): List<Pair<File, SourceSet>> {
     return result
 }
 
-private fun Project.buildPropertyMap(
-    propertyNames: List<String>,
-    flagNames: List<String>,
-): Map<String, String?> {
-    val cliProperties = project.gradle.startParameter.projectProperties
-    return extractProperties(cliProperties, propertyNames, flagNames)
-}
-
 /**
- * Extracts property and flag values from the given source map.
- * Only values present in [source] are included — this prevents
- * accidentally picking up Gradle-internal project properties
- * (like the `jar` task reference) that `Project.findProperty()` would return.
- */
-internal fun extractProperties(
-    source: Map<String, String>,
-    propertyNames: List<String>,
-    flagNames: List<String>,
-): Map<String, String?> {
-    val map = mutableMapOf<String, String?>()
-    for (name in propertyNames) {
-        source[name]?.let { map[name] = it }
-    }
-    for (name in flagNames) {
-        if (name in source) {
-            map[name] = null
-        }
-    }
-    return map
-}
-
-/**
- * Resolves a `-Pjar` value to a [File].
+ * Resolves a `--jar` value to a [File].
  *
  * - If the value contains `:` and doesn't start with `/` or a drive letter → treat as artifact coordinate
  *   (group:name), resolve the first matching JAR from the `runtimeClasspath` configuration.

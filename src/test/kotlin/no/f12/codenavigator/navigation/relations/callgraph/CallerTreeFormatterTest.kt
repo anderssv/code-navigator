@@ -749,7 +749,7 @@ class CallerTreeFormatterTest {
 
         assertEquals(
             "Hint: Pattern 'Parser' matched all methods in com.example.Parser. " +
-                "If you want type-level references instead, use: cnavFindUsages -Ptype=Parser",
+                "If you want type-level references instead, use: cnavFindUsages --type=Parser",
             hint,
         )
     }

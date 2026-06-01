@@ -22,7 +22,7 @@ class TestCouplingGuidanceTest {
         assertContains(guidance.parameterGuidance, "interface")
         assertContains(guidance.parameterGuidance, "Repository")
         assertContains(guidance.parameterGuidance, "Client")
-        assertContains(guidance.parameterGuidance, "-Pports")
+        assertContains(guidance.parameterGuidance, "--ports")
     }
 
     // [TEST] Interpretation explains what flagged calls mean and how to fix them

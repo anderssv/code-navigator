@@ -27,8 +27,8 @@ object CallTreeTaskSupport {
         logger: Logger,
         taskDef: TaskDef,
         direction: CallDirection,
+        properties: Map<String, String?>,
     ) {
-        val properties = project.buildPropertyMap(taskDef)
         taskDef.deprecations(properties).forEach { logger.warn(it) }
         val config = try {
             CallGraphConfig.parse(properties)

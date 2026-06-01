@@ -6,10 +6,11 @@ import no.f12.codenavigator.navigation.refactor.MoveFileConfig
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import org.gradle.workers.WorkerExecutor
 import javax.inject.Inject
@@ -17,15 +18,33 @@ import javax.inject.Inject
 @DisableCachingByDefault(because = "Modifies source files")
 abstract class MoveFileTask @Inject constructor(
     private val workerExecutor: WorkerExecutor,
-) : DefaultTask() {
+) : CodeNavigatorTask() {
 
     @get:Classpath
     abstract val openRewriteClasspath: ConfigurableFileCollection
 
+    @Option(option = "from-file", description = "Relative path to the source file to move (e.g. src/main/kotlin/com/example/Foo.kt)")
+    @get:Internal
+    var fromFile: String? = null
+
+    @Option(option = "to-package", description = "Target package (dot-separated)")
+    @get:Internal
+    var toPackage: String? = null
+
+    @Option(option = "preview", description = "Preview changes without writing to source files")
+    @get:Internal
+    var preview: Boolean = false
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        fromFile?.let { put("from-file", it) }
+        toPackage?.let { put("to-package", it) }
+        if (preview) put("preview", "true")
+    }
+
     @TaskAction
     fun moveFile() {
         val config = MoveFileConfig.parse(
-            project.buildPropertyMap(TaskRegistry.MOVE_FILE_TASK),
+            TaskRegistry.MOVE_FILE_TASK.enhanceProperties(buildOptionsMap()),
         )
 
         val sourceRootPaths = project.sourceDirectories().map { it.absolutePath }

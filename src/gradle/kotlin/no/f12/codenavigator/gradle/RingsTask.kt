@@ -9,25 +9,33 @@ import no.f12.codenavigator.navigation.dsm.RingDetector
 import no.f12.codenavigator.navigation.dsm.RingFormatter
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.TaskRegistry
-import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class RingsTask : DefaultTask() {
+abstract class RingsTask : CodeNavigatorTask() {
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun detectRings() {
         val extension = project.codeNavigatorExtension()
-        val cliProps = project.buildPropertyMap(TaskRegistry.RINGS)
-        val props = extension.resolveProperties(cliProps)
+        val props = extension.resolveProperties(TaskRegistry.RINGS.enhanceProperties(buildOptionsMap()))
 
         val format = ParamDef.parseFormat(props)
-        val scope = Scope.parse(props["scope"])
+        val scopeVal = Scope.parse(props["scope"])
 
         val classDirectories = project.taggedClassDirectories()
-            .filter { scope.matchesSourceSet(it.second) }
+            .filter { scopeVal.matchesSourceSet(it.second) }
             .map { it.first }
         val projectClasses = scanProjectClasses(classDirectories)
 

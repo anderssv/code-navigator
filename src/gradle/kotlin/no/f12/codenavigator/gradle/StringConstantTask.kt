@@ -11,18 +11,32 @@ import no.f12.codenavigator.navigation.stringconstant.StringConstantConfig
 import no.f12.codenavigator.navigation.stringconstant.StringConstantFormatter
 import no.f12.codenavigator.navigation.stringconstant.StringConstantScanner
 
-import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class StringConstantTask : DefaultTask() {
+abstract class StringConstantTask : CodeNavigatorTask() {
+
+    @Option(option = "pattern", description = "Regex to match against string constant values")
+    @get:Internal
+    var pattern: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        pattern?.let { put("pattern", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun findStringConstants() {
         val config = StringConstantConfig.parse(
-            project.buildPropertyMap(TaskRegistry.FIND_STRING_CONSTANT),
+            TaskRegistry.FIND_STRING_CONSTANT.enhanceProperties(buildOptionsMap()),
         )
 
         val taggedDirs = project.taggedClassDirectories()

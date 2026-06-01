@@ -11,20 +11,39 @@ import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyBuilder
 import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyConfig
 import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyFormatter
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class TypeHierarchyTask : DefaultTask() {
+abstract class TypeHierarchyTask : CodeNavigatorTask() {
+
+    @Option(option = "pattern", description = "Class/symbol name regex (camelCase-aware: MyService matches com.example.MyService)")
+    @get:Internal
+    var pattern: String? = null
+
+    @Option(option = "project-only", description = "Hide JDK/stdlib/library classes (default: on)")
+    @get:Internal
+    var projectOnly: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        pattern?.let { put("pattern", it) }
+        projectOnly?.let { put("project-only", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun showTypeHierarchy() {
         val config = try {
             TypeHierarchyConfig.parse(
-                project.buildPropertyMap(TaskRegistry.TYPE_HIERARCHY),
+                TaskRegistry.TYPE_HIERARCHY.enhanceProperties(buildOptionsMap()),
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(

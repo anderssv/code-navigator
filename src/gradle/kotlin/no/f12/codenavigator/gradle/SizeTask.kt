@@ -8,17 +8,31 @@ import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 
-import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class SizeTask : DefaultTask() {
+abstract class SizeTask : CodeNavigatorTask() {
+
+    @Option(option = "top", description = "Max results")
+    @get:Internal
+    var top: String? = null
+
+    @Option(option = "over", description = "Only show files over N lines")
+    @get:Internal
+    var over: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        top?.let { put("top", it) }
+        over?.let { put("over", it) }
+    }
 
     @TaskAction
     fun showSize() {
         val config = FileSizeConfig.parse(
-            project.buildPropertyMap(TaskRegistry.SIZE),
+            TaskRegistry.SIZE.enhanceProperties(buildOptionsMap()),
         )
 
         val sourceRoots = project.sourceDirectories()

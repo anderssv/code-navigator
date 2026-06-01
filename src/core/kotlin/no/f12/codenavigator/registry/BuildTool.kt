@@ -4,7 +4,7 @@ enum class BuildTool(
     val command: String,
     private val paramPrefix: String,
 ) {
-    GRADLE("./gradlew", "-P"),
+    GRADLE("./gradlew", "--"),
     MAVEN("mvn", "-D");
 
     fun taskName(goal: String): String = when (this) {

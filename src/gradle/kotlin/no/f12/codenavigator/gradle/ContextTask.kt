@@ -17,19 +17,48 @@ import no.f12.codenavigator.navigation.context.ContextConfig
 import no.f12.codenavigator.navigation.context.ContextFormatter
 import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistryCache
 
-import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class ContextTask : DefaultTask() {
+abstract class ContextTask : CodeNavigatorTask() {
+
+    @Option(option = "pattern", description = "Class/symbol name regex (camelCase-aware: MyService matches com.example.MyService)")
+    @get:Internal
+    var pattern: String? = null
+
+    @Option(option = "maxdepth", description = "Max call tree depth (default: 2)")
+    @get:Internal
+    var maxdepth: String? = null
+
+    @Option(option = "project-only", description = "Hide JDK/stdlib/library classes (default: on)")
+    @get:Internal
+    var projectOnly: String? = null
+
+    @Option(option = "filter-synthetic", description = "Set false to include synthetic methods (equals, hashCode, copy, componentN, etc.)")
+    @get:Internal
+    var filterSynthetic: String? = null
+
+    @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
+    @get:Internal
+    var scope: String? = null
+
+    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        pattern?.let { put("pattern", it) }
+        maxdepth?.let { put("maxdepth", it) }
+        projectOnly?.let { put("project-only", it) }
+        filterSynthetic?.let { put("filter-synthetic", it) }
+        scope?.let { put("scope", it) }
+    }
 
     @TaskAction
     fun gatherContext() {
         val config = try {
-            ContextConfig.parse(project.buildPropertyMap(TaskRegistry.CONTEXT))
+            ContextConfig.parse(TaskRegistry.CONTEXT.enhanceProperties(buildOptionsMap()))
         } catch (e: IllegalArgumentException) {
             throw GradleException(
                 "${e.message}\n${TaskRegistry.CONTEXT.usageHint(BuildTool.GRADLE)}",

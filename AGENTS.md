@@ -80,11 +80,47 @@ src/
 
 - `CodeNavigatorPlugin.kt` — registers all tasks
 - One `*Task.kt` per task (e.g. `FindCallersTask`, `FindUsagesTask`, `DeadCodeTask`)
-- `GradleSupport.kt` — `buildPropertyMap()` helper for reading `-P` properties
+- Each task declares `@Option`-annotated properties matching its `TaskDef.params` from TaskRegistry
+- `CodeNavigatorTask` — abstract base class providing shared options (`format`, `llm`) and `buildOptionsMap()` helper
 
 ### Maven mojos (`src/maven/kotlin/.../maven/`)
 
 - One `*Mojo.kt` per goal, mirrors the Gradle task structure
+- Each mojo declares `@Parameter`-annotated fields matching its `TaskDef.params` from TaskRegistry
+
+## TaskRegistry as Single Source of Truth
+
+`TaskRegistry` (in `src/core/`) is the **master** definition for all tasks, parameters, types, defaults, descriptions, and examples. Both Gradle tasks and Maven mojos are **consumers** that sync from TaskRegistry.
+
+```
+                    ┌──────────────────┐
+                    │  TaskRegistry    │  ← Master: params, types, defaults, descriptions
+                    │  (core)          │
+                    └────────┬─────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              ▼                             ▼
+   ┌──────────────────┐          ┌──────────────────┐
+   │  Gradle Tasks    │          │  Maven Mojos     │
+   │  @Option props   │          │  @Parameter      │
+   │  (consumers)     │          │  (consumers)     │
+   └──────────────────┘          └──────────────────┘
+```
+
+### Sync rules
+
+1. **Add a param?** Add it to `TaskDef.params` in TaskRegistry first. Then add matching `@Option` (Gradle) and `@Parameter` (Maven) declarations.
+2. **Rename a param?** Rename in TaskRegistry first. Then update Gradle and Maven to match.
+3. **Tests enforce sync**: `TaskRegistryTest` verifies that every `ParamDef` in a `TaskDef` has corresponding option/parameter declarations in the Gradle task and Maven mojo. If you add a param to TaskRegistry but forget to add it to the task class, the test fails.
+4. **Never add a parameter only in Gradle or Maven** — if TaskRegistry doesn't know about it, it doesn't exist.
+5. **Help text, agent help, and usage examples** are all generated from TaskRegistry metadata — never hand-curated.
+
+### Why this matters
+
+- Single place to update descriptions, defaults, and types
+- Drift between Gradle and Maven is caught by tests
+- Agent help and human help always match actual behavior
+
 
 ### Tests (`src/test/kotlin/no/f12/codenavigator/`)
 
@@ -98,14 +134,15 @@ A small Kotlin project compiled by Gradle, providing real `.class` files under `
 
 Typical checklist for a new task or parameter:
 
-1. **Config**: add/update `*Config.kt` + `*ConfigTest.kt`
-2. **TaskRegistry**: add `ParamDef` / update `TaskDef` params
+1. **TaskRegistry** (master): add `ParamDef` / update `TaskDef` params — this is always first
+2. **Config**: add/update `*Config.kt` + `*ConfigTest.kt`
 3. **Scanner/Builder**: implement logic + tests (synthetic bytecode)
 4. **Formatter**: update TEXT/LLM/JSON formatters + tests
-5. **Gradle task**: update `*Task.kt` to pass new param, update `propertyNames` list
-6. **Maven mojo**: update `*Mojo.kt` with new `@Parameter`
-7. **AgentHelpText**: update common questions / workflow / JSON schemas
-8. **noResultsGuidance**: update hints if applicable
+5. **Gradle task**: add `@Option` property matching the new param, update `buildOptionsMap()`
+6. **Maven mojo**: add `@Parameter` field matching the new param
+7. **Sync test**: run `TaskRegistryTest` — it verifies Gradle/Maven declarations match TaskRegistry
+8. **AgentHelpText**: auto-generated from TaskRegistry; verify output looks correct
+9. **noResultsGuidance**: update hints if applicable
 
 ## Code Structure Principles
 

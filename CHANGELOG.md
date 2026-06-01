@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.99 (UNRELEASED)
+
+### ⚠️ Breaking change: Gradle parameter syntax
+
+**Gradle tasks now use `--option=value` syntax instead of `-Pkey=value`.**
+
+Before: `./gradlew cnavDead -Pfilter=Service -Pllm=true`
+After:  `./gradlew cnavDead --filter=Service --llm`
+
+Maven is unchanged (`-Dkey=value`).
+
+If you pass the old `-P` syntax, you'll get a clear error message showing the new syntax. Run `./gradlew help --task <taskName>` to see all available options for any task.
+
+**Migration for agents**: Run `cnavAgentHelp --section=install` and update your AGENTS.md/CLAUDE.md with the new instructions.
+
+### Other changes
+
+- **New:** `CodeNavigatorTask` base class provides shared `--format` and `--llm` options to all tasks
+- **New:** Legacy `-P` property detection — passing old-style properties shows a migration guide with the correct `--option` syntax
+- **Improved:** `./gradlew help --task cnavDead` now lists all available options (powered by Gradle's native `@Option` support)
+- **Improved:** Unknown options are rejected by Gradle with "Unknown command-line option" error
+
 ## 0.1.98
 
 - **Fixed:** `cnavChangeSignature` now finds methods in `object` declarations (not just `class`), fixing lookup failures for suspend functions and other methods in objects/companions.

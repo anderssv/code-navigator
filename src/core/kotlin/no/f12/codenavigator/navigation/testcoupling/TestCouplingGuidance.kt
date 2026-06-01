@@ -12,7 +12,7 @@ object TestCouplingGuidance {
             This keeps tests resilient to internal changes and forces the domain API to be expressive.
         """.trimIndent(),
         parameterGuidance = """
-            Set -Pports to a regex matching your port interface names (the boundaries that get faked in tests).
+            Set --ports to a regex matching your port interface names (the boundaries that get faked in tests).
             Common patterns: ".*Repository|.*Client|.*Gateway|.*Adapter"
             To identify ports in your project: look for interfaces with both a production implementation
             and a fake/test implementation. These are the hexagonal architecture boundaries.

@@ -113,7 +113,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             }
         }
 
-        private val TASK_CLASSES: Map<String, Class<out DefaultTask>> = mapOf(
+        internal val TASK_CLASSES: Map<String, Class<out DefaultTask>> = mapOf(
             "list-classes" to ListClassesTask::class.java,
             "find-class" to FindClassTask::class.java,
             "find-symbol" to FindSymbolTask::class.java,
