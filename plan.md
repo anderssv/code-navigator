@@ -26,7 +26,7 @@ No CNAV_BEGIN markers, no success/failure feedback. Hard to tell if it did anyth
 ### cnavRenameProperty inconsistent resolution
 **ACTIVE** | **Value: medium** | **Effort: high** | Source: field-test(bass-ra, v0.1.97)
 
-Can't find properties on some classes (works on MerchantService but fails on SearchService with same property name `raClient`). Likely a Kotlin compiler artifact issue — some classes compile properties differently (e.g., with `@JvmField`, or as constructor params vs body properties). Deep rabbit hole potential.
+Can't find properties on some classes — works on some but fails on others with the same property name pattern. Likely a Kotlin compiler artifact issue — some classes compile properties differently (e.g., with `@JvmField`, or as constructor params vs body properties). Deep rabbit hole potential.
 
 ### cnavDead false positive on extension functions
 **ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)

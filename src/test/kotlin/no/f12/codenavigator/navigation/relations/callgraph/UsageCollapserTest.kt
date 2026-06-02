@@ -131,7 +131,7 @@ class UsageCollapserTest {
     @Test
     fun `deeply nested lambda collapses through multiple levels`() {
         val usages = listOf(
-            UsageSite(ClassName("com.example.Service\$getCurrentStatus\$2\$raClientDeferred\$1"), "invokeSuspend", "Service.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
+            UsageSite(ClassName("com.example.Service\$getCurrentStatus\$2\$httpClientDeferred\$1"), "invokeSuspend", "Service.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, SourceSet.MAIN),
         )
 
         val collapsed = UsageCollapser.collapse(usages)

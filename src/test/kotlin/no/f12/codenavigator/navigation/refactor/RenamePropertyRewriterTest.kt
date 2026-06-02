@@ -207,18 +207,18 @@ class RenamePropertyRewriterTest {
     fun `renames constructor param without val that initializes body property`() {
         val result = RenamePropertyRewriter.rename(
             sourceRoots = listOf(testProjectSrc),
-            className = "com.example.variants.property.MerchantService",
-            propertyName = "raClient",
+            className = "com.example.variants.property.DelegatingService",
+            propertyName = "apiClient",
             newName = "httpClient",
             preview = true,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should find property. Result: $result")
-        val change = result.changes.first { it.filePath.endsWith("MerchantService.kt") }
+        val change = result.changes.first { it.filePath.endsWith("DelegatingService.kt") }
         assertTrue(change.after.contains("private val httpClient"), "Body property should be renamed. Content:\n${change.after}")
         assertTrue(change.after.contains("(httpClient: String)") || change.after.contains("(httpClient:"),
             "Constructor parameter should also be renamed. Content:\n${change.after}")
-        assertTrue(!change.after.contains("= raClient"), "Initializer reference should be renamed. Content:\n${change.after}")
+        assertTrue(change.after.contains("val httpClient = httpClient"), "Initializer reference should be renamed. Content:\n${change.after}")
     }
 
     @Test
@@ -226,13 +226,13 @@ class RenamePropertyRewriterTest {
         val result = RenamePropertyRewriter.rename(
             sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.property.SearchService",
-            propertyName = "raClient",
-            newName = "httpClient",
+            propertyName = "baseUrl",
+            newName = "endpoint",
             preview = true,
         )
 
         assertTrue(result.changes.isNotEmpty(), "Should find body property. Result: $result")
         val change = result.changes.first { it.filePath.endsWith("SearchService.kt") }
-        assertTrue(change.after.contains("private val httpClient"), "Body property should be renamed. Content:\n${change.after}")
+        assertTrue(change.after.contains("private val endpoint"), "Body property should be renamed. Content:\n${change.after}")
     }
 }

@@ -1,7 +1,7 @@
 package com.example.variants.property
 
 class SearchService {
-    private val raClient = "http://example.com"
+    private val baseUrl = "http://example.com"
 
-    fun search(query: String): String = "$raClient/search?q=$query"
+    fun search(query: String): String = "$baseUrl/search?q=$query"
 }
