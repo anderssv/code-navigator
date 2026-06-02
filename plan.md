@@ -3,7 +3,7 @@
 Items are grouped by theme. Within each group, items are ordered for sequential execution.
 Value and effort are qualitative assessments to aid prioritization, not estimates.
 
-## cnavOwnership — type ownership analysis for move suggestions
+## cnavTypeAffinity — type type affinity analysis for move suggestions
 
 **Value: high** | **Effort: medium**
 
@@ -12,7 +12,7 @@ Analyzes a shared package (e.g. `domain/`) to find types that are exclusively ow
 **Motivation:** In ring analysis, a package at a high ring that depends on types in a lower ring — where those types are only relevant to that package's domain — signals misplaced code. Moving the type into the owning package reduces the ring (fewer hops) and makes ownership explicit.
 
 **Parameters:**
-- `package` (required) — package to analyze for type ownership
+- `package` (required) — package to analyze for type affinity
 - `threshold` — max number of consuming domains for "single-owner" (default: 1)
 - `include-ports` — count port/adapter usages as same owner (default: true)
 - `format` — text/json/llm
