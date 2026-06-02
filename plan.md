@@ -3,6 +3,44 @@
 Items are grouped by theme. Within each group, items are ordered for sequential execution.
 Value and effort are qualitative assessments to aid prioritization, not estimates.
 
+## cnavOwnership — type ownership analysis for move suggestions
+
+**Value: high** | **Effort: medium**
+
+Analyzes a shared package (e.g. `domain/`) to find types that are exclusively owned by one feature package — candidates to move into that feature's package to reduce ring distance and make domain ownership explicit.
+
+**Motivation:** In ring analysis, a package at a high ring that depends on types in a lower ring — where those types are only relevant to that package's domain — signals misplaced code. Moving the type into the owning package reduces the ring (fewer hops) and makes ownership explicit.
+
+**Parameters:**
+- `package` (required) — package to analyze for type ownership
+- `threshold` — max number of consuming domains for "single-owner" (default: 1)
+- `include-ports` — count port/adapter usages as same owner (default: true)
+- `format` — text/json/llm
+
+**Algorithm:**
+1. List all types in target package (ClassIndexCache)
+2. For each type, find all usages (UsageScanner), group consumers by feature package
+3. Transitive port check: if a secondary consumer (e.g. `cache/`) only serves the primary consumer, don't count it as a separate owner
+4. For single-owner types, do full ring recomputation with the type simulated as moved
+5. Report types ranked by ring impact (biggest drop first)
+
+**Example output:**
+```
+SINGLE-OWNER TYPES (candidates to move):
+  PasswordResetSession → owned by: passwordreset (3 usages), cache.Cache (1 port usage)
+    Move to: no.bankid.selvbetjening.passwordreset
+    Ring impact: passwordreset drops from ring 6 → ring 4
+
+SHARED TYPES (stay in domain/):
+  UserId → consumers: passwordreset, enrollment, session, admin (genuinely shared)
+```
+
+**Dependencies (existing code to reuse):**
+- `ClassScanner` / `ClassIndexCache` — list types in a package
+- `UsageScanner` — find all usages of a type
+- `RingsBuilder` — compute current rings
+- `PackageDependencyBuilder` — package-level deps for ring simulation
+
 ---
 
 ## Bugs from v0.1.97 field test
