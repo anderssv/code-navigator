@@ -1,1155 +1,556 @@
 # Plan
 
-Items are grouped by theme. Within each group, items are ordered for sequential execution.
-Value and effort are qualitative assessments to aid prioritization, not estimates.
-
-## cnavTypeAffinity — type type affinity analysis for move suggestions
-
-**Value: high** | **Effort: medium**
-
-Analyzes a shared package (e.g. `domain/`) to find types that are exclusively owned by one feature package — candidates to move into that feature's package to reduce ring distance and make domain ownership explicit.
-
-**Motivation:** In ring analysis, a package at a high ring that depends on types in a lower ring — where those types are only relevant to that package's domain — signals misplaced code. Moving the type into the owning package reduces the ring (fewer hops) and makes ownership explicit.
-
-**Parameters:**
-- `package` (required) — package to analyze for type affinity
-- `threshold` — max number of consuming domains for "single-owner" (default: 1)
-- `include-ports` — count port/adapter usages as same owner (default: true)
-- `format` — text/json/llm
-
-**Algorithm:**
-1. List all types in target package (ClassIndexCache)
-2. For each type, find all usages (UsageScanner), group consumers by feature package
-3. Transitive port check: if a secondary consumer (e.g. `cache/`) only serves the primary consumer, don't count it as a separate owner
-4. For single-owner types, do full ring recomputation with the type simulated as moved
-5. Report types ranked by ring impact (biggest drop first)
-
-**Example output:**
-```
-SINGLE-OWNER TYPES (candidates to move):
-  PasswordResetSession → owned by: passwordreset (3 usages), cache.Cache (1 port usage)
-    Move to: no.bankid.selvbetjening.passwordreset
-    Ring impact: passwordreset drops from ring 6 → ring 4
-
-SHARED TYPES (stay in domain/):
-  UserId → consumers: passwordreset, enrollment, session, admin (genuinely shared)
-```
-
-**Dependencies (existing code to reuse):**
-- `ClassScanner` / `ClassIndexCache` — list types in a package
-- `UsageScanner` — find all usages of a type
-- `RingsBuilder` — compute current rings
-- `PackageDependencyBuilder` — package-level deps for ring simulation
+Items grouped by functional area. Each item has:
+- **Status**: ACTIVE (next up) / FUTURE (someday) / PARKED (low priority, revisit if demand) / REJECTED
+- **Source**: internal / field-test(project) / user-feedback(version)
 
 ---
 
-## Bugs from v0.1.97 field test
-
-Critical issues found during real-project testing. Fix before new features.
+## Bugs
 
 ### cnavSafeDelete crashes with JSON parse error
-
-**Value: high** | **Effort: low**
+**ACTIVE** | **Value: high** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
 
 Crashes with "Unexpected character at position 11" regardless of input class/method. Completely broken — likely a regression in JSON input parsing.
 
 ### cnavChangeSignature can't find suspend functions
-
-**Value: high** | **Effort: medium**
+**ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra, v0.1.97)
 
 Reports "method not found" for suspend functions even though `cnavClassDetail` and `cnavRenameMethod` handle the same method fine. Inconsistency in how continuation parameters are resolved during method lookup.
 
 ### cnavMoveFile produces no output
-
-**Value: medium** | **Effort: low**
+**ACTIVE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
 
 No CNAV_BEGIN markers, no success/failure feedback. Hard to tell if it did anything or silently failed. Likely missing `logger.lifecycle()` calls or early silent return.
 
 ### cnavRenameProperty inconsistent resolution
+**ACTIVE** | **Value: medium** | **Effort: high** | Source: field-test(bass-ra, v0.1.97)
 
-**Value: medium** | **Effort: medium**
-
-Can't find properties on some classes (works on MerchantService but fails on SearchService with same property name `raClient`). Likely a Kotlin compiler artifact issue — some classes compile properties differently (e.g., with `@JvmField`, or as constructor params vs body properties).
+Can't find properties on some classes (works on MerchantService but fails on SearchService with same property name `raClient`). Likely a Kotlin compiler artifact issue — some classes compile properties differently (e.g., with `@JvmField`, or as constructor params vs body properties). Deep rabbit hole potential.
 
 ### cnavDead false positive on extension functions
+**ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
 
-**Value: high** | **Effort: medium**
-
-`TimerHelpersKt` flagged as dead (HIGH confidence) but contains extension functions called from 4+ places. The `*Kt` facade class has no direct class references — callers use `INVOKESTATIC` on the facade. Dead code detection sees zero class-level references but the methods inside are live. Need to check method-level references for `*Kt` facade classes before marking the class as dead.
-
----
-
-## UX improvements from v0.1.97 field test
-
-### cnavAnnotations: methods=true as default for common annotations
-
-**Value: medium** | **Effort: low**
-
-Searching for `@Test` returns empty results without `-Pmethods=true`. Since method-level annotations are the most common use case, consider making it the default or auto-enabling when results are empty.
-
-### cnavFindCallees: hide library internals by default
-
-**Value: medium** | **Effort: medium**
-
-Output is noisy for methods that call Java library code — shows raw JAXB getters/setters at leaf nodes with long annotation metadata. Consider collapsing or hiding library-internal methods by default (controlled by `-Pproject-only`).
-
-### cnavMoveSuggest: hexagonal architecture awareness
-
-**Value: medium** | **Effort: high**
-
-Suggests moving ports (interfaces) into domain packages and services into wrong packages. Algorithm optimizes for dependency-count proximity without understanding that ports belong in port packages regardless of who calls them. Could benefit from `cnavRings` ring detection to suppress suggestions that would violate ring boundaries.
-
-### cnavRings: external protocol classes misclassified
-
-**Value: medium** | **Effort: medium**
-
-External protocol Java classes (e.g., `no.bankid.ra`) placed in Ring 0 (domain) alongside actual domain classes. Classes with zero outgoing project dependencies default to innermost ring. Need heuristic: classes in packages that don't match the project's root package should be categorized separately or excluded.
-
-### Per-task -Phelp with usage on error
-
-**Value: high** | **Effort: medium**
-
-When wrong parameters are passed, users get a stack trace rather than usage examples. Only `cnavSafeDelete` shows usage in the error message. Add consistent per-task help: on missing required params or parse errors, show the task's examples from TaskRegistry.
+`TimerHelpersKt` flagged as dead (HIGH confidence) but contains extension functions called from 4+ places. The `*Kt` facade class has no direct class references — callers use `INVOKESTATIC` on the facade. Fix: check method-level references for `*Kt` facade classes before marking as dead.
 
 ---
 
+## Cycle & dependency analysis
+
+### Cycle actionability — fix suggestions, edge ranking, and direction clarity
+**ACTIVE** | **Value: high** | **Effort: high** | Source: field-test(bass-ra+greitt)
+
+Three related improvements to make cycle output actionable:
+
+1. **Edge direction + counts**: Show per-direction edge counts and flag test-only edges:
+   ```
+   CYCLES: config<->ra (config->ra:3, ra->config:3[test-only])
+   ```
+
+2. **Edge ranking — "which edge to break first"**: Compute "break score" per edge (how many SCCs would split if removed). Show top 3-5 weakest links. Include edge weight (reference count) — a 1-reference edge is easier to break than a 21-reference edge.
+
+3. **Fix suggestions**: Show which specific class-level edges would need to move to break the cycle, suggest which direction the dependency should flow.
+
+- **Prerequisite for**: DSM what-if simulation (uses same edge-analysis infrastructure)
+- **Reuses**: `cnavWhyDepends` infrastructure for edge explanation
+- **Ring degeneration guidance**: When one giant cycle collapses everything into a single ring, identify which package has the fewest inward edges (easiest to extract first). Combine with edge ranking.
+
+### Test-source separation — exclude test edges from structural analysis
+**ACTIVE** | **Value: high** | **Effort: low** | Source: field-test(greitt+bass-ra)
+
+Cycles, DSM, balance, and rings all treat test classes as production dependencies. This creates massive noise — `polls→testutil`, `admin→testutil` edges aren't architectural problems, yet they dominate cycle output and inflate DANGER verdicts. bass-ra-backend had 5 of 7 cycles as test-only (SystemTestContext, TestKeys patterns).
+
+- Add `--scope=prod` support to `cnavDsm`/`cnavCycles`/`cnavBalance`/`cnavRings` (reuse existing `--scope` param)
+- Use `SourceSet` tagging to filter edges where source is a test class
+- Consider: edges from test→production are valid (they show test coupling to prod structure), but test→test infrastructure is noise
+- When test-only edges create cycles, flag them as `[test-only]` in output (connects to cycle actionability)
+
+### DSM what-if simulation (`cnavSimulateMove`)
+**ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra)
+
+Predict cycle/ring impact of moving a class or package without modifying code:
+- `cnavSimulateMove --type=BankIdType --to=no.example.ra --show-cycle-impact`
+- Modify the dependency graph in memory, re-run cycle detection, compare before/after.
+- Reuses TypeAffinityBuilder's ring recomputation approach.
+- Eliminates the current workflow: move → rebuild → cnavDsm → check → revert if bad.
+- **Prerequisite**: Cycle actionability should ship first (provides the edge-analysis infrastructure).
+
+### `cnavFileDeps` — file-level dependency tree
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: internal
+
+Current dependency analysis works at package granularity (`cnavPackageDeps`, `cnavDsm`) or method/symbol granularity (`cnavFindCallers`, `cnavFindUsages`). There is no file-level view, which is the granularity humans and agents actually navigate at.
+
+- **Builder**: Aggregate class-level bytecode references up to `UsageSite.sourceFile`.
+- **Single-file mode**: `--file=OrderService.kt` — direct deps. `--reverse=true` — files that depend on this one. `--depth=N` — transitive tree.
+- **All-files mode**: `--all=true` — full file-dep graph (fan-in/fan-out ranking, orphan detection, file-level cycle detection).
+- **Alternative framing**: Extend `cnavDsm` with `--granularity=file|package|class` instead of a separate task.
+
+### High violation count warning for `cnavRings`
+**PARKED** | **Value: low** | **Effort: low** | Source: internal
+
+When violation count exceeds a threshold (>50), add a note: "High violation count may indicate the project doesn't follow concentric ring architecture. Consider `--scope=prod` or `cnavLayerCheck` with explicit layer config."
+
 ---
 
-## cnavMoveSuggest improvements
+## Refactoring operations
 
-Reduce false positives from structural patterns that look like misplacement but are intentional.
+### cnavMovePackage — batch move all classes in a package
+**ACTIVE** | **Value: high** | **Effort: low** | Source: field-test(bass-ra)
 
-### Symbol-level move suggestions (intra-file analysis)
+`cnavMovePackage --from=no.example.domain.ra --to=no.example.ra` — iterates cnavMoveClass for each class in the package. Infrastructure exists; this is orchestration.
 
-**Value: medium** | **Effort: high**
+### cnavMoveFunction — move top-level Kotlin functions
+**FUTURE** | **Value: medium** | **Effort: high** | Source: field-test(bass-ra)
 
-From field test: `DateSelection` is a class inside `web/RouteUtils.kt` — a grab-bag file with multiple unrelated declarations (`withAdminPoll`, `getUUID`, `HtmlRenderUtils`, etc.). An independent code review correctly identified `DateSelection` as domain logic misplaced in a web infrastructure file. But `cnavMoveSuggest` couldn't detect this because it analyzes at the file/facade level (`RouteUtilsKt`), not individual symbols within a file.
+Move top-level functions (e.g. `objectMapper()` from `di/Serialization.kt` to `config/Serialization.kt`). Top-level functions in Kotlin compile to `*Kt` facade classes, so bytecode-level tracking works, but the refactoring operation needs to handle the source differently (no class declaration to move, just function bodies).
 
-Currently cnav treats multi-declaration files as a single unit. To catch intra-file misplacement, it would need to:
-1. Identify individual top-level declarations (classes, functions, properties) within a `*Kt` facade
-2. Compute edge gravity per symbol, not per file
-3. Suggest extracting specific symbols to a different package
+### PSI-based refactoring operations
+**FUTURE** | **Value: high** | **Effort: varies** | Source: internal
 
-This is significantly more complex than file-level analysis — requires mapping bytecode members back to individual source declarations. May not be worth the effort unless combined with a `cnavExtractSymbol` refactoring command.
+Now that `cnavRenameMethod` has been migrated to PSI (v0.1.90), the compiler integration barrier is gone — we have a working two-phase architecture (ASM location finding → PSI editing in isolated classloader) that new operations can reuse.
+
+Inspired by [Martin](https://github.com/audunstrand/martin) by Audun Fauchald Strand.
+
+**Effort key (post-PSI migration):**
+- **Low** = PSI tree walking + text replacement, no type resolution needed.
+- **Medium** = Needs bytecode-guided location finding or cross-file coordination.
+- **High** = Needs `BindingContext` / full type resolution (not yet implemented).
+
+**Recommended implementation order (quick wins first):**
+1. `cnavConvertToExpressionBody` / `cnavConvertToBlockBody` — trivial, validates pattern (low)
+2. `cnavExtractVariable` / `cnavExtractConstant` — single-file (low)
+3. `cnavSafeDelete` — leverages existing dead code detection (low)
+4. `cnavConvertToDataClass` — single-file with PSI validation (low)
+5. `cnavChangeSignature` — reuses RenameLocationFinder, high value for agents (medium)
+6. `cnavExtractParameter` — combines single-file + cross-file (medium)
+7. `cnavExtractInterface` — medium, high value for architecture improvements
+
+**Full catalog:**
+
+Extract operations:
+- `cnavExtractFunction` (high — needs BindingContext)
+- `cnavExtractVariable` (low)
+- `cnavExtractConstant` (low)
+- `cnavExtractParameter` (medium)
+- `cnavExtractInterface` (medium)
+- `cnavExtractSuperclass` (medium)
+
+Inline / simplify:
+- `cnavInline` (medium)
+- `cnavConvertToExpressionBody` / `cnavConvertToBlockBody` (low)
+
+Signature & structure:
+- `cnavChangeSignature` (medium)
+- `cnavAddNamedArguments` (medium)
+- `cnavIntroduceParameterObject` (medium)
+- `cnavPullUpMethod` (medium)
+- `cnavReplaceConstructorWithFactory` (medium)
+
+Type conversions:
+- `cnavConvertToDataClass` (low)
+- `cnavConvertToExtensionFunction` (medium)
+- `cnavConvertToSealedClass` (medium)
+- `cnavTypeMigration` (high — needs BindingContext)
+- `cnavConvertPropertyToFunction` (medium)
+
+Safety:
+- `cnavSafeDelete` (low)
+- `cnavEncapsulateField` (medium)
+
+**Notes:**
+- All "medium" operations follow the two-phase pattern proven by `cnavRenameMethod`: ASM finds locations → PSI edits.
+- "High" operations blocked on BindingContext. Consider Martin delegation until we add support.
 
 ---
 
-## Dead code improvements
-
-Related improvements to `cnavDead`. Ordered by dependency — ConfidenceScorer extraction enables the others.
+## Dead code & metrics
 
 ### Meta-annotation traversal for dead code filtering
-
-**Value: high** | **Effort: medium**
+**ACTIVE** | **Value: medium** | **Effort: high** | Source: internal
 
 `@RestController` is meta-annotated with `@Controller` which is meta-annotated with `@Component`. Currently, excluding `Component` does NOT exclude `@RestController`.
 
-- **Approach**: In `AnnotationExtractor`, also scan annotation `.class` files from classpath JARs and resolve meta-annotations transitively.
-- **Reuses**: Classpath resolution from `cnavJar` / full classpath scanning.
-- **Why**: Covers custom stereotype annotations automatically. A project defining `@DomainService` (meta-annotated with `@Component`) would be handled without configuration.
-- **Prerequisite**: `cnavJar` (classpath resolution infrastructure). Benefits from `Extract ConfidenceScorer`.
+- In `AnnotationExtractor`, scan annotation `.class` files from classpath JARs and resolve meta-annotations transitively.
+- Covers custom stereotype annotations automatically.
+- **Prerequisite**: `cnavJar` (classpath resolution infrastructure) — non-trivial to resolve annotation classes from JARs.
 
 ### Transitive dead code detection
+**FUTURE** | **Value: medium** | **Effort: high** | Source: user-feedback(v0.38)
 
-**Value: medium** | **Effort: high**
-
-From user feedback (v0.38): `cnavDead` found nothing even for `GenericError.from(RAResponseError)` which manual analysis suggested has unused paths. Dead code detection is too conservative — it sees a method called from a companion object and marks it as live, even if the callers of those callers are shrinking or dead.
-
-- **Approach**: After initial dead code pass, trace callers transitively. A method is "transitively dead" if all its callers are themselves dead. Iterate until fixed point.
-- **Extension — shrinking usage**: Track caller count over git history. Methods where caller count is declining over time are "shrinking" — not dead yet, but trending toward dead. Different from dead code detection (point-in-time) — this is trend analysis.
-- **Confidence levels**: `DEAD` (zero callers), `TRANSITIVELY_DEAD` (all callers dead), `TEST_ONLY` (only test callers), `SHRINKING` (declining caller trend).
-- **Prerequisite**: Extract ConfidenceScorer makes this cleaner to implement.
+A method is "transitively dead" if all its callers are themselves dead. Iterate until fixed point.
+- Confidence levels: `DEAD` (zero callers), `TRANSITIVELY_DEAD` (all callers dead), `TEST_ONLY` (only test callers), `SHRINKING` (declining caller trend).
 
 ### `cnavDead` baseline diff — confirm cleanup was complete
+**FUTURE** | **Value: low** | **Effort: low** | Source: internal
 
-**Value: medium** | **Effort: low**
+`--baseline=<path>` parameter pointing to saved JSON output. On re-run, show diff. Alternative: just use `jq` to diff JSON externally.
 
-After triaging dead code and removing items, re-run `cnavDead` and see what changed.
+### Dead code: flag methods called only from test scope
+**FUTURE** | **Value: medium** | **Effort: low** | Source: internal
 
-- **Approach**: `-Pbaseline=<path>` parameter pointing to a saved JSON output from a previous run. On re-run, show: items removed since baseline, items still present, new items.
-- **Alternative**: Just save JSON and use `jq` to diff. Built-in support is more ergonomic but the alternative is viable.
-
----
-
-## DSM / dependency analysis
-
-Related improvements to package dependency analysis. `cnavWhyDepends` is a prerequisite for cycle fix suggestions, which in turn is a prerequisite for what-if simulation.
-
-### Cycle fix suggestions in DSM
-
-**Value: high** | **Effort: medium**
-
-The DSM tells you which cycles exist, but not how to fix them. When `-Pcycles=true`, also show which specific class-level edges would need to move to break the cycle, and suggest which direction the dependency should flow.
-
-- **Prerequisite**: Benefits from `cnavWhyDepends` infrastructure — same edge-explanation logic.
-- **Separate from DSM what-if**: What-if simulation is a distinct, higher-effort feature. Evaluate need after cycle fix suggestions ship.
-
-### High violation count warning for `cnavRings`
-
-**Value: low** | **Effort: low**
-
-From self-review: `cnavRings` produced 116 peer violations. When violation count exceeds a threshold (e.g., >50), add a note: "High violation count may indicate the project doesn't follow concentric ring architecture, or that test edges are collapsing the ring structure. Consider `cnavRings -Pscope=prod` or `cnavLayerCheck` with explicit layer config."
-
-### `cnavFileDeps` — file-level dependency tree
-
-**Value: high** | **Effort: medium**
-
-Current dependency analysis works at package granularity (`cnavPackageDeps`, `cnavDsm`) or method/symbol granularity (`cnavFindCallers`, `cnavFindUsages`). There is no file-level view, which is the granularity humans and agents actually navigate at. File-level deps also capture type references (field types, parameters, return types, generics, annotations) that call graphs miss.
-
-- **Builder**: Aggregate class-level bytecode references up to `UsageSite.sourceFile`. One edge = "file A references file B." Kotlin files with multiple top-level classes map all classes to the same file node.
-- **Single-file mode**: `-Pfile=OrderService.kt` — direct deps (files this file uses). `-Preverse=true` — files that depend on this one. `-Pdepth=N` — transitive tree with cycle-collapse (reuse `CallTreeBuilder` cycle handling).
-- **All-files mode**: `-Pall=true` — emit the full file-dep graph, no root.
-- **Parameters**: `-Pproject-only=true`, `-Ppattern=<regex>`, `-Pformat=text|llm|json`.
-
-Use cases for all-files mode:
-- **Architecture overview / DSM at file granularity** — spot tangles and highly-coupled files across the whole project.
-- **Fan-in/fan-out ranking** — rank files by incoming deps (coupling hotspots, risky to change) or outgoing deps (files doing too much).
-- **File-level cycle detection** — file cycles are more actionable refactoring targets than package cycles.
-- **Orphan detection** — files with zero incoming and zero outgoing project deps (likely dead or misplaced).
-- **Graph export** — JSON feed for visualization tools (Gephi, d3), LLM context selection, or trend analysis over time (combine with git history: "coupling growing").
-- **Batch impact queries** — "which files depend on anything in package X?" in one pass instead of N per-file queries.
-
-- **Alternative framing**: Extend `cnavDsm` with `-Pgranularity=file|package|class` instead of a separate task. Worth evaluating — same matrix/cycle infrastructure, same what-if semantics.
-- **Overlap**: `cnavFindUsages -Pgroup-by=file` (v0.1.71) gives file-level reverse deps for a single symbol. `cnavFileDeps -Pfile=X -Preverse=true` gives file-level reverse deps for all symbols in a file. Complementary.
-
-### DSM what-if simulation
-
-**Value: medium** | **Effort: high**
-
-`-Pwhat-if=<class>:<target-package>` — simulate moving a class to a different package and re-evaluate cycles without actually making the change.
-
-- **Prerequisite**: Cycle fix suggestions should ship first.
-
----
-
-## Classpath / JAR scanning
-
-Related improvements to scanning library classes and the runtime classpath.
-
-### Maven: `-Djar` support for Mojos
-
-**Value: medium** | **Effort: low**
-
-The `-Pjar=<path-or-artifact>` parameter is implemented for Gradle tasks but not yet for Maven Mojos.
-Add `@Parameter(property = "jar")` to `ListClassesMojo`, `FindClassMojo`, `ClassDetailMojo`, and `FindSymbolMojo`,
-with Maven-native artifact resolution via `project.runtimeClasspathElements`.
-
-### Full classpath scanning option
-
-**Value: high** | **Effort: medium**
-
-Add `-Pclasspath=true` to scan the full runtime classpath (project classes + all dependency JARs).
-
-- **Applies to**: `cnavListClasses`, `cnavFindClass`, `cnavFindSymbol`, `cnavClass`, `cnavInterfaces`, `cnavUsages`
-- **Reuses**: Classpath resolution infrastructure from `cnavJar`.
-- **Considerations**: Significantly slower (thousands of classes). Combine with existing `-Ppattern` / `-Powner` filters to narrow scope. Consider caching scanned JARs by checksum.
-- **Why**: AI agents frequently need to check library API signatures to write correct code.
-
----
-
-## Find-usages output quality
-
-From field test (v0.1.72): `cnavFindUsages` output is noisy at bytecode level. A single logical call site (e.g., constructing `RAClientImpl`) produces 3-4 lines (`.new` type ref + `.<init>` method call + `.checkcast` + field access). Lambda classes like `MonitorService$getCurrentStatus$2$raClientStatusDeferred$1` obscure the actual caller. Users pipe through `grep -v` to find meaningful results.
-
-Ordered by dependency — collapsing enables the summary mode, and smart usages builds on the cleaner output.
-
----
-
-## Output & UX improvements
-
-Improvements to task output, discoverability, and agent experience.
-
-### Refactoring result LLM hints for follow-up actions
-
-**Value: high** | **Effort: low**
-
-After a successful refactoring (rename, move, etc.), the LLM output should include contextual hints suggesting further analysis or refactoring steps using cnav. Examples:
-- After `cnavRenameMethod`: suggest `cnavFindUsages` to verify no remaining references, or `cnavRenameParam` if related parameters should also be renamed.
-- After `cnavMoveClass`: suggest `cnavPackageDeps` to verify the move improved structure, or `cnavCycles` to check for new cycles.
-- After any refactoring: suggest running tests, and hint at related refactorings (e.g., "consider `cnavRenameProperty` for fields that reference the old name").
-
-This helps agents chain operations and discover related tasks they might not know about.
-
-### Refactoring task discoverability
-
-**Value: high** | **Effort: low**
-
-From field test: agent ran `cnavFindUsages` at the start of a class move and missed that `cnavMoveClass` exists — would have done the entire refactor in one call. The help text lists `cnavMoveClass` parameters but doesn't position it as the right tool for class moves. Agents read parameter tables linearly and miss intent-oriented guidance.
-
-Partial progress (v0.1.72):
-- ✅ "Common Refactoring Tasks" section added to `cnavAgentHelp` compact output (parallel to "Common Questions → Which Task").
-- ✅ Install section (`-Psection=install`) upgraded to name write commands first (`cnavMoveClass`, `cnavRenameMethod`), followed by the read commands. "Do not manually edit imports" warning added.
-- ✅ Task descriptions in `cnavHelp` already state outcomes (verified in `TaskRegistry`: `MOVE_CLASS_TASK`, `RENAME_METHOD_TASK`, etc.).
-
-Remaining:
-- Audit whether `cnavAgentHelp` mentions refactoring outcomes in other sections (`workflow`, `interpretation`) — currently they focus on analysis flow.
-- Consider a short "refactoring cheat sheet" as its own section (see "Goal-oriented task discovery" below).
-
-### Preview-by-default for write commands
-
-**Value: medium** | **Effort: low**
-
-From field test feedback: safer default for agents would be preview mode on by default with explicit `-Papply=true` to commit. Currently `cnavMoveClass` / `cnavRenameMethod` / etc. apply changes unless `-Ppreview` is passed.
-
-- **Breaking change**: flips the default. Mitigate with a deprecation cycle: warn loudly when apply-mode is invoked without explicit `-Papply=true` for one release, then flip.
-- **Alternative**: keep current default, but `cnavAgentHelp` examples always show `-Ppreview` first and recommend running preview → review → re-run with apply. Less safe, non-breaking.
-- **Decide**: breaking flip vs. doc-only nudge. Breaking flip aligns with the "agents should not surprise users" principle.
-
-### Consistent `-Pproject-only` support across all tasks
-
-**Value: medium** | **Effort: low**
-
-From user feedback: `cnavFindUsages -Ptype=SignatureContext` failed with a short name because `-Pproject-only` isn't supported on that task. The error message was clear, but it cost a round-trip. Users expect consistent parameter support across tasks.
-
-- **Approach**: Audit all tasks for `-Pproject-only` / `-Pscope` support. Add missing support where it makes sense. Document which tasks support which filters in `cnavAgentHelp`.
-- **Note**: Some tasks may intentionally not support certain filters — document why.
-
-### `cnavBalance` volatility values lack context
-
-**Value: low** | **Effort: low**
-
-From self-review (v0.1.83): `cnavBalance` output showed `volatility=246/0` for a DANGER entry. The raw number is meaningless without knowing the scale. Is 246 high?
-
-- **Option A**: Show percentile rank — "volatility=246 (top 5%)" or "HIGH/MEDIUM/LOW" verdict
-- **Option B**: Show relative to project mean — "volatility=246 (12x avg)"
-- **Option C**: Include the interpretation in the `withInterpretation()` text — "volatility numbers represent total git churn across all files in the package"
-
----
-
-## Composite analysis tasks
-
-Tasks that combine multiple existing analyses into a single view.
+Use source set tagging (already available) to identify production methods/classes whose only callers are in the test source set.
 
 ### `cnavRisk` — composite risk analysis
+**FUTURE** | **Value: medium** | **Effort: low** | Source: user-feedback(v0.38)
 
-**Value: high** | **Effort: medium**
+`risk = change_frequency * complexity * coupling_degree`. Combines existing builders (Hotspot, Churn, Complexity) into ranked output. Low effort since all inputs exist — just composition and sorting.
 
-From user feedback (v0.38): the user had to mentally cross-reference 6 separate task outputs (hotspots, churn, coupling, age, complexity, authors) to identify that RAClient.kt was the riskiest file. A single task should do this automatically.
+### Per-package health dashboard
+**FUTURE** | **Value: low** | **Effort: medium** | Source: internal
 
-- **Formula**: `risk = change_frequency * complexity * coupling_degree`. Weight factors configurable. Based on Adam Tornhill's "Your Code as a Crime Scene" approach.
-- **Inputs**: Reuses existing builders — `HotspotBuilder`, `ChurnBuilder`, `ChangeCouplingBuilder`, `CodeAgeBuilder`, `AuthorBuilder`, `ClassComplexityAnalyzer`.
-- **Output**: Ranked list of files/classes by composite risk score, with breakdown showing which factors contributed most. Example:
-  ```
-  #1  RAClient.kt          risk=0.94  (hotspot=51rev, churn=+421, complexity=738loc, coupling=57%, authors=2)
-  #2  SearchService.kt     risk=0.71  (hotspot=34rev, churn=+180, complexity=320loc, coupling=52%, authors=3)
-  ```
-- **Parameters**: `-Ptop=20` (default), `-Pformat=llm|json|text`, `-Psince=<git-ref>` (optional time window)
-- **Hybrid task**: Requires both git history and compiled bytecode (for complexity).
-
-### Per-package health dashboard — `[Balanced Coupling]`
-
-**Value: medium** | **Effort: medium**
-
-Aggregate all per-package metrics into a single view: volatility, coupling strength breakdown, distance profile, cycle involvement, and balance assessment.
-
-- **Where**: New builder that combines outputs from `DsmMatrixBuilder`, volatility, and the balance heuristic.
-- **Output**: One row per package with columns for each metric dimension. Highlight packages that are imbalanced.
-- **Why**: Currently `MetricsBuilder` only produces project-level aggregates. Per-package breakdown is needed to act on Balanced Coupling findings.
-- **Could be**: A mode of `cnavMetrics` (`-Pby-package=true`) or a separate `cnavPackageHealth` task.
-- **Prerequisites**: Volatility per package (DONE), `cnavBalance` (DONE).
+Aggregate all per-package metrics into a single view: volatility, coupling strength breakdown, distance profile, cycle involvement, balance assessment. Could be a mode of `cnavMetrics` (`--by-package=true`) or separate `cnavPackageHealth` task.
 
 ---
 
 ## Standalone new tasks
 
 ### `cnavTestHealth` — verify all test methods actually ran
+**ACTIVE** | **Value: medium** | **Effort: medium** | Source: user-feedback
 
-**Value: high** | **Effort: medium**
-
-From user feedback: a project had 19 silently skipped tests because test methods had non-`Unit` return types. Count `@Test`-annotated methods from bytecode, compare against JUnit XML results, flag the delta.
-
-1. **Bytecode scan**: Find all methods annotated with `@Test` (JUnit 4/5, Kotlin Test). This is the "expected" set.
-2. **JUnit XML scan**: Parse test result XML files (`build/test-results/test/TEST-*.xml` or `target/surefire-reports/TEST-*.xml`). This is the "actual" set.
-3. **Diff**: Report methods present in bytecode but absent from XML results — the silently skipped tests.
-
-- **Lifecycle**: `dependsOn("test")` — runs after tests complete
-- **Additional checks** (bytecode-only): test methods missing `@Test` annotation but named `test*`, test classes with no `@Test` methods, `@Disabled`/`@Ignore` inventory
-- Both Gradle and Maven write the same JUnit XML format, so one parser handles both.
+Count `@Test`-annotated methods from bytecode, compare against JUnit XML results, flag the delta. Catches silently skipped tests (e.g., non-`Unit` return types).
 
 ### `cnavTestCoverage` — per-test-class coverage proximity analysis
+**FUTURE** | **Value: low** | **Effort: high** | Source: internal
 
-**Value: medium** | **Effort: medium**
-
-Identify which production classes are only tested "at distance" (no dedicated test, only exercised transitively by tests for other classes). Helps find brittle test coupling where a change to a utility breaks distant tests without a close test isolating the cause.
-
-**Approach** (prototyped on cnav's own codebase):
-1. A JUnit `TestExecutionListener` calls JaCoCo agent's `getExecutionData(reset=false)` / `reset()` per test class, producing one `.exec` file per test class in a single test run.
-2. A builder reads all exec files + class directories, produces a coverage matrix: for each production class, which test classes cover it and at what "distance" (same-name dedicated test = close, same package = near, cross-package = distant).
-3. Flags production classes covered **only** at distance with no close test — these are the coupling risk.
-
-**Findings from prototype** (cnav self-analysis, 170 test classes, 383 production classes):
-- 129 classes had no dedicated test (only distant coverage). Most were harmless: data classes, enums, ubiquitous types (`ClassName`, `PackageName`), and shared infrastructure.
-- Actual coupling risk concentrated in: refactor support utilities (4 files), `CallTreeFormatter` (8 distant tests, no dedicated test), and orchestrators.
-- `JsonFormatterTest` and `LlmFormatterTest` appeared as distant coverage for nearly every result type — this is expected and healthy (tests serialization).
-
-**Open questions**:
-- Should this integrate with JaCoCo (requires agent access), or use a simpler heuristic (file name matching only, no coverage data)?
-- Line-level overlap analysis (which specific lines are redundantly covered) would require comparing probe data across exec files — significantly more complex.
-- The JUnit listener approach requires `output=file` (default) not `output=tcpserver`. May need to detect agent configuration.
+Identify production classes only tested "at distance". Requires JaCoCo integration (TestExecutionListener + per-test exec files). High effort for specialized use case.
 
 ### `cnavDiff` — structural diff between builds
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: internal
 
-**Value: medium** | **Effort: medium**
-
-Compare two compiled states and show structural changes: added/removed/changed classes, methods, and dependency edges.
-
-- **Use cases**: API signature changes from dependency upgrades; verifying a refactoring was purely structural.
-- **Builder**: `StructuralDiff.diff(baselineClassDir, currentClassDir) -> List<Change(className, memberName, kind: ADDED|REMOVED|SIGNATURE_CHANGED, oldSignature?, newSignature?)>`
-- **Parameters**: `-Pbaseline=<path>` (path to baseline class directory), `-Paffected=true` (also list affected call sites)
+Compare two compiled states: added/removed/changed classes, methods, dependency edges. `--baseline=<path>`, `--affected=true`.
 
 ### `cnavUnused` — unused build dependencies
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: internal
 
-**Value: medium** | **Effort: medium**
-
-Find entire libraries that could be removed. For each declared dependency JAR, extract the package list. Scan project bytecode for references. Dependencies with zero references are candidates for removal.
-
-- **Caveats**: Runtime-only dependencies (JDBC drivers, logging backends) will show as "unused." Needs an exclusion mechanism.
-- **Reuses**: Classpath enumeration infrastructure from `cnavJar` / meta-annotation traversal.
-
----
-
-## Internal code quality
-
-Improvements to cnav's own codebase — not user-facing features.
-
-### Review implementations for spread logic
-
-**Value: high** | **Effort: medium**
-
-Several tasks (especially refactoring and composite analysis) contain logic that spans multiple concerns in a single function. The principle should be: an orchestrator calls single-purpose tasks that are as specific (and reusable) as possible.
-
-Review areas:
-- `RenameMethodRewriter` / `RenameMethodEditor`: location finding + PSI editing should be clearly separated (partially done with `RenameLocationFinder`)
-- `MoveClassRewriter`: import updating, content extraction, file writing — are these reusable?
-- DSM orchestrator: does it compose focused builders, or does it inline resolution logic?
-- Formatter classes: some may contain query logic that belongs in builders
-
-Goal: each unit does one thing; composition happens at the orchestrator level. This makes individual steps testable, cacheable, and reusable across tasks.
-
-### Evaluate other JVM languages to support
-
-**Value: medium** | **Effort: low (research)**
-
-With the `LanguageRenameRewriter` abstraction in place (v0.1.94), adding new languages is straightforward — implement the interface and register in `RenameMethodEditor`. Java support is done. Evaluate:
-
-- **Groovy** — common in Gradle build scripts and older JVM projects. IntelliJ Groovy PSI may be available.
-- **Scala** — has its own compiler/PSI ecosystem; likely high effort unless a suitable library exists.
-
-Criteria: Is PSI available in `kotlin-compiler-embeddable` or a lightweight dep? Is the language common enough in projects that also use Kotlin?
-
-### Potentially dead code in cnav's own codebase (from self-analysis)
-
-**Value: medium** | **Effort: low**
-
-Self-analysis with `cnavDead` found high-confidence dead code in core:
-
-- `CallGraphCache.build()`, `ClassIndexCache.build()`, `InterfaceRegistryCache.build()`, `SymbolIndexCache.build()` — `build` methods on cache classes have no callers (`getOrBuild` is used instead). If these are truly dead, remove them.
-- `FileCache.build()`, `FileCache.getOrBuild()`, `FileCache.isFresh()`, `FileCache.read()`, `FileCache.readLines()`, `FileCache.write()`, `FileCache.writeLines()` — multiple FileCache methods flagged. These may be called via subclass dispatch (check if cnav's analysis misses this).
-- `UsageScanner.scan()` — no callers found. Investigate if this is superseded.
-- `DsmDependencyExtractor.extractFromClass-Ue68T7I()` — inline class mangled name. May be a false positive from name mangling.
-- `CollapsedUsage.copy-NT0O-NM()` — Kotlin copy() with inline class param. Expected false positive from name mangling.
-
-The Gradle task methods (`showDeadCode`, `findCallers`, etc.) are all correctly flagged low-confidence — they're invoked by the Gradle runtime via reflection, not via direct calls. This confirms framework-entry-point detection is working correctly for Gradle `@TaskAction`.
-
-### Test suite health: coverage, speed, and duplication
-
-**Value: high** | **Effort: medium**
-
-**Investigation results** (2,214 tests, 162 classes, ~15s total — as of v0.1.70):
-
-#### Speed
-
-71% of execution time is in 5 test classes. The remaining classes total ~3s — not worth optimizing.
-
-| Test Class | Time | Root Cause |
-|---|---|---|
-| `MoveClassRewriterTest` | 6.5s | KotlinParser + classpath + ChangeType recipe, re-initialized per test (15 full parse cycles × 24 files) |
-| `RenameParamRewriterTest` | 1.4s | KotlinParser re-initialized per test (14 parse cycles × 24 files) |
-| `RenameMethodRewriterTest` | 0.95s | Same pattern (8 parse cycles) |
-| `GitLogRunnerTest` | 0.84s | ~40 real `git` subprocess spawns |
-| `RenamePropertyRewriterTest` | 0.70s | Same pattern (8 parse cycles) |
-
-- **Cache KotlinParser / parsed ASTs in rewriter tests**: Share a parsed AST across tests using the same source roots. Could cut top-5 test time from 10.4s to ~3-4s. Single biggest speed win available.
-
-#### Coverage
-
-Overall: ~84% instruction, ~83% line, ~74% branch. **Excluding Gradle task wrappers: ~95%.**
-
-The gap is almost entirely the Gradle task layer (63+ classes, all at 0%). These are thin wrappers around core logic, only exercisable via Gradle TestKit.
-
-Non-Gradle gaps to address:
-
-- **`FieldExtractor`** — 0% coverage. Only non-Gradle core class at zero. **Add tests.** (low effort)
-- **`LlmFormatter`** — ~80%. Primary agent-facing formatter. **Investigate uncovered branches.** (medium effort)
-- **`JsonFormatter`** — ~81%. **Investigate uncovered branches.** (medium effort)
-- **`RenameMethodRewriter` / `RenamePropertyRewriter`** — ~72% each. Some code paths untested. (low effort)
-- **`GitDiffRunner`** — ~45%. Subprocess-based. (low effort)
-
-#### Remaining action items
-
-- **Cache KotlinParser in rewriter tests** (high impact, medium effort)
-- **Add `FieldExtractor` tests** (high impact, low effort)
-- **Cover `LlmFormatter` / `JsonFormatter` uncovered branches** (medium impact, medium effort)
-- ~~**Reduce duplication**~~ **DONE** — see `plan-completed.md`.
-- ~~**Align with kotlin-tdd**~~ **DONE** — already aligned.
-
-### Break `formatting` ↔ `navigation.relations` cycle
-
-**Value: medium** | **Effort: low**
-
-The only remaining production cycle: `formatting.JsonFormatter`/`LlmFormatter` → 28 classes in `navigation.relations`, reverse edge caused by `UsageFormatterTest` importing `formatting.JsonFormatter` and `formatting.LlmFormatter`.
-
-- **Action**: Move `UsageFormatterTest` to the `formatting` test package (it tests formatter output, not usage scanning logic).
-
-### Move misplaced root-package test classes
-
-**Value: low** | **Effort: low**
-
-Several test classes in the root `no.f12.codenavigator` test package belong in sub-packages:
-- `ClassFileStalenessTest` → `registry`
-- `TaskDefTest`, `TaskRegistryTest`, `ParamDefTest`, `UsageExampleTest` → `registry`
-- `CacheFreshnessTest` → `navigation.cache`
-- `TableFormatterTest` → `formatting`
-- `IntegrationTest` → `navigation.relations.callgraph`
-
-Part of ongoing alignment with production package structure.
-
-### Fix DANGER balance: root package → callgraph/implementors
-
-**Value: medium** | **Effort: low**
-
-Self-analysis (v0.1.83) found 2 DANGER entries: `no.f12.codenavigator` → `navigation.relations.callgraph` and → `navigation.relations.implementors` (FUNCTIONAL strength, distance=3, high volatility=246). The root package contains `AgentHelpText`, `HelpText`, and registry-related classes that reference concrete callgraph/implementor types.
-
-- **Investigate**: Which classes in the root package cause these edges? Likely `AgentHelpText` or test classes. May resolve naturally when misplaced test classes are moved.
-
-### Split JsonFormatter and LlmFormatter per-feature
-
-**Value: high** | **Effort: medium**
-
-Self-analysis (v0.1.83) confirms: `JsonFormatter` (364 outgoing, 77 referenced types, fanIn=261) and `LlmFormatter` (similar scale) are the highest-complexity production classes. Package cohesion for `formatting` is 0.03 (nearly zero internal collaboration). Both are top-5 hotspots (45+ revisions each). They change together 96% of the time.
-
-- **Approach**: Split into per-feature formatters (e.g., `CallTreeJsonFormatter`, `DeadCodeJsonFormatter`). Top-level formatters become thin dispatchers.
-- **Ordering**: `LlmFormatter` first (primary agent-facing format), then `JsonFormatter`. `TableFormatter` is smaller and can follow later.
-- **Benefits**: Adding a new feature means adding a new formatter file, not editing a shared god class. Cohesion of `formatting` package improves dramatically.
-
-### Reduce Gradle/Maven duplication via orchestrator extraction
-
-**Value: medium** | **Effort: medium**
-
-Every Gradle Task / Maven Mojo pair duplicates its full orchestration logic. The pairs differ only in property reading, output channel (`logger.lifecycle` vs `println`), build dir resolution, and Maven's "classes not found" guard. ~590 lines of duplicated orchestration across 14 pairs.
-
-Three pairs already follow the correct pattern — `StrengthOrchestrator`, `DistanceOrchestrator`, and `DeadCodeOrchestrator` live in `core/` and their Task/Mojo are thin ~10-line adapters. Extend this to the rest.
-
-Variations of input and output should be tested on the orchestrators — they are the natural place to verify that config options (filters, scopes, raw mode, etc.) flow through correctly to the underlying components.
-
-**Priority order** (by duplicated lines):
-1. `FindUsagesTask ↔ FindUsagesMojo` (~90 lines) — extract `FindUsagesOrchestrator`
-2. `MetricsTask ↔ MetricsMojo` (~70 lines) — extract `MetricsOrchestrator`
-3. `BalanceTask ↔ BalanceMojo` (~55 lines) — extract `BalanceOrchestrator`
-4. `CallTreeTaskSupport ↔ CallTreeMojoSupport` (~55 lines) — merge into single `CallTreeOrchestrator` in core
-5. `DeadCodeTask ↔ DeadCodeMojo` (~45 lines) — already has `DeadCodeOrchestrator`, wire mojos to use it
-6. `LayerCheckTask ↔ LayerCheckMojo` (~45 lines) — extract `LayerCheckOrchestrator`
-7. `DsmTask ↔ DsmMojo` (~40 lines) — extract `DsmOrchestrator`
-8. `PackageDepsTask ↔ PackageDepsMojo` (~40 lines) — extract `PackageDepsOrchestrator`
-9. `FindClassTask ↔ FindClassMojo` (~40 lines) — extract `FindClassOrchestrator`
-10. `ComplexityTask ↔ ComplexityMojo` (~30 lines) — extract `ComplexityOrchestrator`
-11. `RankTask ↔ RankMojo` (~25 lines) — extract `RankOrchestrator`
-12. `WhyDependsTask ↔ WhyDependsMojo` (~25 lines) — extract `WhyDependsOrchestrator`
-13. Remaining small pairs (Hotspot, Churn, CodeAge, AuthorAnalysis, etc.) — ~15 lines each
-
-**Also extract shared micro-patterns:**
-- `taggedDirs → scope filter → classDirectories` (3 lines × 16 files) — shared helper function
-- `SkippedFileReporter` boilerplate (2-3 lines × 24 files) — helper
-- Maven "classes not found" guard (3 lines × 12 mojos) — shared guard in `MavenSupport`
-- `isArtifactCoordinate` pure function duplicated in `GradleSupport` and `MavenSupport` — move to `core/`
-
-Also found core duplication (lower priority):
-- `InlineMethodDetector.kt` ↔ `DelegationMethodDetector.kt` (227 tokens) — similar visitor patterns
-- `RenameMethodRewriter.kt` ↔ `RenamePropertyRewriter.kt` ↔ `RenameParamRewriter.kt` (117 tokens each) — shared rewriter boilerplate
-- `RenamePropertyFormatter.kt` ↔ `RenameMethodFormatter.kt` (101 tokens)
-
----
-
-## Infrastructure
-
-### Structured cache format
-
-**Value: medium** | **Effort: medium**
-
-`FileCache` subclasses serialize as tab-separated positional fields. Adding a field requires updating both `serialize()` and `deserialize()` and any field order mismatch silently corrupts data.
-
-- **Approach**: Replace with a self-describing format that tolerates field additions without breaking existing caches.
-- **Note**: Consider removing cache entirely — benchmarking on ~20k LOC / 488-class project showed zero measurable difference. Needs testing on larger projects.
-
-### Gradle incremental task support
-
-**Value: medium** | **Effort: high**
-
-Support Gradle's incremental task API (`@InputFiles`, `@OutputFile`, `InputChanges`) to skip unchanged files. Call graph analysis is inherently whole-program, so incremental support is most beneficial for leaf tasks (`cnavListClasses`, `cnavFindSymbol`, `cnavFindClass`).
-
----
-
-## Layer check
-
-### Revise peerLimit and testInfrastructure expressiveness
-
-**Value: medium** | **Effort: low**
-
-The current `peerLimit` and `testInfrastructure` attributes work but may not be the most intuitive way to express the intent. Evaluate whether there's a better way to express:
-
-- **Peer dependencies**: `peerLimit = 0` (forbidden), `peerLimit = 3` (max 3 per class), `peerLimit = -1` (unlimited). Is per-class counting the right granularity? Should there be a layer-level total?
-- **Test infrastructure exemptions**: `testInfrastructure: true` on a layer lets test classes depend on it. Is there a more general "exemption" model?
-- **Layer groups**: The old package-based plan had "peer groups" (same-index arrays). The pattern-based model uses layer ordering only. Is there demand for peer groups?
-
-Low priority — the current model works. Revisit when real-world usage reveals friction.
-
----
-
-## Hexagonal architecture analysis (loose thoughts — not to be acted upon yet)
-
-**Value: TBD** | **Effort: TBD**
-
-Analyze code-navigator's own codebase through a hexagonal architecture lens. The goal is to ensure outer layers are well-defined and that the core uses data classes carrying relevant metadata rather than leaking formatting or parsing concerns inward.
-
-Preliminary thinking on port/adapter boundaries:
-
-- **Input edge (driving)**: Command parsing — reading `-P`/`-D` properties, building config objects. Currently split across Gradle tasks and Maven mojos with some duplication.
-- **Output edge (driven)**: Printing formats — TEXT, LLM, JSON. Currently in `JsonFormatter`, `LlmFormatter`, `TableFormatter` (already identified as god classes in the internal code quality section).
-- **Bytecode edge (driven)**: Interfacing with compiled classes — listing, exact matching, simple search patterns, possibly hierarchy traversal. This is the primary data source and may warrant its own port abstraction.
-- **Core**: Analysis logic operating on data classes with relevant metadata. Should not know about property parsing or output formatting.
-
-This is a planning entry to discuss and design together before any implementation. Questions to resolve:
-- What are the right port abstractions?
-- Does the bytecode scanning layer belong inside or outside the core?
-- How does this relate to the existing "Extract shared orchestration" and "Split formatters" items?
-- Is the current `Config → Builder → Formatter` separation already close enough, or does it need restructuring?
-
----
-
-## Evaluated and rejected: CLI-first architecture
-
-Shipping the core as a standalone CLI was considered to eliminate Gradle/Maven duplication. **Rejected** because Gradle and Maven plugins provide frictionless installation (`plugins { id("...") }` / `<plugin>`), automatic version management, transitive dependency resolution, and zero separate install. A CLI would require separate installation, manual upgrades, and JVM version coordination -- a significant DX regression.
-
-The shared orchestration extraction (above) achieves most of the deduplication benefit while keeping the build-tool distribution advantage.
-
----
-
-## Parked
-
-Items below are low-priority or may not be worth building. Revisit if demand emerges.
-
-- **Abstractness per package** `[Balanced Coupling]`: Per-package ratio of abstract/interface classes to total classes (Robert C. Martin's `A` metric). Not needed for the Balanced Coupling pipeline — integration strength classification only needs per-class abstract/interface flags, not a package-level aggregate. Add as a standalone metric if demand emerges.
-- **Custom entry-point config file** (`.cnav-entry-points`): Framework presets + `exclude-annotated` + `treat-as-dead` cover most cases. A config file adds marginal value over the existing parameters. Revisit if users request it.
-- **DI-aware `cnavInjectors`**: Largely solvable with `cnavUsages -Ptype=X` combined with interface dispatch resolution. High effort for marginal gain.
-- **Stable JSON schemas** (`cnavSchema`): JSON output is already self-describing. Agents infer schema from examples.
-- **Split root package** (S9): Lower priority now that `navigation/` has been split into sub-packages. Dependency direction is already clear enough.
-
-## Future ideas (not yet planned)
-
-- **Scope decision: tool vs. platform**: With 40 tasks today and 20+ planned, code-navigator is approaching "code intelligence platform" territory. This is fine, but worth an explicit decision: stay as a focused collection of tasks, or invest in extensibility infrastructure (plugin system, composable analysis pipelines, third-party task registration)? The answer affects architectural choices going forward. If staying focused, the current `TaskRegistry` approach scales well enough. If building for extensibility, consider a plugin API where tasks are discovered rather than registered.
-- **`cnavFindCallees` callee explosion**: `CallTreeBuilder` expands ALL polymorphic implementors as separate children with no collapsing. Default maxdepth=3 causes >51KB output for methods touching deep hierarchies. Root cause: `resolveInterfaceDispatch` adds every implementor, no deduplication of identical subtrees, no output truncation anywhere. Solutions: collapse dispatch groups into a single "N implementors" node with expand-on-demand, add a max-children limit per node, lower default depth for callees. v0.1.47 field test.
-- **~~`cnavFindCallers` class-match UX hint~~** — DONE (v0.1.80): `CallGraph.findMethods()` uses `Regex.containsMatchIn` on `qualifiedName` (className.methodName). Pattern "Parser" matches every method in `Parser` class, producing separate caller trees per method. User expected "who references Parser as a type" which is `cnavFindUsages -Ptype=Parser`. Fix: when pattern matches only class-name portions of multiple methods in the same class, add a hint suggesting `cnavFindUsages -Ptype=`. v0.1.47 field test.
-- **Improve `cnavAnnotations` discoverability**: Field test (v0.1.44) reported "no inverse annotation search" but the feature exists — `cnavAnnotations -Ppattern=Serializable` finds all classes with that annotation. The task name is ambiguous. Consider a task alias (`cnavFindByAnnotation`), better no-results guidance mentioning retention policy / `methods` flags, or more prominent placement in `cnavAgentHelp`. v0.1.45 re-test clarified: `cnavAnnotations` only finds RUNTIME and CLASS retention annotations present in bytecode. SOURCE retention annotations (e.g. `@Suppress`) are invisible — this is inherent to bytecode analysis, but should be documented in no-results guidance. v0.1.46: no-results hint now suggests `-Pmethods=true` and retention policy (bug #8 FIXED). Remaining: task alias and retention policy documentation in help text.
-- **`cnavDead -Pscope=prod` no-visible-effect guidance**: When `scope=prod` is set and filtering has no effect, add a note to output explaining why.
-- **Remove `junit` from `FrameworkPresets` or document it's a no-op for `cnavDead`**: v0.1.45 analysis suite reported `-Ptreat-as-dead=junit` has no observable effect. Root cause: dead code analysis scans both source sets by default now, but JUnit annotations on test classes are typically excluded from dead code results because test classes are considered live (they have callers from the test runner). The junit preset may still be useful for edge cases. Options: (a) remove `junit` from presets (it's misleading), (b) document in help that `treat-as-dead` only applies to production-class annotations, (c) keep as-is.
-- **`cnavChangedSince` parameter naming**: v0.1.45 analysis suite noted `-Pref=<git-ref>` is unintuitive — users expect `-Psince=<date>`. Low priority, but a `-Psince` alias or date-to-ref conversion would improve ergonomics.
-- **Kotlin name-mangled method display**: Methods like `validateAndParse-IoAF18A` are Kotlin inline class return types. Low priority but a note in output (e.g. `[inline-class-mangled]`) would reduce confusion.
-- **Dead code: flag methods called only from test scope**: Use source set tagging to identify production methods/classes whose only callers are in the test source set. These are candidates for removal since no production code depends on them. Replaces the current separate `testGraph` approach in `DeadCodeFinder` with a unified call graph that has source set metadata.
-- **Remove cnav disk cache entirely**: Zero measurable difference on ~20k LOC. Reduces complexity. Needs testing on larger projects.
-- **Fail fast on wrong bytecode**: Replace `ScanResult<T>` partial-fail with hard failure + clear error.
-- **Cross-reference hotspots with bytecode**: Combine `cnavHotspots` with `cnavCallers`/`cnavDeps`.
-- **Entity ownership / main developer**: Who "owns" each file by contribution weight. Mode on `cnavAuthors`.
-- **Architectural-level grouping**: Aggregate file-level results by logical component/layer.
-- **Source-level structural analysis**: Analyze imports from source files without requiring compilation. `cnavSize` and `cnavDuplicates` are source-level tasks; import/dependency analysis from source would be the next step.
-- **Deterministic refactorings**: See dedicated section below.
-
----
-
-## Task context guidance (generic mechanism)
-
-### `TaskGuidance` — structured context output for all tasks
-
-**Value: high** | **Effort: medium**
-
-When an LLM (or user) runs a task without required context parameters, or with default parameters, the output should include guidance explaining what the task checks, what parameters make sense, and how to determine the right values for the specific project. This is different from existing mechanisms:
-
-- `withInterpretation()` — explains results after the fact
-- `noResultsHints` — explains why nothing was found
-- `AgentHelpText` — general workflow guidance
-
-The new mechanism is **task context guidance**: "here's what this task needs to know about your project, here's how to figure it out, and here's what the output means."
-
-**Design**:
-
-```kotlin
-data class TaskGuidance(
-    val purpose: String,          // What this task checks and why
-    val parameterGuidance: String, // How to determine the right parameter values
-    val interpretation: String,   // How to read the results (replaces current INTERPRETATION constants)
-)
-```
-
-**Principle**: Avoid default values on `TaskGuidance` fields. Set explicitly at call sites if not resolved from a source. This makes it clear when guidance text is intentionally missing vs accidentally omitted.
-
-Each task defines a `TaskGuidance` instance. The same text is reused in:
-1. **LLM output header** — always shown when `format=llm`, before the results
-2. **AgentHelpText** — referenced in the task's section
-3. **No-params fallback** — when the task requires project-specific params and none are given, print the guidance and stop (or proceed with detected defaults and note what was assumed)
-
-This replaces the current scattered `internal const val *_INTERPRETATION` strings in `LlmFormatter` with a single source of truth per task, accessible from formatters, help text, and orchestrators.
-
-**Migration**: Existing `*_INTERPRETATION` constants move into `TaskGuidance.interpretation` on each task's config/orchestrator. Existing `noResultsHints` become part of the guidance or remain separate (they're conditional on empty results).
+For each declared dependency JAR, extract package list. Scan project bytecode for references. Dependencies with zero references are candidates for removal. Caveat: runtime-only deps (JDBC drivers, logging backends) need exclusion mechanism.
 
 ---
 
 ## TDD practice enforcement
 
-Tasks to help teams enforce the TDD triad: Test Setup, Fakes, and Testing Through the Domain.
-
 ### `cnavFakeCoverage` — verify all ports have fakes
+**FUTURE** | **Value: medium** | **Effort: low** | Source: internal
 
-**Value: high** | **Effort: medium**
+Scan interfaces matching a pattern (`*Repository`, `*Client`), check each has at least one implementation in test source set. InterfaceRegistry + test source filter — infrastructure exists.
 
-Scan interfaces matching a pattern (e.g., `*Repository`, `*Client`), check that each has at least one implementation in the test source set. Report missing fakes.
+### `cnavTestCoupling` — remaining improvements
+**PARKED** | **Value: medium** | **Effort: low** | Source: field-test(greitt+terms-and-conditions)
 
-- **Parameters**: `-Ppattern=<regex>` (interface name filter, default `".*Repository|.*Client"`), `-Pformat=text|llm|json`
-- **Builder**: Use `InterfaceRegistry` to find all interfaces matching pattern. For each, check if any implementor is in the test source set. Report interfaces with no test implementation.
-- **Output**: List of interfaces missing a fake, plus summary (e.g., "12/15 ports have fakes, 3 missing").
-- **Why**: Enforces "fake everything" principle. Teams adopting fakes can run this in CI to prevent regression.
-
-### `cnavTestCoupling` — detect tests bypassing the domain
-
-**Value: high** | **Effort: high**
-
-Analyze test code's call graph: if test methods directly call repository/adapter mutation methods (`add*`, `save*`, `store*`, `insert*`) instead of going through service-layer methods, flag them as "data-oriented setup" that violates Testing Through the Domain.
-
-- **Parameters**: `-Pservice-pattern=<regex>` (service layer, default `".*Service"`), `-Prepo-pattern=<regex>` (repos/adapters, default `".*Repository|.*Client"`), `-Pmutation-pattern=<regex>` (mutation methods, default `"add.*|save.*|store.*|insert.*|update.*|delete.*"`), `-Pformat=text|llm|json`
-- **Builder**: From test source set call graph, find test methods that call repo/adapter mutation methods directly (not via a service). Compare against test methods that set up state through service calls.
-- **Output**: Per-test-class report showing which tests use data-oriented vs domain-oriented setup. Confidence score based on ratio.
-- **Heuristics**: Calls to repo methods inside a helper named `*setup*` or `*before*` are weighted differently. Calls to repo `get*`/`find*` for assertions are not flagged (reading state to verify is fine).
-- **Why**: Directly enforces Testing Through the Domain. The key insight: `test → repo.save()` = smell; `test → service.register()` = good.
-
-#### Field feedback (greitt run)
-
-All results came back as MIXED with no differentiation. Key improvements needed:
-
-1. ~~**Distinguish adapter tests from domain tests**~~ ✅ DONE (v0.1.85) — Behavioral detection: if primary callee (>50%) is a port implementor OR port interface with 3+ calls, classify as ADAPTER_TEST.
-
-2. ~~**Separate fake setup calls from behavioral calls**~~ ✅ DONE (pre-existing) — Only methods declared on the port interface are flagged. Fake-only methods (`willReturn`, `failOnNext`) are never violations.
-
-3. ~~**Richer verdict taxonomy**~~ ✅ DONE (v0.1.85) — ADAPTER_TEST / DOMAIN_ORIENTED / MIXED / DATA_ORIENTED + confidence score (port-calls / total-calls ratio).
-
-4. ~~**Exclusion parameter**~~ ✅ DONE (v0.1.85) — `-Pexclude=".*ImplTest|.*Fake|.*TestExtensions"` filters test classes by regex.
-
-5. ~~**Show actual calls in detail mode**~~ ✅ DONE (v0.1.85) — `-Pdetail=true` shows per-call breakdown:
-   ```
-   SearchServiceTest  verdict=MIXED  confidence=0.25
-     testSearch → RARepository.search [PORT]
-   ```
-
-#### Additional improvements (v0.1.85)
-
-6. **Constructor exclusion** — `<init>` and `<clinit>` calls are never port violations (constructing result objects is test data setup).
-
-7. **Inner-class aggregation** — Coroutine lambdas (`$1` classes) are rolled up to their outer test class for verdict computation.
-
-8. **@Test annotation detection** — Uses bytecode annotations (JUnit4, JUnit5, kotlin.test, TestNG) instead of class name suffixes. Auto-excludes fakes, utilities, test extensions.
-
-9. **ADAPTER_TEST suppression** — Adapter test classes are filtered from all formatter output (they're expected, not violations).
-
-#### Field validation results (v0.1.85)
-
-| Project | Before | After |
-|---|---|---|
-| ra-backend | 60+ MIXED (all noise) | 0 violations |
-| greitt | 39 MIXED (all noise) | 0 violations |
-| terms-and-conditions | not tested | 3 findings (2 DAO tests + 1 integration test) |
-
-#### Remaining improvements
-
-- **DAO test threshold** — `TermsAndConditionsDaoTest` and `ParentalConsentDaoTest` are adapter tests but port calls are <50% due to assertion/setup noise. Consider: count only non-framework calls in the denominator, or add a port-method-diversity heuristic (multiple distinct port methods = likely adapter test).
-- **Sectors within rings** — see above section on ring sectors.
+- **DAO test threshold**: adapter tests where port calls are <50% due to assertion noise. Consider counting only non-framework calls in denominator.
+- **Concise "all clear" output**: When no violations found, one-liner confirmation instead of ~15 lines of guidance.
 
 ### `cnavContextUsage` — verify consistent test context usage
+**FUTURE** | **Value: low** | **Effort: medium** | Source: internal
 
-**Value: medium** | **Effort: medium**
-
-Check that test classes use a shared test context (matching a configurable pattern like `*TestContext`) rather than constructing dependencies ad-hoc.
-
-- **Parameters**: `-Pcontext-pattern=<regex>` (test context class, default `".*TestContext"`), `-Pformat=text|llm|json`
-- **Builder**: Find all test classes. For each, check if it references a class matching the context pattern. Flag tests that instantiate services/repos directly instead of getting them from the context.
-- **Output**: List of test classes not using the shared context, grouped by package.
-- **Why**: Enforces the Test Setup pattern — centralized, reusable system setup.
+Check that test classes use a shared test context rather than constructing dependencies ad-hoc.
 
 ### `cnavInterfacePurity` — check interfaces use domain types
+**FUTURE** | **Value: low** | **Effort: medium** | Source: internal
 
-**Value: medium** | **Effort: medium**
-
-For interfaces matching a pattern, check that method signatures reference only domain-package types (not DTO/infrastructure types). Enforces that adapters convert at the boundary, keeping fakes simple.
-
-- **Parameters**: `-Ppattern=<regex>` (interface filter), `-Pdomain-packages=<csv>` (packages considered domain), `-Pinfra-packages=<csv>` (packages considered infrastructure/DTO), `-Pformat=text|llm|json`
-- **Builder**: For each interface method, inspect parameter types and return types. Flag methods whose signatures reference types from infra packages.
-- **Output**: Per-interface report of methods with non-domain types in their signatures.
-- **Why**: Ensures fakes remain simple (HashMap of domain objects) and the domain is protected from external format changes.
+For interfaces matching a pattern, check method signatures reference only domain-package types (not DTO/infrastructure types).
 
 ---
 
-## Future deterministic refactorings for LLMs
+## Output & UX
 
-`cnavRenameParam` (DONE), `cnavRenameMethod` (DONE — v0.1.55), `cnavRenameProperty` (DONE — v0.1.59), and `cnavMoveClass` (DONE — v0.1.56) are deterministic refactorings using OpenRewrite for AST-based source transformation. The key insight: LLMs are unreliable at multi-file refactorings because they guess at call sites, miss named arguments, forget string templates, and hallucinate file paths. A tool that knows all callers, implementors, and dependencies from bytecode can emit precise, correct source edits every time. The LLM's job reduces to deciding *what* to rename/move/extract — the tool handles the *how*.
+### Per-task help with usage on error
+**ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
 
-All candidates below share the same properties:
-- **Deterministic**: Given input parameters, the output is fully determined — no heuristics, no AI judgment needed for the transformation itself.
-- **Whole-project**: Finds and updates all affected files (call sites, imports, string references) via bytecode analysis + OpenRewrite AST.
-- **Verifiable**: Compile before and after to prove correctness.
+When wrong parameters are passed, show the task's examples from TaskRegistry instead of stack trace. Straightforward: catch exceptions, print from existing TaskRegistry examples.
 
-### Extract interface — `cnavExtractInterface`
+### `TaskGuidance` — structured context output for all tasks
+**ACTIVE** | **Value: medium** | **Effort: high** | Source: internal
 
-**Value: high** | **Effort: high**
+When an LLM runs a task without context parameters, include guidance explaining what the task checks, how to determine the right parameter values, and how to read results.
 
-Extract an interface from a class, choosing which methods to include, and optionally update callers to use the interface type instead.
+```kotlin
+data class TaskGuidance(
+    val purpose: String,
+    val parameterGuidance: String,
+    val interpretation: String,
+)
+```
 
-- `-Ptarget-class=com.example.UserService -Pinterface-name=UserOperations -Pmethods=findUsers,createUser`
-- Creates: new interface file with selected method signatures.
-- Updates: class declaration to add `implements`/`:` clause, optionally updates field/parameter types at call sites from concrete class to interface.
-- **Why LLMs fail at this**: They create the interface but forget to handle generic type parameters, miss default method implementations, don't update callers' type declarations, and produce interfaces that don't compile due to missing imports.
-- **Reuses**: `ClassDetailExtractor` (method signatures), `InterfaceRegistry`, `cnavUsages -Ptype=X` for caller type updates.
+Replaces scattered `*_INTERPRETATION` constants with single source of truth per task. Reused in LLM output header, AgentHelpText, and no-params fallback.
 
-### Change method signature — `cnavChangeSignature`
+### Refactoring result LLM hints for follow-up actions
+**ACTIVE** | **Value: medium** | **Effort: low** | Source: internal
 
-**Value: medium** | **Effort: high**
+After successful refactoring, include contextual hints suggesting further analysis (e.g., after `cnavMoveClass` → suggest `cnavPackageDeps` to verify improvement).
 
-Add, remove, or reorder parameters on a method, updating all call sites with default values or reordered arguments.
+### Refactoring task discoverability
+**ACTIVE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.72)
 
-- `-Ptarget-class=com.example.UserService -Pmethod=findUsers -Padd-param="limit: Int = 50" -Pposition=2`
-- Updates: method declaration, all call sites (adding default value for new param), named argument order.
-- **Why LLMs fail at this**: They update the declaration but miss call sites in other modules, don't handle overloads correctly, and frequently break named argument ordering.
-- **Reuses**: `RenameParamRewriter` visitor structure, `CallGraph` for call site discovery.
+Agent ran `cnavFindUsages` at start of class move and missed that `cnavMoveClass` exists. Remaining: audit whether `cnavAgentHelp` mentions refactoring outcomes in workflow/interpretation sections. Mostly done already.
 
-### Inline function / extract function — `cnavExtractFunction`
+### `cnavAnnotations`: methods=true as default for common annotations
+**ACTIVE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
 
-**Value: medium** | **Effort: very high**
+Searching for `@Test` returns empty without `--methods=true`. Workaround is easy (pass the flag). Auto-enable when results are empty.
 
-Extract a code block into a new function, or inline a function's body into its call sites. Requires source-level analysis beyond what bytecode provides — needs OpenRewrite's full AST.
+### `cnavFindCallees`: hide library internals by default
+**ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra, v0.1.97)
 
-- More complex because it requires understanding local variable scope, control flow, and return semantics.
-- **Probably not worth building**: IDEs already do this well interactively. The LLM value-add is lower here because extract/inline is usually a single-file operation where LLMs are adequate.
+Output noisy for methods calling Java library code. Collapse or hide library-internal methods by default (`--project-only`).
 
-### Priority order
+### `cnavFindCallees` callee explosion
+**ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(v0.1.47)
 
-1. **Extract interface** — high value for architecture improvement workflows, but more complex.
-2. **Change signature** — medium value, complex parameter manipulation.
-3. **Extract function** — low priority, IDEs handle this well already.
+`CallTreeBuilder` expands ALL polymorphic implementors. Solutions: collapse dispatch groups into "N implementors" node, add max-children limit, lower default depth.
+
+### Preview-by-default for write commands
+**FUTURE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra)
+
+Safer default: preview mode on by default, explicit `--apply=true` to commit. Breaking change — needs deprecation cycle.
+
+### Consistent `--project-only` support across all tasks
+**FUTURE** | **Value: medium** | **Effort: low** | Source: user-feedback
+
+Audit all tasks for `--project-only`/`--scope` support. Add where missing.
+
+### `cnavMoveSuggest`: hexagonal architecture awareness
+**FUTURE** | **Value: low** | **Effort: high** | Source: field-test(bass-ra, v0.1.97)
+
+Suggests moving ports into domain packages. Algorithm optimizes for proximity without understanding ring boundaries. Could use `cnavRings` to suppress suggestions violating ring boundaries.
+
+### `cnavMoveSuggest`: label/exclude test classes
+**FUTURE** | **Value: low** | **Effort: low** | Source: field-test(greitt)
+
+Suggestions like "move `MenuItemTest` to `web.components`" are confusing. Default to excluding test classes.
+
+### `cnavRings`: external protocol classes misclassified
+**FUTURE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
+
+External protocol Java classes placed in Ring 0. Fix: filter classes in packages not matching project root package.
+
+### `cnavBalance` volatility values lack context
+**PARKED** | **Value: low** | **Effort: low** | Source: internal(v0.1.83)
+
+Raw volatility numbers meaningless without scale. Show percentile rank or relative to project mean.
+
+### Suppress root-package deprecation warning when auto-detection matches
+**PARKED** | **Value: low** | **Effort: low** | Source: internal
+
+If configured `rootPackage` matches auto-detection, suppress warning.
+
+### `cnavChangedSince` parameter naming
+**PARKED** | **Value: low** | **Effort: low** | Source: field-test(v0.1.45)
+
+`--ref=<git-ref>` is unintuitive. Consider `--since` alias or date-to-ref conversion.
+
+### Kotlin name-mangled method display
+**PARKED** | **Value: low** | **Effort: low** | Source: internal
+
+Methods like `validateAndParse-IoAF18A` — add `[inline-class-mangled]` note in output.
+
+### Improve `cnavAnnotations` discoverability
+**PARKED** | **Value: low** | **Effort: low** | Source: field-test(v0.1.44)
+
+Task alias (`cnavFindByAnnotation`), retention policy documentation in help text. No-results hint for `-Pmethods=true` already done (v0.1.46).
+
+### `cnavDead --scope=prod` no-visible-effect guidance
+**PARKED** | **Value: low** | **Effort: low** | Source: internal(v0.1.45)
+
+When `scope=prod` filtering has no effect, explain why.
+
+### Remove `junit` from `FrameworkPresets` or document it's a no-op
+**PARKED** | **Value: low** | **Effort: low** | Source: internal(v0.1.45)
+
+`--treat-as-dead=junit` has no observable effect since test classes are considered live.
 
 ---
 
-## Agent workflow improvements
+## Find-usages output quality
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: field-test(v0.1.72)
+
+A single logical call site produces 3-4 lines (`.new` + `.<init>` + `.checkcast` + field access). Lambda classes obscure actual callers. Need collapsing/deduplication and smart summary mode.
+
+---
+
+## Classpath / JAR scanning
+
+### Maven: `--jar` support for Mojos
+**ACTIVE** | **Value: medium** | **Effort: low** | Source: internal
+
+Add `@Parameter(property = "jar")` to `ListClassesMojo`, `FindClassMojo`, `ClassDetailMojo`, `FindSymbolMojo`.
+
+### Full classpath scanning option
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: internal
+
+`--classpath=true` to scan full runtime classpath. Applies to list/find/class/interfaces/usages. AI agents frequently need library API signatures.
+
+---
+
+## CI & enforcement
 
 ### CI fail-on-violation mode
+**ACTIVE** | **Value: high** | **Effort: low** | Source: internal
 
-**Value: high** | **Effort: low**
-
-Allow `cnavLayerCheck`, `cnavCycles`, and `cnavCohesion` to fail the build (non-zero exit code) when violations exceed a threshold. Transforms cnav from an exploration tool into an enforcement tool that blocks architectural decay in CI.
-
-- `-Pfail-on-violation=true` for `cnavLayerCheck` (any OUTWARD violation fails)
-- `-Pmax-cycles=0` for `cnavCycles` (fail if cycle count exceeds N)
-- Possible: `-Pmax-danger=0` for `cnavBalance` (fail if any DANGER verdict)
+Allow `cnavLayerCheck`, `cnavCycles`, `cnavCohesion` to fail the build when violations exceed threshold. `--fail-on-violation=true`, `--max-cycles=0`.
 
 ---
 
 ## Behavioral + structural fusion
 
 ### Port volatility lockstep detector
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: internal
 
-**Value: medium** | **Effort: medium**
-
-Cross-reference `cnavInterfaces` with `cnavVolatility`. If a port interface changes as frequently as its adapter implementation, the abstraction isn't stable — it's leaking implementation concerns upward.
-
-- **Input**: Port pattern (e.g. `.*Repository|.*Client`), git history window
-- **Builder**: For each interface, find implementors. Compare file-level change frequency (revisions, churn) between interface and implementor files. Flag pairs where the interface changes at >50% the rate of the implementor.
-- **Output**: Per-port report: interface revisions vs implementor revisions, lockstep percentage, verdict (STABLE / LEAKY)
-- **Why**: A stable port should rarely change. If it changes every time the adapter changes, the boundary isn't providing value. Suggests the interface needs to be more abstract or the adapter is doing work that belongs in the domain.
+Cross-reference interfaces with volatility. If port interface changes as frequently as its adapter, the abstraction isn't stable.
 
 ### `cnavChangedSince` → layered impact predictor
+**FUTURE** | **Value: medium** | **Effort: high** | Source: internal
 
-**Value: high** | **Effort: medium-large**
-
-Expand `cnavChangedSince` from single-hop blast radius into a multi-signal impact predictor with confidence tiers.
-
-#### Confidence layers
-
-1. **Direct callers** (high confidence) — already implemented
-2. **Transitive callers** up to configurable depth (medium confidence) — use `CallTreeBuilder`
-3. **Interface implementor callers** (medium-high) — wire `InterfaceRegistry` to detect polymorphic impact
-4. **Historically co-changed classes** (empirical signal) — join with `ChangeCouplingBuilder` data
-5. **Same-package structural peers** (low confidence) — cheap heuristic from DSM data
-
-#### Output shape
-
-Each impacted class gets a confidence tier + reason. Agent/CI chooses threshold.
-
-#### Infrastructure already available
-
-- `CallTreeBuilder` — transitive caller expansion
-- `InterfaceRegistry` — interface → implementor mapping
-- `ChangeCouplingBuilder` — temporal coupling from git history
-- `DsmDependencyExtractor` / `PackageDependencyBuilder` — structural coupling
-
-#### Known limits
-
-- Reflection / dynamic dispatch invisible to bytecode analysis
-- Semantic changes (behaviour change without signature change) produce false negatives
-- Test↔production mapping not available (future: combine with test-coupling task)
+Expand from single-hop blast radius into multi-signal impact predictor: direct callers → transitive callers → interface implementor callers → historically co-changed → same-package peers. Each with confidence tier.
 
 ---
 
-## Future: Compiler-based refactoring operations (inspired by Martin)
+## Internal code quality
 
-Potential refactoring operations using our PSI infrastructure. Now that `cnavRenameMethod` has been migrated to PSI (v0.1.90), the compiler integration barrier is gone — we have a working two-phase architecture (ASM location finding → PSI editing in isolated classloader) that new operations can reuse.
+### Review implementations for spread logic + shared lookup extraction
+**ACTIVE** | **Value: medium** | **Effort: high** | Source: internal
 
-Inspired by [Martin](https://github.com/audunstrand/martin) by Audun Fauchald Strand — a CLI tool for semantically-correct Kotlin refactorings using the embedded Kotlin compiler frontend. Martin's clean design (especially the TextEdit primitive and warm daemon pattern) was instrumental in showing that `kotlin-compiler-embeddable` is viable outside an IDE. Thanks Audun!
+**Spread logic**: Several tasks span multiple concerns. Principle: orchestrator calls single-purpose tasks.
+- `RenameMethodRewriter`/`RenameMethodEditor`: location finding + PSI editing separation
+- `MoveClassRewriter`: are import updating, content extraction, file writing reusable?
+- Formatter classes: some contain query logic belonging in builders
 
-**Effort key (post-PSI migration):**
-- **Low** = PSI tree walking + text replacement, no type resolution needed. Reuses existing `KotlinCoreEnvironment` setup.
-- **Medium** = Needs bytecode-guided location finding (like rename) or cross-file coordination.
-- **High** = Needs `BindingContext` / full type resolution (not yet implemented).
+**Shared lookup**: Class resolution and method finding duplicated across ChangeSignature, RenameMethod, RenameProperty, SafeDelete. Extract shared `DeclarationFinder`. Design: stream-like — general lookup first, then filtered down.
 
-### Extract operations
+### Split JsonFormatter and LlmFormatter per-feature
+**ACTIVE** | **Value: medium** | **Effort: high** | Source: internal(v0.1.83)
 
-- **`cnavExtractFunction`** — Extract a range of lines into a new function, automatically determining parameters and return values. **Effort: high** (needs data flow analysis via BindingContext to determine params/return).
-- **`cnavExtractVariable`** — Extract an expression at cursor into a named `val`. **Effort: low** (single-file PSI transform, no type resolution needed).
-- **`cnavExtractConstant`** — Extract a literal into a companion object constant. **Effort: low** (single-file, find literal → add to companion).
-- **`cnavExtractParameter`** — Extract a hardcoded value into a function parameter. **Effort: medium** (single-file extraction is easy, but updating call sites needs ASM location finding).
-- **`cnavExtractInterface`** — Extract an interface from a class (public methods become interface contract). **Effort: medium** (PSI can enumerate public methods; updating implementors needs bytecode scan).
-- **`cnavExtractSuperclass`** — Extract a superclass from a class. **Effort: medium** (similar to ExtractInterface).
+`JsonFormatter` (364 outgoing, 77 types, fanIn=261) and `LlmFormatter` are highest-complexity classes. Change together 96% of the time. Split into per-feature formatters; top-level becomes thin dispatcher. Wide change touching many files.
 
-### Inline / simplify operations
+### Reduce Gradle/Maven duplication via orchestrator extraction
+**ACTIVE** | **Value: medium** | **Effort: high** | Source: internal
 
-- **`cnavInline`** — Replace all usages of a variable or function with its definition, remove the declaration. **Effort: medium** (local inline is low; cross-file inline needs ASM + multi-file PSI edits).
-- **`cnavConvertToExpressionBody`** — Convert block body `{ return x }` to `= x`. **Effort: low** (pure PSI pattern match on single function).
-- **`cnavConvertToBlockBody`** — Convert expression body `= x` to `{ return x }`. **Effort: low** (inverse of above).
+Every Gradle/Maven pair duplicates orchestration. Three pairs already have orchestrators. Extend to rest (~590 lines duplicated across 14 pairs). Tedious but mechanical.
 
-### Signature & structure changes
+### Potentially dead code in cnav's own codebase
+**PARKED** | **Value: medium** | **Effort: low** | Source: internal
 
-- **`cnavChangeSignature`** — Add, remove, or reorder function parameters (updating all call sites). **Effort: medium** (declaration change is trivial; call-site updates reuse RenameLocationFinder pattern — find via ASM, edit via PSI).
-- **`cnavAddNamedArguments`** — Add explicit parameter names to call arguments. **Effort: medium** (needs to resolve parameter names from declaration, then find call sites via ASM).
-- **`cnavIntroduceParameterObject`** — Group function parameters into a data class. **Effort: medium** (compose: create data class + ChangeSignature).
-- **`cnavPullUpMethod`** — Move a method from a subclass to its superclass. **Effort: medium** (hierarchy already known from bytecode; PSI does the move).
-- **`cnavReplaceConstructorWithFactory`** — Replace a constructor with a factory function. **Effort: medium** (declaration change + ASM finds constructor call sites).
+Self-analysis found: `CallGraphCache.build()`, `ClassIndexCache.build()`, `InterfaceRegistryCache.build()`, `SymbolIndexCache.build()`, `UsageScanner.scan()`, various `FileCache` methods. Investigate if truly dead or called via dispatch.
 
-### Type conversion operations
+### Test suite health
+**ACTIVE** | **Value: medium** | **Effort: medium** | Source: internal
 
-- **`cnavConvertToDataClass`** — Convert a class to a data class. **Effort: low** (single-file: add `data` modifier, verify requirements via PSI).
-- **`cnavConvertToExtensionFunction`** — Convert a method to an extension function. **Effort: medium** (move + update call sites from `obj.method()` to `obj.method()` extension — call sites don't change syntactically but imports do).
-- **`cnavConvertToSealedClass`** — Convert a class hierarchy to a sealed class. **Effort: medium** (needs hierarchy from bytecode, then multi-file PSI edits to add `sealed` + move subclasses).
-- **`cnavTypeMigration`** — Change a type and update all related code. **Effort: high** (needs BindingContext for full type inference across assignments/returns).
-- **`cnavConvertPropertyToFunction`** — Convert a property to a function. **Effort: medium** (declaration + call-site syntax change from `x.prop` to `x.prop()`).
+- **Cache KotlinParser in rewriter tests** — 71% of test time in 5 classes. Sharing parsed AST could cut from 10.4s to ~3-4s.
+- **Add `FieldExtractor` tests** — 0% coverage, only non-Gradle core class at zero.
+- **Cover `LlmFormatter`/`JsonFormatter` uncovered branches** — primary agent-facing formatters at ~80%.
 
-### Safety operations
+### Break `formatting` ↔ `navigation.relations` cycle
+**PARKED** | **Value: medium** | **Effort: low** | Source: internal
 
-- **`cnavSafeDelete`** — Delete a declaration only if it has no usages (like dead code removal but interactive/targeted). **Effort: low** (combine existing `cnavDeadCode` logic with targeted PSI deletion).
-- **`cnavEncapsulateField`** — Make a public property private and generate accessors. **Effort: medium** (single-file property change + ASM finds direct field access sites).
+Move `UsageFormatterTest` to `formatting` test package.
 
-### Recommended implementation order (quick wins first)
+### Move misplaced root-package test classes
+**PARKED** | **Value: low** | **Effort: low** | Source: internal
 
-1. **`cnavConvertToExpressionBody`** / **`cnavConvertToBlockBody`** — trivial, good for validating the pattern
-2. **`cnavExtractVariable`** / **`cnavExtractConstant`** — single-file, builds confidence
-3. **`cnavSafeDelete`** — leverages existing dead code detection
-4. **`cnavConvertToDataClass`** — single-file with PSI validation
-5. **`cnavChangeSignature`** — reuses RenameLocationFinder, high value for agents
-6. **`cnavExtractParameter`** — combines single-file + cross-file (medium complexity)
-7. **`cnavExtractInterface`** — medium, high value for architecture improvements
+`ClassFileStalenessTest`, `TaskDefTest`, `TaskRegistryTest` etc. belong in sub-packages.
 
-### Notes
+### Fix DANGER balance: root package → callgraph/implementors
+**PARKED** | **Value: medium** | **Effort: low** | Source: internal(v0.1.83)
 
-- All "medium" operations follow the same two-phase pattern proven by `cnavRenameMethod`: ASM finds locations → PSI edits at those locations.
-- "Low" operations can skip Phase 1 entirely — they're single-file PSI transforms.
-- "High" operations (ExtractFunction, TypeMigration) are blocked on BindingContext integration. Consider Martin delegation for these until we add BindingContext support.
-- `cnavSafeDelete` overlaps with existing `cnavDeadCode` but is targeted (single symbol) rather than whole-project scan.
-- `cnavExtractInterface` and `cnavExtractSuperclass` overlap with existing hierarchy analysis — could use `cnavTypeHierarchy` to inform decisions.
+Root package references concrete callgraph/implementor types. May resolve when misplaced test classes are moved.
+
+### Evaluate other JVM languages to support
+**PARKED** | **Value: medium** | **Effort: low (research)** | Source: internal
+
+Groovy and Scala support via `LanguageRenameRewriter`. Is PSI available? Is the language common enough?
 
 ---
 
-## Future: Architectural patterns from Martin worth evaluating
+## Infrastructure
 
-Techniques observed in [Martin](https://github.com/audunstrand/martin) source code that could improve code-navigator.
+### Structured cache format
+**PARKED** | **Value: medium** | **Effort: medium** | Source: internal
 
-### ~~Embedded Kotlin Compiler Frontend (`kotlin-compiler-embeddable`)~~ — DONE (v0.1.90)
+Replace tab-separated positional fields with self-describing format. Consider removing cache entirely — zero measurable difference on ~20k LOC projects.
 
-**Value: high** | **Effort: high**
+### Gradle incremental task support
+**FUTURE** | **Value: medium** | **Effort: high** | Source: internal
 
-Martin uses `kotlin-compiler-embeddable` as a library dependency to get full PSI trees + `BindingContext` for type resolution — no IDE plugin required. This unlocks source-level transformations that bytecode analysis can't provide.
+`@InputFiles`/`@OutputFile`/`InputChanges`. Most beneficial for leaf tasks (`cnavListClasses`, `cnavFindSymbol`).
 
-**K2 PSI trial results (Greitt, 140 .kt files, rename `toggleAdminDate`):**
+---
 
-| Approach | Cold | Warm | Notes |
-|----------|------|------|-------|
-| OpenRewrite | 16s | 7s | Full type resolution, heavy deps (~40MB) |
-| PSI all files | 2s | 678ms | env=229ms, parse=370ms, find=72ms |
-| PSI targeted (projected) | — | ~220ms | Parse only affected files |
+## Layer check
 
-**Decision (ADR-0001):** Two-phase architecture implemented in v0.1.90:
-- Phase 1 (ASM, main classpath): `RenameLocationFinder` scans bytecode for call-site files + implementors
-- Phase 2 (PSI, isolated classpath): `PsiRenameMethodRewriter` edits only identified files
+### Revise peerLimit and testInfrastructure expressiveness
+**PARKED** | **Value: medium** | **Effort: low** | Source: internal
 
-**Current status:** `cnavRenameMethod` fully migrated from OpenRewrite to PSI. Uses `kotlin-compiler-embeddable:2.0.21` as `compileOnly` dep with classloader isolation. Bytecode guidance catches cross-package call sites (e.g., injected dependencies without explicit imports).
+Current model works. Revisit when real-world usage reveals friction.
 
-**Remaining:** BindingContext not yet used — current approach relies on bytecode for type resolution instead. Full BindingContext would enable extract/inline/change-signature operations listed above.
+---
 
-Evaluation questions:
-- Could be added as an optional dependency for refactoring tasks that need source-level analysis.
-- How does it interact with code-navigator's current OpenRewrite-based rewriting?
-- Startup cost is ~3s for `KotlinCoreEnvironment` creation — acceptable inside Gradle daemon?
-- K2 compiler (new frontend) may offer a lighter alternative in future Kotlin versions.
+## Martin integration & compiler infrastructure
 
-### TextEdit as universal edit primitive
+### ~~Embedded Kotlin Compiler Frontend~~ — DONE (v0.1.90)
 
-**Value: medium** | **Effort: low**
-
-Martin's `SourceRewriter` is 43 lines: all refactorings produce `List<TextEdit(file, offset, length, replacement)>`, applied in reverse offset order per file. Simpler than OpenRewrite's recipe/change-set model for targeted operations.
-
-Evaluation questions:
-- Could complement OpenRewrite for operations where recipe composition isn't needed.
-- Offset-based approach requires source positions — available from PSI but not from bytecode.
-- Mixing TextEdit and OpenRewrite in the same codebase: worth the dual model?
-
-### Classpath discovery via Gradle init script
-
-**Value: low (we run inside Gradle)** | **Effort: low**
-
-Martin injects a temporary `--init-script` that registers a `martinPrintClasspath` task and prints resolved classpath entries. Clever for standalone CLI tools that need the project's dependency graph without the Tooling API.
-
-Relevance: Only useful if code-navigator ever supports a standalone CLI mode outside Gradle/Maven. Low priority.
-
-### Daemon mode with warm compiler environment
-
-**Value: medium** | **Effort: medium**
-
-Martin keeps `KotlinCoreEnvironment` alive across TCP socket invocations (`warmUp()` / `disposeEnvironment()`), reducing per-operation time from ~3s to <2s. Port file at `.martin/daemon.port` with auto-delegation from CLI.
-
-Relevance: code-navigator already benefits from Gradle/Maven daemon JVM reuse. But if we add `kotlin-compiler-embeddable` operations, caching the analysis environment across task invocations (e.g., via a Gradle shared service) would be analogous.
+Two-phase architecture: ASM location finding → PSI editing in isolated classloader. `kotlin-compiler-embeddable:2.0.21`. Remaining: BindingContext not yet used.
 
 ### Martin as external tool integration
+**FUTURE** | **Value: medium** | **Effort: high** | Source: internal
 
-**Value: high** | **Effort: medium**
+Delegate to Martin's daemon for extract/inline/change-signature operations. Unified UX, no compiler dependency bloat. Risk: external dependency on Martin maintenance. Effort higher than it looks (daemon lifecycle, error handling, version compat).
 
-Rather than reimplementing compiler-based refactorings, code-navigator could delegate to Martin's daemon for extract/inline/change-signature operations. This gives:
-- Unified UX (agent sees cnav tasks, doesn't need to know Martin exists)
-- No compiler dependency bloat in code-navigator itself
-- Martin handles the hard parts (data flow, type inference, scope analysis)
+### TextEdit as universal edit primitive
+**PARKED** | **Value: low** | **Effort: low** | Source: internal
 
-Integration shape:
-- Optional Martin jar path in cnav config
-- cnav tasks shell out to Martin daemon (start if not running)
-- cnav wraps Martin output in standard LLM/JSON/TEXT format
-- Falls back to "not available" guidance if Martin isn't installed
+Martin's `SourceRewriter` (43 lines). We already have PSI — marginal added value.
 
----
+### Daemon mode with warm compiler environment
+**PARKED** | **Value: low** | **Effort: medium** | Source: internal
 
-## Test-source separation in structural analysis
-
-From field testing on Greitt: cycles, DSM, balance, and rings all treat test classes as production dependencies. This creates massive noise — `polls→testutil`, `admin→testutil` edges aren't architectural problems, yet they dominate cycle output and inflate DANGER verdicts.
-
-### Exclude test-source edges from cycles/DSM/balance by default
-
-**Value: high** | **Effort: medium**
-
-The single 18-package cycle in Greitt is mostly caused by test classes importing `testutil`, `context`, and fakes. Production code alone likely has far fewer (or no) cycles.
-
-- Add `-Pinclude-test-edges=true` param (default false for cycles/DSM/balance/rings)
-- Use `CallGraph.sourceSetOf()` to identify test classes and filter edges where BOTH source and target are in test, or source is test and target is testutil
-- Consider: edges from test→production are valid (they show test coupling to prod structure), but test→test infrastructure is noise
-
-### Cycle edge ranking — "which edge to break first"
-
-**Value: high** | **Effort: medium**
-
-When a cycle has 18 packages, the output is overwhelming. Users need to know which single edge removal would have the most impact.
-
-- Compute "break score" per edge: how many SCCs would split if this edge were removed
-- Show top 3-5 "weakest links" at the top of cycle output
-- Consider showing edge weight (reference count) — a 1-reference edge is easier to break than a 21-reference edge
+Gradle daemon already provides JVM reuse. Marginal benefit.
 
 ---
 
-## cnavSuggestStructure improvements
+## Architectural exploration (loose thoughts — not to be acted upon)
 
-### Label or exclude test classes from move suggestions
+### Hexagonal architecture analysis of cnav itself
+**PARKED** | Source: internal
 
-**Value: medium** | **Effort: low**
+Port/adapter boundaries:
+- Input: command parsing (properties → config objects)
+- Output: printing formats (TEXT/LLM/JSON)
+- Bytecode: interfacing with compiled classes
+- Core: analysis logic on data classes
 
-Field testing showed suggestions like "move `MenuItemTest` to `web.components`" — confusing because test classes should follow their subject, not be independently relocated. Options:
-- Add "(test)" label to test-class suggestions
-- Default to excluding test classes (add `-Pinclude-tests=true` to override)
-- Or: only suggest moving a test class if its subject is also being suggested for the same target
+Questions: right port abstractions? Bytecode inside/outside core? Relation to existing Config→Builder→Formatter separation?
 
----
+### Scope decision: tool vs. platform
+**PARKED** | Source: internal
 
-## cnavTestCoupling UX
-
-### Concise "all clear" output
-
-**Value: medium** | **Effort: low**
-
-When no violations are found, the current output is ~15 lines of guidance text followed by one line saying "no violations." For a passing check, a one-liner confirmation is sufficient. Move guidance to the no-params/help case only.
+40 tasks today, 20+ planned. Stay focused (TaskRegistry scales) or invest in extensibility (plugin system, composable pipelines)?
 
 ---
 
-## cnavRings actionability
+## Evaluated and rejected
 
-### Suggest "first package to extract" when rings degenerate
-
-**Value: low** | **Effort: medium**
-
-When one giant cycle collapses everything into a single ring (Ring 2 in Greitt had 18 packages), the 87 PEER/CYCLE violations are not actionable. Instead:
-- Identify which package has the fewest inward edges from the cycle (easiest to extract)
-- Show "Extract X first — it only has N inward edges to break"
-- Combine with cycle edge ranking to suggest a path forward
+- **CLI-first architecture** — REJECTED. Build-tool plugins provide frictionless installation, version management, transitive deps. CLI would require separate install + JVM coordination. Shared orchestration extraction achieves dedup without DX regression.
+- **Classpath discovery via Gradle init script** — NOT NEEDED. We already run inside Gradle.
 
 ---
 
-## Deprecation warning cleanup
+## Parked future ideas
 
-### Suppress root-package warning when auto-detection matches
-
-**Value: low** | **Effort: low**
-
-Projects with `codeNavigator { rootPackage = "..." }` configured see `'root-package' is deprecated` on every task. If auto-detection produces the same result, suppress the warning entirely. If they differ, suggest removal with a note that auto-detection now handles it.
+- **Cross-reference hotspots with bytecode**: Combine `cnavHotspots` with `cnavCallers`/`cnavDeps`. (internal)
+- **Entity ownership / main developer**: Who "owns" each file by contribution weight. Mode on `cnavAuthors`. (internal)
+- **Architectural-level grouping**: Aggregate file-level results by logical component/layer. (internal)
+- **Source-level structural analysis**: Analyze imports from source without compilation. (internal)
+- **Fail fast on wrong bytecode**: Replace `ScanResult<T>` partial-fail with hard failure. (internal)
+- **Remove cnav disk cache entirely**: Zero measurable difference on ~20k LOC. Needs testing on larger projects. (internal)
+- **Abstractness per package** (`A` metric): Not needed for Balanced Coupling pipeline. Add as standalone if demand emerges. (internal)
+- **Custom entry-point config file** (`.cnav-entry-points`): Framework presets cover most cases. (internal)
+- **DI-aware `cnavInjectors`**: Solvable with `cnavUsages -Ptype=X` + interface dispatch. (internal)
+- **Stable JSON schemas** (`cnavSchema`): JSON is self-describing. Agents infer from examples. (internal)
 
 ---
 
-## Internal architecture improvements
+## ~~Completed~~ (see plan-completed.md)
 
-### Shared method/class lookup across refactoring commands
-
-**Value: high** | **Effort: medium**
-
-Lookups like class resolution and method finding are duplicated across ChangeSignature, RenameMethod, RenameProperty, SafeDelete. These should be shared where relevant.
-
-**Design principle**: Think like streams. The most general lookup first (e.g., find all source files → parse → find classes matching a filter), then filtered down (e.g., by method name), then filtered down further (e.g., by parameter signature). This makes the logic more reusable. The general step should take _some_ parameters at least so we don't end up loading too much every time.
-
-Currently each rewriter has its own bespoke file-walking + PSI-parsing + class-matching code. Extract a shared `ClassLookup` or `DeclarationFinder` that all refactoring commands use. Benefits:
-- Bug fixes (e.g., companion objects, body properties) apply everywhere
-- Consistent handling of edge cases (nested classes, object declarations, Companion)
-- Easier to add bytecode-assisted pre-filtering (like RenameMethod already does)
-
-### Migrate from -P properties to @Option task options (Gradle) / proper Mojo parameters (Maven)
-
-**Value: medium** | **Effort: high**
-
-Currently all task parameters are passed via `-P` project properties in Gradle. This has downsides:
-- Properties are global — any `-P` is accepted by Gradle without error, even typos
-- We need custom unknown-param detection (added in v0.1.98)
-- No built-in `--help` per task showing available options
-
-**Gradle `@Option` migration**: Annotate task properties with `@Option(option = "target-class", description = "...")`. Users would run `./gradlew cnavDead --filter=com.example` instead of `-Pfilter=com.example`. Gradle provides:
-- Automatic rejection of unknown options with "did you mean?" suggestions
-- `./gradlew help --task cnavDead` lists all available options
-- Type validation (boolean flags, enums)
-
-**Maven**: Already uses `@Parameter` annotations on mojo fields, which is the correct pattern. Maven `-D` properties only reach the mojo if a matching field exists. However, Maven doesn't reject unknown `-D` properties globally (they're just ignored). Consider adding validation in a shared `AbstractCodeNavigatorMojo` base class that checks `session.userProperties` against known param names — similar to the Gradle `warnUnknownProperties` approach.
-
-**Migration path**:
-1. Support both `-P` and `--option` syntax simultaneously (deprecate `-P`)
-2. Update `cnavAgentHelp` to show `--option` syntax
-3. Eventually remove `-P` support in a major version
+- ~~cnavTypeAffinity~~ — DONE (v0.1.102)
+- ~~@Option migration~~ — DONE (v0.1.99)
+- ~~Embedded Kotlin Compiler Frontend~~ — DONE (v0.1.90)
+- ~~`cnavFindCallers` class-match UX hint~~ — DONE (v0.1.80)

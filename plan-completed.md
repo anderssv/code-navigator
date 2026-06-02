@@ -1176,3 +1176,11 @@ Changed `packageFilter` from `PackageName` with `PackageName("")` magic value to
 Refactoring tasks' LLM format now produces standard unified diff (--- a/ +++ b/ @@ @@) with context lines instead of one-line summaries. Agents can read the exact edit plan from `-Ppreview -Pllm=true` and verify changes before applying. Uses LCS-based diff algorithm in `computeUnifiedDiff()`. Updated AgentHelpText to document the preview workflow for agents.
 
 
+
+---
+
+## ~~cnavTypeAffinity — type affinity analysis for move suggestions~~ — DONE (v0.1.102)
+
+**Value: high** | **Effort: medium**
+
+Analyzes a shared package (e.g. `domain/`) to find types that are exclusively owned by one feature package — candidates to move into that feature's package. Includes transitive port check, full ring recomputation for impact prediction, threshold parameter. Wired as Gradle task + Maven mojo with TaskOptionSyncTest enforcement.

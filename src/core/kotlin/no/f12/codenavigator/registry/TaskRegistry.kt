@@ -271,6 +271,7 @@ object TaskRegistry {
     val FROM_PACKAGE = ParamDef("from-package", "<pkg>", "Source package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val TO_PACKAGE = ParamDef("to-package", "<pkg>", "Target package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PORTS = ParamDef("ports", "<regex>", "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val AFFINITY_THRESHOLD = ParamDef("threshold", "<N>", "Max number of consumer domains to still count as single-owner", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
 
     val FORMAT_PARAMS = listOf(FORMAT)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
@@ -780,6 +781,18 @@ object TaskRegistry {
         ),
     )
 
+    val TYPE_AFFINITY = TaskDef(
+        goal = "type-affinity",
+        description = "Find types in a shared package that are exclusively used by one feature — candidates to move closer to their consumer",
+        params = FORMAT_PARAMS + listOf(PACKAGE, AFFINITY_THRESHOLD) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(listOf(PACKAGE to "com.example.domain")),
+            UsageExample(listOf(PACKAGE to "com.example.domain", AFFINITY_THRESHOLD to "2")),
+        ),
+    )
+
     val SIZE = TaskDef(
         goal = "size",
         description = "List source files by line count",
@@ -972,6 +985,7 @@ object TaskRegistry {
         VOLATILITY,
         BALANCE,
         RINGS,
+        TYPE_AFFINITY,
         REPORT,
         SIZE,
         DUPLICATES,

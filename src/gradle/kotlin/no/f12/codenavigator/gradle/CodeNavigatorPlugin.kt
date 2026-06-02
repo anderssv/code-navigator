@@ -149,6 +149,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "volatility" to PackageVolatilityTask::class.java,
             "balance" to BalanceTask::class.java,
             "rings" to RingsTask::class.java,
+            "type-affinity" to TypeAffinityTask::class.java,
             "report" to ReportTask::class.java,
             "size" to SizeTask::class.java,
             "duplicates" to DuplicatesTask::class.java,
