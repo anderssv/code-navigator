@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation.refactor
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 
 data class SafeDeleteConfig(
@@ -11,11 +12,10 @@ data class SafeDeleteConfig(
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): SafeDeleteConfig {
-            val className = properties[TaskRegistry.RENAME_CLASS.name]
-                ?: error("Missing required parameter: ${TaskRegistry.RENAME_CLASS.name}")
-            val methodName = properties[TaskRegistry.RENAME_METHOD.name]
-            val preview = properties.containsKey(TaskRegistry.PREVIEW.name)
-            val format = OutputFormat.from(properties["format"])
+            val className = TaskRegistry.RENAME_CLASS.parseRequiredFrom(properties)
+            val methodName = TaskRegistry.RENAME_METHOD.parseFrom(properties)
+            val preview: Boolean = TaskRegistry.PREVIEW.parseFrom(properties)
+            val format = ParamDef.parseFormat(properties)
             return SafeDeleteConfig(className, methodName, preview, format)
         }
     }
