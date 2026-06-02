@@ -6,6 +6,7 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.refactor.MoveClassFormatter
 import no.f12.codenavigator.navigation.refactor.MoveFileConfig
 import no.f12.codenavigator.navigation.refactor.MoveFileRewriter
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo
@@ -36,10 +37,8 @@ class MoveFileMojo : AbstractMojo() {
         val config = try {
             MoveFileConfig.parse(TaskRegistry.MOVE_FILE_TASK.enhanceProperties(buildPropertyMap()))
         } catch (e: IllegalArgumentException) {
-            println(OutputWrapper.emptyResult(OutputFormat.LLM, "move-file failed: ${e.message}", listOf(
-                "Usage: mvn cnav:move-file -Dfrom-file=<path> -Dto-package=<package>",
-                "Example: mvn cnav:move-file -Dfrom-file=src/main/kotlin/com/example/Foo.kt -Dto-package=com.example.other",
-            )))
+            println(OutputWrapper.emptyResult(OutputFormat.LLM, "move-file failed: ${e.message}",
+                TaskRegistry.MOVE_FILE_TASK.renderExamples(BuildTool.MAVEN)))
             return
         }
 

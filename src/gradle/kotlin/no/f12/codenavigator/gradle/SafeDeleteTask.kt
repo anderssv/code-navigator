@@ -6,8 +6,10 @@ import no.f12.codenavigator.navigation.refactor.SafeDeleteConfig
 import no.f12.codenavigator.navigation.refactor.SafeDeleteFormatter
 import no.f12.codenavigator.navigation.refactor.SafeDeleteResult
 import no.f12.codenavigator.formatting.OutputWrapper
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 
+import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Internal
@@ -45,9 +47,16 @@ abstract class SafeDeleteTask @Inject constructor(
 
     @TaskAction
     fun safeDelete() {
-        val config = SafeDeleteConfig.parse(
-            TaskRegistry.SAFE_DELETE_TASK.enhanceProperties(buildOptionsMap()),
-        )
+        val config = try {
+            SafeDeleteConfig.parse(
+                TaskRegistry.SAFE_DELETE_TASK.enhanceProperties(buildOptionsMap()),
+            )
+        } catch (e: IllegalArgumentException) {
+            throw GradleException(
+                "${e.message}\n${TaskRegistry.SAFE_DELETE_TASK.usageHint(BuildTool.GRADLE)}\n" +
+                    TaskRegistry.SAFE_DELETE_TASK.renderExamples(BuildTool.GRADLE).joinToString("\n"),
+            )
+        }
 
         val sourceSets = project.extensions.getByType(org.gradle.api.tasks.SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")

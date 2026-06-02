@@ -6,6 +6,7 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.refactor.RenameParamConfig
 import no.f12.codenavigator.navigation.refactor.RenameParamFormatter
 import no.f12.codenavigator.navigation.refactor.RenameParamRewriter
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo
@@ -39,7 +40,13 @@ class RenameParamMojo : AbstractMojo() {
     private var preview: String? = null
 
     override fun execute() {
-        val config = RenameParamConfig.parse(TaskRegistry.RENAME_PARAM_TASK.enhanceProperties(buildPropertyMap()))
+        val config = try {
+            RenameParamConfig.parse(TaskRegistry.RENAME_PARAM_TASK.enhanceProperties(buildPropertyMap()))
+        } catch (e: IllegalArgumentException) {
+            println(OutputWrapper.emptyResult(OutputFormat.LLM, "rename-param failed: ${e.message}",
+                TaskRegistry.RENAME_PARAM_TASK.renderExamples(BuildTool.MAVEN)))
+            return
+        }
 
         val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
             .map { root -> File(root as String) }

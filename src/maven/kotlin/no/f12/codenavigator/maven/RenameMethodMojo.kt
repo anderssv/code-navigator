@@ -6,6 +6,7 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.refactor.RenameMethodConfig
 import no.f12.codenavigator.navigation.refactor.RenameMethodFormatter
 import no.f12.codenavigator.navigation.refactor.RenameMethodRewriter
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo
@@ -36,7 +37,13 @@ class RenameMethodMojo : AbstractMojo() {
     private var preview: String? = null
 
     override fun execute() {
-        val config = RenameMethodConfig.parse(TaskRegistry.RENAME_METHOD_TASK.enhanceProperties(buildPropertyMap()))
+        val config = try {
+            RenameMethodConfig.parse(TaskRegistry.RENAME_METHOD_TASK.enhanceProperties(buildPropertyMap()))
+        } catch (e: IllegalArgumentException) {
+            println(OutputWrapper.emptyResult(OutputFormat.LLM, "rename-method failed: ${e.message}",
+                TaskRegistry.RENAME_METHOD_TASK.renderExamples(BuildTool.MAVEN)))
+            return
+        }
 
         val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
             .map { root -> File(root as String) }

@@ -6,8 +6,10 @@ import no.f12.codenavigator.navigation.refactor.RenamePropertyConfig
 import no.f12.codenavigator.navigation.refactor.RenamePropertyFormatter
 import no.f12.codenavigator.navigation.refactor.RenamePropertyResult
 import no.f12.codenavigator.formatting.OutputWrapper
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 
+import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Internal
@@ -50,9 +52,16 @@ abstract class RenamePropertyTask @Inject constructor(
 
     @TaskAction
     fun renameProperty() {
-        val config = RenamePropertyConfig.parse(
-            TaskRegistry.RENAME_PROPERTY_TASK.enhanceProperties(buildOptionsMap()),
-        )
+        val config = try {
+            RenamePropertyConfig.parse(
+                TaskRegistry.RENAME_PROPERTY_TASK.enhanceProperties(buildOptionsMap()),
+            )
+        } catch (e: IllegalArgumentException) {
+            throw GradleException(
+                "${e.message}\n${TaskRegistry.RENAME_PROPERTY_TASK.usageHint(BuildTool.GRADLE)}\n" +
+                    TaskRegistry.RENAME_PROPERTY_TASK.renderExamples(BuildTool.GRADLE).joinToString("\n"),
+            )
+        }
 
         val sourceRootPaths = project.sourceDirectories().map { it.absolutePath }
         val resultFileLocation = temporaryDir.resolve("rename-result.json")

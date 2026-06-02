@@ -6,8 +6,10 @@ import no.f12.codenavigator.navigation.refactor.RenameParamConfig
 import no.f12.codenavigator.navigation.refactor.RenameParamFormatter
 import no.f12.codenavigator.navigation.refactor.RenameResult
 import no.f12.codenavigator.formatting.OutputWrapper
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 
+import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Internal
@@ -55,9 +57,16 @@ abstract class RenameParamTask @Inject constructor(
 
     @TaskAction
     fun renameParam() {
-        val config = RenameParamConfig.parse(
-            TaskRegistry.RENAME_PARAM_TASK.enhanceProperties(buildOptionsMap()),
-        )
+        val config = try {
+            RenameParamConfig.parse(
+                TaskRegistry.RENAME_PARAM_TASK.enhanceProperties(buildOptionsMap()),
+            )
+        } catch (e: IllegalArgumentException) {
+            throw GradleException(
+                "${e.message}\n${TaskRegistry.RENAME_PARAM_TASK.usageHint(BuildTool.GRADLE)}\n" +
+                    TaskRegistry.RENAME_PARAM_TASK.renderExamples(BuildTool.GRADLE).joinToString("\n"),
+            )
+        }
 
         val sourceRootPaths = project.sourceDirectories().map { it.absolutePath }
         val resultFileLocation = temporaryDir.resolve("rename-result.json")

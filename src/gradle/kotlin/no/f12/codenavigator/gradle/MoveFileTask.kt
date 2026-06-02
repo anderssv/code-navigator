@@ -6,8 +6,10 @@ import no.f12.codenavigator.navigation.refactor.MoveClassFormatter
 import no.f12.codenavigator.navigation.refactor.MoveClassResult
 import no.f12.codenavigator.navigation.refactor.MoveFileConfig
 import no.f12.codenavigator.formatting.OutputWrapper
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 
+import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Internal
@@ -50,11 +52,10 @@ abstract class MoveFileTask @Inject constructor(
                 TaskRegistry.MOVE_FILE_TASK.enhanceProperties(buildOptionsMap()),
             )
         } catch (e: IllegalArgumentException) {
-            logger.lifecycle(OutputWrapper.emptyResult(OutputFormat.LLM, "move-file failed: ${e.message}", listOf(
-                "Usage: ./gradlew cnavMoveFile --from-file=<path> --to-package=<package>",
-                "Example: ./gradlew cnavMoveFile --from-file=src/main/kotlin/com/example/Foo.kt --to-package=com.example.other",
-            )))
-            return
+            throw GradleException(
+                "${e.message}\n${TaskRegistry.MOVE_FILE_TASK.usageHint(BuildTool.GRADLE)}\n" +
+                    TaskRegistry.MOVE_FILE_TASK.renderExamples(BuildTool.GRADLE).joinToString("\n"),
+            )
         }
 
         val sourceRootPaths = project.sourceDirectories().map { it.absolutePath }

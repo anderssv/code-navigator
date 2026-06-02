@@ -6,8 +6,10 @@ import no.f12.codenavigator.navigation.refactor.MoveClassConfig
 import no.f12.codenavigator.navigation.refactor.MoveClassFormatter
 import no.f12.codenavigator.navigation.refactor.MoveClassResult
 import no.f12.codenavigator.formatting.OutputWrapper
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 
+import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Internal
@@ -45,9 +47,16 @@ abstract class MoveClassTask @Inject constructor(
 
     @TaskAction
     fun moveClass() {
-        val config = MoveClassConfig.parse(
-            TaskRegistry.MOVE_CLASS_TASK.enhanceProperties(buildOptionsMap()),
-        )
+        val config = try {
+            MoveClassConfig.parse(
+                TaskRegistry.MOVE_CLASS_TASK.enhanceProperties(buildOptionsMap()),
+            )
+        } catch (e: IllegalArgumentException) {
+            throw GradleException(
+                "${e.message}\n${TaskRegistry.MOVE_CLASS_TASK.usageHint(BuildTool.GRADLE)}\n" +
+                    TaskRegistry.MOVE_CLASS_TASK.renderExamples(BuildTool.GRADLE).joinToString("\n"),
+            )
+        }
 
         val sourceRootPaths = project.sourceDirectories().map { it.absolutePath }
         val classpathDirs = project.taggedClassDirectories().map { (dir, _) -> dir.absolutePath }

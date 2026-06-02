@@ -6,8 +6,10 @@ import no.f12.codenavigator.navigation.refactor.ChangeSignatureConfig
 import no.f12.codenavigator.navigation.refactor.ChangeSignatureFormatter
 import no.f12.codenavigator.navigation.refactor.ChangeSignatureResult
 import no.f12.codenavigator.formatting.OutputWrapper
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 
+import org.gradle.api.GradleException
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Internal
@@ -55,9 +57,16 @@ abstract class ChangeSignatureTask @Inject constructor(
 
     @TaskAction
     fun changeSignature() {
-        val config = ChangeSignatureConfig.parse(
-            TaskRegistry.CHANGE_SIGNATURE_TASK.enhanceProperties(buildOptionsMap()),
-        )
+        val config = try {
+            ChangeSignatureConfig.parse(
+                TaskRegistry.CHANGE_SIGNATURE_TASK.enhanceProperties(buildOptionsMap()),
+            )
+        } catch (e: IllegalArgumentException) {
+            throw GradleException(
+                "${e.message}\n${TaskRegistry.CHANGE_SIGNATURE_TASK.usageHint(BuildTool.GRADLE)}\n" +
+                    TaskRegistry.CHANGE_SIGNATURE_TASK.renderExamples(BuildTool.GRADLE).joinToString("\n"),
+            )
+        }
 
         val sourceSets = project.extensions.getByType(org.gradle.api.tasks.SourceSetContainer::class.java)
         val mainSourceSet = sourceSets.getByName("main")

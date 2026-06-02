@@ -28,10 +28,10 @@ Fixed: error handling added so failures produce proper CNAV_BEGIN/CNAV_END outpu
 
 Fixed: constructor params without `val/var` that initialize body properties are now renamed correctly (both the param name and the initializer reference).
 
-### cnavDead false positive on extension functions
-**ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
+### ~~cnavDead false positive on extension functions~~ — DONE (v0.1.102)
+~~**ACTIVE**~~ **DONE (v0.1.102)** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
 
-`TimerHelpersKt` flagged as dead (HIGH confidence) but contains extension functions called from 4+ places. The `*Kt` facade class has no direct class references — callers use `INVOKESTATIC` on the facade. Fix: check method-level references for `*Kt` facade classes before marking as dead.
+Fixed: `*Kt` facade classes excluded from class-level dead code detection entirely (`DeadCodeFinder.kt:203`). Method-level dead code on facades is still reported. `ConfidenceScorer` cleaned up.
 
 ---
 
@@ -253,10 +253,10 @@ For interfaces matching a pattern, check method signatures reference only domain
 
 ## Output & UX
 
-### Per-task help with usage on error
-**ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
+### ~~Per-task help with usage on error~~ — DONE
+~~**ACTIVE**~~ **DONE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
 
-When wrong parameters are passed, show the task's examples from TaskRegistry instead of stack trace. Straightforward: catch exceptions, print from existing TaskRegistry examples.
+All refactoring tasks (Gradle + Maven) now catch `IllegalArgumentException` on config parse and show `usageHint()` + `renderExamples()` instead of a raw stack trace.
 
 ### `TaskGuidance` — structured context output for all tasks
 **ACTIVE** | **Value: medium** | **Effort: high** | Source: internal
@@ -278,10 +278,10 @@ Replaces scattered `*_INTERPRETATION` constants with single source of truth per 
 
 After successful refactoring, include contextual hints suggesting further analysis (e.g., after `cnavMoveClass` → suggest `cnavPackageDeps` to verify improvement).
 
-### Refactoring task discoverability
-**ACTIVE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.72)
+### ~~Refactoring task discoverability~~ — DONE
+~~**ACTIVE**~~ **DONE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.72)
 
-Agent ran `cnavFindUsages` at start of class move and missed that `cnavMoveClass` exists. Remaining: audit whether `cnavAgentHelp` mentions refactoring outcomes in workflow/interpretation sections. Mostly done already.
+Covered: `generateCompact()` has "When Refactoring" block (line 150) + "Common Refactoring Tasks" section + explicit `"I'm about to rename/move/delete → move-class/rename-method --preview"` hint in the Exploring section.
 
 ### `cnavAnnotations`: methods=true as default for common annotations
 **ACTIVE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
@@ -369,10 +369,12 @@ A single logical call site produces 3-4 lines (`.new` + `.<init>` + `.checkcast`
 
 ## Classpath / JAR scanning
 
-### Maven: `--jar` support for Mojos
-**ACTIVE** | **Value: medium** | **Effort: low** | Source: internal
+### ~~Maven: `--jar` support for Mojos~~ — DONE
+~~**ACTIVE**~~ **DONE** | **Value: medium** | **Effort: low** | Source: internal
 
-Add `@Parameter(property = "jar")` to `ListClassesMojo`, `FindClassMojo`, `ClassDetailMojo`, `FindSymbolMojo`.
+~~Add `@Parameter(property = "jar")` to `ListClassesMojo`, `FindClassMojo`, `ClassDetailMojo`, `FindSymbolMojo`.~~
+
+Already implemented: all four mojos have `@Parameter(property = "jar")` and full jar branch logic.
 
 ### Full classpath scanning option
 **FUTURE** | **Value: medium** | **Effort: medium** | Source: internal

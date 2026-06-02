@@ -6,6 +6,7 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.refactor.SafeDeleteConfig
 import no.f12.codenavigator.navigation.refactor.SafeDeleteFormatter
 import no.f12.codenavigator.navigation.refactor.SafeDeleteRewriter
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo
@@ -34,7 +35,13 @@ class SafeDeleteMojo : AbstractMojo() {
     private var preview: String? = null
 
     override fun execute() {
-        val config = SafeDeleteConfig.parse(TaskRegistry.SAFE_DELETE_TASK.enhanceProperties(buildPropertyMap()))
+        val config = try {
+            SafeDeleteConfig.parse(TaskRegistry.SAFE_DELETE_TASK.enhanceProperties(buildPropertyMap()))
+        } catch (e: IllegalArgumentException) {
+            println(OutputWrapper.emptyResult(OutputFormat.LLM, "safe-delete failed: ${e.message}",
+                TaskRegistry.SAFE_DELETE_TASK.renderExamples(BuildTool.MAVEN)))
+            return
+        }
 
         val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
             .map { root -> File(root as String) }

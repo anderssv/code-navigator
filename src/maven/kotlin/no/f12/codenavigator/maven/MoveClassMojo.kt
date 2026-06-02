@@ -6,6 +6,7 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.refactor.MoveClassConfig
 import no.f12.codenavigator.navigation.refactor.MoveClassFormatter
 import no.f12.codenavigator.navigation.refactor.MoveClassRewriter
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo
@@ -34,7 +35,13 @@ open class MoveClassMojo : AbstractMojo() {
     protected var preview: String? = null
 
     override fun execute() {
-        val config = MoveClassConfig.parse(TaskRegistry.MOVE_CLASS_TASK.enhanceProperties(buildPropertyMap()))
+        val config = try {
+            MoveClassConfig.parse(TaskRegistry.MOVE_CLASS_TASK.enhanceProperties(buildPropertyMap()))
+        } catch (e: IllegalArgumentException) {
+            println(OutputWrapper.emptyResult(OutputFormat.LLM, "move-class failed: ${e.message}",
+                TaskRegistry.MOVE_CLASS_TASK.renderExamples(BuildTool.MAVEN)))
+            return
+        }
 
         val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
             .map { root -> File(root as String) }
