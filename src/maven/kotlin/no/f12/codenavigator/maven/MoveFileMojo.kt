@@ -33,7 +33,15 @@ class MoveFileMojo : AbstractMojo() {
     private var preview: String? = null
 
     override fun execute() {
-        val config = MoveFileConfig.parse(TaskRegistry.MOVE_FILE_TASK.enhanceProperties(buildPropertyMap()))
+        val config = try {
+            MoveFileConfig.parse(TaskRegistry.MOVE_FILE_TASK.enhanceProperties(buildPropertyMap()))
+        } catch (e: IllegalArgumentException) {
+            println(OutputWrapper.emptyResult(OutputFormat.LLM, "move-file failed: ${e.message}", listOf(
+                "Usage: mvn cnav:move-file -Dfrom-file=<path> -Dto-package=<package>",
+                "Example: mvn cnav:move-file -Dfrom-file=src/main/kotlin/com/example/Foo.kt -Dto-package=com.example.other",
+            )))
+            return
+        }
 
         val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
             .map { root -> File(root as String) }
@@ -44,13 +52,18 @@ class MoveFileMojo : AbstractMojo() {
             File(project.build.testOutputDirectory).takeIf { it.exists() }?.toPath(),
         )
 
-        val result = MoveFileRewriter.move(
-            sourceRoots = sourceRoots,
-            fromFile = config.fromFile,
-            toPackage = config.toPackage,
-            classpath = classpath,
-            preview = config.preview,
-        )
+        val result = try {
+            MoveFileRewriter.move(
+                sourceRoots = sourceRoots,
+                fromFile = config.fromFile,
+                toPackage = config.toPackage,
+                classpath = classpath,
+                preview = config.preview,
+            )
+        } catch (e: Exception) {
+            println(OutputWrapper.emptyResult(config.format, "move-file failed: ${e.message ?: "unknown error"}", noResultsHints(config)))
+            return
+        }
 
         if (result.changes.isEmpty()) {
             println(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
@@ -58,12 +71,12 @@ class MoveFileMojo : AbstractMojo() {
         }
 
         println(OutputWrapper.formatAndWrap(config.format) { format ->
-    when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.formatFileMove(result, config)
-        OutputFormat.JSON -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
-        OutputFormat.LLM -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
-    }
-})
+            when (format) {
+                OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.formatFileMove(result, config)
+                OutputFormat.JSON -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
+                OutputFormat.LLM -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
+            }
+        })
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {

@@ -45,9 +45,17 @@ abstract class MoveFileTask @Inject constructor(
 
     @TaskAction
     fun moveFile() {
-        val config = MoveFileConfig.parse(
-            TaskRegistry.MOVE_FILE_TASK.enhanceProperties(buildOptionsMap()),
-        )
+        val config = try {
+            MoveFileConfig.parse(
+                TaskRegistry.MOVE_FILE_TASK.enhanceProperties(buildOptionsMap()),
+            )
+        } catch (e: IllegalArgumentException) {
+            logger.lifecycle(OutputWrapper.emptyResult(OutputFormat.LLM, "move-file failed: ${e.message}", listOf(
+                "Usage: ./gradlew cnavMoveFile --from-file=<path> --to-package=<package>",
+                "Example: ./gradlew cnavMoveFile --from-file=src/main/kotlin/com/example/Foo.kt --to-package=com.example.other",
+            )))
+            return
+        }
 
         val sourceRootPaths = project.sourceDirectories().map { it.absolutePath }
         val classpathDirs = project.taggedClassDirectories().map { (dir, _) -> dir.absolutePath }
@@ -66,7 +74,17 @@ abstract class MoveFileTask @Inject constructor(
             resultFile.set(resultFileLocation)
         }
 
-        workQueue.await()
+        try {
+            workQueue.await()
+        } catch (e: Exception) {
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "move-file failed: ${e.message ?: "unknown error"}", noResultsHints(config)))
+            return
+        }
+
+        if (!resultFileLocation.exists()) {
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "move-file failed: no result produced.", noResultsHints(config)))
+            return
+        }
 
         val result = MoveClassResult.fromJson(resultFileLocation.readText())
 
@@ -76,12 +94,12 @@ abstract class MoveFileTask @Inject constructor(
         }
 
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
-    when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.formatFileMove(result, config)
-        OutputFormat.JSON -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
-        OutputFormat.LLM -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
-    }
-})
+            when (format) {
+                OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.formatFileMove(result, config)
+                OutputFormat.JSON -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
+                OutputFormat.LLM -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
+            }
+        })
     }
 
     private fun noResultsHints(config: MoveFileConfig): List<String> = buildList {
