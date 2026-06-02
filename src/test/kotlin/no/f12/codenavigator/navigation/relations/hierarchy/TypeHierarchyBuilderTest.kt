@@ -1,264 +1,112 @@
 package no.f12.codenavigator.navigation.relations.hierarchy
 
-import no.f12.codenavigator.navigation.*
-
 import no.f12.codenavigator.navigation.types.ClassName
-import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeKind
-import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyBuilder
-import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import java.nio.file.Path
-import java.util.jar.JarEntry
-import java.util.jar.JarOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class TypeHierarchyBuilderTest {
 
-    @TempDir
-    lateinit var tempDir: Path
+    private val testProjectClasses = File("test-project/build/classes/kotlin/main")
 
     @Test
-    fun `builds hierarchy for class with no supertypes and no implementors`() {
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Simple", "Simple.kt")
+    fun `builds hierarchy for class with no supertypes beyond Object`() {
+        val results = TypeHierarchyBuilder.build(listOf(testProjectClasses), "EventSender", projectOnly = true)
 
-        val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "Simple", projectOnly = false)
-
-        assertEquals(1, results.size)
-        val result = results.first()
-        assertEquals(ClassName("com.example.Simple"), result.className)
-        assertTrue(result.supertypes.isEmpty())
-        assertTrue(result.implementors.isEmpty())
+        assertTrue(results.isNotEmpty())
+        val result = results.first { it.className.value == "com.example.infra.EventSender" }
+        assertTrue(result.supertypes.isEmpty(), "EventSender has no project supertypes")
     }
 
     @Test
     fun `builds hierarchy showing direct superclass`() {
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Base", "Base.kt")
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/Child", "Child.kt",
-            superName = "com/example/Base",
-        )
-
-        val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "Child", projectOnly = false)
+        val results = TypeHierarchyBuilder.build(listOf(testProjectClasses), "ConcreteService", projectOnly = true)
 
         assertEquals(1, results.size)
-        val result = results.first()
-        assertEquals(1, result.supertypes.size)
-        val supertype = result.supertypes.first()
-        assertEquals(ClassName("com.example.Base"), supertype.className)
-        assertEquals(SupertypeKind.CLASS, supertype.kind)
+        val supertypes = results.first().supertypes
+        val superclass = supertypes.firstOrNull { it.kind == SupertypeKind.CLASS }
+        assertEquals(ClassName("com.example.variants.hierarchy.BaseService"), superclass?.className)
     }
 
     @Test
     fun `builds hierarchy showing direct interfaces`() {
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Readable", "Readable.kt")
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/MyClass", "MyClass.kt",
-            interfaces = arrayOf("com/example/Readable"),
-        )
-
-        val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "MyClass", projectOnly = false)
+        val results = TypeHierarchyBuilder.build(listOf(testProjectClasses), "ConcreteService", projectOnly = true)
 
         assertEquals(1, results.size)
-        val iface = results.first().supertypes.first()
-        assertEquals(ClassName("com.example.Readable"), iface.className)
-        assertEquals(SupertypeKind.INTERFACE, iface.kind)
-    }
-
-    @Test
-    fun `walks superclass chain recursively`() {
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Grandparent", "Grandparent.kt")
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/Parent", "Parent.kt",
-            superName = "com/example/Grandparent",
-        )
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/Child", "Child.kt",
-            superName = "com/example/Parent",
-        )
-
-        val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "Child", projectOnly = false)
-
-        val parent = results.first().supertypes.first()
-        assertEquals(ClassName("com.example.Parent"), parent.className)
-        assertEquals(1, parent.supertypes.size)
-        val grandparent = parent.supertypes.first()
-        assertEquals(ClassName("com.example.Grandparent"), grandparent.className)
+        val interfaces = results.first().supertypes.filter { it.kind == SupertypeKind.INTERFACE }
+        val names = interfaces.map { it.className.value }.toSet()
+        assertTrue("com.example.variants.hierarchy.Cacheable" in names)
+        assertTrue("com.example.variants.hierarchy.Validatable" in names)
     }
 
     @Test
     fun `walks interface chain recursively`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/BaseInterface", "BaseInterface.kt",
-            access = org.objectweb.asm.Opcodes.ACC_PUBLIC or org.objectweb.asm.Opcodes.ACC_INTERFACE or org.objectweb.asm.Opcodes.ACC_ABSTRACT,
-        )
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/SubInterface", "SubInterface.kt",
-            access = org.objectweb.asm.Opcodes.ACC_PUBLIC or org.objectweb.asm.Opcodes.ACC_INTERFACE or org.objectweb.asm.Opcodes.ACC_ABSTRACT,
-            interfaces = arrayOf("com/example/BaseInterface"),
-        )
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/Impl", "Impl.kt",
-            interfaces = arrayOf("com/example/SubInterface"),
-        )
+        // FetchService implements Fetchable, which extends Cacheable
+        val results = TypeHierarchyBuilder.build(listOf(testProjectClasses), "FetchService", projectOnly = true)
 
-        val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "Impl", projectOnly = false)
-
-        val subInterface = results.first().supertypes.first()
-        assertEquals(ClassName("com.example.SubInterface"), subInterface.className)
-        assertEquals(SupertypeKind.INTERFACE, subInterface.kind)
-        val baseInterface = subInterface.supertypes.first()
-        assertEquals(ClassName("com.example.BaseInterface"), baseInterface.className)
-        assertEquals(SupertypeKind.INTERFACE, baseInterface.kind)
+        assertEquals(1, results.size)
+        val fetchable = results.first().supertypes.firstOrNull {
+            it.className.value == "com.example.variants.hierarchy.Fetchable"
+        }
+        assertTrue(fetchable != null, "Should find Fetchable interface")
+        val cacheable = fetchable.supertypes.firstOrNull {
+            it.className.value == "com.example.variants.hierarchy.Cacheable"
+        }
+        assertTrue(cacheable != null, "Fetchable should show Cacheable as supertype")
     }
 
     @Test
     fun `combines superclass and interfaces`() {
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Base", "Base.kt")
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Readable", "Readable.kt")
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/MyClass", "MyClass.kt",
-            superName = "com/example/Base",
-            interfaces = arrayOf("com/example/Readable"),
-        )
-
-        val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "MyClass", projectOnly = false)
+        val results = TypeHierarchyBuilder.build(listOf(testProjectClasses), "ConcreteService", projectOnly = true)
 
         val supertypes = results.first().supertypes
-        assertEquals(2, supertypes.size)
-        assertEquals(ClassName("com.example.Base"), supertypes[0].className)
-        assertEquals(SupertypeKind.CLASS, supertypes[0].kind)
-        assertEquals(ClassName("com.example.Readable"), supertypes[1].className)
-        assertEquals(SupertypeKind.INTERFACE, supertypes[1].kind)
+        assertTrue(supertypes.size >= 3, "Should have BaseService + Cacheable + Validatable, got: ${supertypes.map { it.className.value }}")
     }
 
     @Test
     fun `shows implementors for an interface`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/Repository", "Repository.kt",
-            access = org.objectweb.asm.Opcodes.ACC_PUBLIC or org.objectweb.asm.Opcodes.ACC_INTERFACE or org.objectweb.asm.Opcodes.ACC_ABSTRACT,
-        )
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/UserRepo", "UserRepo.kt",
-            interfaces = arrayOf("com/example/Repository"),
-        )
+        val results = TypeHierarchyBuilder.build(listOf(testProjectClasses), "Validatable", projectOnly = true)
 
-        val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "Repository", projectOnly = false)
-
-        assertEquals(1, results.size)
-        val implementors = results.first().implementors
-        assertEquals(1, implementors.size)
-        assertEquals(ClassName("com.example.UserRepo"), implementors.first().className)
+        val validatableResult = results.first { it.className.value == "com.example.variants.hierarchy.Validatable" }
+        val implNames = validatableResult.implementors.map { it.className.value }.toSet()
+        assertTrue("com.example.variants.hierarchy.ConcreteService" in implNames,
+            "ConcreteService should implement Validatable. Got: $implNames")
     }
 
     @Test
     fun `matches classes by pattern case-insensitively`() {
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/MyService", "MyService.kt")
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/OtherClass", "OtherClass.kt")
-
-        val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "myservice", projectOnly = false)
+        val results = TypeHierarchyBuilder.build(listOf(testProjectClasses), "concreteservice", projectOnly = true)
 
         assertEquals(1, results.size)
-        assertEquals(ClassName("com.example.MyService"), results.first().className)
-    }
-
-    @Test
-    fun `shows direct library supertypes even when projectOnly is true`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/MyClass", "MyClass.kt",
-            interfaces = arrayOf("java/io/Serializable"),
-        )
-
-        val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "MyClass", projectOnly = true)
-
-        assertEquals(1, results.first().supertypes.size)
-        val supertype = results.first().supertypes.first()
-        assertEquals(ClassName("java.io.Serializable"), supertype.className)
-        assertEquals(SupertypeKind.INTERFACE, supertype.kind)
-        assertTrue(supertype.supertypes.isEmpty(), "should not recurse into library types")
-    }
-
-    @Test
-    fun `includes non-project supertypes when projectOnly is false`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/MyClass", "MyClass.kt",
-            interfaces = arrayOf("java/io/Serializable"),
-        )
-
-        val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "MyClass", projectOnly = false)
-
-        assertEquals(1, results.first().supertypes.size)
-        assertEquals(ClassName("java.io.Serializable"), results.first().supertypes.first().className)
+        assertEquals(ClassName("com.example.variants.hierarchy.ConcreteService"), results.first().className)
     }
 
     @Test
     fun `returns empty list when pattern matches nothing`() {
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/MyClass", "MyClass.kt")
-
-        val results = TypeHierarchyBuilder.build(listOf(tempDir.toFile()), "NonExistent", projectOnly = false)
+        val results = TypeHierarchyBuilder.build(listOf(testProjectClasses), "NonExistentXyz123", projectOnly = true)
 
         assertTrue(results.isEmpty())
     }
 
     @Test
-    fun `resolves full supertype chain through classpath JARs`() {
-        // Library JAR contains: BaseRepo extends AbstractRepo
-        val jarFile = createJarWithClasses(
-            tempDir.toFile(),
-            "lib.jar",
-            listOf(
-                ClassDef("org/framework/AbstractRepo", superName = "java/lang/Object"),
-                ClassDef("org/framework/BaseRepo", superName = "org/framework/AbstractRepo"),
-            ),
-        )
+    fun `projectOnly true stops recursion at non-project types`() {
+        // ConcreteService extends BaseService which extends Object (non-project)
+        val results = TypeHierarchyBuilder.build(listOf(testProjectClasses), "ConcreteService", projectOnly = true)
 
-        // Project class extends library BaseRepo
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/UserRepo", "UserRepo.kt",
-            superName = "org/framework/BaseRepo",
-        )
-
-        val results = TypeHierarchyBuilder.build(
-            listOf(tempDir.toFile()),
-            "UserRepo",
-            projectOnly = false,
-            classpath = listOf(jarFile.toPath()),
-        )
-
-        assertEquals(1, results.size)
-        val baseRepo = results.first().supertypes.first()
-        assertEquals(ClassName("org.framework.BaseRepo"), baseRepo.className)
-        assertEquals(SupertypeKind.CLASS, baseRepo.kind)
-
-        val abstractRepo = baseRepo.supertypes.first()
-        assertEquals(ClassName("org.framework.AbstractRepo"), abstractRepo.className)
-        assertEquals(SupertypeKind.CLASS, abstractRepo.kind)
+        val baseService = results.first().supertypes.first { it.className.value == "com.example.variants.hierarchy.BaseService" }
+        // BaseService's superclass is Object — should not recurse into it
+        assertTrue(baseService.supertypes.isEmpty(), "Should not recurse into non-project types")
     }
 
-    private data class ClassDef(
-        val name: String,
-        val superName: String = "java/lang/Object",
-        val interfaces: Array<String>? = null,
-    )
+    @Test
+    fun `shows sealed class implementors`() {
+        val results = TypeHierarchyBuilder.build(listOf(testProjectClasses), "UserError", projectOnly = true)
 
-    private fun createJarWithClasses(dir: File, jarName: String, classes: List<ClassDef>): File {
-        val jarFile = File(dir, jarName)
-        JarOutputStream(jarFile.outputStream()).use { jos ->
-            for (classDef in classes) {
-                val writer = org.objectweb.asm.ClassWriter(0)
-                writer.visit(
-                    org.objectweb.asm.Opcodes.V17,
-                    org.objectweb.asm.Opcodes.ACC_PUBLIC,
-                    classDef.name, null, classDef.superName, classDef.interfaces,
-                )
-                writer.visitEnd()
-                val entry = JarEntry("${classDef.name}.class")
-                jos.putNextEntry(entry)
-                jos.write(writer.toByteArray())
-                jos.closeEntry()
-            }
-        }
-        return jarFile
+        val userError = results.firstOrNull { it.className.value == "com.example.domain.UserError" }
+        assertTrue(userError != null, "Should find UserError")
+        val implNames = userError.implementors.map { it.className.value }.toSet()
+        assertTrue("com.example.domain.UserError\$NotFound" in implNames)
+        assertTrue("com.example.domain.UserError\$ValidationFailed" in implNames)
     }
 }

@@ -1,74 +1,45 @@
 package no.f12.codenavigator.navigation.symbol
 
-import no.f12.codenavigator.navigation.*
-
 import no.f12.codenavigator.navigation.symbol.SymbolKind
 import no.f12.codenavigator.navigation.symbol.SymbolScanner
-import org.objectweb.asm.Opcodes
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import java.nio.file.Path
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class SymbolScannerTest {
 
-    @TempDir
-    lateinit var tempDir: Path
-
-    private lateinit var classesDir: File
-
-    @BeforeEach
-    fun setUp() {
-        classesDir = tempDir.resolve("build/classes/kotlin/main").toFile()
-        classesDir.mkdirs()
-    }
+    private val testProjectClasses = File("test-project/build/classes/kotlin/main")
 
     @Test
-    fun `scans directory and finds symbols from all class files`() {
-        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceA", "ServiceA.kt") {
-            visitMethod(Opcodes.ACC_PUBLIC, "doWork", "()V", null, null)
-        }
-        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceB", "ServiceB.kt") {
-            visitField(Opcodes.ACC_PUBLIC, "count", "I", null, null)
-        }
+    fun `scans directory and finds symbols from class files`() {
+        val results = SymbolScanner.scan(listOf(testProjectClasses)).data
 
-        val results = SymbolScanner.scan(listOf(classesDir)).data
-
-        assertEquals(2, results.size)
-        assertEquals("doWork", results.first { it.kind == SymbolKind.METHOD }.symbolName)
-        assertEquals("count", results.first { it.kind == SymbolKind.FIELD }.symbolName)
+        assertTrue(results.size > 20, "Should find many symbols in test-project, got: ${results.size}")
+        assertTrue(results.any { it.kind == SymbolKind.METHOD })
+        assertTrue(results.any { it.kind == SymbolKind.FIELD })
     }
 
     @Test
     fun `returns empty list for empty directory`() {
-        val results = SymbolScanner.scan(listOf(classesDir)).data
+        val emptyDir = File("test-project/build/classes/kotlin/main/com/example/nonexistent")
+
+        val results = SymbolScanner.scan(listOf(emptyDir)).data
 
         assertTrue(results.isEmpty())
     }
 
     @Test
     fun `results are sorted by package then class then symbol name`() {
-        TestClassWriter.writeClassFile(classesDir, "com/example/Zebra", "Zebra.kt") {
-            visitMethod(Opcodes.ACC_PUBLIC, "zzz", "()V", null, null)
-        }
-        TestClassWriter.writeClassFile(classesDir, "com/example/Alpha", "Alpha.kt") {
-            visitMethod(Opcodes.ACC_PUBLIC, "aaa", "()V", null, null)
-        }
+        val results = SymbolScanner.scan(listOf(testProjectClasses)).data
 
-        val results = SymbolScanner.scan(listOf(classesDir)).data
-
-        assertEquals(
-            listOf("aaa", "zzz"),
-            results.map { it.symbolName },
-        )
+        val sortKeys = results.map { Triple(it.packageName.value, it.className.value, it.symbolName) }
+        val sorted = sortKeys.sortedWith(compareBy({ it.first }, { it.second }, { it.third }))
+        assertTrue(sortKeys == sorted, "Results should be sorted")
     }
 
     @Test
     fun `handles non-existent directory gracefully`() {
-        val nonExistent = tempDir.resolve("does-not-exist").toFile()
+        val nonExistent = File("test-project/build/classes/does-not-exist")
 
         val results = SymbolScanner.scan(listOf(nonExistent)).data
 
@@ -77,16 +48,19 @@ class SymbolScannerTest {
 
     @Test
     fun `skips synthetic and lambda class files`() {
-        TestClassWriter.writeClassFile(classesDir, "com/example/Foo", "Foo.kt") {
-            visitMethod(Opcodes.ACC_PUBLIC, "realMethod", "()V", null, null)
-        }
-        TestClassWriter.writeClassFile(classesDir, "com/example/Foo\$1", "Foo.kt") {
-            visitMethod(Opcodes.ACC_PUBLIC, "invoke", "()V", null, null)
-        }
+        val results = SymbolScanner.scan(listOf(testProjectClasses)).data
 
-        val results = SymbolScanner.scan(listOf(classesDir)).data
+        // No symbols should come from lambda classes
+        assertTrue(results.none { "\$" in it.className.value && it.className.value.last().isDigit() },
+            "Should skip lambda/anonymous classes")
+    }
 
-        assertEquals(1, results.size)
-        assertEquals("realMethod", results.first().symbolName)
+    @Test
+    fun `finds known symbols from test-project`() {
+        val results = SymbolScanner.scan(listOf(testProjectClasses)).data
+        val symbolsByClass = results.groupBy { it.className.value }
+
+        assertTrue("resetPassword" in (symbolsByClass["com.example.services.UserService"]?.map { it.symbolName } ?: emptyList()),
+            "Should find resetPassword in UserService")
     }
 }

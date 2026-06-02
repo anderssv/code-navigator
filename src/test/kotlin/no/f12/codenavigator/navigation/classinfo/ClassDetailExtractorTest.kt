@@ -18,46 +18,66 @@ import kotlin.test.assertTrue
 
 class ClassDetailExtractorTest {
 
+    private val testProjectClasses = File("test-project/build/classes/kotlin/main")
+
     @TempDir
     lateinit var tempDir: Path
 
+    // --- Tests using test-project (real Kotlin compiler output) ---
+
     @Test
     fun `extracts class name and source file`() {
-        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/MyService", "MyService.kt")
+        val classFile = testProjectClasses.resolve("com/example/domain/UserFormatter.class")
 
         val detail = ClassDetailExtractor.extract(classFile)
 
-        assertEquals("com.example.MyService", detail.className.value)
-        assertEquals("MyService.kt", detail.sourceFile)
+        assertEquals("com.example.domain.UserFormatter", detail.className.value)
+        assertEquals("UserFormatter.kt", detail.sourceFile)
     }
 
-    // [TEST-DONE] Extracts class name and source file
     @Test
     fun `extracts superclass name when not Object`() {
-        val classFile = TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/AdminService", "AdminService.kt",
-            superName = "com/example/BaseService",
-        )
+        val classFile = testProjectClasses.resolve("com/example/variants/hierarchy/ConcreteService.class")
 
         val detail = ClassDetailExtractor.extract(classFile)
 
-        assertEquals("com.example.BaseService", detail.superClass?.value)
+        assertEquals("com.example.variants.hierarchy.BaseService", detail.superClass?.value)
     }
 
-    // [TEST-DONE] Extracts superclass name (non-Object)
     @Test
     fun `extracts implemented interfaces`() {
-        val classFile = TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/MyRepo", "MyRepo.kt",
-            interfaces = arrayOf("com/example/Repository", "java/io/Serializable"),
-        )
+        val classFile = testProjectClasses.resolve("com/example/variants/hierarchy/ConcreteService.class")
 
         val detail = ClassDetailExtractor.extract(classFile)
 
-        assertEquals(listOf("com.example.Repository", "java.io.Serializable"), detail.interfaces.map { it.value })
+        val ifaceNames = detail.interfaces.map { it.value }.toSet()
+        assertTrue("com.example.variants.hierarchy.Cacheable" in ifaceNames)
+        assertTrue("com.example.variants.hierarchy.Validatable" in ifaceNames)
     }
 
-    // [TEST-DONE] Extracts implemented interfaces
+    @Test
+    fun `default superclass Object is shown as null`() {
+        val classFile = testProjectClasses.resolve("com/example/domain/UserFormatter.class")
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        assertEquals(null, detail.superClass)
+    }
+
+    @Test
+    fun `class with no interfaces has empty list`() {
+        val classFile = testProjectClasses.resolve("com/example/domain/UserFormatter.class")
+
+        val detail = ClassDetailExtractor.extract(classFile)
+
+        assertTrue(detail.interfaces.isEmpty())
+    }
+
+    // --- Tests using synthetic bytecode ---
+    // These test specific bytecode patterns (ACC_SYNTHETIC flags, exact method signatures,
+    // annotation visitor callbacks) where precise control over bytecode is required.
+    // The Kotlin compiler's output is too complex and unpredictable for these fine-grained tests.
+
     @Test
     fun `extracts public methods with parameter types and return type`() {
         val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Service", "Service.kt") {
@@ -149,27 +169,6 @@ class ClassDetailExtractorTest {
     }
 
     // [TEST-DONE] Filters out data class generated methods
-    @Test
-    fun `default superclass Object is shown as null`() {
-        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Simple", "Simple.kt")
-
-        val detail = ClassDetailExtractor.extract(classFile)
-
-        assertEquals(null, detail.superClass)
-    }
-
-    // [TEST-DONE] Default superclass is Object (shown as empty/null)
-
-    @Test
-    fun `class with no interfaces has empty list`() {
-        val classFile = TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Plain", "Plain.kt")
-
-        val detail = ClassDetailExtractor.extract(classFile)
-
-        assertTrue(detail.interfaces.isEmpty())
-    }
-
-    // [TEST-DONE] Class with no interfaces has empty list
 
     @Test
     fun `INSTANCE field is excluded from fields`() {

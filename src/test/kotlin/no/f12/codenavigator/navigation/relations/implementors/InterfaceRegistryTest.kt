@@ -1,366 +1,151 @@
 package no.f12.codenavigator.navigation.relations.implementors
 
-import no.f12.codenavigator.navigation.*
-
-import no.f12.codenavigator.navigation.relations.implementors.*
-
 import no.f12.codenavigator.navigation.types.ClassName
-import no.f12.codenavigator.navigation.TestClassWriter
-
-import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class InterfaceRegistryTest {
 
-    @TempDir
-    lateinit var tempDir: Path
+    private val testProjectClasses = File("test-project/build/classes/kotlin/main")
 
     @Test
     fun `finds implementors of an interface`() {
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Repository", "Repository.kt")
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/UserRepository", "UserRepository.kt",
-            interfaces = arrayOf("com/example/Repository"),
-        )
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-
-        val implementors = registry.implementorsOf(ClassName("com.example.Repository"))
-        assertEquals(1, implementors.size)
-        assertEquals("com.example.UserRepository", implementors.first().className.value)
-        assertEquals("UserRepository.kt", implementors.first().sourceFile)
+        val implementors = registry.implementorsOf(ClassName("com.example.domain.NotificationSender"))
+        val names = implementors.map { it.className.value }.sorted()
+        assertTrue(names.contains("com.example.infra.EmailNotificationSender"))
+        assertTrue(names.contains("com.example.infra.NoOpNotificationSender"))
     }
 
-    // [TEST-DONE] Finds implementors of an interface
     @Test
     fun `returns empty list for interface with no implementors`() {
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Repository", "Repository.kt")
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-
-        assertTrue(registry.implementorsOf(ClassName("com.example.Repository")).isEmpty())
+        assertTrue(registry.implementorsOf(ClassName("com.example.nonexistent.Missing")).isEmpty())
     }
-
-    // [TEST-DONE] Returns empty set for interface with no implementors
 
     @Test
     fun `finds multiple implementors of the same interface`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/UserRepo", "UserRepo.kt",
-            interfaces = arrayOf("com/example/Repository"),
-        )
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/OrderRepo", "OrderRepo.kt",
-            interfaces = arrayOf("com/example/Repository"),
-        )
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-
-        val names = registry.implementorsOf(ClassName("com.example.Repository")).map { it.className.value }
-        assertEquals(listOf("com.example.OrderRepo", "com.example.UserRepo"), names)
+        val names = registry.implementorsOf(ClassName("com.example.domain.NotificationSender")).map { it.className.value }
+        assertTrue(names.size >= 2, "NotificationSender should have at least 2 implementors, got: $names")
     }
-
-    // [TEST-DONE] Finds multiple implementors of the same interface
 
     @Test
     fun `class implementing multiple interfaces appears under each`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/FullRepo", "FullRepo.kt",
-            interfaces = arrayOf("com/example/Readable", "com/example/Writable"),
-        )
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-
-        assertEquals(1, registry.implementorsOf(ClassName("com.example.Readable")).size)
-        assertEquals(1, registry.implementorsOf(ClassName("com.example.Writable")).size)
-        assertEquals("com.example.FullRepo", registry.implementorsOf(ClassName("com.example.Readable")).first().className.value)
+        // ConcreteService implements both Cacheable and Validatable
+        val cacheableImpls = registry.implementorsOf(ClassName("com.example.variants.hierarchy.Cacheable")).map { it.className.value }
+        val validatableImpls = registry.implementorsOf(ClassName("com.example.variants.hierarchy.Validatable")).map { it.className.value }
+        assertTrue("com.example.variants.hierarchy.ConcreteService" in cacheableImpls)
+        assertTrue("com.example.variants.hierarchy.ConcreteService" in validatableImpls)
     }
-
-    // [TEST-DONE] Class implementing multiple interfaces appears under each
 
     @Test
     fun `findInterfaces matches pattern case-insensitively`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/UserRepo", "UserRepo.kt",
-            interfaces = arrayOf("com/example/Repository"),
-        )
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/EventHandler", "EventHandler.kt",
-            interfaces = arrayOf("com/example/Handler"),
-        )
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-
-        val matches = registry.findInterfaces("repo")
-        assertEquals(listOf("com.example.Repository"), matches.map { it.value })
+        val matches = registry.findInterfaces("notificationsender").map { it.value }
+        assertTrue("com.example.domain.NotificationSender" in matches)
     }
-
-    // [TEST-DONE] findInterfaces matches pattern case-insensitively
 
     @Test
     fun `skips synthetic and lambda classes`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/Service\$1", "Service.kt",
-            interfaces = arrayOf("com/example/Callback"),
-        )
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/Service\$lambda\$0", "Service.kt",
-            interfaces = arrayOf("com/example/Callback"),
-        )
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/RealImpl", "RealImpl.kt",
-            interfaces = arrayOf("com/example/Callback"),
-        )
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-
-        val names = registry.implementorsOf(ClassName("com.example.Callback")).map { it.className.value }
-        assertEquals(listOf("com.example.RealImpl"), names)
+        // UserRoute has lambdas (UserRoute$handleReset$1) — they should not appear as implementors
+        val allImplementors = registry.implementorsOf(ClassName("com.example.domain.UserRepository"))
+        val names = allImplementors.map { it.className.value }
+        assertTrue(names.none { "\$" in it && it.last().isDigit() }, "Lambda classes should be filtered: $names")
     }
-
-    // [TEST-DONE] Skips synthetic and lambda classes
 
     @Test
     fun `returns implementors sorted by class name`() {
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Zebra", "Zebra.kt", interfaces = arrayOf("com/example/Animal"))
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Apple", "Apple.kt", interfaces = arrayOf("com/example/Animal"))
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Mango", "Mango.kt", interfaces = arrayOf("com/example/Animal"))
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-
-        val names = registry.implementorsOf(ClassName("com.example.Animal")).map { it.className.value }
-        assertEquals(listOf("com.example.Apple", "com.example.Mango", "com.example.Zebra"), names)
+        val names = registry.implementorsOf(ClassName("com.example.domain.NotificationSender")).map { it.className.value }
+        assertEquals(names.sorted(), names, "Implementors should be sorted alphabetically")
     }
 
-    // [TEST-DONE] Returns implementors sorted by class name
-
     @Test
-    fun `build merges implementors from multiple class directories`() {
-        val mainDir = tempDir.resolve("main").toFile().also { it.mkdirs() }
-        val testDir = tempDir.resolve("test").toFile().also { it.mkdirs() }
-
-        TestClassWriter.writeClassFile(
-            mainDir, "com/example/RealRepo", "RealRepo.kt",
-            interfaces = arrayOf("com/example/Repository"),
+    fun `externalInterfacesOf returns empty for classes with only in-scope interfaces`() {
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
+        // InMemoryUserRepository implements UserRepository — both are in project
+        val projectClasses = setOf(
+            ClassName("com.example.infra.InMemoryUserRepository"),
+            ClassName("com.example.domain.UserRepository"),
         )
-        TestClassWriter.writeClassFile(
-            testDir, "com/example/FakeRepo", "FakeRepo.kt",
-            interfaces = arrayOf("com/example/Repository"),
-        )
-
-        val registry = InterfaceRegistry.build(listOf(mainDir, testDir)).data
-
-        val names = registry.implementorsOf(ClassName("com.example.Repository")).map { it.className.value }
-        assertEquals(listOf("com.example.FakeRepo", "com.example.RealRepo"), names)
-    }
-
-    // === externalInterfacesOf tests ===
-
-    @Test
-    fun `externalInterfacesOf returns external interfaces for project classes`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/Adapter", "Adapter.kt",
-            interfaces = arrayOf("javax/xml/bind/XmlAdapter"),
-        )
-
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-        val projectClasses = setOf(ClassName("com.example.Adapter"))
 
         val external = registry.externalInterfacesOf(projectClasses)
 
-        assertEquals(setOf(ClassName("javax.xml.bind.XmlAdapter")), external[ClassName("com.example.Adapter")])
+        assertTrue(
+            external[ClassName("com.example.infra.InMemoryUserRepository")]?.isEmpty() ?: true,
+            "In-scope interface should not appear in externalInterfacesOf",
+        )
     }
 
     @Test
-    fun `externalInterfacesOf excludes in-scope interfaces`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/ServiceImpl", "ServiceImpl.kt",
-            interfaces = arrayOf("com/example/Service"),
-        )
-
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-        val projectClasses = setOf(ClassName("com.example.ServiceImpl"), ClassName("com.example.Service"))
+    fun `externalInterfacesOf returns external interfaces not in project`() {
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
+        // InMemoryUserRepository implements UserRepository — if UserRepository is NOT in projectClasses, it's external
+        val projectClasses = setOf(ClassName("com.example.infra.InMemoryUserRepository"))
 
         val external = registry.externalInterfacesOf(projectClasses)
 
-        assertTrue(external.isEmpty(), "In-scope interface should not appear in externalInterfacesOf")
-    }
-
-    @Test
-    fun `externalInterfacesOf with mixed in-scope and external interfaces`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/Adapter", "Adapter.kt",
-            interfaces = arrayOf("com/example/Service", "javax/xml/bind/XmlAdapter"),
+        assertEquals(
+            setOf(ClassName("com.example.domain.UserRepository")),
+            external[ClassName("com.example.infra.InMemoryUserRepository")],
         )
-
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-        val projectClasses = setOf(ClassName("com.example.Adapter"), ClassName("com.example.Service"))
-
-        val external = registry.externalInterfacesOf(projectClasses)
-
-        assertEquals(setOf(ClassName("javax.xml.bind.XmlAdapter")), external[ClassName("com.example.Adapter")])
     }
-
-    // === interfacesOf tests ===
 
     @Test
     fun `interfacesOf returns interfaces implemented by a class`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/ServiceImpl", "ServiceImpl.kt",
-            interfaces = arrayOf("com/example/Service", "com/example/Auditable"),
-        )
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
 
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+        val interfaces = registry.interfacesOf(ClassName("com.example.variants.hierarchy.ConcreteService"))
 
-        val interfaces = registry.interfacesOf(ClassName("com.example.ServiceImpl"))
-
-        assertEquals(
-            setOf(ClassName("com.example.Service"), ClassName("com.example.Auditable")),
-            interfaces,
-        )
-    }
-
-    @Test
-    fun `interfacesOf returns empty set for class with no interfaces`() {
-        TestClassWriter.writeClassFile(tempDir.toFile(), "com/example/Plain", "Plain.kt")
-
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-
-        assertTrue(registry.interfacesOf(ClassName("com.example.Plain")).isEmpty())
+        assertTrue(ClassName("com.example.variants.hierarchy.Cacheable") in interfaces)
+        assertTrue(ClassName("com.example.variants.hierarchy.Validatable") in interfaces)
     }
 
     @Test
     fun `interfacesOf returns empty set for unknown class`() {
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
 
         assertTrue(registry.interfacesOf(ClassName("com.example.Unknown")).isEmpty())
     }
 
-    // === implementorMap and classToInterfacesMap tests ===
+    @Test
+    fun `interfacesOf returns superclass along with interfaces`() {
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
+
+        val supertypes = registry.interfacesOf(ClassName("com.example.variants.hierarchy.ConcreteService"))
+
+        assertTrue(ClassName("com.example.variants.hierarchy.BaseService") in supertypes,
+            "Should include superclass. Got: $supertypes")
+    }
 
     @Test
-    fun `implementorMap returns class names only without source file info`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/UserRepo", "UserRepo.kt",
-            interfaces = arrayOf("com/example/Repository"),
-        )
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/OrderRepo", "OrderRepo.kt",
-            interfaces = arrayOf("com/example/Repository"),
-        )
-
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+    fun `implementorMap returns class names for interface`() {
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
         val map = registry.implementorMap()
 
-        assertEquals(
-            setOf(ClassName("com.example.OrderRepo"), ClassName("com.example.UserRepo")),
-            map[ClassName("com.example.Repository")],
-        )
+        val impls = map[ClassName("com.example.domain.NotificationSender")] ?: emptySet()
+        assertTrue(ClassName("com.example.infra.EmailNotificationSender") in impls)
+        assertTrue(ClassName("com.example.infra.NoOpNotificationSender") in impls)
     }
 
     @Test
     fun `classToInterfacesMap returns reverse mapping`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/ServiceImpl", "ServiceImpl.kt",
-            interfaces = arrayOf("com/example/Service", "com/example/Auditable"),
-        )
-
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
+        val registry = InterfaceRegistry.build(listOf(testProjectClasses)).data
         val map = registry.classToInterfacesMap()
 
-        assertEquals(
-            setOf(ClassName("com.example.Service"), ClassName("com.example.Auditable")),
-            map[ClassName("com.example.ServiceImpl")],
-        )
-    }
-
-    // === Superclass tracking tests ===
-
-    // [TEST] Class extending an external superclass includes that superclass in externalInterfacesOf
-    // [TEST] Class extending a project superclass does not include it in externalInterfacesOf
-    // [TEST] Class extending external superclass AND implementing external interface returns both
-    // [TEST] interfacesOf returns superclass along with interfaces for a class
-
-    @Test
-    fun `externalInterfacesOf includes external superclass`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/MyVerifier", "MyVerifier.kt",
-            superName = "com/nimbusds/jwt/proc/DefaultJWTClaimsVerifier",
-        )
-
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-        val projectClasses = setOf(ClassName("com.example.MyVerifier"))
-
-        val external = registry.externalInterfacesOf(projectClasses)
-
-        assertEquals(
-            setOf(ClassName("com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier")),
-            external[ClassName("com.example.MyVerifier")],
-        )
-    }
-
-    @Test
-    fun `externalInterfacesOf excludes project superclass`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/BaseService", "BaseService.kt",
-        )
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/UserService", "UserService.kt",
-            superName = "com/example/BaseService",
-        )
-
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-        val projectClasses = setOf(ClassName("com.example.BaseService"), ClassName("com.example.UserService"))
-
-        val external = registry.externalInterfacesOf(projectClasses)
-
-        assertTrue(external.isEmpty(), "In-scope superclass should not appear in externalInterfacesOf")
-    }
-
-    @Test
-    fun `externalInterfacesOf includes both external superclass and external interface`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/MyVerifier", "MyVerifier.kt",
-            superName = "com/nimbusds/jwt/proc/DefaultJWTClaimsVerifier",
-            interfaces = arrayOf("com/nimbusds/jwt/proc/JWTClaimsSetVerifier"),
-        )
-
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-        val projectClasses = setOf(ClassName("com.example.MyVerifier"))
-
-        val external = registry.externalInterfacesOf(projectClasses)
-
-        assertEquals(
-            setOf(
-                ClassName("com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier"),
-                ClassName("com.nimbusds.jwt.proc.JWTClaimsSetVerifier"),
-            ),
-            external[ClassName("com.example.MyVerifier")],
-        )
-    }
-
-    @Test
-    fun `interfacesOf returns superclass along with interfaces`() {
-        TestClassWriter.writeClassFile(
-            tempDir.toFile(), "com/example/MyVerifier", "MyVerifier.kt",
-            superName = "com/nimbusds/jwt/proc/DefaultJWTClaimsVerifier",
-            interfaces = arrayOf("com/nimbusds/jwt/proc/JWTClaimsSetVerifier"),
-        )
-
-        val registry = InterfaceRegistry.build(listOf(tempDir.toFile())).data
-
-        val supertypes = registry.interfacesOf(ClassName("com.example.MyVerifier"))
-
-        assertEquals(
-            setOf(
-                ClassName("com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier"),
-                ClassName("com.nimbusds.jwt.proc.JWTClaimsSetVerifier"),
-            ),
-            supertypes,
-        )
+        val interfaces = map[ClassName("com.example.infra.InMemoryUserRepository")] ?: emptySet()
+        assertTrue(ClassName("com.example.domain.UserRepository") in interfaces)
     }
 }

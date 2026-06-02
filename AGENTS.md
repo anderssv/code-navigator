@@ -124,11 +124,28 @@ src/
 
 ### Tests (`src/test/kotlin/no/f12/codenavigator/`)
 
-Mirror the core structure. Each core class has a matching `*Test.kt`. Most tests use ASM `ClassWriter` to generate synthetic `.class` files for fine-grained control.
+Mirror the core structure. Each core class has a matching `*Test.kt`.
+
+**Prefer test-project** for tests that verify behavior against real Kotlin compiler output. This makes tests inspectable — you can read the source file to understand what's being tested.
+
+**Use synthetic bytecode (TestClassWriter)** only when:
+- Testing specific bytecode flags/patterns the compiler won't produce (e.g., missing source file attribute, specific ACC_SYNTHETIC combinations)
+- Testing annotation visitor edge cases (nested annotations, enum arrays, repeatable containers, class literals) that would require adding heavy framework dependencies to test-project
+- Testing the ByteArray API overload (no file on disk)
+- Testing LDC instruction filtering (non-string constants like int/double/Type)
+
+Tests that still use synthetic bytecode document why inline (see comments in the test files).
 
 ### test-project (`test-project/`)
 
-A small Kotlin project compiled by Gradle, providing real `.class` files under `test-project/build/classes/kotlin/main/`. Prefer adding Kotlin source files here when a test needs bytecode patterns that are hard to reproduce synthetically (e.g. INVOKEDYNAMIC from lambdas/method-references, inline functions, coroutines). This ensures tests validate against what the Kotlin compiler actually produces rather than hand-crafted bytecode that may not match real-world output. Tests that use test-project classes call `buildTestProject()` to ensure compilation is up to date.
+A small Kotlin project compiled by Gradle, providing real `.class` files under `test-project/build/classes/kotlin/main/`. **This is the preferred approach for new tests.** Add Kotlin source files here when you need bytecode to test against. This ensures tests validate against what the Kotlin compiler actually produces rather than hand-crafted bytecode that may not match real-world output.
+
+Key fixture packages:
+- `variants/hierarchy/` — class hierarchies, interfaces, abstract classes
+- `variants/annotated/` — custom annotations on classes, methods, fields
+- `variants/constants/` — string constants in method bodies
+- `domain/` — interfaces, data classes, sealed classes
+- `infra/` — interface implementations, companion objects
 
 ## Adding a New Feature
 

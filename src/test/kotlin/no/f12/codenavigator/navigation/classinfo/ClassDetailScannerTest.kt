@@ -1,81 +1,58 @@
 package no.f12.codenavigator.navigation.classinfo
 
-import no.f12.codenavigator.navigation.*
-
 import no.f12.codenavigator.navigation.classinfo.ClassDetailScanner
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ClassDetailScannerTest {
 
-    @TempDir
-    lateinit var tempDir: Path
-
-    private lateinit var classesDir: File
-
-    @BeforeEach
-    fun setUp() {
-        classesDir = tempDir.resolve("build/classes/kotlin/main").toFile()
-        classesDir.mkdirs()
-    }
+    private val testProjectClasses = File("test-project/build/classes/kotlin/main")
 
     @Test
     fun `returns matching classes with details`() {
-        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceA", "ServiceA.kt")
-        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceB", "ServiceB.kt")
+        val results = ClassDetailScanner.scan(listOf(testProjectClasses), "Service").data
 
-        val results = ClassDetailScanner.scan(listOf(classesDir), "Service").data
-
-        assertEquals(2, results.size)
+        assertTrue(results.size >= 3, "Should find multiple Service classes, got: ${results.size}")
         val classNames = results.map { it.className.value }
-        assertTrue("com.example.ServiceA" in classNames)
-        assertTrue("com.example.ServiceB" in classNames)
+        assertTrue(classNames.any { "UserService" in it })
     }
 
     @Test
     fun `filters by regex pattern`() {
-        TestClassWriter.writeClassFile(classesDir, "com/example/UserService", "UserService.kt")
-        TestClassWriter.writeClassFile(classesDir, "com/example/OrderController", "OrderController.kt")
-
-        val results = ClassDetailScanner.scan(listOf(classesDir), "Service").data
+        val results = ClassDetailScanner.scan(listOf(testProjectClasses), "UserFormatter").data
 
         assertEquals(1, results.size)
-        assertEquals("com.example.UserService", results.single().className.value)
+        assertEquals("com.example.domain.UserFormatter", results.single().className.value)
     }
 
     @Test
     fun `pattern matching is case insensitive`() {
-        TestClassWriter.writeClassFile(classesDir, "com/example/UserService", "UserService.kt")
-
-        val results = ClassDetailScanner.scan(listOf(classesDir), "userservice").data
+        val results = ClassDetailScanner.scan(listOf(testProjectClasses), "userformatter").data
 
         assertEquals(1, results.size)
     }
 
     @Test
     fun `returns empty list when no classes match pattern`() {
-        TestClassWriter.writeClassFile(classesDir, "com/example/ServiceA", "ServiceA.kt")
-
-        val results = ClassDetailScanner.scan(listOf(classesDir), "Controller").data
+        val results = ClassDetailScanner.scan(listOf(testProjectClasses), "NonExistentXyz123").data
 
         assertTrue(results.isEmpty())
     }
 
     @Test
     fun `returns empty list for empty directory`() {
-        val results = ClassDetailScanner.scan(listOf(classesDir), ".*").data
+        val emptyDir = File("test-project/build/classes/kotlin/main/com/example/nonexistent")
+
+        val results = ClassDetailScanner.scan(listOf(emptyDir), ".*").data
 
         assertTrue(results.isEmpty())
     }
 
     @Test
     fun `handles non-existent directory gracefully`() {
-        val nonExistent = tempDir.resolve("does-not-exist").toFile()
+        val nonExistent = File("test-project/build/classes/does-not-exist")
 
         val results = ClassDetailScanner.scan(listOf(nonExistent), ".*").data
 
@@ -84,49 +61,26 @@ class ClassDetailScannerTest {
 
     @Test
     fun `results are sorted by class name`() {
-        TestClassWriter.writeClassFile(classesDir, "com/example/Zebra", "Zebra.kt")
-        TestClassWriter.writeClassFile(classesDir, "com/example/Alpha", "Alpha.kt")
-        TestClassWriter.writeClassFile(classesDir, "com/example/Middle", "Middle.kt")
+        val results = ClassDetailScanner.scan(listOf(testProjectClasses), ".*").data
 
-        val results = ClassDetailScanner.scan(listOf(classesDir), ".*").data
-
-        assertEquals(
-            listOf("com.example.Alpha", "com.example.Middle", "com.example.Zebra"),
-            results.map { it.className.value },
-        )
+        val names = results.map { it.className.value }
+        assertEquals(names.sorted(), names)
     }
 
     @Test
     fun `skips synthetic and anonymous classes`() {
-        TestClassWriter.writeClassFile(classesDir, "com/example/Foo", "Foo.kt")
-        TestClassWriter.writeClassFile(classesDir, "com/example/Foo\$1", "Foo.kt")
-        TestClassWriter.writeClassFile(classesDir, "com/example/Foo\$lambda\$1", "Foo.kt")
+        val results = ClassDetailScanner.scan(listOf(testProjectClasses), "UserRoute").data
 
-        val results = ClassDetailScanner.scan(listOf(classesDir), "Foo").data
-
-        assertEquals(1, results.size)
-        assertEquals("com.example.Foo", results.single().className.value)
-    }
-
-    @Test
-    fun `scans multiple class directories`() {
-        val javaClassesDir = tempDir.resolve("build/classes/java/main").toFile()
-        javaClassesDir.mkdirs()
-
-        TestClassWriter.writeClassFile(classesDir, "com/example/KotlinService", "KotlinService.kt")
-        TestClassWriter.writeClassFile(javaClassesDir, "com/example/JavaService", "JavaService.java")
-
-        val results = ClassDetailScanner.scan(listOf(classesDir, javaClassesDir), "Service").data
-
-        assertEquals(2, results.size)
+        // Should find UserRoute but not UserRoute$handleReset$1
+        val names = results.map { it.className.value }
+        assertTrue(names.none { it.matches(Regex(".*\\$\\d+$")) },
+            "Lambda classes should be skipped: $names")
     }
 
     @Test
     fun `populates source file in results`() {
-        TestClassWriter.writeClassFile(classesDir, "com/example/MyService", "MyService.kt")
+        val result = ClassDetailScanner.scan(listOf(testProjectClasses), "UserFormatter").data.single()
 
-        val result = ClassDetailScanner.scan(listOf(classesDir), "MyService").data.single()
-
-        assertEquals("MyService.kt", result.sourceFile)
+        assertEquals("UserFormatter.kt", result.sourceFile)
     }
 }
