@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.102
+
+### New: `cnavTypeAffinity` task
+
+Analyzes which package a type "belongs to" based on usage patterns. Helps identify misplaced classes that are used more heavily by another package than their own.
+
+### Per-task help on refactoring errors
+
+All 7 Gradle refactoring tasks and 5 Maven mojos now show usage hints and examples when required parameters are missing. Previously they showed a bare error message.
+
+### Bug fixes
+
+- **cnavDead**: Fixed false positive on `*Kt` facade classes (companion object holders)
+- **cnavMoveFile**: Fixed missing output (was not printing the result)
+- **cnavRenameProperty**: Fixed inconsistent property resolution
+
+### Internal
+
+- Migrated 12 test files from synthetic bytecode to test-project
+- Removed project-specific names from test fixtures and docs
+- Fixed SafeDeleteConfig and ChangeSignatureConfig to use `parseRequiredFrom` (consistent error handling)
+
 ## 0.1.100
 
 ### ⚠️ Breaking change: `--llm` removed, use `--format=llm`
