@@ -1365,7 +1365,7 @@ class DeadCodeFinderTest {
         )
 
         val deadClassNames = dead.deadClassNames()
-        assertTrue("com.example.UtilKt" in deadClassNames, "Kt class with non-matching receiver type should still be dead")
+        assertTrue("com.example.UtilKt" !in deadClassNames, "Kt facade classes are never reported as dead classes")
     }
 
     // === Inner class liveness propagation tests ===
@@ -1535,7 +1535,7 @@ class DeadCodeFinderTest {
         )
 
         val deadClassNames = dead.deadClassNames()
-        assertTrue("com.example.RoutesKt" in deadClassNames, "Without receiver type entry points, Kt class should be dead")
+        assertTrue("com.example.RoutesKt" !in deadClassNames, "Kt facade classes are never reported as dead classes")
     }
 
     // === Inherited method filtering tests ===
@@ -1601,7 +1601,7 @@ class DeadCodeFinderTest {
     }
 
     @Test
-    fun `Kt facade class without callers gets MEDIUM confidence`() {
+    fun `Kt facade class without callers is not reported as dead class`() {
         val graph = testCallGraph(
             method("com.example.TimerHelpersKt", "doSomething") to method("com.example.External", "run"),
             projectClasses = setOf("com.example.TimerHelpersKt"),
@@ -1610,9 +1610,7 @@ class DeadCodeFinderTest {
         val dead = findDead(graph)
 
         val deadClasses = dead.deadClasses()
-        assertEquals(1, deadClasses.size)
-        assertEquals("com.example.TimerHelpersKt", deadClasses[0].className.value)
-        assertEquals(DeadCodeConfidence.MEDIUM, deadClasses[0].confidence, "Kt facade classes should get MEDIUM confidence since they are file-level containers")
+        assertTrue(deadClasses.isEmpty(), "Kt facade classes should never be reported as dead classes — only their methods matter. Got: $deadClasses")
     }
 
     @Test
