@@ -9,24 +9,24 @@ Items grouped by functional area. Each item has:
 ## Bugs
 
 ### cnavSafeDelete crashes with JSON parse error
-**ACTIVE** | **Value: high** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
+**PARKED** | **Value: high** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
 
-Crashes with "Unexpected character at position 11" regardless of input class/method. Completely broken — likely a regression in JSON input parsing.
+Not reproducible in v0.1.102. May have been fixed as a side-effect of other changes. Reopen if it recurs.
 
 ### cnavChangeSignature can't find suspend functions
-**ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra, v0.1.97)
+**REJECTED** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra, v0.1.97)
 
-Reports "method not found" for suspend functions even though `cnavClassDetail` and `cnavRenameMethod` handle the same method fine. Inconsistency in how continuation parameters are resolved during method lookup.
+Already works — test exists and passes. Likely was a field-test environment issue.
 
 ### cnavMoveFile produces no output
-**ACTIVE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
+~~**ACTIVE**~~ **DONE (v0.1.102)** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
 
-No CNAV_BEGIN markers, no success/failure feedback. Hard to tell if it did anything or silently failed. Likely missing `logger.lifecycle()` calls or early silent return.
+Fixed: error handling added so failures produce proper CNAV_BEGIN/CNAV_END output.
 
 ### cnavRenameProperty inconsistent resolution
-**ACTIVE** | **Value: medium** | **Effort: high** | Source: field-test(bass-ra, v0.1.97)
+~~**ACTIVE**~~ **DONE (v0.1.102)** | **Value: medium** | **Effort: high** | Source: field-test(bass-ra, v0.1.97)
 
-Can't find properties on some classes — works on some but fails on others with the same property name pattern. Likely a Kotlin compiler artifact issue — some classes compile properties differently (e.g., with `@JvmField`, or as constructor params vs body properties). Deep rabbit hole potential.
+Fixed: constructor params without `val/var` that initialize body properties are now renamed correctly (both the param name and the initializer reference).
 
 ### cnavDead false positive on extension functions
 **ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
