@@ -65,13 +65,20 @@ object PsiRenamePropertyRewriter {
                     val classFqn = buildClassFqn(filePackage, clazz)
                     if (!matchesClass(classFqn, className)) continue
 
+                    // Check if property exists as a body declaration
+                    val hasBodyProperty = clazz.declarations.any { it is KtProperty && it.name == propertyName }
+
                     // Rename val/var in primary constructor
                     val constructor = clazz.primaryConstructor
                     if (constructor != null) {
                         for (param in constructor.valueParameters) {
-                            if (param.name == propertyName && param.hasValOrVar()) {
-                                val nameId = param.nameIdentifier ?: continue
-                                edits.add(TextEdit(nameId.textOffset, nameId.textLength, newName))
+                            if (param.name == propertyName) {
+                                // Rename if it's a val/var property, OR if it's a plain parameter
+                                // that initializes a body property with the same name
+                                if (param.hasValOrVar() || hasBodyProperty) {
+                                    val nameId = param.nameIdentifier ?: continue
+                                    edits.add(TextEdit(nameId.textOffset, nameId.textLength, newName))
+                                }
                             }
                         }
                     }
@@ -81,6 +88,11 @@ object PsiRenamePropertyRewriter {
                         if (decl is KtProperty && decl.name == propertyName) {
                             val nameId = decl.nameIdentifier ?: continue
                             edits.add(TextEdit(nameId.textOffset, nameId.textLength, newName))
+                            // Also rename references to the constructor param in the initializer
+                            val initializer = decl.initializer
+                            if (initializer is KtNameReferenceExpression && initializer.getReferencedName() == propertyName) {
+                                edits.add(TextEdit(initializer.textOffset, initializer.textLength, newName))
+                            }
                         }
                     }
                 }

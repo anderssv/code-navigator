@@ -204,6 +204,24 @@ class RenamePropertyRewriterTest {
     }
 
     @Test
+    fun `renames constructor param without val that initializes body property`() {
+        val result = RenamePropertyRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.property.MerchantService",
+            propertyName = "raClient",
+            newName = "httpClient",
+            preview = true,
+        )
+
+        assertTrue(result.changes.isNotEmpty(), "Should find property. Result: $result")
+        val change = result.changes.first { it.filePath.endsWith("MerchantService.kt") }
+        assertTrue(change.after.contains("private val httpClient"), "Body property should be renamed. Content:\n${change.after}")
+        assertTrue(change.after.contains("(httpClient: String)") || change.after.contains("(httpClient:"),
+            "Constructor parameter should also be renamed. Content:\n${change.after}")
+        assertTrue(!change.after.contains("= raClient"), "Initializer reference should be renamed. Content:\n${change.after}")
+    }
+
+    @Test
     fun `renames body property declaration`() {
         val result = RenamePropertyRewriter.rename(
             sourceRoots = listOf(testProjectSrc),
