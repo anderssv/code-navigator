@@ -85,6 +85,36 @@ Current dependency analysis works at package granularity (`cnavPackageDeps`, `cn
 - **All-files mode**: `--all=true` — full file-dep graph (fan-in/fan-out ranking, orphan detection, file-level cycle detection).
 - **Alternative framing**: Extend `cnavDsm` with `--granularity=file|package|class` instead of a separate task.
 
+### Class-level ring detection for `cnavRings`
+**ACTIVE** | **Value: high** | **Effort: high** | Source: field-test(greitt, v0.1.102)
+
+Current `cnavRings` assigns each **package** to a single ring. This fundamentally mismodels package-by-feature codebases where a single package intentionally contains classes at multiple hexagonal layers (domain entities + port interfaces + adapters). Result: massive false-positive violations (90 in greitt).
+
+**Core insight**: Packages = domain boundaries. Rings = dependency layers. In hex/package-by-feature, ring boundaries exist *within* packages, not between them.
+
+**Approach:**
+
+1. **Class-level ring assignment** — Analyze each class's ring position based on its imports:
+   - **Ring 0 (Domain)**: No I/O, no framework deps. Pure Kotlin data/logic.
+   - **Ring 1 (Application/Port)**: Depends only on Ring 0 types + own interfaces.
+   - **Ring 2 (Adapter)**: Imports framework types (Ktor, Exposed, HTTP clients, etc.)
+   - Use framework detection heuristics (FrameworkPresets already exists for cnavDead).
+
+2. **Mixed-ring package reporting** — Flag packages spanning 2+ rings. Not violations — expected in package-by-feature. Show the split:
+   ```
+   web.auth: Ring 0 (Device, SessionTokenResult) | Ring 1 (DevicesRepository, AuthTokenService) | Ring 2 (DeviceAuthPlugin, DevicesRepositoryImpl)
+   ```
+
+3. **Intra-package ring violations** — The real violations to report:
+   - Adapter importing domain from *another* package without going through a port
+   - Upward dependencies within a package (Ring 0 class importing Ring 2 class)
+
+4. **Actionable guidance** — Instead of "PEER/CYCLE: web.auth → polls", report:
+   - `web.auth.DeviceEmailService` (adapter) → `polls.PollsRepository` (port) — suggest extracting a port interface
+   - Include direction + ring level in violation messages
+
+**Connects to**: Test-source separation (filter test classes first), Cycle actionability (edge-level analysis)
+
 ### High violation count warning for `cnavRings`
 **PARKED** | **Value: low** | **Effort: low** | Source: internal
 
