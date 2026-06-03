@@ -126,6 +126,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "why-depends" to WhyDependsTask::class.java,
             "dsm" to DsmTask::class.java,
             "cycles" to CyclesTask::class.java,
+            "simulate-move" to SimulateMoveTask::class.java,
             "find-usages" to FindUsagesTask::class.java,
             "rank" to RankTask::class.java,
             "dead" to DeadCodeTask::class.java,

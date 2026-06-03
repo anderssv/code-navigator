@@ -448,6 +448,17 @@ object TaskRegistry {
         ),
     )
 
+    val SIMULATE_MOVE = TaskDef(
+        goal = "simulate-move",
+        description = "Predict cycle impact of moving a class to a different package without modifying code",
+        params = FORMAT_PARAMS + listOf(TYPE, TO_PACKAGE, PACKAGE_FILTER, DSM_DEPTH, ROOT_PACKAGE) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(listOf(TYPE to "RedisCache", TO_PACKAGE to "com.example.infrastructure")),
+        ),
+    )
+
     val FIND_USAGES = TaskDef(
         goal = "find-usages",
         description = "Find project references to types, methods, and fields/properties",
@@ -965,6 +976,7 @@ object TaskRegistry {
         WHY_DEPENDS,
         DSM,
         CYCLE_DETECTION,
+        SIMULATE_MOVE,
         FIND_USAGES,
         RANK,
         DEAD,
