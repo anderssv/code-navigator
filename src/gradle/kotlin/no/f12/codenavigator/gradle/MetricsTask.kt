@@ -136,7 +136,7 @@ abstract class MetricsTask : CodeNavigatorTask() {
         val projectClasses = scanProjectClasses(classDirectories)
         val dsmResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal, filterTargets = true)
         val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
-        val matrix = DsmMatrixBuilder.build(dsmResult.data, displayPrefix, depth = 2)
+        val matrix = DsmMatrixBuilder.build(applyPlan(dsmResult.data), displayPrefix, depth = 2)
         val cyclicPairCount = CycleDetector.findCycles(CycleDetector.adjacencyMapFrom(matrix)).size
 
         val commits = GitLogRunner.run(project.projectDir, config.after, followRenames = config.followRenames)

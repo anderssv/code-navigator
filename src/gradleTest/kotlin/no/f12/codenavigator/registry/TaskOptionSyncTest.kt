@@ -44,7 +44,7 @@ class TaskOptionSyncTest {
 
             val missingOptions = expectedParams - taskOptionNames
             val extraOptions = (taskOptionNames - expectedParams)
-                .filter { it != "format" && it != "llm" } // base class provides these even if not in params
+                .filter { it != "format" && it != "llm" && it != "plan-file" } // base class provides these even if not in params
 
             if (missingOptions.isNotEmpty()) {
                 failures.add("Task '${taskDef.goal}' (${taskClass.simpleName}): missing @Option for params: $missingOptions")

@@ -70,7 +70,7 @@ abstract class CyclesTask : CodeNavigatorTask() {
         val result = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal, filterTargets = true)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val dependencies = result.data
+        val dependencies = applyPlan(result.data)
 
         val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
         val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)

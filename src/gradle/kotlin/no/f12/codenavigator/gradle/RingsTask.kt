@@ -6,6 +6,7 @@ import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
+import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.EmergentRingDetector
 import no.f12.codenavigator.navigation.dsm.EmergentRingFormatter
 import no.f12.codenavigator.navigation.dsm.RingDetector
@@ -67,7 +68,7 @@ abstract class RingsTask : CodeNavigatorTask() {
         val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { logger.warn(it) }
-        return RingFormatter.format(RingDetector.detect(extractResult.data))
+        return RingFormatter.format(RingDetector.detect(applyPlan(extractResult.data)))
     }
 
     private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<no.f12.codenavigator.navigation.types.ClassName>): String {
@@ -75,10 +76,12 @@ abstract class RingsTask : CodeNavigatorTask() {
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(allResult.skippedFiles, reportFile)?.let { logger.warn(it) }
 
-        val projectDeps = allResult.data.filter { it.targetClass in projectClasses }
-        val externalDeps = allResult.data.filter { it.targetClass !in projectClasses }
+        val mutatedDeps = applyPlan(allResult.data)
+        val mutatedClasses = PlanMutator.applyToClassSet(projectClasses, loadPlanSteps())
+        val projectDeps = mutatedDeps.filter { it.targetClass in mutatedClasses }
+        val externalDeps = mutatedDeps.filter { it.targetClass !in mutatedClasses }
 
-        val result = EmergentRingDetector.detect(projectDeps, externalDeps, projectClasses)
+        val result = EmergentRingDetector.detect(projectDeps, externalDeps, mutatedClasses)
         return EmergentRingFormatter.format(result)
     }
 }

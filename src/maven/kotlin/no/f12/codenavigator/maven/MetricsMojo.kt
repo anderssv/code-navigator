@@ -69,6 +69,9 @@ class MetricsMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "plan-file")
+    private var planFile: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -156,5 +159,6 @@ class MetricsMojo : AbstractMojo() {
         treatAsDead?.let { put("treat-as-dead", it) }
         if (noFollow) put("no-follow", null)
         scope?.let { put("scope", it) }
+        planFile?.let { put("plan-file", it) }
     }
 }

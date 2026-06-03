@@ -34,6 +34,9 @@ class RingsMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "plan-file")
+    private var planFile: String? = null
+
     @Parameter(property = "mode")
     private var mode: String? = null
 
@@ -91,6 +94,7 @@ class RingsMojo : AbstractMojo() {
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
         scope?.let { put("scope", it) }
+        planFile?.let { put("plan-file", it) }
         mode?.let { put("mode", it) }
     }
 }

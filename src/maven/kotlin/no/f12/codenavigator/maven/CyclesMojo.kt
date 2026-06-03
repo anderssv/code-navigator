@@ -48,6 +48,9 @@ class CyclesMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "plan-file")
+    private var planFile: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -97,5 +100,6 @@ class CyclesMojo : AbstractMojo() {
         includeExternal?.let { put("include-external", it) }
         depth?.let { put("dsm-depth", it) }
         scope?.let { put("scope", it) }
+        planFile?.let { put("plan-file", it) }
     }
 }

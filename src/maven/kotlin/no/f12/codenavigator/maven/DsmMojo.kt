@@ -57,6 +57,9 @@ class DsmMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "plan-file")
+    private var planFile: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -115,5 +118,6 @@ class DsmMojo : AbstractMojo() {
         cycles?.let { put("cycles", it) }
         cycle?.let { put("cycle", it) }
         scope?.let { put("scope", it) }
+        planFile?.let { put("plan-file", it) }
     }
 }

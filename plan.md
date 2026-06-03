@@ -62,6 +62,54 @@ Implemented. Predicts cycle impact of moving a class to a different package with
 - Mutates dependency graph in memory, re-runs cycle detection, diffs before/after
 - Shows removed/added cycles. Validated on bass-ra-backend.
 
+### Replace regex JSON parsing with Jackson
+**FUTURE** | **Value: low** | **Effort: low** | Source: internal
+
+`PlanMutator.parseJson` currently uses regex extraction. Replace with Jackson (or kotlinx.serialization) for robustness. Add Jackson dependency or reuse one already on classpath via Maven plugin.
+
+### ~~cnavExecutePlan — execute a plan file~~ — DONE
+**DONE** | **Value: high** | **Effort: medium** | Source: design-discussion
+
+Dedicated task (`cnavExecutePlan --plan-file=plan.json`) that reads a plan JSON and applies each move step sequentially using `MoveClassRewriter`. Class names are resolved to FQCNs upfront via the compiled class index (no fuzzy matching in rewriting logic). Supports `--preview` to dry-run.
+
+Plan format: `[{"action":"move","type":"com.example.api.Dto","to":"com.example.service"}]`
+
+### Consider: operation sequences as the primary interface
+**FUTURE** | **Value: high** | **Effort: high** | Source: design-discussion
+
+Could the sequence-of-operations pattern (`--plan-file`) become the default mode rather than an add-on? Instead of many dedicated targets (cnavCycles, cnavDsm, cnavRings, cnavBalance, cnavSimulateMove), a single target accepts a JSON describing what to analyze and what virtual mutations to apply. This would:
+- Eliminate many separate targets in favour of one composable interface
+- Unify `cnavSimulateMove` into the plan format (just another step + "then show cycles")
+- Allow agents to express complex queries in one invocation
+
+Trade-offs:
+- Requires robust JSON validation with clear error messages when fields are missing or malformed
+- Discoverability is worse (no `--help` per task, everything is JSON schema)
+- Simple queries become more verbose
+- Existing per-task interface is already well-established
+
+Could be a new single target (`cnavAnalyze --plan-file=...`) alongside the existing tasks, not replacing them immediately.
+
+### Auto-suggest refactoring sequences
+**FUTURE** | **Value: high** | **Effort: high** | Source: design-discussion
+
+Now that `--plan-file` supports simulating N sequential moves, can we automatically suggest a sequence? Heuristics to explore:
+- Start with weakest-link edges from `CycleBreakAnalyzer` — for each, identify which class to move and where
+- Greedy: try moving each class on a weak edge to the "other side", pick the move that reduces cycle count the most, repeat
+- Type affinity: if a class has higher affinity to another package (from `cnavTypeAffinity`), suggest moving it there
+- Ring violations: classes in the wrong ring (from emergent detection) are candidates for moves
+- Combine: score = cycle_reduction × affinity_alignment × ring_improvement
+
+Output: a suggested `plan-file` JSON that the agent (or human) can review, adjust, and then execute.
+Prerequisite: `--plan-file` wiring complete + Jackson JSON parsing for robust plan validation.
+
+### Post-execution simulation drift detection
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: field-testing (greitt)
+
+The `--plan-file` simulation mutates the dependency graph structurally but doesn't model secondary effects of import rewrites. When `MoveClassRewriter` updates imports during execution, the new import graph can shift ring assignments for *other* classes — causing the actual result to diverge from the simulation.
+
+Improvement: after `execute-plan` runs, automatically re-run ring/cycle analysis and compare against the pre-execution simulation. If they diverge significantly, warn the user. This would catch cases where a move drags framework dependencies into the wrong layer (e.g., Ktor types ending up in infrastructure).
+
 ### `cnavFileDeps` — file-level dependency tree
 **FUTURE** | **Value: medium** | **Effort: medium** | Source: internal
 

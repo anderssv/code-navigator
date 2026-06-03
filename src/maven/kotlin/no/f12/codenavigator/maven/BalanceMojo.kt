@@ -38,6 +38,9 @@ class BalanceMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "plan-file")
+    private var planFile: String? = null
+
     @Parameter(property = "after")
     private var after: String? = null
 
@@ -75,6 +78,7 @@ class BalanceMojo : AbstractMojo() {
         dsmDepth?.let { put("dsm-depth", it) }
         top?.let { put("top", it) }
         scope?.let { put("scope", it) }
+        planFile?.let { put("plan-file", it) }
         after?.let { put("after", it) }
         minRevs?.let { put("min-revs", it) }
         if (noFollow) put("no-follow", null)

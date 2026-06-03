@@ -1,14 +1,18 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.navigation.dsm.PlanMutator
+import no.f12.codenavigator.navigation.dsm.PlanStep
+import no.f12.codenavigator.navigation.dsm.PackageDependency
 import no.f12.codenavigator.registry.TaskRegistry
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.options.Option
+import java.io.File
 
 /**
  * Base class for all code-navigator tasks.
- * Provides shared options (format), a helper to build the options map
+ * Provides shared options (format, plan-file), a helper to build the options map
  * that Config.parse() methods expect, and detection of legacy -P property usage.
  */
 abstract class CodeNavigatorTask : DefaultTask() {
@@ -16,6 +20,10 @@ abstract class CodeNavigatorTask : DefaultTask() {
     @Option(option = "format", description = "Output format: text, json, llm, or diff")
     @get:Internal
     var format: String? = null
+
+    @Option(option = "plan-file", description = "JSON file with virtual refactoring steps to apply before analysis")
+    @get:Internal
+    var planFile: String? = null
 
     /**
      * Builds the property map from @Option-annotated fields on this task.
@@ -26,8 +34,25 @@ abstract class CodeNavigatorTask : DefaultTask() {
         checkForLegacyProperties()
         val map = mutableMapOf<String, String?>()
         format?.let { map["format"] = it }
+        planFile?.let { map["plan-file"] = it }
         map.putAll(taskOptionsMap())
         return map
+    }
+
+    /**
+     * Loads and applies the plan file to a dependency list. Returns the mutated list.
+     * If no plan file is specified, returns dependencies unchanged.
+     */
+    protected fun applyPlan(dependencies: List<PackageDependency>): List<PackageDependency> {
+        val plan = loadPlanSteps()
+        if (plan.isEmpty()) return dependencies
+        logger.lifecycle("  Applying plan: ${plan.size} step(s) from $planFile")
+        return PlanMutator.apply(dependencies, plan)
+    }
+
+    protected fun loadPlanSteps(): List<no.f12.codenavigator.navigation.dsm.PlanStep> {
+        val path = planFile ?: return emptyList()
+        return PlanMutator.parseFile(project.file(path))
     }
 
     /**

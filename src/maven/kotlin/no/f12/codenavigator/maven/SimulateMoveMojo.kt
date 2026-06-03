@@ -47,6 +47,9 @@ class SimulateMoveMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "plan-file")
+    private var planFile: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -113,5 +116,6 @@ class SimulateMoveMojo : AbstractMojo() {
         depth?.let { put("dsm-depth", it) }
         rootPackage?.let { put("root-package", it) }
         scope?.let { put("scope", it) }
+        planFile?.let { put("plan-file", it) }
     }
 }

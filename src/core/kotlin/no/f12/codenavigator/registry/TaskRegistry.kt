@@ -238,6 +238,7 @@ object TaskRegistry {
     val CLASSES_ONLY = ParamDef("classes-only", "true", "Show only unreferenced classes, skip dead methods", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val EXCLUDE_ANNOTATED = ParamDef("exclude-annotated", "<ann1>,<ann2>", "Exclude classes/methods bearing these annotations (simple names, comma-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
     val SCOPE = ParamDef("scope", "all|prod|test", "Filter by source set: all (default), prod (production only), test (test only)", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING)
+    val PLAN_FILE = ParamDef("plan-file", "<path>", "JSON file with refactoring steps (simulates moves for analysis tasks, executes them for execute-plan)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val GROUP_BY = ParamDef("group-by", "none|file", "Group results: none (default, per-reference) or file (collapse to one line per source file with count)", flag = false, defaultValue = "none", enhancePattern = false, type = ParamType.STRING)
     val RAW = ParamDef("raw", "", "Show raw bytecode-level output without collapsing", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val INCLUDE_IMPLS = ParamDef("include-impls", "", "When target is an interface, also search usages of implementors", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
@@ -276,6 +277,7 @@ object TaskRegistry {
 
     val FORMAT_PARAMS = listOf(FORMAT)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
+    val PLAN_PARAMS = listOf(PLAN_FILE)
 
     // --- Task definitions ---
 
@@ -423,7 +425,7 @@ object TaskRegistry {
     val DSM = TaskDef(
         goal = "dsm",
         description = "Generate Dependency Structure Matrix",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE, ROOT_PACKAGE) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE, ROOT_PACKAGE) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
@@ -439,7 +441,7 @@ object TaskRegistry {
     val CYCLE_DETECTION = TaskDef(
         goal = "cycles",
         description = "Detect dependency cycles using Tarjan's SCC algorithm",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
@@ -451,7 +453,7 @@ object TaskRegistry {
     val SIMULATE_MOVE = TaskDef(
         goal = "simulate-move",
         description = "Predict cycle impact of moving a class to a different package without modifying code",
-        params = FORMAT_PARAMS + listOf(TYPE, TO_PACKAGE, PACKAGE_FILTER, DSM_DEPTH, ROOT_PACKAGE) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(TYPE, TO_PACKAGE, PACKAGE_FILTER, DSM_DEPTH, ROOT_PACKAGE) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
@@ -588,7 +590,7 @@ object TaskRegistry {
     val METRICS = TaskDef(
         goal = "metrics",
         description = "Quick project health snapshot: classes, packages, fan-in/out, cycles, dead code, hotspots",
-        params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, PACKAGE_FILTER, INCLUDE_EXTERNAL, EXCLUDE_ANNOTATED, TREAT_AS_DEAD, ROOT_PACKAGE) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, PACKAGE_FILTER, INCLUDE_EXTERNAL, EXCLUDE_ANNOTATED, TREAT_AS_DEAD, ROOT_PACKAGE) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
@@ -771,7 +773,7 @@ object TaskRegistry {
     val BALANCE = TaskDef(
         goal = "balance",
         description = "Composite balanced coupling analysis: strength × distance × volatility",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP, AFTER, MIN_REVS, NO_FOLLOW) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP, AFTER, MIN_REVS, NO_FOLLOW) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.COMPOSITE,
         paramDefaultOverrides = mapOf("top" to "all"),
@@ -785,7 +787,7 @@ object TaskRegistry {
     val RINGS = TaskDef(
         goal = "rings",
         description = "Auto-detect hexagonal architecture rings and report violations. Use --mode=emergent for class-level ring detection based on import shapes.",
-        params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE),
+        params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE) + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
@@ -938,6 +940,20 @@ object TaskRegistry {
         ),
     )
 
+    val EXECUTE_PLAN_TASK = TaskDef(
+        goal = "execute-plan",
+        description = "Execute a refactoring plan file, applying each move sequentially",
+        params = FORMAT_PARAMS + listOf(PLAN_FILE, PREVIEW),
+        requiresCompilation = true,
+        category = TaskCategory.SOURCE,
+        intent = "Execute a sequence of refactoring steps from a plan file",
+        intentDetail = "reads plan JSON, applies each move-class step in order",
+        examples = listOf(
+            UsageExample(listOf(PLAN_FILE to "refactoring-plan.json")),
+            UsageExample(listOf(PLAN_FILE to "refactoring-plan.json", PREVIEW to null)),
+        ),
+    )
+
     val TEST_COUPLING = TaskDef(
         goal = "test-coupling",
         description = "Detect tests that bypass domain services by calling port interface methods directly (TTTD violations)",
@@ -1011,6 +1027,7 @@ object TaskRegistry {
         RENAME_PROPERTY_TASK,
         CHANGE_SIGNATURE_TASK,
         SAFE_DELETE_TASK,
+        EXECUTE_PLAN_TASK,
         HELP,
         AGENT_HELP,
         CONFIG_HELP,

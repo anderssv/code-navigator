@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.1.104
+
+### New: `--plan-file` parameter for simulation
+
+All structural analysis tasks (DSM, Cycles, Rings, SimulateMove, Metrics, Balance) now accept `--plan-file=path.json` to simulate moves before executing them. The plan mutates the dependency graph so you can preview the effect of refactoring.
+
+```
+./gradlew cnavRings --mode=emergent --plan-file=plan.json
+./gradlew cnavDsm --plan-file=plan.json
+```
+
+Plan format: `[{"action":"move","type":"com.example.api.Dto","to":"com.example.service"}]`
+
+### New: `cnavExecutePlan` task
+
+Executes a plan file, performing actual file moves with import rewriting. Resolves class names to FQCNs upfront via compiled class index. Supports `--preview` for dry-run.
+
+```
+./gradlew cnavExecutePlan --plan-file=plan.json --preview
+./gradlew cnavExecutePlan --plan-file=plan.json
+```
+
+### Fix: `cnavRings --mode=emergent --plan-file` now correctly updates class universe
+
+Previously, plan simulation in emergent ring detection only mutated dependency edges but not the project class set, causing moved classes to be treated as external. Now both edges and the class universe are updated consistently.
+
 ## 0.1.103
 
 ### New: `cnavSimulateMove` task
