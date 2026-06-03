@@ -56,14 +56,9 @@ Three related improvements to make cycle output actionable:
 - **Ring degeneration guidance**: When one giant cycle collapses everything into a single ring, identify which package has the fewest inward edges (easiest to extract first). Combine with edge ranking.
 
 ### Test-source separation — exclude test edges from structural analysis
-**ACTIVE** | **Value: high** | **Effort: low** | Source: field-test(greitt+bass-ra)
+~~**ACTIVE**~~ **DONE (already implemented)** | **Value: high** | **Effort: low** | Source: field-test(greitt+bass-ra)
 
-Cycles, DSM, balance, and rings all treat test classes as production dependencies. This creates massive noise — `polls→testutil`, `admin→testutil` edges aren't architectural problems, yet they dominate cycle output and inflate DANGER verdicts. bass-ra-backend had 5 of 7 cycles as test-only (SystemTestContext, TestKeys patterns).
-
-- Add `--scope=prod` support to `cnavDsm`/`cnavCycles`/`cnavBalance`/`cnavRings` (reuse existing `--scope` param)
-- Use `SourceSet` tagging to filter edges where source is a test class
-- Consider: edges from test→production are valid (they show test coupling to prod structure), but test→test infrastructure is noise
-- When test-only edges create cycles, flag them as `[test-only]` in output (connects to cycle actionability)
+All structural tasks (cnavDsm, cnavCycles, cnavBalance, cnavRings) already support `--scope=prod` which filters class directories by source set. Verified on greitt: 90→0 ring violations, 1→0 cycles when excluding test sources. No code change needed.
 
 ### DSM what-if simulation (`cnavSimulateMove`)
 **ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra)
