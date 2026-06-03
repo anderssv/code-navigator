@@ -90,7 +90,7 @@ Current dependency analysis works at package granularity (`cnavPackageDeps`, `cn
 
 Current `cnavRings` assigns each **package** to a single ring. This fundamentally mismodels package-by-feature codebases where a single package intentionally contains classes at multiple hexagonal layers (domain entities + port interfaces + adapters). Result: massive false-positive violations (90 in greitt).
 
-**Core insight**: Packages = domain boundaries. Rings = dependency layers. In hex/package-by-feature, ring boundaries exist *within* packages, not between them.
+**Core insight**: Packages = domain boundaries. Rings = dependency layers. In hex/package-by-feature, ring boundaries exist *within* packages, not between them. You *can* model rings as subpackages (e.g., `polls/domain/`, `polls/adapters/`) but you don't have to — many projects intentionally keep a flat feature package with mixed-ring classes. Both are valid; cnavRings should handle both.
 
 **Approach:**
 
