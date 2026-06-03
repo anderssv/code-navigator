@@ -71,16 +71,14 @@ abstract class RingsTask : CodeNavigatorTask() {
     }
 
     private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<no.f12.codenavigator.navigation.types.ClassName>): String {
-        // Extract project-internal deps (including same-package)
-        val projectResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true, includeSamePackage = true)
-        // Extract external deps
-        val externalResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
-        val externalOnly = externalResult.data.filter { it.targetClass !in projectClasses }
-
+        val allResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        SkippedFileReporter.report(projectResult.skippedFiles, reportFile)?.let { logger.warn(it) }
+        SkippedFileReporter.report(allResult.skippedFiles, reportFile)?.let { logger.warn(it) }
 
-        val result = EmergentRingDetector.detect(projectResult.data, externalOnly, projectClasses)
+        val projectDeps = allResult.data.filter { it.targetClass in projectClasses }
+        val externalDeps = allResult.data.filter { it.targetClass !in projectClasses }
+
+        val result = EmergentRingDetector.detect(projectDeps, externalDeps, projectClasses)
         return EmergentRingFormatter.format(result)
     }
 }
