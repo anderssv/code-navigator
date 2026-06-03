@@ -12,6 +12,7 @@ import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
 import no.f12.codenavigator.navigation.relations.callgraph.CallTreeFormatter
 import no.f12.codenavigator.navigation.relations.callgraph.CallTreeNode
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
+import no.f12.codenavigator.navigation.dsm.CycleBreakAnalyzer
 import no.f12.codenavigator.navigation.dsm.CycleDetail
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
@@ -274,7 +275,12 @@ object LlmFormatter {
                     for (edge in detail.edges) {
                         val classStr = edge.classEdges.sortedBy { "${it.first}-${it.second}" }
                             .joinToString(",") { "${it.first.stripPackagePrefix(displayPrefix)}->${it.second.stripPackagePrefix(displayPrefix)}" }
-                        append("\n  ${edge.from}->${edge.to}: $classStr")
+                        append("\n  ${edge.from}->${edge.to}(${edge.classEdges.size}): $classStr")
+                    }
+                    val ranked = CycleBreakAnalyzer.rankEdges(detail)
+                    val breakPoints = ranked.filter { it.breaksycle }.take(3)
+                    if (breakPoints.isNotEmpty()) {
+                        append("\n  break: ${breakPoints.joinToString(",") { "${it.from}->${it.to}(${it.weight})" }}")
                     }
                 }
             })

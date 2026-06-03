@@ -35,10 +35,11 @@ class CyclesFormatterTest {
         val output = CyclesFormatter.format(details)
 
         assertTrue(output.contains("CYCLE: api, service"))
-        assertTrue(output.contains("api -> service:"))
+        assertTrue(output.contains("api -> service (1 ref):"))
         assertTrue(output.contains("api.Controller -> service.Service"))
-        assertTrue(output.contains("service -> api:"))
+        assertTrue(output.contains("service -> api (1 ref):"))
         assertTrue(output.contains("service.Service -> api.Controller"))
+        assertTrue(output.contains("Weakest link"), "Should show weakest link suggestion, got:\n$output")
     }
 
     @Test

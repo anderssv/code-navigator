@@ -526,8 +526,9 @@ class LlmFormatterTest {
         val result = LlmFormatter.formatCycles(details)
 
         assertTrue(result.contains("CYCLE api,service"))
-        assertTrue(result.contains("api->service: api.Controller->service.Service"))
-        assertTrue(result.contains("service->api: service.Service->api.Controller"))
+        assertTrue(result.contains("api->service(1): api.Controller->service.Service"))
+        assertTrue(result.contains("service->api(1): service.Service->api.Controller"))
+        assertTrue(result.contains("break:"), "Should include break suggestions, got:\n$result")
     }
 
     @Test
