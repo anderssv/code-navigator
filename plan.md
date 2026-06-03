@@ -55,14 +55,12 @@ Remaining (deferred to future iteration):
 All structural tasks (cnavDsm, cnavCycles, cnavBalance, cnavRings) already support `--scope=prod` which filters class directories by source set. Verified on greitt: 90→0 ring violations, 1→0 cycles when excluding test sources. No code change needed.
 
 ### DSM what-if simulation (`cnavSimulateMove`)
-**ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra)
+~~**ACTIVE**~~ **DONE (v0.1.103)** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra)
 
-Predict cycle/ring impact of moving a class or package without modifying code:
-- `cnavSimulateMove --type=BankIdType --to=no.example.ra --show-cycle-impact`
-- Modify the dependency graph in memory, re-run cycle detection, compare before/after.
-- Reuses TypeAffinityBuilder's ring recomputation approach.
-- Eliminates the current workflow: move → rebuild → cnavDsm → check → revert if bad.
-- **Prerequisite**: Cycle actionability should ship first (provides the edge-analysis infrastructure).
+Implemented. Predicts cycle impact of moving a class to a different package without modifying code:
+- `cnavSimulateMove --type=Cache --to-package=no.example.ra --scope=prod`
+- Mutates dependency graph in memory, re-runs cycle detection, diffs before/after
+- Shows removed/added cycles. Validated on bass-ra-backend.
 
 ### `cnavFileDeps` — file-level dependency tree
 **FUTURE** | **Value: medium** | **Effort: medium** | Source: internal

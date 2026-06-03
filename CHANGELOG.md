@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.1.103
+
+### New: `cnavSimulateMove` task
+
+Predicts the cycle impact of moving a class to a different package without modifying code. Shows cycles removed and added by the simulated move.
+
+```
+./gradlew cnavSimulateMove --type=Cache --to-package=com.example.shared --scope=prod
+```
+
+### New: Cycle break analysis
+
+`cnavCycles` now shows edge weights (reference counts) and identifies the weakest links to break:
+
+```
+⚡ Weakest links to break:
+  cache -> config (1 ref)
+  ra -> cache (2 refs)
+```
+
+### New: Emergent ring detection
+
+`cnavRings --mode=emergent` classifies classes by import shape (framework imports = adapter, SCC collapse for cycles, longest-path for layering). Shows mixed-ring package summaries.
+
 ## 0.1.102
 
 ### New: `cnavTypeAffinity` task
