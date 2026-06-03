@@ -92,7 +92,23 @@ Current `cnavRings` assigns each **package** to a single ring. This fundamentall
 
 **Core insight**: Packages = domain boundaries. Rings = dependency layers. In hex/package-by-feature, ring boundaries exist *within* packages, not between them. You *can* model rings as subpackages (e.g., `polls/domain/`, `polls/adapters/`) but you don't have to — many projects intentionally keep a flat feature package with mixed-ring classes. Both are valid; cnavRings should handle both.
 
-**Approach:**
+**Approach — two modes of analysis:**
+
+**Mode 1: Structural rings** (current behavior, improved) — `--mode=structural` (default when subpackages exist)
+- Respects explicit ring subpackages if present (`polls/domain/`, `polls/adapters/`)
+- Validates that declared ring boundaries are respected
+- Answers: "Am I following the ring structure I declared?"
+
+**Mode 2: Emergent rings** — `--mode=emergent`
+- Ignores package structure entirely
+- Classifies each class by its imports into a ring (domain/application/adapter)
+- Reports actual dependency flow between emergent rings
+- Works for flat feature packages with no ring subpackages
+- Answers: "What ring structure does my code actually have?"
+
+Both modes are complementary: structural for enforcement, emergent for discovery. A project might use structural in CI (fail on violations) and emergent during refactoring exploration.
+
+**Implementation details (both modes):**
 
 1. **Class-level ring assignment** — Analyze each class's ring position based on its imports:
    - **Ring 0 (Domain)**: No I/O, no framework deps. Pure Kotlin data/logic.
