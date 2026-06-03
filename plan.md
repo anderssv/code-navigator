@@ -38,22 +38,16 @@ Fixed: `*Kt` facade classes excluded from class-level dead code detection entire
 ## Cycle & dependency analysis
 
 ### Cycle actionability — fix suggestions, edge ranking, and direction clarity
-**ACTIVE** | **Value: high** | **Effort: high** | Source: field-test(bass-ra+greitt)
+~~**ACTIVE**~~ **DONE (v0.1.103)** | **Value: high** | **Effort: high** | Source: field-test(bass-ra+greitt)
 
-Three related improvements to make cycle output actionable:
+Implemented:
+1. **Edge direction + counts**: Per-edge ref counts shown in both TEXT and LLM formats.
+2. **Edge ranking — "which edge to break first"**: `CycleBreakAnalyzer` computes break-score (edge removal splits/shrinks SCC) and ranks by weight. Top 3 weakest links shown.
+3. **Fix suggestions**: Weakest links section tells user which edges to target.
 
-1. **Edge direction + counts**: Show per-direction edge counts and flag test-only edges:
-   ```
-   CYCLES: config<->ra (config->ra:3, ra->config:3[test-only])
-   ```
-
-2. **Edge ranking — "which edge to break first"**: Compute "break score" per edge (how many SCCs would split if removed). Show top 3-5 weakest links. Include edge weight (reference count) — a 1-reference edge is easier to break than a 21-reference edge.
-
-3. **Fix suggestions**: Show which specific class-level edges would need to move to break the cycle, suggest which direction the dependency should flow.
-
-- **Prerequisite for**: DSM what-if simulation (uses same edge-analysis infrastructure)
-- **Reuses**: `cnavWhyDepends` infrastructure for edge explanation
-- **Ring degeneration guidance**: When one giant cycle collapses everything into a single ring, identify which package has the fewest inward edges (easiest to extract first). Combine with edge ranking.
+Remaining (deferred to future iteration):
+- Ring degeneration guidance (identify easiest-to-extract package in giant cycles)
+- Test-only edge flagging in cycle output
 
 ### Test-source separation — exclude test edges from structural analysis
 ~~**ACTIVE**~~ **DONE (already implemented)** | **Value: high** | **Effort: low** | Source: field-test(greitt+bass-ra)
