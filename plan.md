@@ -95,9 +95,10 @@ Current `cnavRings` assigns each **package** to a single ring. This fundamentall
 **Approach — two modes of analysis:**
 
 **Mode 1: Structural rings** (current behavior, improved) — `--mode=structural` (default when subpackages exist)
-- Respects explicit ring subpackages if present (`polls/domain/`, `polls/adapters/`)
-- Validates that declared ring boundaries are respected
-- Answers: "Am I following the ring structure I declared?"
+- Detects ring subpackages by their dependency shape (what they import), NOT by naming conventions
+- Does not expect names like "domain/", "adapters/", "ports/" — any subpackage name is valid
+- A subpackage is Ring 0 if it has no framework deps, Ring 2 if it imports I/O — regardless of what it's called
+- Validates that the detected ring boundaries are respected
 
 **Mode 2: Emergent rings** — `--mode=emergent`
 - Ignores package structure entirely
