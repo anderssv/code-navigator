@@ -1,13 +1,15 @@
 package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
-
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
+import no.f12.codenavigator.navigation.dsm.EmergentRingDetector
+import no.f12.codenavigator.navigation.dsm.EmergentRingFormatter
 import no.f12.codenavigator.navigation.dsm.RingDetector
 import no.f12.codenavigator.navigation.dsm.RingFormatter
+import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
@@ -29,9 +31,11 @@ class RingsMojo : AbstractMojo() {
     @Parameter(property = "format")
     private var format: String? = null
 
-
     @Parameter(property = "scope")
     private var scope: String? = null
+
+    @Parameter(property = "mode")
+    private var mode: String? = null
 
     override fun execute() {
         project.checkStaleness(log)
@@ -39,6 +43,7 @@ class RingsMojo : AbstractMojo() {
         val props = TaskRegistry.RINGS.enhanceProperties(buildPropertyMap())
         val outputFormat = ParamDef.parseFormat(props)
         val scopeFilter = Scope.parse(props["scope"])
+        val modeVal = props["mode"] ?: "package"
 
         val classDirectories = project.taggedClassDirectories()
             .filter { scopeFilter.matchesSourceSet(it.second) }
@@ -50,24 +55,42 @@ class RingsMojo : AbstractMojo() {
         }
 
         val projectClasses = scanProjectClasses(classDirectories)
+
+        val output = when (modeVal) {
+            "emergent" -> detectEmergent(classDirectories, projectClasses)
+            else -> detectPackageLevel(classDirectories, projectClasses)
+        }
+
+        println(OutputWrapper.formatAndWrap(outputFormat) { format ->
+            when (format) {
+                OutputFormat.TEXT, OutputFormat.DIFF -> output
+                OutputFormat.JSON -> output
+                OutputFormat.LLM -> output
+            }
+        })
+    }
+
+    private fun detectPackageLevel(classDirectories: List<File>, projectClasses: Set<ClassName>): String {
         val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { log.warn(it) }
-
-        val result = RingDetector.detect(extractResult.data)
-        val output = RingFormatter.format(result)
-
-        println(OutputWrapper.formatAndWrap(outputFormat) { format ->
-    when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> output
-        OutputFormat.JSON -> output
-        OutputFormat.LLM -> output
+        return RingFormatter.format(RingDetector.detect(extractResult.data))
     }
-})
+
+    private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<ClassName>): String {
+        val projectResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true, includeSamePackage = true)
+        val externalResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
+        val externalOnly = externalResult.data.filter { it.targetClass !in projectClasses }
+
+        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
+        SkippedFileReporter.report(projectResult.skippedFiles, reportFile)?.let { log.warn(it) }
+
+        return EmergentRingFormatter.format(EmergentRingDetector.detect(projectResult.data, externalOnly, projectClasses))
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
         scope?.let { put("scope", it) }
+        mode?.let { put("mode", it) }
     }
 }

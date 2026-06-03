@@ -1069,6 +1069,7 @@ class TaskRegistryTest {
             "params" to ParamType.STRING,
             "defaults" to ParamType.STRING,
             "baseline" to ParamType.STRING,
+            "mode" to ParamType.STRING,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }

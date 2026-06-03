@@ -272,6 +272,7 @@ object TaskRegistry {
     val TO_PACKAGE = ParamDef("to-package", "<pkg>", "Target package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PORTS = ParamDef("ports", "<regex>", "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val AFFINITY_THRESHOLD = ParamDef("threshold", "<N>", "Max number of consumer domains to still count as single-owner", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
+    val RING_MODE = ParamDef("mode", "package|emergent", "Analysis mode: package (default, assigns rings per package) or emergent (assigns rings per class based on import shape)", flag = false, defaultValue = "package", enhancePattern = false, type = ParamType.STRING)
 
     val FORMAT_PARAMS = listOf(FORMAT)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
@@ -772,12 +773,13 @@ object TaskRegistry {
 
     val RINGS = TaskDef(
         goal = "rings",
-        description = "Auto-detect hexagonal architecture rings and report violations (outward deps, peer/cycle deps)",
-        params = FORMAT_PARAMS + SOURCE_SET_PARAMS,
+        description = "Auto-detect hexagonal architecture rings and report violations. Use --mode=emergent for class-level ring detection based on import shapes.",
+        params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
             UsageExample(emptyList()),
+            UsageExample(listOf(RING_MODE to "emergent")),
         ),
     )
 

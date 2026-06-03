@@ -362,6 +362,7 @@ object HelpText {
         appendLine("    Auto-detect hexagonal architecture rings from the dependency graph.")
         appendLine("    No config needed — assigns concentric rings (0=domain/innermost, higher=outer).")
         appendLine("    Reports OUTWARD violations (inner depending on outer) and PEER/CYCLE violations.")
+        appendLine("      ${pd(TaskRegistry.RING_MODE)}")
         examples(TaskRegistry.RINGS)
         appendLine()
         appendLine("  ${t("type-affinity")}")
