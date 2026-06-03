@@ -86,51 +86,24 @@ Current dependency analysis works at package granularity (`cnavPackageDeps`, `cn
 - **Alternative framing**: Extend `cnavDsm` with `--granularity=file|package|class` instead of a separate task.
 
 ### Class-level ring detection for `cnavRings`
-**ACTIVE** | **Value: high** | **Effort: high** | Source: field-test(greitt, v0.1.102)
+~~**ACTIVE**~~ **DONE (v0.1.103-SNAPSHOT)** | **Value: high** | **Effort: high** | Source: field-test(greitt, v0.1.102)
 
-Current `cnavRings` assigns each **package** to a single ring. This fundamentally mismodels package-by-feature codebases where a single package intentionally contains classes at multiple hexagonal layers (domain entities + port interfaces + adapters). Result: massive false-positive violations (90 in greitt).
+Implemented `--mode=emergent` which classifies each class into a ring by import shape (framework imports = adapter, SCC collapse for cycles, longest-path for layering). Shows mixed-ring package summaries. Ring detection is by dependency shape only, never naming conventions.
 
-**Core insight**: Packages = domain boundaries. Rings = dependency layers. In hex/package-by-feature, ring boundaries exist *within* packages, not between them. You *can* model rings as subpackages (e.g., `polls/domain/`, `polls/adapters/`) but you don't have to — many projects intentionally keep a flat feature package with mixed-ring classes. Both are valid; cnavRings should handle both.
+**Remaining follow-ups** (not blocking, separate items):
+- Structural mode improvement (detect ring subpackages by shape)
+- Intra-package ring violations (domain class depending on adapter within same package)
+- Actionable guidance (suggest port extraction)
 
-**Approach — two modes of analysis:**
+### Structural ring mode improvement
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: field-test(greitt, v0.1.102)
 
-**Mode 1: Structural rings** (current behavior, improved) — `--mode=structural` (default when subpackages exist)
-- Detects ring subpackages by their dependency shape (what they import), NOT by naming conventions
-- Does not expect names like "domain/", "adapters/", "ports/" — any subpackage name is valid
-- A subpackage is Ring 0 if it has no framework deps, Ring 2 if it imports I/O — regardless of what it's called
-- Validates that the detected ring boundaries are respected
+Improve the default `--mode=package` to detect ring subpackages by their dependency shape (not naming). A subpackage is Ring 0 if it has no framework deps, Ring 2 if it imports I/O — regardless of what it's called. Validates that detected ring boundaries are respected.
 
-**Mode 2: Emergent rings** — `--mode=emergent`
-- Ignores package structure entirely
-- Classifies each class by its imports into a ring (domain/application/adapter)
-- Reports actual dependency flow between emergent rings
-- Works for flat feature packages with no ring subpackages
-- Answers: "What ring structure does my code actually have?"
+### Intra-package ring violations for emergent mode
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: field-test(greitt, v0.1.102)
 
-Both modes are complementary: structural for enforcement, emergent for discovery. A project might use structural in CI (fail on violations) and emergent during refactoring exploration.
-
-**Implementation details (both modes):**
-
-1. **Class-level ring assignment** — Analyze each class's ring position based on its imports:
-   - **Ring 0 (Domain)**: No I/O, no framework deps. Pure Kotlin data/logic.
-   - **Ring 1 (Application/Port)**: Depends only on Ring 0 types + own interfaces.
-   - **Ring 2 (Adapter)**: Imports framework types (Ktor, Exposed, HTTP clients, etc.)
-   - Use framework detection heuristics (FrameworkPresets already exists for cnavDead).
-
-2. **Mixed-ring package reporting** — Flag packages spanning 2+ rings. Not violations — expected in package-by-feature. Show the split:
-   ```
-   web.auth: Ring 0 (Device, SessionTokenResult) | Ring 1 (DevicesRepository, AuthTokenService) | Ring 2 (DeviceAuthPlugin, DevicesRepositoryImpl)
-   ```
-
-3. **Intra-package ring violations** — The real violations to report:
-   - Adapter importing domain from *another* package without going through a port
-   - Upward dependencies within a package (Ring 0 class importing Ring 2 class)
-
-4. **Actionable guidance** — Instead of "PEER/CYCLE: web.auth → polls", report:
-   - `web.auth.DeviceEmailService` (adapter) → `polls.PollsRepository` (port) — suggest extracting a port interface
-   - Include direction + ring level in violation messages
-
-**Connects to**: Test-source separation (filter test classes first), Cycle actionability (edge-level analysis)
+In emergent mode, report violations where a domain class (ring 0) within a package depends on an adapter class (ring 2) — upward dependencies within a package. Currently SCC collapse makes this hard to detect (cycles hide direction). May need pre-SCC edge analysis.
 
 ### High violation count warning for `cnavRings`
 **PARKED** | **Value: low** | **Effort: low** | Source: internal
