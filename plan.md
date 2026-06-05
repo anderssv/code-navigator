@@ -328,10 +328,10 @@ data class TaskGuidance(
 
 Replaces scattered `*_INTERPRETATION` constants with single source of truth per task. Reused in LLM output header, AgentHelpText, and no-params fallback.
 
-### Refactoring result LLM hints for follow-up actions
-**ACTIVE** | **Value: medium** | **Effort: low** | Source: internal
+### ~~Refactoring result LLM hints for follow-up actions~~ — DONE (v0.1.105-SNAPSHOT)
+**DONE** | **Value: medium** | **Effort: low** | Source: internal
 
-After successful refactoring, include contextual hints suggesting further analysis (e.g., after `cnavMoveClass` → suggest `cnavPackageDeps` to verify improvement).
+Implemented `RefactoringHints` helper in core. Each formatter's LLM output now includes task-specific follow-up suggestions after applied operations (non-preview). Move/execute-plan suggest structural verification (`cnavPackageDeps`, `cnavRings`, `cnavCycles`). Rename/delete/change-signature suggest `cnavFindUsages` for verification.
 
 ### ~~Refactoring task discoverability~~ — DONE
 ~~**ACTIVE**~~ **DONE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.72)

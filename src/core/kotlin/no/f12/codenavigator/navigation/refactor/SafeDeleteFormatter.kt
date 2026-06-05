@@ -41,6 +41,9 @@ object SafeDeleteFormatter {
             for (change in result.changes) {
                 appendLine("Modified: ${change.filePath}")
             }
+            if (!config.preview) {
+                append(RefactoringHints.safeDeleteFollowUp())
+            }
         } else {
             appendLine("Cannot safely delete `$target`.")
             if (result.reason != null) appendLine(result.reason)

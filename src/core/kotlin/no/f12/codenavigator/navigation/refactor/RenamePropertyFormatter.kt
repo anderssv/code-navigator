@@ -72,6 +72,7 @@ object RenamePropertyFormatter {
             }
             if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)
+                append(RefactoringHints.renamePropertyFollowUp(config.propertyName))
             }
         }.trimEnd()
     }

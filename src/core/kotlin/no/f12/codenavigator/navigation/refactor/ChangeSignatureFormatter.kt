@@ -41,6 +41,9 @@ object ChangeSignatureFormatter {
                 appendLine(change.after)
                 appendLine("```")
             }
+            if (!config.preview) {
+                append(RefactoringHints.changeSignatureFollowUp(config.methodName))
+            }
         } else {
             appendLine("# Cannot change signature: $target")
             if (result.reason != null) appendLine(result.reason)

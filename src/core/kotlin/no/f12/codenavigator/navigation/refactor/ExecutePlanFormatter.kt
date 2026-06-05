@@ -97,6 +97,7 @@ object ExecutePlanFormatter {
             if (!result.preview) {
                 appendLine()
                 appendLine(COMPILE_RECOMMENDATION)
+                append(RefactoringHints.executePlanFollowUp())
             }
         }.trimEnd()
     }

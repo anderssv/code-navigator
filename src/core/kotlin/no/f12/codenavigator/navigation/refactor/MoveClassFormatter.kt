@@ -94,6 +94,7 @@ object MoveClassFormatter {
             }
             if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)
+                append(RefactoringHints.moveClassFollowUp(config.from))
             }
             appendWarnings(result)
         }.trimEnd()
@@ -149,7 +150,10 @@ object MoveClassFormatter {
                 val diff = computeUnifiedDiff(change.filePath, change.before, change.after)
                 if (diff.isNotEmpty()) { appendLine(diff) }
             }
-            if (!config.preview) { appendLine(COMPILE_RECOMMENDATION) }
+            if (!config.preview) {
+                appendLine(COMPILE_RECOMMENDATION)
+                append(RefactoringHints.moveClassFollowUp(config.fromFile))
+            }
         }.trimEnd()
     }
 }

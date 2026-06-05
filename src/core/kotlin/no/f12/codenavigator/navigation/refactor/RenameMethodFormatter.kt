@@ -72,6 +72,7 @@ object RenameMethodFormatter {
             }
             if (!config.preview) {
                 appendLine(COMPILE_RECOMMENDATION)
+                append(RefactoringHints.renameMethodFollowUp(config.methodName, config.newName))
             }
         }.trimEnd()
     }
