@@ -606,6 +606,14 @@ object HelpText {
         appendLine()
         appendLine("If you are an AI coding agent, run ${TaskRegistry.AGENT_HELP.renderExamples(tool).first()} for optimized guidance.")
         appendLine()
+        appendLine("--- Feedback ---")
+        appendLine()
+        appendLine("To give feedback, ask your agent:")
+        appendLine("  \"Review the usage of code-navigator. What was good? What was bad? What could be improved?\"")
+        appendLine()
+        appendLine("  Email:  cnav@mikill.no")
+        appendLine("  Issues: https://github.com/anderssv/code-navigator/issues")
+        appendLine()
         appendLine("Made by Anders Sveen / https://www.mikill.no")
     }
 

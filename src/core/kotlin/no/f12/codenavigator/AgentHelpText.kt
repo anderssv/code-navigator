@@ -405,6 +405,14 @@ object AgentHelpText {
         appendTroubleshooting(tool)
         appendLine()
         appendSectionDirectory(tool)
+        appendLine()
+        appendLine("## Feedback")
+        appendLine()
+        appendLine("To give feedback, ask your agent:")
+        appendLine("  \"Review the usage of code-navigator. What was good? What was bad? What could be improved?\"")
+        appendLine()
+        appendLine("  Email:  cnav@mikill.no")
+        appendLine("  Issues: https://github.com/anderssv/code-navigator/issues")
     }
 
     private fun generateWorkflow(tool: BuildTool): String = buildString {
