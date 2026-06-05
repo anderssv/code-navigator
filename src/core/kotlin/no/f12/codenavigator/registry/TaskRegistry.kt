@@ -883,6 +883,20 @@ object TaskRegistry {
         ),
     )
 
+    val MOVE_PACKAGE_TASK = TaskDef(
+        goal = "move-package",
+        description = "Move all classes in a package to a different package, updating all references",
+        params = FORMAT_PARAMS + listOf(FROM_PACKAGE, TO_PACKAGE, PREVIEW),
+        requiresCompilation = true,
+        category = TaskCategory.SOURCE,
+        intent = "Batch-move every class in a package to a new package",
+        intentDetail = "iterates move-class for each class found in the source package",
+        examples = listOf(
+            UsageExample(listOf(FROM_PACKAGE to "com.example.services", TO_PACKAGE to "com.example.domain")),
+            UsageExample(listOf(FROM_PACKAGE to "com.example.services", TO_PACKAGE to "com.example.domain", PREVIEW to null)),
+        ),
+    )
+
     val MOVE_FILE_TASK = TaskDef(
         goal = "move-file",
         description = "Move a Kotlin source file to a new package, updating all class and top-level declaration references",
@@ -1024,6 +1038,7 @@ object TaskRegistry {
         RENAME_METHOD_TASK,
         MOVE_CLASS_TASK,
         MOVE_FILE_TASK,
+        MOVE_PACKAGE_TASK,
         RENAME_PROPERTY_TASK,
         CHANGE_SIGNATURE_TASK,
         SAFE_DELETE_TASK,

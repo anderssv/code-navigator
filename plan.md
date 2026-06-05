@@ -149,10 +149,12 @@ When violation count exceeds a threshold (>50), add a note: "High violation coun
 
 ## Refactoring operations
 
-### cnavMovePackage — batch move all classes in a package
-**ACTIVE** | **Value: high** | **Effort: low** | Source: field-test(bass-ra)
+### ~~cnavMovePackage — batch move all classes in a package~~ — DONE (v0.1.105-SNAPSHOT)
+**DONE** | **Value: high** | **Effort: low** | Source: field-test(bass-ra)
 
-`cnavMovePackage --from=no.example.domain.ra --to=no.example.ra` — iterates cnavMoveClass for each class in the package. Infrastructure exists; this is orchestration.
+Implemented `cnavMovePackage --from-package=<pkg> --to-package=<pkg>` (Gradle + Maven). Scans project classes, filters by source package, then iterates `MoveClassWorkAction` for each class. Supports `--preview`. Reuses `ExecutePlanFormatter` for consistent batch output.
+
+**Known limitation**: Shares the same OpenRewrite worker metaspace issue as `cnavExecutePlan` — packages with 5+ classes may hit `OutOfMemoryError: Metaspace` with default JVM settings. Workaround: increase `org.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=1g` in `gradle.properties`.
 
 ### cnavMoveFunction — move top-level Kotlin functions
 **FUTURE** | **Value: medium** | **Effort: high** | Source: field-test(bass-ra)

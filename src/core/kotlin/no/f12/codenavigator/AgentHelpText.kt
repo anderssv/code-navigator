@@ -64,6 +64,7 @@ object AgentHelpText {
         appendLine("Inspect a class (fields, methods, supertypes): ${u("class-detail", p("pattern", "ClassName"))}")
         appendLine("Find implementations: ${u("find-interfaces", p("pattern", "InterfaceName"))}")
         appendLine("Move a class: ${u("move-class", p("from", "com.example.Old"), p("to", "com.example.New"))}")
+        appendLine("Move all classes in a package: ${u("move-package", p("from-package", "com.example.oldpkg"), p("to-package", "com.example.newpkg"))}")
         appendLine("Rename a method: ${u("rename-method", p("target-class", "com.example.Service"), p("method", "old"), p("new-name", "new"))}")
         appendLine("Change a method signature: ${u("change-signature", p("target-class", "com.example.Service"), p("method", "find"), p("params", "\"limit: Int, query: String\""), p("defaults", "\"query=\\\"\\\"\""))}")
         appendLine("Assess change impact: ${u("changed-since", p("ref", "main"))}")
