@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.105
+
+### New: `cnavMovePackage` task
+
+Batch-move all classes in a package to a different package, updating all references. Scans the project for classes in the source package and applies `move-class` to each.
+
+```
+./gradlew cnavMovePackage --from-package=com.example.oldpkg --to-package=com.example.newpkg --preview
+./gradlew cnavMovePackage --from-package=com.example.oldpkg --to-package=com.example.newpkg
+```
+
+### New: Refactoring result LLM hints
+
+After successful refactoring operations, the LLM output now includes task-specific follow-up suggestions. For example, after `cnavMoveClass`, the LLM output suggests running `cnavPackageDeps`, `cnavRings`, and `cnavCycles` to verify structural improvement. Rename/delete/change-signature operations suggest `cnavFindUsages` for verification.
+
+### Feedback section in help output
+
+Both `cnavHelp` and `cnavAgentHelp` now include a feedback section at the end with the LLM feedback prompt and contact info (cnav@mikill.no, GitHub issues).
+
 ## 0.1.104
 
 ### New: `--plan-file` parameter for simulation
