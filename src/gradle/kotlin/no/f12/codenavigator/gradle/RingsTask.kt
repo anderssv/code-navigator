@@ -11,6 +11,8 @@ import no.f12.codenavigator.navigation.dsm.EmergentRingDetector
 import no.f12.codenavigator.navigation.dsm.EmergentRingFormatter
 import no.f12.codenavigator.navigation.dsm.RingDetector
 import no.f12.codenavigator.navigation.dsm.RingFormatter
+import no.f12.codenavigator.navigation.dsm.HintsConfigGenerator
+import no.f12.codenavigator.navigation.dsm.RingsHintsConfig
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.TaskRegistry
 import org.gradle.api.tasks.Internal
@@ -30,9 +32,14 @@ abstract class RingsTask : CodeNavigatorTask() {
     @get:Internal
     var mode: String? = null
 
+    @Option(option = "bootstrap-config", description = "Generate a starting cnav-config.json based on emergent ring analysis — best-effort, meant to be reviewed and tweaked")
+    @get:Internal
+    var bootstrapConfig: Boolean? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         scope?.let { put("scope", it) }
         mode?.let { put("mode", it) }
+        bootstrapConfig?.let { put("bootstrap-config", "true") }
     }
 
     @TaskAction
@@ -43,14 +50,16 @@ abstract class RingsTask : CodeNavigatorTask() {
         val format = ParamDef.parseFormat(props)
         val scopeVal = Scope.parse(props["scope"])
         val modeVal = props["mode"] ?: "package"
+        val bootstrap = props["bootstrap-config"] == "true"
 
         val classDirectories = project.taggedClassDirectories()
             .filter { scopeVal.matchesSourceSet(it.second) }
             .map { it.first }
         val projectClasses = scanProjectClasses(classDirectories)
 
-        val output = when (modeVal) {
-            "emergent" -> detectEmergent(classDirectories, projectClasses)
+        val output = when {
+            bootstrap && modeVal == "emergent" -> bootstrapConfig(classDirectories, projectClasses)
+            modeVal == "emergent" -> detectEmergent(classDirectories, projectClasses)
             else -> detectPackageLevel(classDirectories)
         }
 
@@ -71,6 +80,18 @@ abstract class RingsTask : CodeNavigatorTask() {
         return RingFormatter.format(RingDetector.detect(applyPlan(extractResult.data)))
     }
 
+    private fun loadHintsConfig(): RingsHintsConfig? =
+        RingsHintsConfig.loadFromDirectory(project.projectDir)
+
+    private fun bootstrapConfig(classDirectories: List<File>, projectClasses: Set<no.f12.codenavigator.navigation.types.ClassName>): String {
+        val allResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
+        val projectDeps = allResult.data.filter { it.targetClass in projectClasses }
+        val externalDeps = allResult.data.filter { it.targetClass !in projectClasses }
+
+        val result = EmergentRingDetector.detect(projectDeps, externalDeps, projectClasses)
+        return HintsConfigGenerator.generate(result.classRings)
+    }
+
     private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<no.f12.codenavigator.navigation.types.ClassName>): String {
         val allResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
@@ -81,7 +102,9 @@ abstract class RingsTask : CodeNavigatorTask() {
         val projectDeps = mutatedDeps.filter { it.targetClass in mutatedClasses }
         val externalDeps = mutatedDeps.filter { it.targetClass !in mutatedClasses }
 
-        val result = EmergentRingDetector.detect(projectDeps, externalDeps, mutatedClasses)
-        return EmergentRingFormatter.format(result)
+        val hintsConfig = loadHintsConfig()
+        val result = EmergentRingDetector.detect(projectDeps, externalDeps, mutatedClasses, hintsConfig)
+        val ringNames = hintsConfig?.ringIndexNames() ?: emptyMap()
+        return EmergentRingFormatter.format(result, ringNames, hasHints = hintsConfig != null && hintsConfig.hasHints())
     }
 }

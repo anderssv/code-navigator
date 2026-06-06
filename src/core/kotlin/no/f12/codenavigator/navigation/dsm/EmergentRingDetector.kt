@@ -31,12 +31,18 @@ object EmergentRingDetector {
         projectDeps: List<PackageDependency>,
         externalDeps: List<PackageDependency>,
         projectClasses: Set<ClassName>,
+        hintsConfig: RingsHintsConfig? = null,
     ): ClassRingAssignment {
         // Build ClassDependencies for each class
         val classDepsMap = buildClassDependencies(projectDeps, externalDeps, projectClasses)
 
         // Classify each class into a ring
-        val classRings = ClassRingClassifier.classify(classDepsMap)
+        val rawRings = ClassRingClassifier.classify(classDepsMap)
+        val classRings = if (hintsConfig != null) {
+            hintsConfig.adjustRings(rawRings, projectClasses)
+        } else {
+            rawRings
+        }
 
         // Build package summary
         val packageSummary = classRings.entries

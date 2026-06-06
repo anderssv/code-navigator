@@ -9,6 +9,8 @@ import no.f12.codenavigator.navigation.dsm.EmergentRingDetector
 import no.f12.codenavigator.navigation.dsm.EmergentRingFormatter
 import no.f12.codenavigator.navigation.dsm.RingDetector
 import no.f12.codenavigator.navigation.dsm.RingFormatter
+import no.f12.codenavigator.navigation.dsm.HintsConfigGenerator
+import no.f12.codenavigator.navigation.dsm.RingsHintsConfig
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.ParamDef
@@ -40,6 +42,9 @@ class RingsMojo : AbstractMojo() {
     @Parameter(property = "mode")
     private var mode: String? = null
 
+    @Parameter(property = "bootstrap-config")
+    private var bootstrapConfig: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -47,6 +52,7 @@ class RingsMojo : AbstractMojo() {
         val outputFormat = ParamDef.parseFormat(props)
         val scopeFilter = Scope.parse(props["scope"])
         val modeVal = props["mode"] ?: "package"
+        val bootstrap = props["bootstrap-config"] == "true"
 
         val classDirectories = project.taggedClassDirectories()
             .filter { scopeFilter.matchesSourceSet(it.second) }
@@ -59,8 +65,9 @@ class RingsMojo : AbstractMojo() {
 
         val projectClasses = scanProjectClasses(classDirectories)
 
-        val output = when (modeVal) {
-            "emergent" -> detectEmergent(classDirectories, projectClasses)
+        val output = when {
+            bootstrap && modeVal == "emergent" -> bootstrapConfig(classDirectories, projectClasses)
+            modeVal == "emergent" -> detectEmergent(classDirectories, projectClasses)
             else -> detectPackageLevel(classDirectories, projectClasses)
         }
 
@@ -80,6 +87,15 @@ class RingsMojo : AbstractMojo() {
         return RingFormatter.format(RingDetector.detect(extractResult.data))
     }
 
+    private fun bootstrapConfig(classDirectories: List<File>, projectClasses: Set<ClassName>): String {
+        val projectResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true, includeSamePackage = true)
+        val externalResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
+        val externalOnly = externalResult.data.filter { it.targetClass !in projectClasses }
+
+        val result = EmergentRingDetector.detect(projectResult.data, externalOnly, projectClasses)
+        return HintsConfigGenerator.generate(result.classRings)
+    }
+
     private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<ClassName>): String {
         val projectResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true, includeSamePackage = true)
         val externalResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
@@ -88,7 +104,10 @@ class RingsMojo : AbstractMojo() {
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(projectResult.skippedFiles, reportFile)?.let { log.warn(it) }
 
-        return EmergentRingFormatter.format(EmergentRingDetector.detect(projectResult.data, externalOnly, projectClasses))
+        val hintsConfig = RingsHintsConfig.loadFromDirectory(project.basedir)
+        val result = EmergentRingDetector.detect(projectResult.data, externalOnly, projectClasses, hintsConfig)
+        val ringNames = hintsConfig?.ringIndexNames() ?: emptyMap()
+        return EmergentRingFormatter.format(result, ringNames, hasHints = hintsConfig != null && hintsConfig.hasHints())
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
@@ -96,5 +115,6 @@ class RingsMojo : AbstractMojo() {
         scope?.let { put("scope", it) }
         planFile?.let { put("plan-file", it) }
         mode?.let { put("mode", it) }
+        bootstrapConfig?.let { put("bootstrap-config", it) }
     }
 }

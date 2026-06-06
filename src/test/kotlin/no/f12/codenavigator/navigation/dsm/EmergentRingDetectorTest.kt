@@ -98,6 +98,39 @@ class EmergentRingDetectorTest {
     }
 
     @Test
+    fun `hints config promotes infrastructure class from ring 0`() {
+        val projectClasses = setOf(
+            ClassName("com.app.domain.Order"),
+            ClassName("com.app.serial.FooSerializer"),
+        )
+        val projectDeps = listOf<PackageDependency>()
+        val externalDeps = listOf<PackageDependency>()
+
+        val hintsConfig = RingsHintsConfig.fromJson(
+            """{"ringNames": ["domain", "port", "application", "adapter"], "hints": {"adapter": ["*Serializer"]}}"""
+        )
+        val result = EmergentRingDetector.detect(projectDeps, externalDeps, projectClasses, hintsConfig)
+
+        assertEquals(0, result.classRings[ClassName("com.app.domain.Order")])
+        assertEquals(3, result.classRings[ClassName("com.app.serial.FooSerializer")])
+    }
+
+    @Test
+    fun `no hints config leaves classes at raw rings`() {
+        val projectClasses = setOf(
+            ClassName("com.app.domain.Order"),
+            ClassName("com.app.serial.FooSerializer"),
+        )
+        val projectDeps = listOf<PackageDependency>()
+        val externalDeps = listOf<PackageDependency>()
+
+        val result = EmergentRingDetector.detect(projectDeps, externalDeps, projectClasses)
+
+        assertEquals(0, result.classRings[ClassName("com.app.domain.Order")])
+        assertEquals(0, result.classRings[ClassName("com.app.serial.FooSerializer")])
+    }
+
+    @Test
     fun `no violations in clean hexagonal structure`() {
         val projectClasses = setOf(
             ClassName("com.app.domain.Order"),

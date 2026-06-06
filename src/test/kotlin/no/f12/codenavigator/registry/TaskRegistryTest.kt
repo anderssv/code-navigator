@@ -1071,6 +1071,7 @@ class TaskRegistryTest {
             "baseline" to ParamType.STRING,
             "mode" to ParamType.STRING,
             "plan-file" to ParamType.STRING,
+            "bootstrap-config" to ParamType.FLAG,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }

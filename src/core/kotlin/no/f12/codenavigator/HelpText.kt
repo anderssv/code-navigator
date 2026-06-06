@@ -374,6 +374,7 @@ object HelpText {
         appendLine("    No config needed — assigns concentric rings (0=domain/innermost, higher=outer).")
         appendLine("    Reports OUTWARD violations (inner depending on outer) and PEER/CYCLE violations.")
         appendLine("      ${pd(TaskRegistry.RING_MODE)}")
+        appendLine("      ${pd(TaskRegistry.BOOTSTRAP_CONFIG, "Use with --mode=emergent to generate a starting cnav-config.json")}")
         examples(TaskRegistry.RINGS)
         appendLine()
         appendLine("  ${t("type-affinity")}")

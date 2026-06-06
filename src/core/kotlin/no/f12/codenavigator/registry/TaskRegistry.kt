@@ -274,6 +274,7 @@ object TaskRegistry {
     val PORTS = ParamDef("ports", "<regex>", "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val AFFINITY_THRESHOLD = ParamDef("threshold", "<N>", "Max number of consumer domains to still count as single-owner", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
     val RING_MODE = ParamDef("mode", "package|emergent", "Analysis mode: package (default, assigns rings per package) or emergent (assigns rings per class based on import shape)", flag = false, defaultValue = "package", enhancePattern = false, type = ParamType.STRING)
+    val BOOTSTRAP_CONFIG = ParamDef("bootstrap-config", "true", "Generate a starting cnav-config.json based on emergent ring analysis — best-effort suggestions meant to be reviewed and tweaked before use", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
 
     val FORMAT_PARAMS = listOf(FORMAT)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
@@ -787,7 +788,7 @@ object TaskRegistry {
     val RINGS = TaskDef(
         goal = "rings",
         description = "Auto-detect hexagonal architecture rings and report violations. Use --mode=emergent for class-level ring detection based on import shapes.",
-        params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE) + PLAN_PARAMS,
+        params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE, BOOTSTRAP_CONFIG) + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
