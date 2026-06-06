@@ -14,7 +14,46 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import java.io.File
 
+data class StructuralSupertypeInfo(
+    val sourceClass: ClassName,
+    val supertypeClass: ClassName,
+)
+
 object DsmDependencyExtractor {
+
+    fun extractStructuralSupertypes(
+        classDirectories: List<File>,
+        projectClasses: Set<ClassName>,
+    ): List<StructuralSupertypeInfo> {
+        val result = mutableListOf<StructuralSupertypeInfo>()
+
+        classDirectories
+            .filter { it.exists() }
+            .forEach { dir ->
+                dir.walkTopDown()
+                    .filter { it.isFile && it.extension == "class" }
+                    .forEach { classFile ->
+                        try {
+                            val reader = createClassReader(classFile)
+                            val sourceClass = ClassName.fromInternal(reader.className).topLevelClass()
+                            if (sourceClass !in projectClasses) return@forEach
+
+                            val collector = StructuralCollector()
+                            reader.accept(collector, ClassReader.SKIP_DEBUG or ClassReader.SKIP_FRAMES)
+
+                            collector.supertypes
+                                .filter { it != sourceClass && it in projectClasses }
+                                .forEach { supertype ->
+                                    result += StructuralSupertypeInfo(sourceClass, supertype)
+                                }
+                        } catch (_: UnsupportedBytecodeVersionException) {
+                            // skip unsupported bytecode
+                        }
+                    }
+            }
+
+        return result
+    }
 
     fun extract(classDirectories: List<File>, rootPrefix: PackageName): ScanResult<List<PackageDependency>> {
         val dependencies = mutableSetOf<PackageDependency>()
@@ -123,6 +162,18 @@ object DsmDependencyExtractor {
                     dependencies += PackageDependency(sourcePackage, targetPackage, sourceClass, targetClass)
                 }
             }
+    }
+}
+
+private class StructuralCollector : ClassVisitor(Opcodes.ASM9) {
+    val supertypes = mutableSetOf<ClassName>()
+
+    override fun visit(
+        version: Int, access: Int, name: String?, signature: String?,
+        superName: String?, interfaces: Array<out String>?,
+    ) {
+        superName?.let { supertypes += ClassName.fromInternal(it).topLevelClass() }
+        interfaces?.forEach { supertypes += ClassName.fromInternal(it).topLevelClass() }
     }
 }
 

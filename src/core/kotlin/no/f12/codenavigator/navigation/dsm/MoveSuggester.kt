@@ -34,9 +34,11 @@ object MoveSuggester {
     )
 
     private const val COMPOSITION_ROOT_PACKAGE_THRESHOLD = 5
+    private const val STRUCTURAL_EDGE_WEIGHT = 3
 
     fun suggest(
         dependencies: List<PackageDependency>,
+        structuralSupertypes: List<StructuralSupertypeInfo> = emptyList(),
         top: Int = Int.MAX_VALUE,
         maxFanIn: Int = Int.MAX_VALUE,
     ): MoveSuggestionResult {
@@ -47,16 +49,33 @@ object MoveSuggester {
 
         val filteredDeps = dependencies.filter { it.targetClass !in ubiquitousTargets }
 
-        val classes = filteredDeps.map { it.sourceClass to it.sourcePackage }.distinct()
+        val structuralEdgesByClass: Map<ClassName, Map<ClassName, Int>> = structuralSupertypes
+            .groupBy { it.sourceClass }
+            .mapValues { (_, types) ->
+                types.groupBy { it.supertypeClass }.mapValues { it.value.size * STRUCTURAL_EDGE_WEIGHT }
+            }
+
+        val classes = (filteredDeps.map { it.sourceClass } + structuralEdgesByClass.keys)
+            .distinct()
+            .map { cls -> cls to cls.packageName() }
 
         val suggestions = classes.mapNotNull { (cls, currentPkg) ->
             val outgoing = filteredDeps.filter { it.sourceClass == cls }
-            if (outgoing.isEmpty()) return@mapNotNull null
-
-            if (isCompositionRoot(cls, outgoing)) return@mapNotNull null
 
             val edgesByTarget = outgoing.groupBy { it.targetPackage }
                 .mapValues { (_, edges) -> edges.size }
+                .toMutableMap()
+
+            structuralEdgesByClass[cls]?.forEach { (supertypeClass, weight) ->
+                val supertypePkg = supertypeClass.packageName()
+                edgesByTarget[supertypePkg] = (edgesByTarget[supertypePkg] ?: 0) + weight
+            }
+
+            val allOutgoing = outgoing.isEmpty() && structuralEdgesByClass.containsKey(cls).not()
+
+            if (allOutgoing) return@mapNotNull null
+
+            if (isCompositionRoot(cls, outgoing) && structuralEdgesByClass.containsKey(cls).not()) return@mapNotNull null
 
             val edgesToOwn = edgesByTarget[currentPkg] ?: 0
             val bestOther = edgesByTarget.filter { it.key != currentPkg }
@@ -67,7 +86,7 @@ object MoveSuggester {
                 if (isFeatureSliceMember(cls, currentPkg, filteredDeps)) return@mapNotNull null
 
                 val callersFromSamePackage = filteredDeps.count { it.targetClass == cls && it.sourcePackage == currentPkg }
-                val total = outgoing.size + callersFromSamePackage
+                val total = edgesByTarget.values.sum() + callersFromSamePackage
                 val confidence = bestOther.value.toDouble() / total
                 MoveSuggestion(cls, currentPkg, bestOther.key, edgesToOwn, bestOther.value, confidence)
             } else {

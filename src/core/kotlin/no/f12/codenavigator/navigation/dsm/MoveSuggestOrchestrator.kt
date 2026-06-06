@@ -16,7 +16,7 @@ object MoveSuggestOrchestrator {
     }
 
     fun fromExtraction(extraction: PackageHealthExtraction, config: MoveSuggestConfig): MoveSuggestOutput {
-        val result = MoveSuggester.suggest(extraction.dependencies, config.top, config.maxFanIn)
+        val result = MoveSuggester.suggest(extraction.dependencies, extraction.structuralSupertypes, config.top, config.maxFanIn)
 
         if (result.suggestions.isEmpty()) {
             return MoveSuggestOutput(

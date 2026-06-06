@@ -297,4 +297,55 @@ class MoveSuggesterTest {
         assertTrue(result.suggestions.any { it.className == ClassName("com.a.Bar") },
             "Bar should still be suggested: no shared in-package dependency")
     }
+
+    @Test
+    fun `structural supertype in different package alone suggests move`() {
+        val structural = listOf(
+            StructuralSupertypeInfo(ClassName("fakes.FakeRepo"), ClassName("polls.Repo")),
+        )
+
+        val result = MoveSuggester.suggest(
+            dependencies = emptyList(),
+            structuralSupertypes = structural,
+        )
+
+        assertEquals(1, result.suggestions.size)
+        val s = result.suggestions[0]
+        assertEquals(ClassName("fakes.FakeRepo"), s.className)
+        assertEquals(PackageName("polls"), s.suggestedPackage)
+        assertEquals(0, s.edgesToCurrent)
+    }
+
+    @Test
+    fun `structural supertype in same package does not suggest move`() {
+        val structural = listOf(
+            StructuralSupertypeInfo(ClassName("polls.FakeRepo"), ClassName("polls.Repo")),
+        )
+
+        val result = MoveSuggester.suggest(emptyList(), structuralSupertypes = structural)
+
+        assertTrue(result.suggestions.isEmpty())
+    }
+
+    @Test
+    fun `structural edge to ubiquitous type is not filtered by maxFanIn`() {
+        // PollsRepo is referenced by many classes (ubiquitous), but FakeRepo implements it
+        val deps = listOf(
+            PackageDependency(PackageName("fakes"), PackageName("polls"), ClassName("fakes.FakeRepo"), ClassName("polls.PollsRepo")),
+            PackageDependency(PackageName("svc"), PackageName("polls"), ClassName("svc.Service1"), ClassName("polls.PollsRepo")),
+            PackageDependency(PackageName("svc"), PackageName("polls"), ClassName("svc.Service2"), ClassName("polls.PollsRepo")),
+            PackageDependency(PackageName("svc"), PackageName("polls"), ClassName("svc.Service3"), ClassName("polls.PollsRepo")),
+            PackageDependency(PackageName("svc"), PackageName("polls"), ClassName("svc.Service4"), ClassName("polls.PollsRepo")),
+            PackageDependency(PackageName("svc"), PackageName("polls"), ClassName("svc.Service5"), ClassName("polls.PollsRepo")),
+        )
+        val structural = listOf(
+            StructuralSupertypeInfo(ClassName("fakes.FakeRepo"), ClassName("polls.PollsRepo")),
+        )
+
+        val result = MoveSuggester.suggest(deps, structuralSupertypes = structural, maxFanIn = 4)
+
+        // Regular edge to PollsRepo is filtered by ubiquity, but structural edge persists
+        val suggestion = result.suggestions.find { it.className == ClassName("fakes.FakeRepo") }
+        assertEquals(PackageName("polls"), suggestion?.suggestedPackage)
+    }
 }

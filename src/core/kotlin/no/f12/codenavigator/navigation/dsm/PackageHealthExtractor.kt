@@ -11,6 +11,7 @@ import java.io.File
  */
 data class PackageHealthExtraction(
     val dependencies: List<PackageDependency>,
+    val structuralSupertypes: List<StructuralSupertypeInfo>,
     val skippedFileWarning: String?,
 )
 
@@ -31,10 +32,17 @@ object PackageHealthExtractor {
             filterTargets = false,
             includeSamePackage = true,
         )
+        val structuralSupertypes = if (filter != null) {
+            DsmDependencyExtractor.extractStructuralSupertypes(classDirectories, projectClasses)
+                .filter { it.sourceClass.startsWith(filter) }
+        } else {
+            DsmDependencyExtractor.extractStructuralSupertypes(classDirectories, projectClasses)
+        }
         val skippedWarning = SkippedFileReporter.report(extractResult.skippedFiles, reportFile)
 
         return PackageHealthExtraction(
             dependencies = extractResult.data,
+            structuralSupertypes = structuralSupertypes,
             skippedFileWarning = skippedWarning,
         )
     }

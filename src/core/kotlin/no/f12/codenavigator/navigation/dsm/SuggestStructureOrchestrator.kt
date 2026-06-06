@@ -13,7 +13,7 @@ object SuggestStructureOrchestrator {
 
     fun run(config: SuggestStructureConfig, classDirectories: List<File>, reportFile: File): SuggestStructureOutput {
         val extraction = PackageHealthExtractor.extract(classDirectories, config.packageFilter, reportFile)
-        val moveSuggestionResult = MoveSuggester.suggest(extraction.dependencies, config.top, config.maxFanIn)
+        val moveSuggestionResult = MoveSuggester.suggest(extraction.dependencies, extraction.structuralSupertypes, config.top, config.maxFanIn)
 
         if (moveSuggestionResult.suggestions.isEmpty()) {
             return SuggestStructureOutput(

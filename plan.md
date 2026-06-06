@@ -274,7 +274,58 @@ This ensures the LLM knows it can configure exceptions without reading docs or t
 - They don't define architecture. They just fix the 5-10 heuristic blind spots per project.
 - They don't replace the dependency graph. All ordering still comes from actual code structure.
 
-**Estimate**: 3-4 hours
+### `cnav-config.json` — Extend to per-project task defaults
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(greitt, v0.1.106)
+
+The `cnav-config.json` currently only serves ring hints. Many tasks require project-specific flags that LLM agents must repeat on every invocation. A shared `defaults` section would eliminate this friction:
+
+```json
+{
+  "version": 1,
+  "defaults": {
+    "format": "llm",
+    "scope": "prod",
+    "rootPackage": "no.mikill.greitt",
+    "packageFilter": "no.mikill.greitt",
+    "ports": [".*Repository", ".*Client", ".*Port"],
+    "maxFanIn": 10
+  },
+  "rings": {
+    "ringNames": ["domain", "port", "application", "infrastructure", "web-output", "web-input", "composition-root"],
+    "hints": {
+      "infrastructure": ["*Serializer", "*Generator", "*Renderer", "*Config", "*Impl"],
+      "port": ["*Repository", "*Client", "*Port"]
+    },
+    "overrides": {
+      "no.mikill.greitt.web.RoutePaths": "web-input"
+    }
+  }
+}
+```
+
+**Targets that benefit**:
+
+| Target | Config key | What it replaces |
+|--------|-----------|-----------------|
+| All tasks | `defaults.format` | `--format=llm` on every call |
+| All tasks | `defaults.scope` | `--scope=prod` on structural tasks |
+| `cnavDsm`, `cnavCycles`, `cnavRings`, `cnavMetrics` | `defaults.packageFilter` | `--package-filter=...` |
+| `cnavTestCoupling` | `defaults.ports` | `--ports=".*Repository\|.*Client"` |
+| `cnavDead` | `defaults.excludeAnnotated` | `--exclude-annotated=...` |
+| `cnavMoveSuggest` | `defaults.maxFanIn` | `--max-fan-in=...` |
+| `cnavRings` | `rings.*` | Ring hints, names, overrides |
+
+**Implementation**:
+
+1. Extend `RingsHintsConfig` (or create `CnavConfig`) to parse a top-level `defaults` section
+2. For each task config, apply defaults BEFORE CLI params — CLI params take precedence
+3. Wire into `*Config.parse()` methods or a shared `ConfigDefaults` helper
+4. `cnavTestCoupling` reads `ports` from config if `--ports` not provided
+5. `cnavDead` reads `excludeAnnotated`/`treatAsDead` from config
+
+**Benefit for LLM agents**: A single `cnav-config.json` at project root replaces the preamble pattern where agents ask "what's your package structure?" and users type the same 3-4 flags every session.
+
+**Estimate**: 2-3 hours
 
 ### High violation count warning for `cnavRings`
 **PARKED** | **Value: low** | **Effort: low** | Source: internal
@@ -510,6 +561,27 @@ Suggests moving ports into domain packages. Algorithm optimizes for proximity wi
 **FUTURE** | **Value: low** | **Effort: low** | Source: field-test(greitt)
 
 Suggestions like "move `MenuItemTest` to `web.components`" are confusing. Default to excluding test classes.
+
+### `cnavMoveSuggest` + `--plan-file` support
+**ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(greitt)
+
+Now that `cnavMoveSuggest` detects structural supertype gravity (implements/extends), users want to simulate moves before executing. Currently `cnavDsm`, `cnavCycles`, `cnavRings`, `cnavSimulateMove`, `cnavMetrics`, and `cnavBalance` accept `--plan-file` for what-if simulation — `cnavMoveSuggest` should too.
+
+Workflow:
+1. Run `cnavMoveSuggest` → see "move `FakeRepo` to `polls`"
+2. Create `plan.json`: `[{"action":"move","type":"fakes.FakeRepo","to":"polls"}]`
+3. Run `cnavMoveSuggest --plan-file=plan.json` → see updated suggestion list
+4. Iterate until satisfied
+5. Execute with `cnavExecutePlan --plan-file=plan.json`
+
+Also applies to `cnavSuggestStructure` and `cnavCohesion` — both consume the same dependency list and could benefit from plan simulation.
+
+### `cnavMoveSuggest`: structural supertype gravity
+~~**ACTIVE**~~ **DONE (v0.1.106-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(greitt)
+
+Detects `implements`/`extends` relationships as additional dependency gravity in `MoveSuggester`. These edges bypass the ubiquitous-type filter, so fakes (which primarily depend on interfaces that many classes use) are now correctly suggested for co-location with their interface's package.
+
+Implementation: `DsmDependencyExtractor` extracts structural supertypes via a dedicated ASM pass. `MoveSuggester.suggest()` accepts them as a separate parameter and applies weight 3 per structural edge, immune to `maxFanIn` filtering.
 
 ### `cnavRings`: external protocol classes misclassified
 **FUTURE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
