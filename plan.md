@@ -140,6 +140,142 @@ Improve the default `--mode=package` to detect ring subpackages by their depende
 
 In emergent mode, report violations where a domain class (ring 0) within a package depends on an adapter class (ring 2) — upward dependencies within a package. Currently SCC collapse makes this hard to detect (cycles hide direction). May need pre-SCC edge analysis.
 
+### `.cnav-config.json` — Ring hints to correct heuristic misclassifications
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(greitt, v0.1.106)
+
+**Problem**: Emergent mode classifies rings by dependency shape (framework imports → higher ring). Infrastructure classes with no framework imports (serializers, generators, config classes, renderers) get placed in ring 0 alongside domain logic. Users can't correct this without a config file.
+
+**Why not `cnavLayerCheck`'s format**: The old `.cnav-layers.json` defined layers as a linear stack with `peerLimit`, `testInfrastructure`, and allowed-dependency rules. That was an enforcement tool. This is a **hint** file — it nudges the classifier, it doesn't define architecture.
+
+**Schema**:
+
+```json
+{
+  "version": 1,
+  "ringNames": [
+    "domain", "port", "application", "infrastructure", "web-output", "web-input", "composition-root"
+  ],
+  "hints": {
+    "domain": ["*Domain*", "*Event", "*Exception", "*Types"],
+    "port": ["*Port", "*Repository", "*Client"],
+    "application": ["*Service", "*UseCase", "*Orchestrator"],
+    "infrastructure": ["*Impl", "*Config", "*Serializer", "*Generator", "*Renderer", "*Factory", "*Provider", "*Util*"],
+    "web-output": ["*Page", "*Component*"],
+    "web-input": ["*Route*", "*Routes", "*Controller", "*Endpoint"]
+  },
+  "overrides": {
+    "no.mikill.greitt.web.RoutePaths": "web-input",
+    "no.mikill.greitt.web.plugins.FileWatcher": "infrastructure"
+  }
+}
+```
+
+**Semantics**:
+
+- **`ringNames`**: Labels for display. Instead of "Ring 0", "Ring 1", etc., show "domain", "port", etc. Order determines ring number (first = innermost). Defaults to a reasonable set if omitted.
+
+- **`hints`**: Glob patterns matching simple class names (after stripping `Kt`/`Test` suffixes — same logic as the removed `cnavLayerCheck`). These set a **minimum ring** for matching classes. If the dependency graph calculates ring 0 but the class matches `*Serializer` (infrastructure ring 2), it gets promoted to ring 2. If the graph already places it at ring 3, it stays at ring 3 — hints never demote.
+
+  A class matches a hint pattern → its minimum ring is the order of the hinted ring. Its actual ring = `max(graphRing, hintMinimum)`.
+
+  The pattern list for a ring is checked in order and the first match wins. The `*` glob matches everything, so `"domain": ["*"]` would be the catch-all (match anything not caught by earlier patterns).
+
+- **`overrides`**: FQCN-to-ring mappings for classes that don't follow naming patterns. Only needed for 1-2 edge cases per project. Takes precedence over hints.
+
+**How the classifier changes**:
+
+1. Run standard emergent detection (framework-import heuristic + SCC collapse + longest-path) → `rawRings`
+2. For each class, check `overrides` first (FQCN match) → if found, use that ring
+3. For each class, check `hints` (glob match) → if found, compute `max(rawRing, hintMinimum)`
+4. If neither match, keep `rawRing`
+5. Recompute ring labels from `ringNames` for display
+
+**Effect on greitt**:
+
+Without config: NanoidGenerator at ring 0, MarkdownRenderer at ring 0, QrCodeGenerator at ring 0, ApplicationConfigKt at ring 0.
+With `hints: { "infrastructure": ["*Serializer", "*Generator", "*Renderer", "*Config", "*Impl"] }`:
+
+| Class | Raw ring | Hint match | Final ring |
+|-------|----------|------------|------------|
+| NanoidGenerator | 0 | `*Generator` → infrastructure (2) | 2 |
+| InstantDeserializer | 0 | `*Serializer` → infrastructure (2) | 2 |
+| MarkdownRenderer | 0 | `*Renderer` → infrastructure (2) | 2 |
+| QrCodeGenerator | 0 | `*Generator` → infrastructure (2) | 2 |
+| ApplicationConfigKt | 0 | `*Config` → infrastructure (2) | 2 |
+| PollsRepositoryImpl | 4 | `*Impl` → infrastructure (2) | 4 (already above minimum) |
+
+**Implementation**:
+
+1. Add `RingsHintsConfig` class — JSON parser for `cnav-config.json` (reuse `SimpleJson` from old `cnavLayerCheck` or use Jackson)
+2. Add `--hints-file` param to `cnavRings` task (defaults to `cnav-config.json` at project root, or `.cnav/rings.json`)
+3. In `ClassRingClassifier.classify()`, add a post-processing step that applies hints + overrides
+4. Update `EmergentRingFormatter` to use `ringNames` for display labels
+5. Add `--generate-hints` mode that analyzes current misclassifications and emits a suggested `cnav-config.json`:
+   - Finds all classes in ring 0 with external deps matching framework-like patterns → suggests `infrastructure` hints
+   - Finds all classes that are interfaces → suggests `port` hints
+   - Emits a `cnav-config.json` with comments explaining each suggestion
+
+**LLM workflow** (the primary user of this feature):
+
+```
+1. Run:  ./gradlew cnavRings --mode=emergent --scope=prod --format=llm
+2. Review: scan "Ring 0" for classes that aren't domain (serializers, configs, generators, renderers)
+3. Write:  create cnav-config.json with hints catching those patterns
+4. Verify: re-run cnavRings to confirm misclassified classes moved to correct rings
+```
+
+The `--generate-hints` flag automates step 2-3. The LLM should:
+  - Run `--generate-hints` first to get a starting config
+  - Review the suggestions (the tool may flag things that are intentionally in ring 0)
+  - Save to `cnav-config.json`, adjust any overrides, re-run
+
+**Self-documenting output**: When `cnavRings` detects classes in ring 0 that match infrastructure-like naming patterns (e.g., `*Serializer`, `*Generator`, `*Config`), the LLM formatter should append a tip at the end of the output:
+
+```
+Tip: Some classes in ring 0 look like infrastructure (serializers, generators, configs).
+To correct this, create cnav-config.json:
+  { "hints": { "infrastructure": ["*Serializer", "*Generator", "*Config"] } }
+See --generate-hints for a suggested starting config.
+```
+
+This ensures the LLM knows it can configure exceptions without reading docs or the plan. The tip only appears when heuristic misclassifications are detected (classes in ring 0 that match common infrastructure patterns like `*Config`, `*Serializer`, `*Generator`, `*Impl`).
+
+**Example `--generate-hints` output**:
+
+```
+// Suggested cnav-config.json — review before using
+// Based on 50 classes in ring 0 with infrastructure-like patterns:
+{
+  "version": 1,
+  "hints": {
+    "infrastructure": [
+      "*Serializer",    // InstantDeserializer, InstantSerializer, LocalDateSerializer — 5 classes
+      "*Generator",     // NanoidGenerator, QrCodeGenerator — 2 classes
+      "*Renderer",      // MarkdownRenderer — 1 class
+      "*Config",        // ApplicationConfig, DatabaseConfig, AuthenticationConfig — 3 classes
+      "*Watcher"        // FileWatcher — 1 class
+    ],
+    "port": [
+      "*Repository",    // PollsRepository, DevicesRepository — 2 classes
+      "*Client",        // EmailClient — 1 class
+      "*Port"           // PollMigrationPort — 1 class
+    ]
+  },
+  "overrides": {
+    "no.mikill.greitt.web.RoutePaths": "web-input",
+    "no.mikill.greitt.web.util.DateUtilsKt": "infrastructure"
+  }
+}
+```
+
+**What hints DON'T do**:
+
+- They don't define allowed dependencies. No `peerLimit`, no `fail-on=upward`, no layer rules. That's a separate concern for a future "enforcement" mode.
+- They don't define architecture. They just fix the 5-10 heuristic blind spots per project.
+- They don't replace the dependency graph. All ordering still comes from actual code structure.
+
+**Estimate**: 3-4 hours
+
 ### High violation count warning for `cnavRings`
 **PARKED** | **Value: low** | **Effort: low** | Source: internal
 
