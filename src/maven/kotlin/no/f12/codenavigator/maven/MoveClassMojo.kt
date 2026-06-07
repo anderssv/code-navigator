@@ -103,14 +103,14 @@ open class MoveClassMojo : AbstractMojo() {
             preview = preview?.toBoolean() ?: false,
         )
         if (result.error != null) {
-            println(OutputWrapper.formatAndWrap(format?.let { OutputFormat.fromString(it) } ?: OutputFormat.TEXT) { result.error })
+            println(OutputWrapper.formatAndWrap(format?.let { OutputFormat.from(it) } ?: OutputFormat.TEXT) { result.error })
             return
         }
         if (result.changes.isEmpty()) {
-            println(OutputWrapper.emptyResult(format?.let { OutputFormat.fromString(it) } ?: OutputFormat.TEXT, "No changes needed.", noResultsHints()))
+            println(OutputWrapper.emptyResult(format?.let { OutputFormat.from(it) } ?: OutputFormat.TEXT, "No changes needed.", noResultsHints()))
             return
         }
-        val outputFormat = format?.let { OutputFormat.fromString(it) } ?: OutputFormat.TEXT
+        val outputFormat = format?.let { OutputFormat.from(it) } ?: OutputFormat.TEXT
         println(OutputWrapper.formatAndWrap(outputFormat) { fmt ->
             when (fmt) {
                 OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.formatFileMove(result,
