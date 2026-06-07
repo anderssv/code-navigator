@@ -15,13 +15,18 @@ object MoveClassFormatter {
         }
     }
 
-    fun format(result: MoveClassResult, config: MoveClassConfig): String =
-        when (config.format) {
+    fun format(result: MoveClassResult, config: MoveClassConfig): String {
+        if (result.error != null) return when (config.format) {
+            OutputFormat.TEXT, OutputFormat.LLM, OutputFormat.DIFF -> result.error
+            OutputFormat.JSON -> """{"error":"${jsonEscape(result.error)}"}"""
+        }
+        return when (config.format) {
             OutputFormat.TEXT -> formatText(result, config)
             OutputFormat.JSON -> formatJson(result, config)
             OutputFormat.LLM -> formatLlm(result, config)
             OutputFormat.DIFF -> formatDiff(result)
         }
+    }
 
     private fun formatDiff(result: MoveClassResult): String =
         formatChangesAsUnifiedDiff(result.changes).ifEmpty { "No changes needed." }

@@ -311,6 +311,20 @@ class MoveClassRewriterTest {
     }
 
     @Test
+    fun `MoveClassResult JSON roundtrip preserves error field`() {
+        val result = MoveClassResult(
+            changes = emptyList(),
+            error = "Class Foo is defined in Bar.kt which also contains: Baz",
+        )
+
+        val json = result.toJson()
+        val deserialized = MoveClassResult.fromJson(json)
+
+        assertEquals(result.error, deserialized.error)
+        assertTrue(deserialized.changes.isEmpty())
+    }
+
+    @Test
     fun `MoveClassResult JSON roundtrip preserves changes with paths`() {
         val result = MoveClassResult(
             changes = listOf(
@@ -514,7 +528,7 @@ class MoveClassRewriterTest {
     }
 
     @Test
-    fun `moving named class from multi-class file detects file not matching class name and finds it by content`() {
+    fun `moving named class from multi-class file returns error listing siblings`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),
             className = "com.example.variants.moveclass.original.EventProcessor",
@@ -523,7 +537,25 @@ class MoveClassRewriterTest {
             preview = true,
         )
 
-        // EventProcessor lives in Events.kt — the rewriter should still find and move it
+        // EventProcessor lives in Events.kt which also contains Event
+        assertTrue(result.error != null, "Should return error. Got: $result")
+        assertTrue(result.error!!.contains("Event"), "Error should mention sibling class 'Event'. Error: ${result.error}")
+        assertTrue(result.error!!.contains("Events.kt"), "Error should mention the file name. Error: ${result.error}")
+        assertTrue(result.changes.isEmpty(), "Should have no changes when multi-class file detected")
+    }
+
+    @Test
+    fun `moving named class from multi-class file with allowMultiClass moves entire file`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.EventProcessor",
+            newFqcn = "com.example.variants.moveclass.events.EventProcessor",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+            allowMultiClass = true,
+        )
+
+        // With allowMultiClass=true, the entire file moves as before
         assertTrue(
             result.movedFilePath != null && result.movedFilePath!!.endsWith("Events.kt"),
             "Should find Events.kt even though class name doesn't match filename. movedFilePath: ${result.movedFilePath}",

@@ -53,13 +53,13 @@ object MoveFileRewriter {
             val ktFacadeName = "${fileName}Kt"
             val oldFqcn = "$oldPackage.$ktFacadeName"
             val newFqcn = "$toPackage.$ktFacadeName"
-            return MoveClassRewriter.move(sourceRoots, oldFqcn, newFqcn, classpath, preview, ps)
+            return MoveClassRewriter.move(sourceRoots, oldFqcn, newFqcn, classpath, preview, ps, allowMultiClass = true)
         }
 
         // Use first declared class as the entry point — the multi-class logic handles the rest
         val primaryClass = declaredClasses.first()
         val oldFqcn = "$oldPackage.$primaryClass"
         val newFqcn = "$toPackage.$primaryClass"
-        return MoveClassRewriter.move(sourceRoots, oldFqcn, newFqcn, classpath, preview, ps)
+        return MoveClassRewriter.move(sourceRoots, oldFqcn, newFqcn, classpath, preview, ps, allowMultiClass = true)
     }
 }

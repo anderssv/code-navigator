@@ -6,7 +6,9 @@ import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.refactor.MoveClassConfig
 import no.f12.codenavigator.navigation.refactor.MoveClassFormatter
 import no.f12.codenavigator.navigation.refactor.MoveClassRewriter
+import no.f12.codenavigator.navigation.refactor.MoveFileRewriter
 import no.f12.codenavigator.registry.BuildTool
+import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo
@@ -31,18 +33,13 @@ open class MoveClassMojo : AbstractMojo() {
     @Parameter(property = "to")
     protected var to: String? = null
 
+    @Parameter(property = "from-file")
+    protected var fromFile: String? = null
+
     @Parameter(property = "preview")
     protected var preview: String? = null
 
     override fun execute() {
-        val config = try {
-            MoveClassConfig.parse(TaskRegistry.MOVE_CLASS_TASK.enhanceProperties(buildPropertyMap()))
-        } catch (e: IllegalArgumentException) {
-            println(OutputWrapper.emptyResult(OutputFormat.LLM, "move-class failed: ${e.message}",
-                TaskRegistry.MOVE_CLASS_TASK.renderExamples(BuildTool.MAVEN)))
-            return
-        }
-
         val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
             .map { root -> File(root as String) }
             .filter { it.exists() }
@@ -52,6 +49,19 @@ open class MoveClassMojo : AbstractMojo() {
             File(project.build.testOutputDirectory).takeIf { it.exists() }?.toPath(),
         )
 
+        if (fromFile != null) {
+            handleFileMove(sourceRoots, classpath)
+            return
+        }
+
+        val config = try {
+            MoveClassConfig.parse(TaskRegistry.MOVE_CLASS_TASK.enhanceProperties(buildPropertyMap()))
+        } catch (e: IllegalArgumentException) {
+            println(OutputWrapper.emptyResult(OutputFormat.LLM, "move-class failed: ${e.message}",
+                TaskRegistry.MOVE_CLASS_TASK.renderExamples(BuildTool.MAVEN)))
+            return
+        }
+
         val result = MoveClassRewriter.move(
             sourceRoots = sourceRoots,
             className = config.from,
@@ -59,6 +69,11 @@ open class MoveClassMojo : AbstractMojo() {
             classpath = classpath,
             preview = config.preview,
         )
+
+        if (result.error != null) {
+            println(OutputWrapper.formatAndWrap(config.format) { result.error })
+            return
+        }
 
         if (result.changes.isEmpty()) {
             println(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
@@ -74,9 +89,43 @@ open class MoveClassMojo : AbstractMojo() {
 })
     }
 
-    private fun noResultsHints(config: MoveClassConfig): List<String> = buildList {
+    private fun handleFileMove(sourceRoots: List<File>, classpath: List<Path>) {
+        if (fromFile == null || to == null) {
+            println(OutputWrapper.emptyResult(OutputFormat.LLM, "move-class --from-file requires --to (target package)",
+                TaskRegistry.MOVE_CLASS_TASK.renderExamples(BuildTool.MAVEN)))
+            return
+        }
+        val result = MoveFileRewriter.move(
+            sourceRoots = sourceRoots,
+            fromFile = fromFile!!,
+            toPackage = to!!,
+            classpath = classpath,
+            preview = preview?.toBoolean() ?: false,
+        )
+        if (result.error != null) {
+            println(OutputWrapper.formatAndWrap(format?.let { OutputFormat.fromString(it) } ?: OutputFormat.TEXT) { result.error })
+            return
+        }
+        if (result.changes.isEmpty()) {
+            println(OutputWrapper.emptyResult(format?.let { OutputFormat.fromString(it) } ?: OutputFormat.TEXT, "No changes needed.", noResultsHints()))
+            return
+        }
+        val outputFormat = format?.let { OutputFormat.fromString(it) } ?: OutputFormat.TEXT
+        println(OutputWrapper.formatAndWrap(outputFormat) { fmt ->
+            when (fmt) {
+                OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.formatFileMove(result,
+                    no.f12.codenavigator.navigation.refactor.MoveFileConfig(fromFile = fromFile!!, toPackage = to!!, preview = preview?.toBoolean() ?: false, format = outputFormat))
+                OutputFormat.JSON -> MoveClassFormatter.formatFileMove(result,
+                    no.f12.codenavigator.navigation.refactor.MoveFileConfig(fromFile = fromFile!!, toPackage = to!!, preview = preview?.toBoolean() ?: false, format = no.f12.codenavigator.config.OutputFormat.JSON))
+                OutputFormat.LLM -> MoveClassFormatter.formatFileMove(result,
+                    no.f12.codenavigator.navigation.refactor.MoveFileConfig(fromFile = fromFile!!, toPackage = to!!, preview = preview?.toBoolean() ?: false, format = no.f12.codenavigator.config.OutputFormat.LLM))
+            }
+        })
+    }
+
+    private fun noResultsHints(config: Any? = null): List<String> = buildList {
         add("Ensure the class name is fully qualified (e.g., com.example.MyClass).")
-        add("Check that a class named '${config.fromSimpleName}' exists in package '${config.fromPackage}'.")
+        add("For file moves, check that the path is relative to the project root.")
         add("Only Kotlin source files (.kt) are searched.")
     }
 
@@ -84,6 +133,7 @@ open class MoveClassMojo : AbstractMojo() {
         format?.let { put("format", it) }
         from?.let { put("from", it) }
         to?.let { put("to", it) }
+        fromFile?.let { put("from-file", it) }
         preview?.let { put("preview", it) }
     }
 }

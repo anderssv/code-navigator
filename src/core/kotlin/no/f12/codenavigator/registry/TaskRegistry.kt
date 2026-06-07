@@ -870,8 +870,8 @@ object TaskRegistry {
 
     val MOVE_CLASS_TASK = TaskDef(
         goal = "move-class",
-        description = "Move and/or rename a class, updating all references",
-        params = FORMAT_PARAMS + listOf(MOVE_FROM, MOVE_TO, PREVIEW),
+        description = "Move and/or rename a class (or a whole file with --from-file), updating all references",
+        params = FORMAT_PARAMS + listOf(MOVE_FROM, MOVE_TO, FROM_FILE, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
         intent = "Move/rename a class",
@@ -881,6 +881,7 @@ object TaskRegistry {
             UsageExample(listOf(MOVE_FROM to "com.example.services.UserService", MOVE_TO to "com.example.domain.UserService")),
             UsageExample(listOf(MOVE_FROM to "com.example.services.UserService", MOVE_TO to "com.example.services.AccountService")),
             UsageExample(listOf(MOVE_FROM to "com.example.services.UserService", MOVE_TO to "com.example.domain.AccountService", PREVIEW to null)),
+            UsageExample(listOf(FROM_FILE to "src/main/kotlin/com/example/services/Events.kt", MOVE_TO to "com.example.events")),
         ),
     )
 

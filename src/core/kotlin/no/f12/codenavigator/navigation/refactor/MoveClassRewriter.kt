@@ -12,6 +12,7 @@ data class MoveClassResult(
     val movedFilePath: String? = null,
     val newFilePath: String? = null,
     val warnings: List<String> = emptyList(),
+    val error: String? = null,
 ) {
     fun toJson(): String {
         val movedJson = movedFilePath?.let { ""","movedFilePath":"${jsonEscape(it)}"""" } ?: ""
@@ -19,7 +20,8 @@ data class MoveClassResult(
         val warningsJson = if (warnings.isNotEmpty()) {
             ""","warnings":${warnings.joinToString(",", "[", "]") { "\"${jsonEscape(it)}\"" }}"""
         } else ""
-        return """{"changes":${changesToJson(changes)}$movedJson$newJson$warningsJson}"""
+        val errorJson = error?.let { ""","error":"${jsonEscape(it)}"""" } ?: ""
+        return """{"changes":${changesToJson(changes)}$movedJson$newJson$warningsJson$errorJson}"""
     }
 
     companion object {
@@ -32,6 +34,7 @@ data class MoveClassResult(
                 movedFilePath = obj["movedFilePath"] as? String,
                 newFilePath = obj["newFilePath"] as? String,
                 warnings = warnings,
+                error = obj["error"] as? String,
             )
         }
     }
@@ -46,6 +49,7 @@ object MoveClassRewriter {
         classpath: List<Path> = emptyList(),
         preview: Boolean = false,
         parsedSources: ParsedSources? = null,
+        allowMultiClass: Boolean = false,
     ): MoveClassResult {
         val ps = parsedSources ?: run {
             val sourceFiles = collectSourceFiles(sourceRoots)
@@ -58,7 +62,7 @@ object MoveClassRewriter {
         return if (isKtFacade) {
             moveKtFacade(className, newFqcn, ps, sourceRoots, preview)
         } else {
-            moveClass(className, newFqcn, ps, sourceRoots, preview)
+            moveClass(className, newFqcn, ps, sourceRoots, preview, allowMultiClass)
         }
     }
 
@@ -68,13 +72,14 @@ object MoveClassRewriter {
         ps: ParsedSources,
         sourceRoots: List<File>,
         preview: Boolean,
+        allowMultiClass: Boolean = false,
     ): MoveClassResult {
         val oldPackage = className.substringBeforeLast(".")
         val simpleClassName = className.substringAfterLast(".")
         val newPackage = newFqcn.substringBeforeLast(".")
         val targetName = newFqcn.substringAfterLast(".")
 
-        // Check if the class lives in a file NOT named after it (multi-class file scenario)
+        // Find the file containing the class
         var foundByContent = false
         var movedFilePath: String? = null
         var newFilePath: String? = null
@@ -103,8 +108,30 @@ object MoveClassRewriter {
             }
         }
 
-        // If file contains multiple classes, delegate to moveKtFacade-style logic
-        // which handles all classes in the file as a unit
+        // Early multi-class detection — stop and list unrequested siblings
+        if (!allowMultiClass && movedFilePath != null) {
+            val movedSource = ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == movedFilePath }?.printAll()
+            if (movedSource != null) {
+                val allClasses = extractDeclaredClassNames(movedSource)
+                val siblings = allClasses.filter { it != simpleClassName }
+                if (siblings.isNotEmpty()) {
+                    val fileName = File(movedFilePath).name
+                    return MoveClassResult(
+                        changes = emptyList(),
+                        error = buildString {
+                            appendLine("Class $className is defined in $fileName, which also declares:")
+                            for (sibling in siblings) {
+                                appendLine("  - $sibling")
+                            }
+                            appendLine()
+                            append("The entire file moves together. Use cnavMoveFile or cnavMoveClass --from-file to move the whole file.")
+                        },
+                    )
+                }
+            }
+        }
+
+        // If file contains multiple classes (allowMultiClass path), delegate to moveKtFacade-style logic
         if (movedFilePath != null && foundByContent) {
             val movedSource = ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == movedFilePath }?.printAll()
             if (movedSource != null) {
