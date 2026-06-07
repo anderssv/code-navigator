@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.106
+
+### New: `cnav-config.json` ring hints
+
+Configure ring classification overrides via `cnav-config.json` in the project root. Use glob patterns or fully-qualified class names to pin specific classes/clusters to a minimum ring. Useful when heuristics misclassify known infrastructure patterns.
+
+```
+./gradlew cnavRings --mode=emergent                                       # auto-discovers cnav-config.json
+./gradlew cnavRings --mode=emergent --bootstrap-config                    # scan ring 0, emit starting config
+```
+
+Self-documenting output: when hints are active, LLM output appends a tip to write the config after reviewing results.
+
+### New: `cnavMoveClass --from-file`
+
+`cnavMoveClass` now detects multi-class files early and returns an error listing unrequested sibling classes, instead of silently moving the entire file. Specify `--from-file` to move the entire file (delegates to `MoveFileRewriter`).
+
+```
+./gradlew cnavMoveClass --class=com.example.Foo --from-file=src/main/kotlin/com/example/Foo.kt --to-package=com.example.newpkg
+```
+
+### New: Structural supertype gravity in `cnavMoveSuggest`
+
+Classes that implement/extend types in another package now receive additional dependency gravity (weight 3) in move-suggest, bypassing the ubiquitous-type filter. Fixes a blind spot where fakes/tests implementing domain interfaces were invisible to co-location suggestions.
+
 ## 0.1.105
 
 ### New: `cnavMovePackage` task
