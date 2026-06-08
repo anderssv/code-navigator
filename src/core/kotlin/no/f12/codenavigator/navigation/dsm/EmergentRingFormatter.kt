@@ -15,10 +15,16 @@ object EmergentRingFormatter {
         }
 
         sb.appendLine("## Emergent Rings (class-level)")
-        sb.appendLine()
 
         // Group classes by ring
         val byRing = result.classRings.entries.groupBy { it.value }.toSortedMap()
+        if (ringNames.isNotEmpty()) {
+            val maxRing = byRing.keys.maxOrNull() ?: 0
+            if (maxRing >= ringNames.size) {
+                sb.appendLine("Warning: ringNames covers ${ringNames.size} rings but rings up to $maxRing were detected — rings ${ringNames.size}–$maxRing will use default names.")
+            }
+        }
+        sb.appendLine()
         for ((ring, classes) in byRing) {
             val label = ringLabel(ring)
             sb.appendLine("Ring $ring ($label): ${classes.size} classes")
@@ -83,15 +89,12 @@ object EmergentRingFormatter {
             sb.appendLine("```")
             sb.appendLine()
             sb.appendLine("Ring names above match the indices: 0=domain, 1=port, 2=application, 3=adapter.")
-            sb.appendLine("Any class matching the hint will be promoted to (or above) that ring.")
-            sb.appendLine("Overrides use fully qualified class names and always take precedence over glob hints.")
+            sb.appendLine("hints: glob patterns on the simple class name — promote classes matching a pattern to (or above) a ring.")
+            sb.appendLine("overrides: fully qualified class names — use these for specific classes that don't match a naming pattern.")
+            sb.appendLine("Both only promote rings, never demote. Overrides always take precedence over glob hints.")
         }
 
         return sb.toString().trimEnd()
     }
 }
 
-private fun no.f12.codenavigator.navigation.types.ClassName.simpleName(): String {
-    val full = this.value
-    return full.substringAfterLast(".")
-}

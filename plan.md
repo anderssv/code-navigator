@@ -275,7 +275,9 @@ This ensures the LLM knows it can configure exceptions without reading docs or t
 - They don't replace the dependency graph. All ordering still comes from actual code structure.
 
 ### `cnav-config.json` — Extend to per-project task defaults
-**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(greitt, v0.1.106)
+**PARKED** | **Value: medium** | **Effort: medium** | Source: field-test(greitt, v0.1.106)
+
+**Concern**: Implicit defaults make it hard to know what is in effect — CLI output won't reflect what was silently applied from config. Needs careful UX (e.g. always show active defaults in output) before implementing.
 
 The `cnav-config.json` currently only serves ring hints. Many tasks require project-specific flags that LLM agents must repeat on every invocation. A shared `defaults` section would eliminate this friction:
 

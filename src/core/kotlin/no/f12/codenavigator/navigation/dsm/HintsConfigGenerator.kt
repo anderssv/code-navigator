@@ -28,6 +28,8 @@ object HintsConfigGenerator {
         sb.appendLine("// Suggested cnav-config.json — review and tweak before use")
         sb.appendLine("// This is a best-effort bootstrap based on naming patterns.")
         sb.appendLine("// Adjust patterns, remove/add entries, and add overrides as needed.")
+        sb.appendLine("// To pin specific classes by FQCN add an \"overrides\" section, e.g.:")
+        sb.appendLine("//   \"overrides\": { \"com.example.MyClient\": \"port\" }")
         sb.appendLine("// Then save as cnav-config.json in the project root and re-run cnavRings.")
         sb.appendLine("{")
         sb.append("  \"ringNames\": [\"domain\", \"port\", \"application\", \"adapter\"]")

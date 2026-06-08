@@ -84,7 +84,10 @@ class RingsMojo : AbstractMojo() {
         val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { log.warn(it) }
-        return RingFormatter.format(RingDetector.detect(extractResult.data))
+        val hintsConfig = RingsHintsConfig.loadFromDirectory(project.basedir)
+        val ringNames = hintsConfig?.ringIndexNames() ?: emptyMap()
+        val configNotice = if (hintsConfig != null) "(cnav-config.json loaded — ring names applied)" else null
+        return RingFormatter.format(RingDetector.detect(extractResult.data), ringNames, configNotice)
     }
 
     private fun bootstrapConfig(classDirectories: List<File>, projectClasses: Set<ClassName>): String {

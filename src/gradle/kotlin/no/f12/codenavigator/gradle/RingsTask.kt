@@ -77,7 +77,10 @@ abstract class RingsTask : CodeNavigatorTask() {
         val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { logger.warn(it) }
-        return RingFormatter.format(RingDetector.detect(applyPlan(extractResult.data)))
+        val hintsConfig = loadHintsConfig()
+        val ringNames = hintsConfig?.ringIndexNames() ?: emptyMap()
+        val configNotice = if (hintsConfig != null) "(cnav-config.json loaded — ring names applied)" else null
+        return RingFormatter.format(RingDetector.detect(applyPlan(extractResult.data)), ringNames, configNotice)
     }
 
     private fun loadHintsConfig(): RingsHintsConfig? =

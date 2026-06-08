@@ -2,19 +2,30 @@ package no.f12.codenavigator.navigation.dsm
 
 object RingFormatter {
 
-    fun format(result: RingAssignment): String {
+    fun format(result: RingAssignment, ringNames: Map<Int, String> = emptyMap(), configNotice: String? = null): String {
         val sb = StringBuilder()
+
+        val ringLabel: (Int) -> String = { ring ->
+            ringNames[ring] ?: when (ring) {
+                0 -> "domain"
+                else -> "ring $ring"
+            }
+        }
 
         // Group packages by ring
         val byRing = result.rings.entries.groupBy { it.value }.toSortedMap()
 
         sb.appendLine("## Detected Rings (hexagonal)")
+        if (configNotice != null) sb.appendLine(configNotice)
+        if (ringNames.isNotEmpty()) {
+            val maxRing = byRing.keys.maxOrNull() ?: 0
+            if (maxRing >= ringNames.size) {
+                sb.appendLine("Warning: ringNames covers ${ringNames.size} rings but rings up to $maxRing were detected — rings ${ringNames.size}–$maxRing will use default names.")
+            }
+        }
         sb.appendLine()
         for ((ring, packages) in byRing) {
-            val label = when (ring) {
-                0 -> "domain"
-                else -> "ring $ring"
-            }
+            val label = ringLabel(ring)
             val pkgs = packages.map { it.key }.sorted()
             val compositionMark = pkgs.filter { it in result.compositionRoots }.toSet()
             sb.appendLine("Ring $ring ($label):")
