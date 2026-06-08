@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.1.107
+
+### Fix: `cnavRings` package mode now applies `cnav-config.json`
+
+Package mode (`--mode=package`, the default) now loads `cnav-config.json` and applies `ringNames` so ring labels match emergent mode. When the config is found, the output includes a notice: `(cnav-config.json loaded — ring names applied)`.
+
+### Fix: Warning when `ringNames` count doesn't cover all detected rings
+
+Both package and emergent mode now warn when the configured `ringNames` list is shorter than the number of detected rings, e.g.:
+
+```
+Warning: ringNames covers 4 rings but rings up to 11 were detected — rings 4–11 will use default names.
+```
+
+### Improvement: `--bootstrap-config` output and footer mention `overrides`
+
+The bootstrap config header comment now shows an `overrides` example for pinning specific classes by FQCN. The emergent mode footer clarifies when to use `hints` (glob patterns) vs `overrides` (specific FQCNs).
+
 ## 0.1.106
 
 ### New: `cnav-config.json` ring hints
