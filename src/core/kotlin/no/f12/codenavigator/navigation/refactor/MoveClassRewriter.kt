@@ -489,7 +489,7 @@ object MoveClassRewriter {
         CLASS_DECLARATION_PATTERN.findAll(source).map { it.groupValues[1] }.toList()
 
     private val TOP_LEVEL_FUN_PATTERN = Regex(
-        """^(?:internal\s+|private\s+|public\s+)?fun\s+(?:<[^>]+>\s+)?(\w+)""",
+        """^(?:internal\s+|private\s+|public\s+)?fun\s+(?:<[^>]+>\s+)?(?:[\w.]+\.)?(\w+)""",
         RegexOption.MULTILINE,
     )
 
