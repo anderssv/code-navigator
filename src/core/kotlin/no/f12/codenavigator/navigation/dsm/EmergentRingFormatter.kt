@@ -1,10 +1,16 @@
 package no.f12.codenavigator.navigation.dsm
 
+import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.types.PackageName
 
 object EmergentRingFormatter {
 
-    fun format(result: ClassRingAssignment, ringNames: Map<Int, String> = emptyMap(), hasHints: Boolean = false): String {
+    fun format(
+        result: ClassRingAssignment,
+        ringNames: Map<Int, String> = emptyMap(),
+        hasHints: Boolean = false,
+        format: OutputFormat = OutputFormat.TEXT,
+    ): String {
         val sb = StringBuilder()
 
         val ringLabel: (Int) -> String = { ring ->
@@ -64,11 +70,7 @@ object EmergentRingFormatter {
         }
 
         val hints = RingFormatter.computeHints(byRing.mapValues { it.value.size })
-        if (hints.isNotEmpty()) {
-            sb.appendLine()
-            sb.appendLine("## Notes")
-            hints.forEach { sb.appendLine("- $it") }
-        }
+        RingFormatter.renderHints(sb, hints, format)
 
         // Self-documenting tip
         if (hasHints) {

@@ -1,5 +1,13 @@
 package no.f12.codenavigator.navigation.dsm
 
+import no.f12.codenavigator.config.OutputFormat
+
+/** Separates a factual observation (shown in all formats) from an action recommendation (LLM only). */
+data class RingHint(
+    val observation: String,
+    val action: String? = null,
+)
+
 object RingFormatter {
 
     /**
@@ -13,7 +21,12 @@ object RingFormatter {
             "cnav-config.json hints/overrides do not apply in package mode; use --mode=emergent for " +
             "class-level layering and calibration."
 
-    fun format(result: RingAssignment, ringNames: Map<Int, String> = emptyMap(), configNotice: String? = null): String {
+    fun format(
+        result: RingAssignment,
+        ringNames: Map<Int, String> = emptyMap(),
+        configNotice: String? = null,
+        format: OutputFormat = OutputFormat.TEXT,
+    ): String {
         val sb = StringBuilder()
 
         val ringLabel: (Int) -> String = { ring ->
@@ -51,12 +64,7 @@ object RingFormatter {
             v.sourcePackage !in result.compositionRoots && v.targetPackage !in result.compositionRoots
         }
 
-        val hints = computeHints(byRing.mapValues { it.value.size })
-        if (hints.isNotEmpty()) {
-            sb.appendLine()
-            sb.appendLine("## Notes")
-            hints.forEach { sb.appendLine("- $it") }
-        }
+        renderHints(sb, computeHints(byRing.mapValues { it.value.size }), format)
 
         if (filteredViolations.isEmpty()) {
             sb.appendLine("No violations detected.")
@@ -75,13 +83,28 @@ object RingFormatter {
         return sb.toString().trimEnd()
     }
 
+    /** Appends the Notes section: observations always, actions only for LLM format. */
+    internal fun renderHints(sb: StringBuilder, hints: List<RingHint>, format: OutputFormat) {
+        if (hints.isEmpty()) return
+        sb.appendLine()
+        sb.appendLine("## Notes")
+        for (hint in hints) {
+            val action = if (format == OutputFormat.LLM) hint.action else null
+            if (action != null) {
+                sb.appendLine("- ${hint.observation} $action")
+            } else {
+                sb.appendLine("- ${hint.observation}")
+            }
+        }
+    }
+
     /**
      * Factual observations about ring count and size distribution.
-     * Emitted in all output formats (TEXT, LLM, JSON) so no one misses them.
+     * observation: shown in all formats. action: shown in LLM only.
      */
-    internal fun computeHints(ringSizes: Map<Int, Int>): List<String> {
+    internal fun computeHints(ringSizes: Map<Int, Int>): List<RingHint> {
         if (ringSizes.isEmpty()) return emptyList()
-        val hints = mutableListOf<String>()
+        val hints = mutableListOf<RingHint>()
         val total = ringSizes.values.sum()
         val maxRing = ringSizes.keys.max()
         val largestRing = ringSizes.maxByOrNull { it.value }!!
@@ -89,23 +112,26 @@ object RingFormatter {
 
         // Many rings
         if (maxRing >= 8) {
-            hints += "High ring count ($maxRing rings detected). This is normal on package-by-feature layouts " +
-                "but can also indicate long dependency chains. Try --scope=prod to remove test inflation, " +
-                "then look for ring chains that could be shortened."
+            hints += RingHint(
+                observation = "High ring count: $maxRing rings detected. Normal on package-by-feature layouts; can also indicate long dependency chains or test-class inflation.",
+                action = "Try --scope=prod to remove test inflation. If still high, look for dependency chains that could be shortened.",
+            )
         }
 
         // Outer ring is the largest
         if (largestRing.key > 0 && largestRing.value > ring0Size) {
-            hints += "Ring ${largestRing.key} is the largest ring (${largestRing.value} packages) and sits " +
-                "above the domain ring (ring 0: $ring0Size packages). This may indicate feature logic " +
-                "leaking into adapter/infrastructure layers — consider whether those packages belong closer to the domain."
+            hints += RingHint(
+                observation = "Ring ${largestRing.key} is the largest (${largestRing.value}) and sits above domain (ring 0: $ring0Size). May indicate feature logic in adapter/infrastructure layers.",
+                action = "Check whether packages in ring ${largestRing.key} contain logic that belongs closer to the domain.",
+            )
         }
 
-        // One ring dominates (>60% of total, excluding the domain dominating which is healthy)
+        // One outer ring dominates (>60% of total)
         if (largestRing.key > 0 && total > 2 && largestRing.value.toDouble() / total > 0.6) {
-            hints += "Ring ${largestRing.key} contains ${largestRing.value} of $total packages (${largestRing.value * 100 / total}%). " +
-                "A single dominant outer ring often means many packages share the same layer depth — " +
-                "check whether they are genuinely independent or contain hidden coupling (run cnavCycles)."
+            hints += RingHint(
+                observation = "Ring ${largestRing.key} contains ${largestRing.value} of $total packages (${largestRing.value * 100 / total}%). A dominant outer ring may hide coupling.",
+                action = "Run cnavCycles to check whether packages in ring ${largestRing.key} are genuinely independent.",
+            )
         }
 
         return hints

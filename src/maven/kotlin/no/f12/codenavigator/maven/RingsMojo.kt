@@ -69,8 +69,8 @@ class RingsMojo : AbstractMojo() {
 
         val output = when {
             bootstrap && modeVal == "emergent" -> bootstrapConfig(classDirectories, projectClasses)
-            modeVal == "emergent" -> detectEmergent(classDirectories, projectClasses, scopeFilter)
-            else -> detectPackageLevel(classDirectories, projectClasses)
+            modeVal == "emergent" -> detectEmergent(classDirectories, projectClasses, scopeFilter, outputFormat)
+            else -> detectPackageLevel(classDirectories, projectClasses, outputFormat)
         }
 
         println(OutputWrapper.formatAndWrap(outputFormat) { format ->
@@ -82,13 +82,13 @@ class RingsMojo : AbstractMojo() {
         })
     }
 
-    private fun detectPackageLevel(classDirectories: List<File>, projectClasses: Set<ClassName>): String {
+    private fun detectPackageLevel(classDirectories: List<File>, projectClasses: Set<ClassName>, format: OutputFormat): String {
         val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { log.warn(it) }
         // Package mode does not apply cnav-config.json ring names: a topological-depth ranking
         // can't honestly assert a semantic layer label. The names belong to --mode=emergent.
-        val rings = RingFormatter.format(RingDetector.detect(extractResult.data))
+        val rings = RingFormatter.format(RingDetector.detect(extractResult.data), format = format)
         return "${RingFormatter.PACKAGE_MODE_NOTICE}\n\n$rings"
     }
 
@@ -101,7 +101,7 @@ class RingsMojo : AbstractMojo() {
         return HintsConfigGenerator.generate(result.classRings)
     }
 
-    private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<ClassName>, scope: Scope): String {
+    private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<ClassName>, scope: Scope, format: OutputFormat): String {
         val projectResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true, includeSamePackage = true)
         val externalResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
         val externalOnly = externalResult.data.filter { it.targetClass !in projectClasses }
@@ -112,7 +112,7 @@ class RingsMojo : AbstractMojo() {
         val hintsConfig = RingsHintsConfig.loadFromDirectory(project.basedir)
         val result = EmergentRingDetector.detect(projectResult.data, externalOnly, projectClasses, hintsConfig)
         val ringNames = hintsConfig?.ringIndexNames() ?: emptyMap()
-        val rings = EmergentRingFormatter.format(result, ringNames, hasHints = hintsConfig != null && hintsConfig.hasHints())
+        val rings = EmergentRingFormatter.format(result, ringNames, hasHints = hintsConfig != null && hintsConfig.hasHints(), format = format)
 
         val testNotice = if (scope == Scope.ALL) {
             val resolver = SourceSetResolver.from(project.taggedClassDirectories())
