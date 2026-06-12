@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.1.108
+
+### Fix: `cnavMoveFile` incorrectly rewrote imports of receiver types in extension functions
+
+`TOP_LEVEL_FUN_PATTERN` captured the receiver type name (e.g. `AppDependencies`) instead of the function name (`createTest`) for extension functions like `fun AppDependencies.Companion.createTest(...)`. This caused import rewrites of the receiver type in unrelated production files.
+
+### Fix: `cnavBalance` distance is now ring separation, not package-name nesting
+
+Distance was lexical package-name tree hops, producing false `DANGER` verdicts on deeply-nested package-by-feature layouts (`ktor.routes.v1.bankid → services` scored distance=5). Distance is now the number of architectural rings an edge crosses (from `RingDetector`), so co-located features at the same ring score 0. Composition roots (DI/wiring packages) are never flagged `DANGER`.
+
+### Fix: `cnavRings` composition-root violations — also suppress edges targeting roots
+
+Previously only edges *sourced from* composition roots were suppressed. Edges whose *target* is a composition root are now also excluded — nothing should be penalized for being depended-on by wiring code.
+
+### Fix: Staleness warning no longer fires on regenerated sources under `build/`
+
+The "newest source file" scan now prunes `build/`, `target/`, `out/`, and `generated` subdirectories, so a regenerated `.kt` file under a build output directory no longer triggers a false stale-class warning.
+
+### New: `cnavRings` defaults to emergent mode
+
+`--mode=emergent` (class-level) is now the default. Package mode is still available with `--mode=package` and prints a notice framing it as a cross-feature independence check rather than a per-package layer label.
+
+### New: `cnavRings` ring size counts and interpretive notes
+
+- Package mode now shows per-ring package counts (`Ring N (label): M packages`), matching emergent's `Ring N (label): M classes`.
+- Both modes emit a `## Notes` section with factual observations (high ring count, outsized outer ring, dominant outer ring). Observations appear in all formats; action recommendations appear in LLM output only.
+
+### New: `cnavDead --min-confidence`
+
+Filter dead-code findings by confidence level: `--min-confidence=high|medium|low` (default `low`, show all). Useful for getting only the HIGH-confidence actionable set in one call.
+
+### New: `cnavCoupling` marks stale paths `[stale]`
+
+Pairs whose file path no longer exists on disk (rename/delete noise from `git --all` history) are marked `[stale]` in TEXT/LLM output and `"stale":true` in JSON.
+
+### New: Test-involvement line for `cnavCycles` and `cnavRings`
+
+When run without `--scope`, output now appends `test-involvement: N of M … involve test sources. Re-run with --scope=prod for production-only architecture signal.`
+
+### New: Deprecated `-P` alias note in agent/config help
+
+`cnavAgentHelp` and `cnavConfigHelp` now note that `-Pllm=true` / `-Pprod-only=true` are deprecated aliases of `--format=llm` / `--scope=prod`.
+
 ## 0.1.107
 
 ### Fix: `cnavRings` package mode now applies `cnav-config.json`
