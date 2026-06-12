@@ -2,6 +2,17 @@ package no.f12.codenavigator.navigation.dsm
 
 object RingFormatter {
 
+    /**
+     * Shown when the user explicitly selects package mode (emergent is the default). Frames the
+     * output correctly so it is not misread as a per-package layer assignment.
+     */
+    const val PACKAGE_MODE_NOTICE =
+        "Note: package mode ranks whole packages by topological depth. On package-by-feature layouts " +
+            "this can nudge you toward package-by-layer — read the violation list as a cross-feature " +
+            "independence check (do features stay independent?), NOT as a per-package layer label. " +
+            "cnav-config.json hints/overrides do not apply in package mode; use --mode=emergent for " +
+            "class-level layering and calibration."
+
     fun format(result: RingAssignment, ringNames: Map<Int, String> = emptyMap(), configNotice: String? = null): String {
         val sb = StringBuilder()
 

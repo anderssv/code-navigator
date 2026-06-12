@@ -450,6 +450,18 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 
 ## Standalone new tasks
 
+### `cnavConverge` — intersect cycles, rings, and coupling into a single high-confidence signal
+**ACTIVE** | **Value: high** | **Effort: high** | Source: field-test(bass-ra)
+
+Field use found the clearest architectural signal came from manually intersecting three independent views rather than trusting any single composite (cnavBalance was the unreliable one). A `cnavConverge` task would automate the recipe:
+
+- Run cnavCycles (structure), cnavRings (layering), cnavCoupling (evolution/git) over the same scope.
+- Report only edges where ≥2 independent views AGREE — that intersection is the high-confidence finding.
+- Separately flag clean-but-high-churn pairs (no cycle, forward edges, but co-change ≥ threshold) as missing-abstraction candidates — the thing structure alone can't see.
+- Classify into the confidence matrix: ACT NOW (cycle ∩ high-coupling), LATENT (cycle ∩ low-coupling), MISSING ABSTRACTION (clean ∩ high-coupling), IGNORE.
+
+The intersection is more robust than weighted averaging on small/nested/package-by-feature codebases. Reference: the bass-ra `architecture-signal-recipe.md`. Combine bytecode views (cycles/rings) with the git-history view (coupling); needs scope alignment (coupling is path-based, not source-set-based — see the cnavCoupling --scope item).
+
 ### `cnavTestHealth` — verify all test methods actually ran
 **ACTIVE** | **Value: medium** | **Effort: medium** | Source: user-feedback
 
@@ -498,6 +510,18 @@ For interfaces matching a pattern, check method signatures reference only domain
 ---
 
 ## Output & UX
+
+### Interpretation/hint fields in JSON output
+**ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra)
+
+Interpretation footers and notices (e.g. the `BALANCE_INTERPRETATION`/`COUPLING_INTERPRETATION` strings, the `test-involvement: N of M …` line, the package-mode notice) are only appended to TEXT and LLM output. JSON consumers get none of this guidance. Add structured equivalents to the JSON output so non-TEXT/LLM clients can react to the same signals — e.g. a top-level `interpretation` string and/or a `notices: []` array, or per-result fields like `testInvolvement: { testInvolved, total }`. This keeps the JSON contract machine-readable while carrying the same steer the LLM/TEXT formats already provide.
+
+Applies to: `cnavBalance`, `cnavCoupling`, `cnavRings`, `cnavCycles` (any task that appends an interpretation/notice today). Decide on a consistent shape (wrapper object vs. extra fields) before implementing.
+
+### `test-involvement` line for cnavBalance
+**ACTIVE** | **Value: low** | **Effort: medium** | Source: field-test(bass-ra)
+
+The `test-involvement: N of M … involve test sources` line (printed when scope=all) was added to cnavCycles and cnavRings (emergent), which retain class-level edges end-to-end. cnavBalance was deferred: its public result (`BalanceEntry`/`BalanceOutput`) is package-level and `BalanceOrchestrator` consumes the class-level `extractResult.data` internally without surfacing it. To add the line for Balance, thread a test-involvement count out of the orchestrator (it already has the class-level deps + can build a `SourceSetResolver` from the unfiltered tagged dirs) into `BalanceOutput`, then render via `TestInvolvement.notice(...)`. Do this together with the JSON-hints refactor and the formatting-boundary cleanup so the count is rendered by the formatter, not concatenated in the task.
 
 ### ~~Per-task help with usage on error~~ — DONE
 ~~**ACTIVE**~~ **DONE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
@@ -674,6 +698,22 @@ Expand from single-hop blast radius into multi-signal impact predictor: direct c
 ---
 
 ## Internal code quality
+
+### Restore formatting-layer boundary — outer layers pass result objects, formatters emit output
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: internal
+
+The layering rule (parsing → resolution → formatting) has eroded at the task/mojo boundary: outer layers (Gradle tasks, Maven mojos) increasingly assemble output *strings* by concatenating onto formatter output instead of passing result structures to formatters and letting the formatters render every attribute.
+
+Concrete offenders introduced/observed:
+- `RingsTask`/`RingsMojo` and `CyclesTask`/`CyclesMojo` string-concat the `test-involvement` notice and `PACKAGE_MODE_NOTICE` onto formatter output (`"$body\n\n$testNotice"`), and branch per `OutputFormat` in the task.
+- Rings emergent/package output is returned as a pre-rendered `String` from the task and echoed identically for TEXT/JSON/LLM — the task, not a formatter, owns the format.
+
+Target design:
+- Tasks/mojos build a result object (e.g. carrying violations + `testInvolvement` counts + applicable notices) and hand it to the formatter.
+- Formatters own ALL rendering, including notices/interpretations, per output format (so JSON can emit structured fields — see "Interpretation/hint fields in JSON output").
+- Outer layers must not receive formatted text from deeper layers and must not append to it.
+
+This pairs with the JSON-hints item and the JsonFormatter/LlmFormatter split. Do this refactor before adding more notice/interpretation surfaces, to stop the bleed.
 
 ### Review implementations for spread logic + shared lookup extraction
 **ACTIVE** | **Value: medium** | **Effort: high** | Source: internal

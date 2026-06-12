@@ -10,6 +10,7 @@ import no.f12.codenavigator.analysis.ChangeCouplingBuilder
 import no.f12.codenavigator.analysis.ChangeCouplingConfig
 import no.f12.codenavigator.analysis.ChangeCouplingFormatter
 import no.f12.codenavigator.analysis.GitLogRunner
+import no.f12.codenavigator.analysis.StalePairMarker
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo
 import org.apache.maven.plugins.annotations.Parameter
@@ -47,7 +48,10 @@ class ChangeCouplingMojo : AbstractMojo() {
         val config = ChangeCouplingConfig.parse(TaskRegistry.COUPLING.enhanceProperties(buildPropertyMap()))
 
         val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
-        val pairs = ChangeCouplingBuilder.build(commits, config.minSharedRevs, config.minCoupling, config.maxChangesetSize, config.top)
+        val pairs = StalePairMarker.mark(
+            ChangeCouplingBuilder.build(commits, config.minSharedRevs, config.minCoupling, config.maxChangesetSize, config.top),
+            project.basedir,
+        )
 
         if (pairs.isEmpty()) {
             println("No coupling found.")

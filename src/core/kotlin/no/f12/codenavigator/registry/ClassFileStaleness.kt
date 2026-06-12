@@ -12,11 +12,16 @@ object ClassFileStaleness {
 
     private val SOURCE_EXTENSIONS = setOf("kt", "java")
 
+    /** Directory names that hold build output / generated sources — pruned from the SOURCE scan so a
+     * regenerated .kt/.java under them never counts as "newest source". Not pruned from the class scan,
+     * since compiled classes legitimately live under build/target. */
+    private val BUILD_DIR_NAMES = setOf("build", "target", "out", "generated", "generated-sources", ".gradle")
+
     fun check(sourceDirectories: List<File>, classDirectories: List<File>): StalenessResult {
-        val newestClass = newestTimestamp(classDirectories, setOf("class"))
+        val newestClass = newestTimestamp(classDirectories, setOf("class"), pruneBuildDirs = false)
             ?: return StalenessResult.NoClassFiles("No class files found — run a successful build first.")
 
-        val newestSource = newestTimestamp(sourceDirectories, SOURCE_EXTENSIONS)
+        val newestSource = newestTimestamp(sourceDirectories, SOURCE_EXTENSIONS, pruneBuildDirs = true)
             ?: return StalenessResult.Fresh
 
         if (newestSource > newestClass) {
@@ -30,11 +35,12 @@ object ClassFileStaleness {
         return StalenessResult.Fresh
     }
 
-    private fun newestTimestamp(directories: List<File>, extensions: Set<String>): Long? {
+    private fun newestTimestamp(directories: List<File>, extensions: Set<String>, pruneBuildDirs: Boolean): Long? {
         var newest: Long? = null
         for (dir in directories) {
             if (!dir.exists()) continue
             dir.walkTopDown()
+                .onEnter { entered -> !(pruneBuildDirs && entered != dir && entered.name in BUILD_DIR_NAMES) }
                 .filter { it.isFile && it.extension in extensions }
                 .forEach { file ->
                     val mtime = file.lastModified()

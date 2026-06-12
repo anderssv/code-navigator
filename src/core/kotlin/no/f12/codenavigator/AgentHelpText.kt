@@ -79,6 +79,9 @@ object AgentHelpText {
         appendLine("It produces compact output wrapped in ---CNAV_BEGIN---/---CNAV_END--- markers")
         appendLine("that separate results from build tool noise. Read full output directly;")
         appendLine("NEVER pipe through head, tail, or grep (output is short and specific).")
+        if (tool == BuildTool.GRADLE) {
+            appendLine("Canonical flags: ${tool.param("format", "llm")} / ${tool.param("scope", "prod")}. The `-Pllm=true` / `-Pprod-only=true` forms are deprecated aliases.")
+        }
         appendLine()
         appendLine("Navigation tasks require compiled classes. Git history tasks work without compilation.")
         appendLine("If cnav warns about stale class files, rebuild to get current results.")

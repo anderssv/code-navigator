@@ -16,6 +16,16 @@ enum class DeadCodeConfidence {
     HIGH,
     MEDIUM,
     LOW,
+    ;
+
+    companion object {
+        /** Parse a min-confidence threshold. Defaults to LOW (show everything) when absent/unknown. */
+        fun parse(value: String?): DeadCodeConfidence = when (value?.lowercase()) {
+            "high" -> HIGH
+            "medium" -> MEDIUM
+            else -> LOW
+        }
+    }
 }
 
 enum class DeadCodeReason {

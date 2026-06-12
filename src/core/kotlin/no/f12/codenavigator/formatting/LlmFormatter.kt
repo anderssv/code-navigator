@@ -128,7 +128,7 @@ object LlmFormatter {
             .withInterpretation(VOLATILITY_INTERPRETATION)
 
     fun formatCoupling(pairs: List<CoupledPair>): String =
-        pairs.joinToString("\n") { "${it.entity} -- ${it.coupled} degree=${it.degree}% shared=${it.sharedRevs} avg=${it.avgRevs}" }
+        pairs.joinToString("\n") { "${it.entity} -- ${it.coupled} degree=${it.degree}% shared=${it.sharedRevs} avg=${it.avgRevs}${if (it.stale) " [stale]" else ""}" }
             .withInterpretation(COUPLING_INTERPRETATION)
 
     fun formatAge(ages: List<FileAge>): String =
@@ -414,7 +414,7 @@ object LlmFormatter {
 
     internal const val HOTSPOT_INTERPRETATION = "Interpretation: Files with high revision counts change frequently and are likely complexity hotspots. Prioritize refactoring files that are both hot (many revisions) and large (high churn). Cross-reference with coupling to find risky change clusters."
 
-    internal const val COUPLING_INTERPRETATION = "Interpretation: High degree (%) means these files almost always change together. Intentional coupling (e.g., interface+implementation) is fine. Unintentional coupling suggests hidden dependencies or shared responsibilities that should be extracted."
+    internal const val COUPLING_INTERPRETATION = "Interpretation: High degree (%) means these files almost always change together. Intentional coupling (e.g., interface+implementation) is fine. Unintentional coupling suggests hidden dependencies or shared responsibilities that should be extracted. Pairs marked [stale] reference a file that no longer exists (rename/delete from git history) — ignore them."
 
     internal const val AGE_INTERPRETATION = "Interpretation: Old files (many months since last change) are either stable infrastructure or forgotten code. Very old files in active packages may indicate dead code or deferred maintenance."
 

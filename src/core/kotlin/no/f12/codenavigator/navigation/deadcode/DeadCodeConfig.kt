@@ -18,6 +18,7 @@ data class DeadCodeConfig(
     val scope: Scope,
     val format: OutputFormat,
     val baseline: String?,
+    val minConfidence: DeadCodeConfidence,
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): DeadCodeConfig {
@@ -41,6 +42,7 @@ data class DeadCodeConfig(
                 scope = parseDeadCodeScope(properties),
                 format = ParamDef.parseFormat(properties),
                 baseline = TaskRegistry.BASELINE.parseFrom(properties),
+                minConfidence = DeadCodeConfidence.parse(TaskRegistry.MIN_CONFIDENCE.parseFrom(properties)),
             )
         }
         private fun parseDeadCodeScope(properties: Map<String, String?>): Scope {

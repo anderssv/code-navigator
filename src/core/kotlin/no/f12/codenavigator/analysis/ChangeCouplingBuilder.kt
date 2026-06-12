@@ -6,6 +6,8 @@ data class CoupledPair(
     val degree: Int,
     val sharedRevs: Int,
     val avgRevs: Int,
+    /** True when either file path no longer resolves to a file on disk (rename/delete noise from git --all history). */
+    val stale: Boolean = false,
 )
 
 object ChangeCouplingBuilder {

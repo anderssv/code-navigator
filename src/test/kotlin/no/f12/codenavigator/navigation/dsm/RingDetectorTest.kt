@@ -127,8 +127,7 @@ class RingDetectorTest {
     }
 
     @Test
-    fun `composition root is exempt from violations`() {
-        val deps = listOf(
+    fun `composition root is exempt from violations`() {        val deps = listOf(
             PackageDependency(PackageName("com.app.service"), PackageName("com.app.domain"), ClassName("com.app.service.Svc"), ClassName("com.app.domain.D")),
             PackageDependency(PackageName("com.app.web"), PackageName("com.app.service"), ClassName("com.app.web.W"), ClassName("com.app.service.Svc")),
             PackageDependency(PackageName("com.app.web"), PackageName("com.app.domain"), ClassName("com.app.web.W"), ClassName("com.app.domain.D")),
@@ -141,6 +140,36 @@ class RingDetectorTest {
         val result = RingDetector.detect(deps)
 
         assertTrue(result.violations.none { it.sourcePackage == PackageName("com.app.main") })
+    }
+
+    @Test
+    fun `violations targeting a composition root are suppressed`() {
+        // Two wiring packages both depend on domain/service/web (3 rings → composition roots),
+        // landing at the same top ring. bootstrap → main is then a PEER edge targeting a
+        // composition root, which must NOT be reported: nothing should be penalized for being
+        // depended-on-by wiring code.
+        val deps = listOf(
+            PackageDependency(PackageName("com.app.service"), PackageName("com.app.domain"), ClassName("com.app.service.Svc"), ClassName("com.app.domain.D")),
+            PackageDependency(PackageName("com.app.web"), PackageName("com.app.service"), ClassName("com.app.web.W"), ClassName("com.app.service.Svc")),
+            PackageDependency(PackageName("com.app.web"), PackageName("com.app.domain"), ClassName("com.app.web.W"), ClassName("com.app.domain.D")),
+            // main: composition root (domain + service + web)
+            PackageDependency(PackageName("com.app.main"), PackageName("com.app.domain"), ClassName("com.app.main.App"), ClassName("com.app.domain.D")),
+            PackageDependency(PackageName("com.app.main"), PackageName("com.app.service"), ClassName("com.app.main.App"), ClassName("com.app.service.Svc")),
+            PackageDependency(PackageName("com.app.main"), PackageName("com.app.web"), ClassName("com.app.main.App"), ClassName("com.app.web.W")),
+            // bootstrap: also a composition root (domain + service + web), plus depends on main
+            PackageDependency(PackageName("com.app.bootstrap"), PackageName("com.app.domain"), ClassName("com.app.bootstrap.Boot"), ClassName("com.app.domain.D")),
+            PackageDependency(PackageName("com.app.bootstrap"), PackageName("com.app.service"), ClassName("com.app.bootstrap.Boot"), ClassName("com.app.service.Svc")),
+            PackageDependency(PackageName("com.app.bootstrap"), PackageName("com.app.web"), ClassName("com.app.bootstrap.Boot"), ClassName("com.app.web.W")),
+            PackageDependency(PackageName("com.app.bootstrap"), PackageName("com.app.main"), ClassName("com.app.bootstrap.Boot"), ClassName("com.app.main.App")),
+        )
+
+        val result = RingDetector.detect(deps)
+
+        assertTrue(PackageName("com.app.main") in result.compositionRoots, "main should be a composition root, rings=${result.rings}")
+        assertTrue(
+            result.violations.none { it.targetPackage == PackageName("com.app.main") },
+            "Edges targeting a composition root must be suppressed, violations=${result.violations}",
+        )
     }
 
     @Test

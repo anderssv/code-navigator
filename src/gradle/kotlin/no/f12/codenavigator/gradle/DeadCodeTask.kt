@@ -52,6 +52,10 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
     @get:Internal
     var baseline: String? = null
 
+    @Option(option = "min-confidence", description = "Only show findings at or above this confidence level: high, medium, or low (default: low, show all).")
+    @get:Internal
+    var minConfidence: String? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         filter?.let { put("filter", it) }
         exclude?.let { put("exclude", it) }
@@ -60,6 +64,7 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
         scope?.let { put("scope", it) }
         treatAsDead?.let { put("treat-as-dead", it) }
         baseline?.let { put("baseline", it) }
+        minConfidence?.let { put("min-confidence", it) }
     }
 
     @TaskAction
@@ -103,6 +108,7 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
             exclude = config.exclude,
             classesOnly = config.classesOnly,
             cacheDir = cacheDir,
+            minConfidence = config.minConfidence,
         ))
 
         if (dead.isEmpty()) {

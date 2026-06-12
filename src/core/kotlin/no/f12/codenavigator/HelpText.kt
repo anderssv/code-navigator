@@ -228,6 +228,7 @@ object HelpText {
         appendLine("      ${pd(TaskRegistry.SCOPE, "Scope dead code analysis: prod = test refs don't count, test = find dead test infrastructure")}")
          appendLine("      ${pd(TaskRegistry.DEAD.paramByName("treat-as-dead"))}")
          appendLine("      ${pd(TaskRegistry.DEAD.paramByName("baseline"))}")
+         appendLine("      ${pd(TaskRegistry.DEAD.paramByName("min-confidence"))}")
         examples(TaskRegistry.DEAD)
         appendLine()
         appendLine("  ${t("find-string-constant")}")

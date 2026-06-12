@@ -76,7 +76,10 @@ object RingDetector {
         for ((source, target) in packageEdges) {
             val sourceRing = rings[source] ?: continue
             val targetRing = rings[target] ?: continue
-            if (source in compositionRoots) continue
+            // Composition roots wire many rings together by design. Skip edges that originate
+            // from them (di → everything) AND edges that target them (something → di) — neither
+            // direction is a real architectural violation.
+            if (source in compositionRoots || target in compositionRoots) continue
 
             if (targetRing > sourceRing) {
                 violations.add(RingViolation(source, target, sourceRing, targetRing, RingViolationType.OUTWARD))

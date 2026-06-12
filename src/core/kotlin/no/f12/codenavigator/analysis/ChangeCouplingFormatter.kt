@@ -31,7 +31,9 @@ object ChangeCouplingFormatter {
                 append("%-${entityWidth}s  %-${coupledWidth}s  %${degreeWidth}s  %${sharedWidth}d".format(
                     p.entity, p.coupled, "${p.degree}%", p.sharedRevs,
                 ))
-                if (p.degree >= HIGH_COUPLING_THRESHOLD && !testMainPair(p.entity, p.coupled) && isSourceFile(p.entity) && isSourceFile(p.coupled)) {
+                if (p.stale) {
+                    append("  [stale] — one or both files no longer exist (rename/delete from git history).")
+                } else if (p.degree >= HIGH_COUPLING_THRESHOLD && !testMainPair(p.entity, p.coupled) && isSourceFile(p.entity) && isSourceFile(p.coupled)) {
                     append("  ← High coupling — likely same responsibility, consider merging or extracting shared logic.")
                 }
             }

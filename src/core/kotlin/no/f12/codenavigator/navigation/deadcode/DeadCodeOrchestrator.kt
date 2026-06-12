@@ -27,6 +27,7 @@ object DeadCodeOrchestrator {
         val exclude: Regex? = null,
         val classesOnly: Boolean = false,
         val cacheDir: File,
+        val minConfidence: DeadCodeConfidence = DeadCodeConfidence.LOW,
     )
 
     fun findDeadCode(input: DeadCodeInput): List<DeadCode> {
@@ -70,6 +71,14 @@ object DeadCodeOrchestrator {
             delegationMethods = delegationMethods,
             bridgeMethods = bridgeMethods,
             declaredMethods = input.graph.allDeclaredMethods(),
-        ))
+        )).let { filterByConfidence(it, input.minConfidence) }
     }
+
+    /**
+     * Keep only findings at or above [minConfidence]. The confidence enum is ordered
+     * HIGH, MEDIUM, LOW, so a higher confidence has a LOWER ordinal — "at or above the
+     * threshold" therefore keeps findings whose ordinal <= the threshold's ordinal.
+     */
+    internal fun filterByConfidence(findings: List<DeadCode>, minConfidence: DeadCodeConfidence): List<DeadCode> =
+        findings.filter { it.confidence.ordinal <= minConfidence.ordinal }
 }

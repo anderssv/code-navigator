@@ -13,7 +13,10 @@ import no.f12.codenavigator.navigation.dsm.CyclesConfig
 import no.f12.codenavigator.navigation.dsm.CyclesFormatter
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
+import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
+import no.f12.codenavigator.navigation.types.Scope
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
@@ -84,11 +87,23 @@ class CyclesMojo : AbstractMojo() {
             println(OutputWrapper.emptyResult(config.format, "No package cycles detected."))
             return
         }
+
+        val testNotice = if (config.scope == Scope.ALL) {
+            val resolver = SourceSetResolver.from(taggedDirs)
+            val classEdges = details.flatMap { it.edges }.flatMap { it.classEdges }
+            TestInvolvement.notice(
+                TestInvolvement.count(classEdges) { resolver.sourceSetOf(it) },
+                "cycle edges",
+            )
+        } else {
+            null
+        }
+
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(details, displayPrefix = displayPrefix)
+        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(details, displayPrefix = displayPrefix).let { if (testNotice != null) "$it\n\n$testNotice" else it }
         OutputFormat.JSON -> JsonFormatter.formatCycles(details, displayPrefix = displayPrefix)
-        OutputFormat.LLM -> LlmFormatter.formatCycles(details, displayPrefix = displayPrefix)
+        OutputFormat.LLM -> LlmFormatter.formatCycles(details, displayPrefix = displayPrefix).let { if (testNotice != null) "$it\n\n$testNotice" else it }
     }
 })
     }

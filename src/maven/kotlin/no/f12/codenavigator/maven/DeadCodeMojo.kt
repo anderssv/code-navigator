@@ -53,6 +53,9 @@ class DeadCodeMojo : AbstractMojo() {
     @Parameter(property = "baseline")
     private var baseline: String? = null
 
+    @Parameter(property = "min-confidence")
+    private var minConfidence: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -90,6 +93,7 @@ class DeadCodeMojo : AbstractMojo() {
             exclude = config.exclude,
             classesOnly = config.classesOnly,
             cacheDir = cacheDir,
+            minConfidence = config.minConfidence,
         ))
 
         if (dead.isEmpty()) {
@@ -133,5 +137,6 @@ class DeadCodeMojo : AbstractMojo() {
         scope?.let { put("scope", it) }
         treatAsDead?.let { put("treat-as-dead", it) }
         baseline?.let { put("baseline", it) }
+        minConfidence?.let { put("min-confidence", it) }
     }
 }

@@ -3,6 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
 import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.EmergentRingDetector
@@ -11,6 +12,7 @@ import no.f12.codenavigator.navigation.dsm.RingDetector
 import no.f12.codenavigator.navigation.dsm.RingFormatter
 import no.f12.codenavigator.navigation.dsm.HintsConfigGenerator
 import no.f12.codenavigator.navigation.dsm.RingsHintsConfig
+import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.ParamDef
@@ -51,7 +53,7 @@ class RingsMojo : AbstractMojo() {
         val props = TaskRegistry.RINGS.enhanceProperties(buildPropertyMap())
         val outputFormat = ParamDef.parseFormat(props)
         val scopeFilter = Scope.parse(props["scope"])
-        val modeVal = props["mode"] ?: "package"
+        val modeVal = props["mode"] ?: "emergent"
         val bootstrap = props["bootstrap-config"] == "true"
 
         val classDirectories = project.taggedClassDirectories()
@@ -67,7 +69,7 @@ class RingsMojo : AbstractMojo() {
 
         val output = when {
             bootstrap && modeVal == "emergent" -> bootstrapConfig(classDirectories, projectClasses)
-            modeVal == "emergent" -> detectEmergent(classDirectories, projectClasses)
+            modeVal == "emergent" -> detectEmergent(classDirectories, projectClasses, scopeFilter)
             else -> detectPackageLevel(classDirectories, projectClasses)
         }
 
@@ -84,10 +86,10 @@ class RingsMojo : AbstractMojo() {
         val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { log.warn(it) }
-        val hintsConfig = RingsHintsConfig.loadFromDirectory(project.basedir)
-        val ringNames = hintsConfig?.ringIndexNames() ?: emptyMap()
-        val configNotice = if (hintsConfig != null) "(cnav-config.json loaded — ring names applied)" else null
-        return RingFormatter.format(RingDetector.detect(extractResult.data), ringNames, configNotice)
+        // Package mode does not apply cnav-config.json ring names: a topological-depth ranking
+        // can't honestly assert a semantic layer label. The names belong to --mode=emergent.
+        val rings = RingFormatter.format(RingDetector.detect(extractResult.data))
+        return "${RingFormatter.PACKAGE_MODE_NOTICE}\n\n$rings"
     }
 
     private fun bootstrapConfig(classDirectories: List<File>, projectClasses: Set<ClassName>): String {
@@ -99,7 +101,7 @@ class RingsMojo : AbstractMojo() {
         return HintsConfigGenerator.generate(result.classRings)
     }
 
-    private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<ClassName>): String {
+    private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<ClassName>, scope: Scope): String {
         val projectResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true, includeSamePackage = true)
         val externalResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
         val externalOnly = externalResult.data.filter { it.targetClass !in projectClasses }
@@ -110,7 +112,16 @@ class RingsMojo : AbstractMojo() {
         val hintsConfig = RingsHintsConfig.loadFromDirectory(project.basedir)
         val result = EmergentRingDetector.detect(projectResult.data, externalOnly, projectClasses, hintsConfig)
         val ringNames = hintsConfig?.ringIndexNames() ?: emptyMap()
-        return EmergentRingFormatter.format(result, ringNames, hasHints = hintsConfig != null && hintsConfig.hasHints())
+        val rings = EmergentRingFormatter.format(result, ringNames, hasHints = hintsConfig != null && hintsConfig.hasHints())
+
+        val testNotice = if (scope == Scope.ALL) {
+            val resolver = SourceSetResolver.from(project.taggedClassDirectories())
+            val edges = result.violations.map { it.sourceClass to it.targetClass }
+            TestInvolvement.notice(TestInvolvement.count(edges) { resolver.sourceSetOf(it) }, "violations")
+        } else {
+            null
+        }
+        return if (testNotice != null) "$rings\n\n$testNotice" else rings
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {

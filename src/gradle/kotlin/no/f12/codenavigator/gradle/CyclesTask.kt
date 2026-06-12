@@ -14,7 +14,9 @@ import no.f12.codenavigator.navigation.dsm.CyclesConfig
 import no.f12.codenavigator.navigation.dsm.CyclesFormatter
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
+import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
@@ -83,11 +85,23 @@ abstract class CyclesTask : CodeNavigatorTask() {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No package cycles detected."))
             return
         }
+
+        val testNotice = if (config.scope == Scope.ALL) {
+            val resolver = SourceSetResolver.from(taggedDirs)
+            val classEdges = details.flatMap { it.edges }.flatMap { it.classEdges }
+            TestInvolvement.notice(
+                TestInvolvement.count(classEdges) { resolver.sourceSetOf(it) },
+                "cycle edges",
+            )
+        } else {
+            null
+        }
+
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(details, displayPrefix = displayPrefix)
+        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(details, displayPrefix = displayPrefix).let { if (testNotice != null) "$it\n\n$testNotice" else it }
         OutputFormat.JSON -> JsonFormatter.formatCycles(details, displayPrefix = displayPrefix)
-        OutputFormat.LLM -> LlmFormatter.formatCycles(details, displayPrefix = displayPrefix)
+        OutputFormat.LLM -> LlmFormatter.formatCycles(details, displayPrefix = displayPrefix).let { if (testNotice != null) "$it\n\n$testNotice" else it }
     }
 })
     }

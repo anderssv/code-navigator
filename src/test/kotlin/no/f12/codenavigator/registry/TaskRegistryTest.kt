@@ -1069,6 +1069,7 @@ class TaskRegistryTest {
             "params" to ParamType.STRING,
             "defaults" to ParamType.STRING,
             "baseline" to ParamType.STRING,
+            "min-confidence" to ParamType.STRING,
             "mode" to ParamType.STRING,
             "plan-file" to ParamType.STRING,
             "bootstrap-config" to ParamType.FLAG,

@@ -19,6 +19,12 @@ object ConfigHelpText {
         appendLine("Example: ${tool.usage("find-class", tool.param("pattern", "Service"), tool.param("format", "json"))}")
         if (tool == BuildTool.GRADLE) {
             appendLine()
+            appendLine("Canonical flags: --format=llm|json|text and --scope=all|prod|test.")
+            appendLine("The legacy `-Pllm=true` and `-Pprod-only=true` project properties are deprecated aliases")
+            appendLine("(still honored, but prefer --format / --scope).")
+        }
+        if (tool == BuildTool.GRADLE) {
+            appendLine()
             appendLine("--- Gradle Configuration Block (persistent defaults) ---")
             appendLine()
             appendLine("  codeNavigator {")

@@ -4,6 +4,7 @@ import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
 import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.PlanMutator
@@ -13,6 +14,7 @@ import no.f12.codenavigator.navigation.dsm.RingDetector
 import no.f12.codenavigator.navigation.dsm.RingFormatter
 import no.f12.codenavigator.navigation.dsm.HintsConfigGenerator
 import no.f12.codenavigator.navigation.dsm.RingsHintsConfig
+import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.TaskRegistry
 import org.gradle.api.tasks.Internal
@@ -28,7 +30,7 @@ abstract class RingsTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
-    @Option(option = "mode", description = "Analysis mode: package (default) or emergent (class-level ring detection)")
+    @Option(option = "mode", description = "Analysis mode: emergent (default, class-level ring detection) or package (package-level by topological depth)")
     @get:Internal
     var mode: String? = null
 
@@ -49,7 +51,7 @@ abstract class RingsTask : CodeNavigatorTask() {
 
         val format = ParamDef.parseFormat(props)
         val scopeVal = Scope.parse(props["scope"])
-        val modeVal = props["mode"] ?: "package"
+        val modeVal = props["mode"] ?: "emergent"
         val bootstrap = props["bootstrap-config"] == "true"
 
         val classDirectories = project.taggedClassDirectories()
@@ -59,7 +61,7 @@ abstract class RingsTask : CodeNavigatorTask() {
 
         val output = when {
             bootstrap && modeVal == "emergent" -> bootstrapConfig(classDirectories, projectClasses)
-            modeVal == "emergent" -> detectEmergent(classDirectories, projectClasses)
+            modeVal == "emergent" -> detectEmergent(classDirectories, projectClasses, scopeVal)
             else -> detectPackageLevel(classDirectories)
         }
 
@@ -77,10 +79,10 @@ abstract class RingsTask : CodeNavigatorTask() {
         val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val hintsConfig = loadHintsConfig()
-        val ringNames = hintsConfig?.ringIndexNames() ?: emptyMap()
-        val configNotice = if (hintsConfig != null) "(cnav-config.json loaded — ring names applied)" else null
-        return RingFormatter.format(RingDetector.detect(applyPlan(extractResult.data)), ringNames, configNotice)
+        // Package mode does not apply cnav-config.json ring names: a topological-depth ranking
+        // can't honestly assert a semantic layer label. The names belong to --mode=emergent.
+        val rings = RingFormatter.format(RingDetector.detect(applyPlan(extractResult.data)))
+        return "${RingFormatter.PACKAGE_MODE_NOTICE}\n\n$rings"
     }
 
     private fun loadHintsConfig(): RingsHintsConfig? =
@@ -95,7 +97,7 @@ abstract class RingsTask : CodeNavigatorTask() {
         return HintsConfigGenerator.generate(result.classRings)
     }
 
-    private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<no.f12.codenavigator.navigation.types.ClassName>): String {
+    private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<no.f12.codenavigator.navigation.types.ClassName>, scope: Scope): String {
         val allResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(allResult.skippedFiles, reportFile)?.let { logger.warn(it) }
@@ -108,6 +110,15 @@ abstract class RingsTask : CodeNavigatorTask() {
         val hintsConfig = loadHintsConfig()
         val result = EmergentRingDetector.detect(projectDeps, externalDeps, mutatedClasses, hintsConfig)
         val ringNames = hintsConfig?.ringIndexNames() ?: emptyMap()
-        return EmergentRingFormatter.format(result, ringNames, hasHints = hintsConfig != null && hintsConfig.hasHints())
+        val rings = EmergentRingFormatter.format(result, ringNames, hasHints = hintsConfig != null && hintsConfig.hasHints())
+
+        val testNotice = if (scope == Scope.ALL) {
+            val resolver = SourceSetResolver.from(project.taggedClassDirectories())
+            val edges = result.violations.map { it.sourceClass to it.targetClass }
+            TestInvolvement.notice(TestInvolvement.count(edges) { resolver.sourceSetOf(it) }, "violations")
+        } else {
+            null
+        }
+        return if (testNotice != null) "$rings\n\n$testNotice" else rings
     }
 }

@@ -97,4 +97,33 @@ class ClassFileStalenessTest {
 
         assertIs<StalenessResult.Fresh>(result)
     }
+
+    @Test
+    fun `ignores generated sources under build directory inside a source root`() {
+        // A real .kt source compiled long ago
+        File(sourceDir, "Real.kt").writeText("class Real")
+        File(classesDir, "Real.class").writeBytes(byteArrayOf(0xCA.toByte(), 0xFE.toByte()))
+        Thread.sleep(50)
+        // A regenerated .kt under build/generated-sources within the source root — must NOT count as source
+        val generated = File(sourceDir, "build/generated/source/kapt/main").also { it.mkdirs() }
+        File(generated, "Generated.kt").writeText("class Generated")
+
+        val result = ClassFileStaleness.check(listOf(sourceDir), listOf(classesDir))
+
+        assertIs<StalenessResult.Fresh>(result)
+    }
+
+    @Test
+    fun `class scan still works when class dir is under a build directory`() {
+        // The class scan must NOT be pruned by build-dir filtering — classes legitimately live under build/.
+        val buildClasses = File(tempDir.resolve("build/classes/kotlin/main").toFile().also { it.mkdirs() }, "Foo.class")
+        buildClasses.writeBytes(byteArrayOf(0xCA.toByte(), 0xFE.toByte()))
+        Thread.sleep(50)
+        File(sourceDir, "Foo.kt").writeText("newer source")
+
+        val result = ClassFileStaleness.check(listOf(sourceDir), listOf(buildClasses.parentFile))
+
+        // source is newer than the class → stale (proves the class file under build/ was still found)
+        assertIs<StalenessResult.Stale>(result)
+    }
 }

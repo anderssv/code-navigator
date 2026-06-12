@@ -242,4 +242,25 @@ class DeadCodeConfigTest {
 
         assertFalse(config.receiverTypeEntryPoints.any { it.value == "io.ktor.server.routing.Route" })
     }
+
+    @Test
+    fun `min-confidence defaults to LOW when absent`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertEquals(DeadCodeConfidence.LOW, config.minConfidence)
+    }
+
+    @Test
+    fun `parses min-confidence high`() {
+        val config = DeadCodeConfig.parse(mapOf("min-confidence" to "high"))
+
+        assertEquals(DeadCodeConfidence.HIGH, config.minConfidence)
+    }
+
+    @Test
+    fun `parses min-confidence medium`() {
+        val config = DeadCodeConfig.parse(mapOf("min-confidence" to "medium"))
+
+        assertEquals(DeadCodeConfidence.MEDIUM, config.minConfidence)
+    }
 }

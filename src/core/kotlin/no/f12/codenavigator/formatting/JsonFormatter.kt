@@ -183,6 +183,7 @@ object JsonFormatter {
                 "degree" to p.degree,
                 "sharedRevs" to p.sharedRevs,
                 "avgRevs" to p.avgRevs,
+                "stale" to (if (p.stale) true else null),
             )
         }
 

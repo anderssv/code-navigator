@@ -244,6 +244,7 @@ object TaskRegistry {
     val INCLUDE_IMPLS = ParamDef("include-impls", "", "When target is an interface, also search usages of implementors", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val TREAT_AS_DEAD = ParamDef("treat-as-dead", "<name>", "Treat framework-annotated code as potentially dead (all frameworks protected by default). Available: ${FrameworkPresets.availablePresets().sorted().joinToString(", ")}. Use ALL to remove all framework protections.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
     val BASELINE = ParamDef("baseline", "<path>", "Path to a previous cnavDead JSON output file. Shows diff: removed, remaining, and new dead code since baseline.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val MIN_CONFIDENCE = ParamDef("min-confidence", "high|medium|low", "Only show findings at or above this confidence level (high = strongest removal candidates, low = include framework-invoked maybes). Default: low (show all).", flag = false, defaultValue = "low", enhancePattern = false, type = ParamType.STRING)
     val DETAIL = ParamDef("detail", "true", "Show individual call details", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val COLLAPSE_LAMBDAS = ParamDef("collapse-lambdas", "false", "Set false to show lambda classes separately", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val MIN_SHARED_REVS = ParamDef("min-shared-revs", "<N>", "Min shared commits", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
@@ -273,7 +274,7 @@ object TaskRegistry {
     val TO_PACKAGE = ParamDef("to-package", "<pkg>", "Target package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PORTS = ParamDef("ports", "<regex>", "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val AFFINITY_THRESHOLD = ParamDef("threshold", "<N>", "Max number of consumer domains to still count as single-owner", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
-    val RING_MODE = ParamDef("mode", "package|emergent", "Analysis mode: package (default, assigns rings per package) or emergent (assigns rings per class based on import shape)", flag = false, defaultValue = "package", enhancePattern = false, type = ParamType.STRING)
+    val RING_MODE = ParamDef("mode", "emergent|package", "Analysis mode: emergent (default, assigns rings per class based on import shape — best for package-by-feature) or package (assigns rings per package by topological depth)", flag = false, defaultValue = "emergent", enhancePattern = false, type = ParamType.STRING)
     val BOOTSTRAP_CONFIG = ParamDef("bootstrap-config", "true", "Generate a starting cnav-config.json based on emergent ring analysis — best-effort suggestions meant to be reviewed and tweaked before use", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
 
     val FORMAT_PARAMS = listOf(FORMAT)
@@ -495,7 +496,7 @@ object TaskRegistry {
     val DEAD = TaskDef(
         goal = "dead",
         description = "Detect dead code (unreferenced classes and methods)",
-        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, SCOPE, TREAT_AS_DEAD, BASELINE),
+        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, SCOPE, TREAT_AS_DEAD, BASELINE, MIN_CONFIDENCE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         requiresTestCompilation = true,
@@ -508,8 +509,9 @@ object TaskRegistry {
             UsageExample(listOf(EXCLUDE_ANNOTATED to "\"RestController,Scheduled\"")),
             UsageExample(listOf(SCOPE to "prod")),
             UsageExample(listOf(TREAT_AS_DEAD to "spring")),
-            UsageExample(listOf(TREAT_AS_DEAD to "ALL")),
-            UsageExample(listOf(BASELINE to "build/cnav/dead-baseline.json")),
+        UsageExample(listOf(TREAT_AS_DEAD to "ALL")),
+        UsageExample(listOf(BASELINE to "build/cnav/dead-baseline.json")),
+        UsageExample(listOf(MIN_CONFIDENCE to "high")),
         ),
     )
 
