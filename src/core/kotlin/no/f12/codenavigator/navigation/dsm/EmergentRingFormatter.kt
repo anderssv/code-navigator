@@ -63,6 +63,13 @@ object EmergentRingFormatter {
             }
         }
 
+        val hints = RingFormatter.computeHints(byRing.mapValues { it.value.size })
+        if (hints.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## Notes")
+            hints.forEach { sb.appendLine("- $it") }
+        }
+
         // Self-documenting tip
         if (hasHints) {
             sb.appendLine()

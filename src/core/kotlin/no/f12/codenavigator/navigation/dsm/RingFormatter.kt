@@ -39,7 +39,7 @@ object RingFormatter {
             val label = ringLabel(ring)
             val pkgs = packages.map { it.key }.sorted()
             val compositionMark = pkgs.filter { it in result.compositionRoots }.toSet()
-            sb.appendLine("Ring $ring ($label):")
+            sb.appendLine("Ring $ring ($label): ${pkgs.size} packages")
             for (pkg in pkgs) {
                 val suffix = if (pkg in compositionMark) " [composition root]" else ""
                 sb.appendLine("  $pkg$suffix")
@@ -49,6 +49,13 @@ object RingFormatter {
 
         val filteredViolations = result.violations.filter { v ->
             v.sourcePackage !in result.compositionRoots && v.targetPackage !in result.compositionRoots
+        }
+
+        val hints = computeHints(byRing.mapValues { it.value.size })
+        if (hints.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("## Notes")
+            hints.forEach { sb.appendLine("- $it") }
         }
 
         if (filteredViolations.isEmpty()) {
@@ -66,5 +73,41 @@ object RingFormatter {
         }
 
         return sb.toString().trimEnd()
+    }
+
+    /**
+     * Factual observations about ring count and size distribution.
+     * Emitted in all output formats (TEXT, LLM, JSON) so no one misses them.
+     */
+    internal fun computeHints(ringSizes: Map<Int, Int>): List<String> {
+        if (ringSizes.isEmpty()) return emptyList()
+        val hints = mutableListOf<String>()
+        val total = ringSizes.values.sum()
+        val maxRing = ringSizes.keys.max()
+        val largestRing = ringSizes.maxByOrNull { it.value }!!
+        val ring0Size = ringSizes[0] ?: 0
+
+        // Many rings
+        if (maxRing >= 8) {
+            hints += "High ring count ($maxRing rings detected). This is normal on package-by-feature layouts " +
+                "but can also indicate long dependency chains. Try --scope=prod to remove test inflation, " +
+                "then look for ring chains that could be shortened."
+        }
+
+        // Outer ring is the largest
+        if (largestRing.key > 0 && largestRing.value > ring0Size) {
+            hints += "Ring ${largestRing.key} is the largest ring (${largestRing.value} packages) and sits " +
+                "above the domain ring (ring 0: $ring0Size packages). This may indicate feature logic " +
+                "leaking into adapter/infrastructure layers — consider whether those packages belong closer to the domain."
+        }
+
+        // One ring dominates (>60% of total, excluding the domain dominating which is healthy)
+        if (largestRing.key > 0 && total > 2 && largestRing.value.toDouble() / total > 0.6) {
+            hints += "Ring ${largestRing.key} contains ${largestRing.value} of $total packages (${largestRing.value * 100 / total}%). " +
+                "A single dominant outer ring often means many packages share the same layer depth — " +
+                "check whether they are genuinely independent or contain hidden coupling (run cnavCycles)."
+        }
+
+        return hints
     }
 }
