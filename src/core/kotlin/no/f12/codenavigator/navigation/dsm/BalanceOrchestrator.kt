@@ -5,7 +5,6 @@ import no.f12.codenavigator.analysis.HotspotBuilder
 import no.f12.codenavigator.analysis.PackageVolatilityBuilder
 import no.f12.codenavigator.navigation.types.FrameworkPresets
 import no.f12.codenavigator.navigation.types.PackageName
-import no.f12.codenavigator.navigation.bytecode.RootPackageDetector
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import java.io.File
@@ -36,11 +35,9 @@ object BalanceOrchestrator {
         // Strength
         val strengthResult = StrengthClassifier.classify(extractResult.data, classTypeRegistry, Int.MAX_VALUE, packageFilter)
 
-        // Distance
+        // Ring separation (dependency-structure distance, not package-name nesting)
         val dependencies = extractResult.data.filterByPackage(packageFilter)
-        val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
-        val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)
-        val distanceResult = PackageDistanceBuilder.build(matrix, Int.MAX_VALUE)
+        val ringAssignment = RingDetector.detect(dependencies)
 
         // Volatility (git history)
         val commits = GitLogRunner.run(projectDir, config.after, followRenames = config.followRenames)
@@ -48,7 +45,13 @@ object BalanceOrchestrator {
         val volatilityResult = PackageVolatilityBuilder.build(hotspots, Int.MAX_VALUE)
 
         // Combine
-        val result = BalanceBuilder.build(strengthResult, distanceResult, volatilityResult, config.top)
+        val result = BalanceBuilder.build(
+            strengthResult,
+            ringAssignment.rings,
+            ringAssignment.compositionRoots,
+            volatilityResult,
+            config.top,
+        )
 
         if (result.entries.isEmpty()) {
             val packageCount = projectClasses.map { it.packageName() }.distinct().size

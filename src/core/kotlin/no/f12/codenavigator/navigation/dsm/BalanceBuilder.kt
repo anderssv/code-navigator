@@ -27,24 +27,29 @@ data class BalanceResult(
 
 object BalanceBuilder {
 
-    private const val DISTANCE_THRESHOLD = 3
+    private const val DISTANCE_THRESHOLD = 2
     private const val STRENGTH_HIGH_LEVEL = 3 // FUNCTIONAL
 
+    /**
+     * @param rings topological ring per package (from RingDetector). "Distance" is the number of
+     *   rings an edge crosses — a dependency-structure signal, not package-name nesting depth.
+     * @param compositionRoots packages that wire many rings together (DI/composition). Edges
+     *   originating from these are never flagged DANGER — their high fan-out is by design.
+     */
     fun build(
         strength: StrengthResult,
-        distance: PackageDistanceResult,
+        rings: Map<PackageName, Int>,
+        compositionRoots: Set<PackageName>,
         volatility: PackageVolatilityResult,
         top: Int = Int.MAX_VALUE,
     ): BalanceResult {
         if (strength.entries.isEmpty()) return BalanceResult(entries = emptyList())
 
-        val distanceMap = distance.entries.associateBy { it.source to it.target }
         val volatilityMap = volatility.entries.associateBy { it.packageName }
         val volatilityMedian = computeMedianRevisions(volatility)
 
         val entries = strength.entries.map { entry ->
-            val dist = distanceMap[entry.source to entry.target]?.distance
-                ?: PackageDistanceCalculator.distance(entry.source, entry.target)
+            val dist = ringSeparation(rings, entry.source, entry.target)
 
             val sourceVol = volatilityMap[entry.source.value]?.revisions ?: 0
             val targetVol = volatilityMap[entry.target.value]?.revisions ?: 0
@@ -52,8 +57,9 @@ object BalanceBuilder {
             val strengthHigh = entry.strength.level >= STRENGTH_HIGH_LEVEL
             val distanceHigh = dist >= DISTANCE_THRESHOLD
             val volatilityHigh = maxOf(sourceVol, targetVol) >= volatilityMedian && volatilityMedian > 0
+            val isCompositionRoot = entry.source in compositionRoots
 
-            val verdict = classify(strengthHigh, distanceHigh, volatilityHigh)
+            val verdict = classify(strengthHigh, distanceHigh, volatilityHigh, isCompositionRoot)
             val suggestion = suggest(verdict)
 
             BalanceEntry(
@@ -78,10 +84,21 @@ object BalanceBuilder {
         return BalanceResult(entries = entries)
     }
 
+    /**
+     * Number of rings the edge crosses. Packages without a known ring (e.g. external or
+     * unranked) contribute 0 separation so they are never spuriously flagged.
+     */
+    private fun ringSeparation(rings: Map<PackageName, Int>, source: PackageName, target: PackageName): Int {
+        val sourceRing = rings[source] ?: return 0
+        val targetRing = rings[target] ?: return 0
+        return kotlin.math.abs(sourceRing - targetRing)
+    }
+
     private fun classify(
         strengthHigh: Boolean,
         distanceHigh: Boolean,
         volatilityHigh: Boolean,
+        isCompositionRoot: Boolean,
     ): BalanceVerdict {
         val modularityGood = strengthHigh != distanceHigh // XOR: good when they differ
         if (modularityGood) return BalanceVerdict.BALANCED
@@ -97,7 +114,13 @@ object BalanceBuilder {
             return BalanceVerdict.TOLERABLE
         }
 
-        // High strength + high distance + high volatility
+        // Composition roots wire distant rings together by design — high fan-out to volatile
+        // infrastructure is expected, not debt. Downgrade from DANGER to TOLERABLE.
+        if (isCompositionRoot) {
+            return BalanceVerdict.TOLERABLE
+        }
+
+        // High strength + high ring separation + high volatility
         return BalanceVerdict.DANGER
     }
 

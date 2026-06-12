@@ -430,7 +430,7 @@ object LlmFormatter {
 
     internal const val STRENGTH_INTERPRETATION = "Interpretation: Integration strength levels — MODEL: only data classes cross the boundary (loosest). CONTRACT: interfaces/abstractions cross. FUNCTIONAL: concrete implementations cross (tightest). Higher strength at greater distance is a modularity concern."
 
-    internal const val BALANCE_INTERPRETATION = "Interpretation: BALANCED = coupling strength matches package distance. TOLERABLE = suboptimal but low volatility reduces risk. DANGER = tight coupling across distant, volatile packages — highest priority for refactoring. Focus on DANGER entries first."
+    internal const val BALANCE_INTERPRETATION = "Interpretation: distance = number of architectural rings the edge crosses (not package-name nesting). BALANCED = coupling strength matches ring separation. TOLERABLE = suboptimal but low volatility reduces risk. DANGER = tight coupling across rings in volatile code — highest priority for refactoring. Composition roots (DI/wiring) are never DANGER. Focus on DANGER entries first."
 
     internal const val COHESION_INTERPRETATION = "Interpretation: Cohesion ratio = internal edges / total edges. COHESIVE (>0.5) = classes collaborate more with each other than with outsiders. REVIEW (<0.5) = package may contain unrelated classes. THIN_LAYER (0.0) = no internal collaboration, consider merging into a neighbor."
 
