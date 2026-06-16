@@ -263,4 +263,18 @@ class DeadCodeConfigTest {
 
         assertEquals(DeadCodeConfidence.MEDIUM, config.minConfidence)
     }
+
+    @Test
+    fun `ignoreSuppress defaults to true`() {
+        val config = DeadCodeConfig.parse(emptyMap())
+
+        assertTrue(config.ignoreSuppress)
+    }
+
+    @Test
+    fun `include-suppressed flag disables ignoreSuppress`() {
+        val config = DeadCodeConfig.parse(mapOf("include-suppressed" to "true"))
+
+        assertFalse(config.ignoreSuppress)
+    }
 }

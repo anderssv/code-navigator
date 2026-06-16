@@ -229,6 +229,7 @@ object HelpText {
          appendLine("      ${pd(TaskRegistry.DEAD.paramByName("treat-as-dead"))}")
          appendLine("      ${pd(TaskRegistry.DEAD.paramByName("baseline"))}")
          appendLine("      ${pd(TaskRegistry.DEAD.paramByName("min-confidence"))}")
+         appendLine("      ${pd(TaskRegistry.DEAD.paramByName("include-suppressed"))}")
         examples(TaskRegistry.DEAD)
         appendLine()
         appendLine("  ${t("find-string-constant")}")

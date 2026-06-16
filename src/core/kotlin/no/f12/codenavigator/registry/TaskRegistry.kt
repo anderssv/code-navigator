@@ -245,6 +245,7 @@ object TaskRegistry {
     val TREAT_AS_DEAD = ParamDef("treat-as-dead", "<name>", "Treat framework-annotated code as potentially dead (all frameworks protected by default). Available: ${FrameworkPresets.availablePresets().sorted().joinToString(", ")}. Use ALL to remove all framework protections.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
     val BASELINE = ParamDef("baseline", "<path>", "Path to a previous cnavDead JSON output file. Shows diff: removed, remaining, and new dead code since baseline.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MIN_CONFIDENCE = ParamDef("min-confidence", "high|medium|low", "Only show findings at or above this confidence level (high = strongest removal candidates, low = include framework-invoked maybes). Default: low (show all).", flag = false, defaultValue = "low", enhancePattern = false, type = ParamType.STRING)
+    val INCLUDE_SUPPRESSED = ParamDef("include-suppressed", "", "Include findings annotated with @Suppress(\"unused\") (excluded by default)", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val DETAIL = ParamDef("detail", "true", "Show individual call details", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
     val COLLAPSE_LAMBDAS = ParamDef("collapse-lambdas", "false", "Set false to show lambda classes separately", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val MIN_SHARED_REVS = ParamDef("min-shared-revs", "<N>", "Min shared commits", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
@@ -496,7 +497,7 @@ object TaskRegistry {
     val DEAD = TaskDef(
         goal = "dead",
         description = "Detect dead code (unreferenced classes and methods)",
-        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, SCOPE, TREAT_AS_DEAD, BASELINE, MIN_CONFIDENCE),
+        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, SCOPE, TREAT_AS_DEAD, BASELINE, MIN_CONFIDENCE, INCLUDE_SUPPRESSED),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         requiresTestCompilation = true,
@@ -512,6 +513,7 @@ object TaskRegistry {
         UsageExample(listOf(TREAT_AS_DEAD to "ALL")),
         UsageExample(listOf(BASELINE to "build/cnav/dead-baseline.json")),
         UsageExample(listOf(MIN_CONFIDENCE to "high")),
+        UsageExample(listOf(INCLUDE_SUPPRESSED to "true")),
         ),
     )
 

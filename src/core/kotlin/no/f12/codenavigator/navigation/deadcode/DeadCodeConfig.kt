@@ -19,6 +19,8 @@ data class DeadCodeConfig(
     val format: OutputFormat,
     val baseline: String?,
     val minConfidence: DeadCodeConfidence,
+    /** When true (default), findings annotated @Suppress("unused") are excluded. */
+    val ignoreSuppress: Boolean,
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): DeadCodeConfig {
@@ -43,6 +45,7 @@ data class DeadCodeConfig(
                 format = ParamDef.parseFormat(properties),
                 baseline = TaskRegistry.BASELINE.parseFrom(properties),
                 minConfidence = DeadCodeConfidence.parse(TaskRegistry.MIN_CONFIDENCE.parseFrom(properties)),
+                ignoreSuppress = !TaskRegistry.INCLUDE_SUPPRESSED.parseFrom(properties),
             )
         }
         private fun parseDeadCodeScope(properties: Map<String, String?>): Scope {

@@ -52,6 +52,10 @@ data class DeadCodeQuery(
     val excludeAnnotated: Set<String> = emptySet(),
     val classAnnotations: Map<ClassName, Set<AnnotationName>> = emptyMap(),
     val methodAnnotations: Map<MethodRef, Set<AnnotationName>> = emptyMap(),
+    val classAnnotationParameters: Map<ClassName, Map<AnnotationName, Map<String, String>>> = emptyMap(),
+    val methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>> = emptyMap(),
+    /** When true (default), items annotated @Suppress("unused") are excluded. */
+    val ignoreSuppress: Boolean = true,
     val testGraph: CallGraph? = null,
     val interfaceImplementors: Map<ClassName, Set<ClassName>> = emptyMap(),
     val classFields: Map<ClassName, Set<String>> = emptyMap(),
@@ -78,6 +82,9 @@ object DeadCodeFinder {
         excludeAnnotated = query.excludeAnnotated,
         classAnnotations = query.classAnnotations,
         methodAnnotations = query.methodAnnotations,
+        classAnnotationParameters = query.classAnnotationParameters,
+        methodAnnotationParameters = query.methodAnnotationParameters,
+        ignoreSuppress = query.ignoreSuppress,
         testGraph = query.testGraph,
         interfaceImplementors = query.interfaceImplementors,
         classFields = query.classFields,
@@ -102,6 +109,9 @@ object DeadCodeFinder {
         excludeAnnotated: Set<String>,
         classAnnotations: Map<ClassName, Set<AnnotationName>>,
         methodAnnotations: Map<MethodRef, Set<AnnotationName>>,
+        classAnnotationParameters: Map<ClassName, Map<AnnotationName, Map<String, String>>> = emptyMap(),
+        methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>> = emptyMap(),
+        ignoreSuppress: Boolean = true,
         testGraph: CallGraph?,
         interfaceImplementors: Map<ClassName, Set<ClassName>> = emptyMap(),
         classFields: Map<ClassName, Set<String>> = emptyMap(),
@@ -259,6 +269,7 @@ object DeadCodeFinder {
             .filter { item -> filter == null || item.className.matches(filter) }
             .filter { item -> exclude == null || !item.className.matches(exclude) }
             .filter { item -> !isExcludedByAnnotation(item, excludeAnnotated, classAnnotations, methodAnnotations) }
+            .filter { item -> !(ignoreSuppress && isSuppressedUnused(item, classAnnotationParameters, methodAnnotationParameters)) }
             .filter { item -> !isExcludedBySupertype(item, classExternalInterfaces, supertypeEntryPoints) }
             .filter { item -> !isExcludedByReceiverType(item, classReceiverTypes, receiverTypeEntryPoints) }
             .filter { item -> scope != Scope.PROD || (item.reason == DeadCodeReason.NO_REFERENCES && item.className !in testClasses) }
@@ -280,6 +291,29 @@ object DeadCodeFinder {
     ): Boolean {
         val declared = declaredMethods[method.className] ?: return true
         return method.methodName in declared
+    }
+
+    /**
+     * Returns true if the item is annotated with @Suppress("unused") at class or method level.
+     * Checks both `kotlin.Suppress` (FQCN) and `Suppress` (simple name).
+     */
+    private fun isSuppressedUnused(
+        item: DeadCode,
+        classAnnotationParameters: Map<ClassName, Map<AnnotationName, Map<String, String>>>,
+        methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>>,
+    ): Boolean {
+        fun hasSuppressUnused(params: Map<AnnotationName, Map<String, String>>): Boolean =
+            params.entries.any { (ann, values) ->
+                (ann.simpleName() == "Suppress" || ann.value == "kotlin.Suppress") &&
+                    values.values.any { it.contains("unused", ignoreCase = true) }
+            }
+
+        if (hasSuppressUnused(classAnnotationParameters[item.className] ?: emptyMap())) return true
+        if (item.kind == DeadCodeKind.METHOD && item.memberName != null) {
+            val methodRef = MethodRef(item.className, item.memberName)
+            if (hasSuppressUnused(methodAnnotationParameters[methodRef] ?: emptyMap())) return true
+        }
+        return false
     }
 
     private fun isExcludedByAnnotation(

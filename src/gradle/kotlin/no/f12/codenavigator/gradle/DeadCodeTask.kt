@@ -56,6 +56,10 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
     @get:Internal
     var minConfidence: String? = null
 
+    @Option(option = "include-suppressed", description = "Include findings annotated @Suppress(\"unused\") (excluded by default).")
+    @get:Internal
+    var includeSuppressed: Boolean = false
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         filter?.let { put("filter", it) }
         exclude?.let { put("exclude", it) }
@@ -65,6 +69,7 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
         treatAsDead?.let { put("treat-as-dead", it) }
         baseline?.let { put("baseline", it) }
         minConfidence?.let { put("min-confidence", it) }
+        if (includeSuppressed) put("include-suppressed", "true")
     }
 
     @TaskAction
@@ -109,6 +114,7 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
             classesOnly = config.classesOnly,
             cacheDir = cacheDir,
             minConfidence = config.minConfidence,
+            ignoreSuppress = config.ignoreSuppress,
         ))
 
         if (dead.isEmpty()) {

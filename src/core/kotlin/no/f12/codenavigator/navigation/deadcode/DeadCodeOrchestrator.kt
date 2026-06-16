@@ -28,6 +28,7 @@ object DeadCodeOrchestrator {
         val classesOnly: Boolean = false,
         val cacheDir: File,
         val minConfidence: DeadCodeConfidence = DeadCodeConfidence.LOW,
+        val ignoreSuppress: Boolean = true,
     )
 
     fun findDeadCode(input: DeadCodeInput): List<DeadCode> {
@@ -57,6 +58,9 @@ object DeadCodeOrchestrator {
             excludeAnnotated = input.excludeAnnotated,
             classAnnotations = annotations.classAnnotations,
             methodAnnotations = annotations.methodAnnotations,
+            classAnnotationParameters = annotations.classAnnotationParameters,
+            methodAnnotationParameters = annotations.methodAnnotationParameters,
+            ignoreSuppress = input.ignoreSuppress,
             testGraph = input.testGraph,
             interfaceImplementors = interfaceImplementors,
             classFields = classFields,

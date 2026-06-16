@@ -56,6 +56,9 @@ class DeadCodeMojo : AbstractMojo() {
     @Parameter(property = "min-confidence")
     private var minConfidence: String? = null
 
+    @Parameter(property = "include-suppressed")
+    private var includeSuppressed: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -94,6 +97,7 @@ class DeadCodeMojo : AbstractMojo() {
             classesOnly = config.classesOnly,
             cacheDir = cacheDir,
             minConfidence = config.minConfidence,
+            ignoreSuppress = config.ignoreSuppress,
         ))
 
         if (dead.isEmpty()) {
@@ -138,5 +142,6 @@ class DeadCodeMojo : AbstractMojo() {
         treatAsDead?.let { put("treat-as-dead", it) }
         baseline?.let { put("baseline", it) }
         minConfidence?.let { put("min-confidence", it) }
+        includeSuppressed?.let { put("include-suppressed", it) }
     }
 }
