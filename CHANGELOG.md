@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.109
+
+### Fix: `cnavMoveSuggest` no longer misplaces extension functions on external types
+
+Kotlin extension functions on external receiver types (Ktor, Spring, JDBC, etc.) compiled to `*Kt` facade classes were falsely suggested for moving toward the domain types they produce, because bytecode analysis only saw the outbound edges to domain, not the receiver that anchors the class architecturally.
+
+Two rules now applied:
+
+**Rule 1 — receiver type gravity.** The receiver type of each extension function counts as a weighted dependency edge (weight 3, matching structural supertypes). `fun JWTPrincipal.toBassPrincipal()` now contributes a gravitational pull toward the `jwt/` package that contains it.
+
+**Rule 2 — external-receiver suppression.** Kt facades whose *all* receiver types are external to the project are suppressed from move suggestions entirely. An extension on a framework type is adapter glue by definition — it belongs co-located with that framework boundary, not moved toward the domain types it produces. Facades with mixed receivers (some internal, some external) are not suppressed.
+
 ## 0.1.108
 
 ### Fix: `cnavMoveFile` incorrectly rewrote imports of receiver types in extension functions

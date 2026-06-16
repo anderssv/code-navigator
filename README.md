@@ -25,7 +25,7 @@ That's it. The agent will install the plugin, run the help task, and set up its 
 **Gradle** (`build.gradle.kts`):
 ```kotlin
 plugins {
-    id("no.f12.code-navigator") version "0.1.108"
+    id("no.f12.code-navigator") version "0.1.109"
 }
 ```
 
