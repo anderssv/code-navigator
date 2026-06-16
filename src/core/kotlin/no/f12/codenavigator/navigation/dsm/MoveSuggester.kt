@@ -35,12 +35,15 @@ object MoveSuggester {
 
     private const val COMPOSITION_ROOT_PACKAGE_THRESHOLD = 5
     private const val STRUCTURAL_EDGE_WEIGHT = 3
+    private const val RECEIVER_EDGE_WEIGHT = 3
 
     fun suggest(
         dependencies: List<PackageDependency>,
         structuralSupertypes: List<StructuralSupertypeInfo> = emptyList(),
         top: Int = Int.MAX_VALUE,
         maxFanIn: Int = Int.MAX_VALUE,
+        receiverTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
+        projectClasses: Set<ClassName> = emptySet(),
     ): MoveSuggestionResult {
         val ubiquitousTargets = dependencies
             .groupBy { it.targetClass }
@@ -69,6 +72,19 @@ object MoveSuggester {
             structuralEdgesByClass[cls]?.forEach { (supertypeClass, weight) ->
                 val supertypePkg = supertypeClass.packageName()
                 edgesByTarget[supertypePkg] = (edgesByTarget[supertypePkg] ?: 0) + weight
+            }
+
+            // Rule 1: receiver type counts as weighted gravitational pull toward its package.
+            // Rule 2: Kt facades whose ALL receiver types are external (not project classes)
+            //         are adapter glue by definition — suppress from move suggestions.
+            val receivers = receiverTypes[cls]
+            if (receivers != null) {
+                val allExternal = receivers.isNotEmpty() && receivers.none { it in projectClasses }
+                if (allExternal) return@mapNotNull null
+                receivers.forEach { receiverClass ->
+                    val receiverPkg = receiverClass.packageName()
+                    edgesByTarget[receiverPkg] = (edgesByTarget[receiverPkg] ?: 0) + RECEIVER_EDGE_WEIGHT
+                }
             }
 
             val allOutgoing = outgoing.isEmpty() && structuralEdgesByClass.containsKey(cls).not()

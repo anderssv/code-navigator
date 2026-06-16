@@ -348,4 +348,81 @@ class MoveSuggesterTest {
         val suggestion = result.suggestions.find { it.className == ClassName("fakes.FakeRepo") }
         assertEquals(PackageName("polls"), suggestion?.suggestedPackage)
     }
+
+    // === Extension function receiver type handling ===
+
+    @Test
+    fun `Kt facade with only external receivers is suppressed — adapter by definition`() {
+        // BassPrincipalKtKt extends io.ktor.JWTPrincipal (external) and produces domain.BassPrincipal.
+        // Without suppression, gravity toward domain/ causes a false move suggestion.
+        val facadeClass = ClassName("com.app.jwt.BassPrincipalKtKt")
+        val externalReceiver = ClassName("io.ktor.server.auth.jwt.JWTPrincipal") // external
+        val projectClasses = setOf(
+            facadeClass,
+            ClassName("com.app.domain.BassPrincipal"),
+            ClassName("com.app.domain.AuthMethod"),
+        )
+
+        val deps = listOf(
+            PackageDependency(PackageName("com.app.jwt"), PackageName("com.app.domain"), facadeClass, ClassName("com.app.domain.BassPrincipal")),
+            PackageDependency(PackageName("com.app.jwt"), PackageName("com.app.domain"), facadeClass, ClassName("com.app.domain.AuthMethod")),
+        )
+        val receiverTypes = mapOf(facadeClass to setOf(externalReceiver))
+
+        val result = MoveSuggester.suggest(deps, receiverTypes = receiverTypes, projectClasses = projectClasses)
+
+        assertTrue(
+            result.suggestions.none { it.className == facadeClass },
+            "Kt facade with only external receivers must be suppressed — it is adapter glue",
+        )
+    }
+
+    @Test
+    fun `Kt facade with internal receiver gets receiver-type gravitational pull`() {
+        // Extension function on a project class: gravity toward the receiver's package is boosted.
+        val facadeClass = ClassName("com.app.api.MappingKt")
+        val internalReceiver = ClassName("com.app.domain.Order") // internal
+        val projectClasses = setOf(facadeClass, internalReceiver, ClassName("com.app.domain.OrderLine"))
+
+        val deps = listOf(
+            // One edge to api/ (own package), two edges to domain/ — without receiver boost, domain wins by 2:1.
+            // With receiver boost (weight 3), domain wins 5:1 — still domain, but confidence is higher.
+            PackageDependency(PackageName("com.app.api"), PackageName("com.app.api"), facadeClass, ClassName("com.app.api.ApiHelper")),
+            PackageDependency(PackageName("com.app.api"), PackageName("com.app.domain"), facadeClass, ClassName("com.app.domain.Order")),
+            PackageDependency(PackageName("com.app.api"), PackageName("com.app.domain"), facadeClass, ClassName("com.app.domain.OrderLine")),
+        )
+        val receiverTypes = mapOf(facadeClass to setOf(internalReceiver))
+
+        val result = MoveSuggester.suggest(deps, receiverTypes = receiverTypes, projectClasses = projectClasses)
+
+        val suggestion = result.suggestions.find { it.className == facadeClass }
+        assertEquals(PackageName("com.app.domain"), suggestion?.suggestedPackage, "Should suggest moving toward domain (receiver's package)")
+        // edgesToSuggested = 2 raw + 3 receiver weight = 5; edgesToCurrent = 1
+        assertEquals(5, suggestion?.edgesToSuggested)
+    }
+
+    @Test
+    fun `Kt facade with mixed receivers is not suppressed — internal receiver is anchor`() {
+        // Extension on both an external (Ktor) type and an internal type — not pure adapter glue.
+        val facadeClass = ClassName("com.app.jwt.JwtExtKt")
+        val externalReceiver = ClassName("io.ktor.server.application.Application")
+        val internalReceiver = ClassName("com.app.jwt.JwtConfig")
+        val projectClasses = setOf(facadeClass, internalReceiver, ClassName("com.app.domain.Principal"))
+
+        val deps = listOf(
+            PackageDependency(PackageName("com.app.jwt"), PackageName("com.app.domain"), facadeClass, ClassName("com.app.domain.Principal")),
+            PackageDependency(PackageName("com.app.jwt"), PackageName("com.app.domain"), facadeClass, ClassName("com.app.domain.Principal")),
+            PackageDependency(PackageName("com.app.jwt"), PackageName("com.app.domain"), facadeClass, ClassName("com.app.domain.Principal")),
+        )
+        val receiverTypes = mapOf(facadeClass to setOf(externalReceiver, internalReceiver))
+
+        val result = MoveSuggester.suggest(deps, receiverTypes = receiverTypes, projectClasses = projectClasses)
+
+        // Must NOT be suppressed (has internal receiver)
+        // Internal receiver (com.app.jwt) adds weight 3 to own package — anchor pulls it back
+        assertTrue(
+            result.suggestions.none { it.className == facadeClass },
+            "Mixed-receiver facade should not be suppressed; jwt receiver boosts own package enough to cancel domain gravity",
+        )
+    }
 }
