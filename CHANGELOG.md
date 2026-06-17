@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.110
+
+### New: `cnavDead` respects `@Suppress("unused")` by default
+
+Findings annotated with `@Suppress("unused")` are now excluded from dead-code output by default, making results immediately actionable without manual exclusion lists. Use `--include-suppressed` to opt out and see everything.
+
 ## 0.1.109
 
 ### Fix: `cnavMoveSuggest` no longer misplaces extension functions on external types
