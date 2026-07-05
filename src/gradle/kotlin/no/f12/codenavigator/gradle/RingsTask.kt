@@ -17,6 +17,7 @@ import no.f12.codenavigator.navigation.dsm.RingsHintsConfig
 import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.TaskRegistry
+import org.gradle.api.GradleException
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
@@ -38,10 +39,20 @@ abstract class RingsTask : CodeNavigatorTask() {
     @get:Internal
     var bootstrapConfig: Boolean? = null
 
+    @Option(option = "fail-on-violation", description = "Fail the build when ring violation count exceeds --max-violations")
+    @get:Internal
+    var failOnViolation: String? = null
+
+    @Option(option = "max-violations", description = "Max allowed ring violations before failing the build (used with --fail-on-violation)")
+    @get:Internal
+    var maxViolations: String? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         scope?.let { put("scope", it) }
         mode?.let { put("mode", it) }
         bootstrapConfig?.let { put("bootstrap-config", "true") }
+        failOnViolation?.let { put("fail-on-violation", it) }
+        maxViolations?.let { put("max-violations", it) }
     }
 
     @TaskAction
@@ -53,14 +64,16 @@ abstract class RingsTask : CodeNavigatorTask() {
         val scopeVal = Scope.parse(props["scope"])
         val modeVal = props["mode"] ?: "emergent"
         val bootstrap = props["bootstrap-config"] == "true"
+        val failOnViolationVal = TaskRegistry.FAIL_ON_VIOLATION.parseFrom(props)
+        val maxViolationsVal = TaskRegistry.MAX_VIOLATIONS.parseFrom(props)
 
         val classDirectories = project.taggedClassDirectories()
             .filter { scopeVal.matchesSourceSet(it.second) }
             .map { it.first }
         val projectClasses = scanProjectClasses(classDirectories)
 
-        val output = when {
-            bootstrap && modeVal == "emergent" -> bootstrapConfig(classDirectories, projectClasses)
+        val (output, violationCount) = when {
+            bootstrap && modeVal == "emergent" -> bootstrapConfig(classDirectories, projectClasses) to 0
             modeVal == "emergent" -> detectEmergent(classDirectories, projectClasses, scopeVal, format)
             else -> detectPackageLevel(classDirectories, format)
         }
@@ -72,15 +85,20 @@ abstract class RingsTask : CodeNavigatorTask() {
                 OutputFormat.LLM -> output
             }
         })
+
+        if (failOnViolationVal && violationCount > maxViolationsVal) {
+            throw GradleException("cnavRings found $violationCount violation(s), exceeding --max-violations=$maxViolationsVal")
+        }
     }
 
-    private fun detectPackageLevel(classDirectories: List<File>, format: OutputFormat): String {
+    private fun detectPackageLevel(classDirectories: List<File>, format: OutputFormat): Pair<String, Int> {
         val projectClasses = scanProjectClasses(classDirectories)
         val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val rings = RingFormatter.format(RingDetector.detect(applyPlan(extractResult.data)), format = format)
-        return "${RingFormatter.PACKAGE_MODE_NOTICE}\n\n$rings"
+        val assignment = RingDetector.detect(applyPlan(extractResult.data))
+        val rings = RingFormatter.format(assignment, format = format)
+        return "${RingFormatter.PACKAGE_MODE_NOTICE}\n\n$rings" to assignment.violations.size
     }
 
     private fun loadHintsConfig(): RingsHintsConfig? =
@@ -95,7 +113,7 @@ abstract class RingsTask : CodeNavigatorTask() {
         return HintsConfigGenerator.generate(result.classRings)
     }
 
-    private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<no.f12.codenavigator.navigation.types.ClassName>, scope: Scope, format: OutputFormat): String {
+    private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<no.f12.codenavigator.navigation.types.ClassName>, scope: Scope, format: OutputFormat): Pair<String, Int> {
         val allResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         SkippedFileReporter.report(allResult.skippedFiles, reportFile)?.let { logger.warn(it) }
@@ -117,6 +135,6 @@ abstract class RingsTask : CodeNavigatorTask() {
         } else {
             null
         }
-        return if (testNotice != null) "$rings\n\n$testNotice" else rings
+        return (if (testNotice != null) "$rings\n\n$testNotice" else rings) to result.violations.size
     }
 }

@@ -18,6 +18,7 @@ import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
 import no.f12.codenavigator.navigation.types.Scope
 import org.apache.maven.plugin.AbstractMojo
+import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
 import org.apache.maven.plugins.annotations.Mojo
@@ -53,6 +54,12 @@ class CyclesMojo : AbstractMojo() {
 
     @Parameter(property = "plan-file")
     private var planFile: String? = null
+
+    @Parameter(property = "fail-on-violation")
+    private var failOnViolation: String? = null
+
+    @Parameter(property = "max-cycles")
+    private var maxCycles: String? = null
 
     override fun execute() {
         project.checkStaleness(log)
@@ -106,6 +113,10 @@ class CyclesMojo : AbstractMojo() {
         OutputFormat.LLM -> LlmFormatter.formatCycles(details, displayPrefix = displayPrefix).let { if (testNotice != null) "$it\n\n$testNotice" else it }
     }
 })
+
+        if (config.failOnViolation && details.size > config.maxCycles) {
+            throw MojoFailureException("cnav:cycles found ${details.size} cycle(s), exceeding --max-cycles=${config.maxCycles}")
+        }
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
@@ -116,5 +127,7 @@ class CyclesMojo : AbstractMojo() {
         depth?.let { put("dsm-depth", it) }
         scope?.let { put("scope", it) }
         planFile?.let { put("plan-file", it) }
+        failOnViolation?.let { put("fail-on-violation", it) }
+        maxCycles?.let { put("max-cycles", it) }
     }
 }

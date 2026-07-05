@@ -771,9 +771,11 @@ Already implemented: all four mojos have `@Parameter(property = "jar")` and full
 ## CI & enforcement
 
 ### CI fail-on-violation mode
-**ACTIVE** | **Value: high** | **Effort: low** | Source: internal
+**DONE** | **Value: high** | **Effort: low** | Source: internal
 
-Allow `cnavLayerCheck`, `cnavCycles`, `cnavCohesion` to fail the build when violations exceed threshold. `--fail-on-violation=true`, `--max-cycles=0`.
+Implemented for `cnavCycles` (`--fail-on-violation=true --max-cycles=0`) and `cnavRings` (`--fail-on-violation=true --max-violations=0`, both `--mode=emergent` and `--mode=package`). `cnavLayerCheck` was removed in v0.1.97 (superseded by `cnavRings`), so it's not part of this. `cnavCohesion` excluded — it produces a ranked score list, not a violation count, so "fail on violation" doesn't map cleanly onto it.
+
+Gradle throws `GradleException`, Maven throws `MojoFailureException`, after printing the normal output.
 
 ---
 

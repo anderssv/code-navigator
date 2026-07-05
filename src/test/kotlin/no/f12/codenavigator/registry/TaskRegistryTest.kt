@@ -1074,6 +1074,9 @@ class TaskRegistryTest {
             "mode" to ParamType.STRING,
             "plan-file" to ParamType.STRING,
             "bootstrap-config" to ParamType.FLAG,
+            "fail-on-violation" to ParamType.BOOLEAN,
+            "max-cycles" to ParamType.INT,
+            "max-violations" to ParamType.INT,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }

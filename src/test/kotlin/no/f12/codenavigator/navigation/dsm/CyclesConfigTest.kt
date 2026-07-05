@@ -130,4 +130,24 @@ class CyclesConfigTest {
 
         assertEquals(Scope.TEST, config.scope)
     }
+
+    // === fail-on-violation / max-cycles ===
+
+    @Test
+    fun `defaults fail-on-violation to false and max-cycles to 0`() {
+        val config = CyclesConfig.parse(emptyMap())
+
+        assertFalse(config.failOnViolation)
+        assertEquals(0, config.maxCycles)
+    }
+
+    @Test
+    fun `parses fail-on-violation and max-cycles`() {
+        val config = CyclesConfig.parse(
+            mapOf("fail-on-violation" to "true", "max-cycles" to "3"),
+        )
+
+        assertTrue(config.failOnViolation)
+        assertEquals(3, config.maxCycles)
+    }
 }

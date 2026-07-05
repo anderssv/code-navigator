@@ -13,6 +13,8 @@ data class CyclesConfig(
     val depth: Int,
     val scope: Scope,
     val format: OutputFormat,
+    val failOnViolation: Boolean,
+    val maxCycles: Int,
 ) {
     fun deprecations(): List<String> = buildList {
         if (rootPackage.value.isNotEmpty() && packageFilter != null && packageFilter == rootPackage) {
@@ -33,6 +35,8 @@ data class CyclesConfig(
                 depth = TaskRegistry.DSM_DEPTH.parseFrom(properties),
                 scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
                 format = ParamDef.parseFormat(properties),
+                failOnViolation = TaskRegistry.FAIL_ON_VIOLATION.parseFrom(properties),
+                maxCycles = TaskRegistry.MAX_CYCLES.parseFrom(properties),
             )
         }
     }

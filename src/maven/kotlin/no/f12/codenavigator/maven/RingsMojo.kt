@@ -18,6 +18,7 @@ import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry
 import org.apache.maven.plugin.AbstractMojo
+import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
 import org.apache.maven.plugins.annotations.Mojo
@@ -47,6 +48,12 @@ class RingsMojo : AbstractMojo() {
     @Parameter(property = "bootstrap-config")
     private var bootstrapConfig: String? = null
 
+    @Parameter(property = "fail-on-violation")
+    private var failOnViolation: String? = null
+
+    @Parameter(property = "max-violations")
+    private var maxViolations: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -55,6 +62,8 @@ class RingsMojo : AbstractMojo() {
         val scopeFilter = Scope.parse(props["scope"])
         val modeVal = props["mode"] ?: "emergent"
         val bootstrap = props["bootstrap-config"] == "true"
+        val failOnViolationVal = TaskRegistry.FAIL_ON_VIOLATION.parseFrom(props)
+        val maxViolationsVal = TaskRegistry.MAX_VIOLATIONS.parseFrom(props)
 
         val classDirectories = project.taggedClassDirectories()
             .filter { scopeFilter.matchesSourceSet(it.second) }
@@ -67,8 +76,8 @@ class RingsMojo : AbstractMojo() {
 
         val projectClasses = scanProjectClasses(classDirectories)
 
-        val output = when {
-            bootstrap && modeVal == "emergent" -> bootstrapConfig(classDirectories, projectClasses)
+        val (output, violationCount) = when {
+            bootstrap && modeVal == "emergent" -> bootstrapConfig(classDirectories, projectClasses) to 0
             modeVal == "emergent" -> detectEmergent(classDirectories, projectClasses, scopeFilter, outputFormat)
             else -> detectPackageLevel(classDirectories, projectClasses, outputFormat)
         }
@@ -80,16 +89,21 @@ class RingsMojo : AbstractMojo() {
                 OutputFormat.LLM -> output
             }
         })
+
+        if (failOnViolationVal && violationCount > maxViolationsVal) {
+            throw MojoFailureException("cnav:rings found $violationCount violation(s), exceeding --max-violations=$maxViolationsVal")
+        }
     }
 
-    private fun detectPackageLevel(classDirectories: List<File>, projectClasses: Set<ClassName>, format: OutputFormat): String {
+    private fun detectPackageLevel(classDirectories: List<File>, projectClasses: Set<ClassName>, format: OutputFormat): Pair<String, Int> {
         val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { log.warn(it) }
         // Package mode does not apply cnav-config.json ring names: a topological-depth ranking
         // can't honestly assert a semantic layer label. The names belong to --mode=emergent.
-        val rings = RingFormatter.format(RingDetector.detect(extractResult.data), format = format)
-        return "${RingFormatter.PACKAGE_MODE_NOTICE}\n\n$rings"
+        val assignment = RingDetector.detect(extractResult.data)
+        val rings = RingFormatter.format(assignment, format = format)
+        return "${RingFormatter.PACKAGE_MODE_NOTICE}\n\n$rings" to assignment.violations.size
     }
 
     private fun bootstrapConfig(classDirectories: List<File>, projectClasses: Set<ClassName>): String {
@@ -101,7 +115,7 @@ class RingsMojo : AbstractMojo() {
         return HintsConfigGenerator.generate(result.classRings)
     }
 
-    private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<ClassName>, scope: Scope, format: OutputFormat): String {
+    private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<ClassName>, scope: Scope, format: OutputFormat): Pair<String, Int> {
         val projectResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true, includeSamePackage = true)
         val externalResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
         val externalOnly = externalResult.data.filter { it.targetClass !in projectClasses }
@@ -121,7 +135,7 @@ class RingsMojo : AbstractMojo() {
         } else {
             null
         }
-        return if (testNotice != null) "$rings\n\n$testNotice" else rings
+        return (if (testNotice != null) "$rings\n\n$testNotice" else rings) to result.violations.size
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
@@ -130,5 +144,7 @@ class RingsMojo : AbstractMojo() {
         planFile?.let { put("plan-file", it) }
         mode?.let { put("mode", it) }
         bootstrapConfig?.let { put("bootstrap-config", it) }
+        failOnViolation?.let { put("fail-on-violation", it) }
+        maxViolations?.let { put("max-violations", it) }
     }
 }

@@ -17,6 +17,7 @@ import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
 import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
+import org.gradle.api.GradleException
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
@@ -46,12 +47,22 @@ abstract class CyclesTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
+    @Option(option = "fail-on-violation", description = "Fail the build when cycle count exceeds --max-cycles")
+    @get:Internal
+    var failOnViolation: String? = null
+
+    @Option(option = "max-cycles", description = "Max allowed cycles before failing the build (used with --fail-on-violation)")
+    @get:Internal
+    var maxCycles: String? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
         dsmDepth?.let { put("dsm-depth", it) }
         rootPackage?.let { put("root-package", it) }
         scope?.let { put("scope", it) }
+        failOnViolation?.let { put("fail-on-violation", it) }
+        maxCycles?.let { put("max-cycles", it) }
     }
 
     @TaskAction
@@ -104,5 +115,9 @@ abstract class CyclesTask : CodeNavigatorTask() {
         OutputFormat.LLM -> LlmFormatter.formatCycles(details, displayPrefix = displayPrefix).let { if (testNotice != null) "$it\n\n$testNotice" else it }
     }
 })
+
+        if (config.failOnViolation && details.size > config.maxCycles) {
+            throw GradleException("cnavCycles found ${details.size} cycle(s), exceeding --max-cycles=${config.maxCycles}")
+        }
     }
 }

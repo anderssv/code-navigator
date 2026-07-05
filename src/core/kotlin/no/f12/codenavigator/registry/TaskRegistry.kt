@@ -222,6 +222,9 @@ object TaskRegistry {
     val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Deprecated: use package-filter instead. Only include packages under this prefix", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'root-package' is deprecated. Results are now automatically limited to classes in the project source sets. Use 'package-filter' to narrow further.")
     val PACKAGE_FILTER = ParamDef("package-filter", "<pkg>", "Only include packages under this prefix", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MIN_EDGES = ParamDef("min-edges", "<N>", "Minimum total edges (internal+external) to include a package", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
+    val FAIL_ON_VIOLATION = ParamDef("fail-on-violation", "true", "Fail the build when violations exceed the configured threshold", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
+    val MAX_CYCLES = ParamDef("max-cycles", "<N>", "Max allowed cycles before failing the build (used with --fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
+    val MAX_VIOLATIONS = ParamDef("max-violations", "<N>", "Max allowed ring violations before failing the build (used with --fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
     val MAX_FAN_IN = ParamDef("max-fan-in", "<N>", "Exclude ubiquitous types with fan-in above this threshold from move suggestions", flag = false, defaultValue = "10", enhancePattern = false, type = ParamType.INT)
     val MIN_GROUP_SIZE = ParamDef("min-group-size", "<N>", "Minimum number of classes in a structure group", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
     val INCLUDE_EXTERNAL = ParamDef("include-external", "true", "Include dependencies on classes outside the project", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
@@ -444,12 +447,13 @@ object TaskRegistry {
     val CYCLE_DETECTION = TaskDef(
         goal = "cycles",
         description = "Detect dependency cycles using Tarjan's SCC algorithm",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE) + SOURCE_SET_PARAMS + PLAN_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE, FAIL_ON_VIOLATION, MAX_CYCLES) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
             UsageExample(emptyList()),
             UsageExample(listOf(PACKAGE_FILTER to "com.example", DSM_DEPTH to "3")),
+            UsageExample(listOf(FAIL_ON_VIOLATION to "true", MAX_CYCLES to "0")),
         ),
     )
 
@@ -792,12 +796,13 @@ object TaskRegistry {
     val RINGS = TaskDef(
         goal = "rings",
         description = "Auto-detect hexagonal architecture rings and report violations. Use --mode=emergent for class-level ring detection based on import shapes.",
-        params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE, BOOTSTRAP_CONFIG) + PLAN_PARAMS,
+        params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE, BOOTSTRAP_CONFIG, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
             UsageExample(emptyList()),
             UsageExample(listOf(RING_MODE to "emergent")),
+            UsageExample(listOf(FAIL_ON_VIOLATION to "true", MAX_VIOLATIONS to "0")),
         ),
     )
 
