@@ -31,6 +31,22 @@ class PlanMutatorTest {
     }
 
     @Test
+    fun `apply with dropSamePackageEdges=false keeps edges that land in the same package after move`() {
+        val deps = listOf(
+            PackageDependency(PackageName("api"), PackageName("service"), ClassName("api.Controller"), ClassName("service.Service")),
+            PackageDependency(PackageName("service"), PackageName("api"), ClassName("service.Service"), ClassName("api.Dto")),
+        )
+        val plan = listOf(PlanStep.Move(ClassName("api.Dto"), PackageName("service")))
+
+        val result = PlanMutator.apply(deps, plan, dropSamePackageEdges = false)
+
+        assertEquals(2, result.size)
+        val movedEdge = result.first { it.targetClass == ClassName("service.Dto") }
+        assertEquals(PackageName("service"), movedEdge.sourcePackage)
+        assertEquals(PackageName("service"), movedEdge.targetPackage)
+    }
+
+    @Test
     fun `empty plan returns dependencies unchanged`() {
         val deps = listOf(
             PackageDependency(PackageName("api"), PackageName("service"), ClassName("api.Controller"), ClassName("service.Service")),

@@ -683,18 +683,20 @@ Suggests moving ports into domain packages. Algorithm optimizes for proximity wi
 Suggestions like "move `MenuItemTest` to `web.components`" are confusing. Default to excluding test classes.
 
 ### `cnavMoveSuggest` + `--plan-file` support
-**ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(greitt)
+**DONE** | **Value: medium** | **Effort: low** | Source: field-test(greitt)
 
-Now that `cnavMoveSuggest` detects structural supertype gravity (implements/extends), users want to simulate moves before executing. Currently `cnavDsm`, `cnavCycles`, `cnavRings`, `cnavSimulateMove`, `cnavMetrics`, and `cnavBalance` accept `--plan-file` for what-if simulation — `cnavMoveSuggest` should too.
+Implemented for both Gradle and Maven. `MoveSuggestTask`/`MoveSuggestMojo` now extract via `PackageHealthExtractor`, mutate the dependency list and project class set through `PlanMutator`, then feed the mutated `PackageHealthExtraction` into `MoveSuggestOrchestrator.fromExtraction`.
 
-Workflow:
-1. Run `cnavMoveSuggest` → see "move `FakeRepo` to `polls`"
-2. Create `plan.json`: `[{"action":"move","type":"fakes.FakeRepo","to":"polls"}]`
-3. Run `cnavMoveSuggest --plan-file=plan.json` → see updated suggestion list
-4. Iterate until satisfied
-5. Execute with `cnavExecutePlan --plan-file=plan.json`
+Important nuance found during implementation: `PlanMutator.apply()` used to unconditionally drop edges that land in the same package after a simulated move — correct for cycle/DSM/ring analysis, but wrong for move-suggest (extracted with `includeSamePackage=true`), since those intra-package edges are exactly what scores gravity at the destination. Added a `dropSamePackageEdges` parameter (default `true`, preserving existing callers) and pass `false` from move-suggest.
 
-Also applies to `cnavSuggestStructure` and `cnavCohesion` — both consume the same dependency list and could benefit from plan simulation.
+Also found: `cnavCycles`/`cnavRings`/`cnavDsm`/`cnavMetrics` Maven mojos accept `--plan-file` as a CLI property but never actually apply the mutation to the dependency graph — silent no-op on the Maven side only (Gradle tasks apply it correctly via `CodeNavigatorTask.applyPlan`). See new item below.
+
+Still open: `cnavSuggestStructure` and `cnavCohesion` — both consume the same dependency list and could benefit from the same plan-simulation wiring, using the same `dropSamePackageEdges=false` approach.
+
+### Fix Maven `--plan-file` no-op on cnavCycles/cnavRings/cnavDsm/cnavMetrics
+**ACTIVE** | **Value: medium** | **Effort: low** | Source: internal (found while implementing cnavMoveSuggest plan-file support)
+
+These Maven mojos declare a `plan-file` `@Parameter` and pass it through `enhanceProperties`, but never call `PlanMutator.apply`/`applyToClassSet` on the extracted dependencies — the flag is silently accepted and does nothing. Gradle's equivalents work correctly via `CodeNavigatorTask.applyPlan`. Maven has no shared base-task helper for this, so each mojo needs the same inline wiring `MoveSuggestMojo` now uses (parse via `PlanMutator.parseFile`, apply to dependencies + project class set).
 
 ### `cnavMoveSuggest`: structural supertype gravity
 ~~**ACTIVE**~~ **DONE (v0.1.106-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(greitt)

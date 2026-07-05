@@ -4,6 +4,8 @@ import no.f12.codenavigator.formatting.DsmOutputFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.MoveSuggestConfig
 import no.f12.codenavigator.navigation.dsm.MoveSuggestOrchestrator
+import no.f12.codenavigator.navigation.dsm.PackageHealthExtractor
+import no.f12.codenavigator.navigation.dsm.PlanMutator
 
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
@@ -49,7 +51,12 @@ abstract class MoveSuggestTask : CodeNavigatorTask() {
         val classDirectories = filteredDirs.map { it.first }
 
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        val output = MoveSuggestOrchestrator.run(config, classDirectories, reportFile)
+        val extraction = PackageHealthExtractor.extract(classDirectories, config.packageFilter, reportFile)
+        val mutatedExtraction = extraction.copy(
+            dependencies = applyPlan(extraction.dependencies, dropSamePackageEdges = false),
+            projectClasses = PlanMutator.applyToClassSet(extraction.projectClasses, loadPlanSteps()),
+        )
+        val output = MoveSuggestOrchestrator.fromExtraction(mutatedExtraction, config)
 
         output.skippedFileWarning?.let { logger.warn(it) }
         DsmOutputFormatter.format(output, config.format)?.let { logger.lifecycle(it) }

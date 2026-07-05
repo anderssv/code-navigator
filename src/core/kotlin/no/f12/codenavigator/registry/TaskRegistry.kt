@@ -741,7 +741,7 @@ object TaskRegistry {
     val MOVE_SUGGEST = TaskDef(
         goal = "move-suggest",
         description = "Suggest misplaced classes based on dependency gravity — classes with more edges to another package than their own",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP, MAX_FAN_IN) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP, MAX_FAN_IN) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         paramDefaultOverrides = mapOf("top" to "all"),
@@ -750,6 +750,7 @@ object TaskRegistry {
             UsageExample(listOf(TOP to "10")),
             UsageExample(listOf(MAX_FAN_IN to "5")),
             UsageExample(listOf(PACKAGE_FILTER to "com.example")),
+            UsageExample(listOf(PLAN_FILE to "plan.json")),
         ),
     )
 

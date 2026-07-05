@@ -43,11 +43,11 @@ abstract class CodeNavigatorTask : DefaultTask() {
      * Loads and applies the plan file to a dependency list. Returns the mutated list.
      * If no plan file is specified, returns dependencies unchanged.
      */
-    protected fun applyPlan(dependencies: List<PackageDependency>): List<PackageDependency> {
+    protected fun applyPlan(dependencies: List<PackageDependency>, dropSamePackageEdges: Boolean = true): List<PackageDependency> {
         val plan = loadPlanSteps()
         if (plan.isEmpty()) return dependencies
         logger.lifecycle("  Applying plan: ${plan.size} step(s) from $planFile")
-        return PlanMutator.apply(dependencies, plan)
+        return PlanMutator.apply(dependencies, plan, dropSamePackageEdges)
     }
 
     protected fun loadPlanSteps(): List<no.f12.codenavigator.navigation.dsm.PlanStep> {

@@ -9,13 +9,18 @@ sealed class PlanStep {
 
 object PlanMutator {
 
-    fun apply(dependencies: List<PackageDependency>, plan: List<PlanStep>): List<PackageDependency> {
+    /**
+     * [dropSamePackageEdges] discards edges that land in the same package after mutation — correct
+     * for cycle/DSM/ring analysis (same-package edges are noise there), but wrong for move-suggest/cohesion,
+     * which are extracted with includeSamePackage=true and need those edges to score gravity at the new location.
+     */
+    fun apply(dependencies: List<PackageDependency>, plan: List<PlanStep>, dropSamePackageEdges: Boolean = true): List<PackageDependency> {
         if (plan.isEmpty()) return dependencies
 
         var current = dependencies
         for (step in plan) {
             current = when (step) {
-                is PlanStep.Move -> applyMove(current, step.classToMove, step.targetPackage)
+                is PlanStep.Move -> applyMove(current, step.classToMove, step.targetPackage, dropSamePackageEdges)
             }
         }
         return current
@@ -72,6 +77,7 @@ object PlanMutator {
         dependencies: List<PackageDependency>,
         classToMove: ClassName,
         targetPackage: PackageName,
+        dropSamePackageEdges: Boolean,
     ): List<PackageDependency> {
         return dependencies.map { dep ->
             var source = dep.sourceClass
@@ -89,6 +95,6 @@ object PlanMutator {
             }
 
             PackageDependency(sourcePkg, targetPkg, source, target)
-        }.filter { it.sourcePackage != it.targetPackage }
+        }.let { mutated -> if (dropSamePackageEdges) mutated.filter { it.sourcePackage != it.targetPackage } else mutated }
     }
 }

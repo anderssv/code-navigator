@@ -4,6 +4,8 @@ import no.f12.codenavigator.formatting.DsmOutputFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.MoveSuggestConfig
 import no.f12.codenavigator.navigation.dsm.MoveSuggestOrchestrator
+import no.f12.codenavigator.navigation.dsm.PackageHealthExtractor
+import no.f12.codenavigator.navigation.dsm.PlanMutator
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
@@ -35,6 +37,9 @@ class MoveSuggestMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "plan-file")
+    private var planFile: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -50,7 +55,16 @@ class MoveSuggestMojo : AbstractMojo() {
         }
 
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
-        val output = MoveSuggestOrchestrator.run(config, classDirectories, reportFile)
+        val extraction = PackageHealthExtractor.extract(classDirectories, config.packageFilter, reportFile)
+        val plan = planFile?.let { PlanMutator.parseFile(File(it)) } ?: emptyList()
+        if (plan.isNotEmpty()) {
+            log.info("Applying plan: ${plan.size} step(s) from $planFile")
+        }
+        val mutatedExtraction = extraction.copy(
+            dependencies = PlanMutator.apply(extraction.dependencies, plan, dropSamePackageEdges = false),
+            projectClasses = PlanMutator.applyToClassSet(extraction.projectClasses, plan),
+        )
+        val output = MoveSuggestOrchestrator.fromExtraction(mutatedExtraction, config)
 
         output.skippedFileWarning?.let { log.warn(it) }
         DsmOutputFormatter.format(output, config.format)?.let { println(it) }
@@ -62,5 +76,6 @@ class MoveSuggestMojo : AbstractMojo() {
         top?.let { put("top", it) }
         maxFanIn?.let { put("max-fan-in", it) }
         scope?.let { put("scope", it) }
+        planFile?.let { put("plan-file", it) }
     }
 }
