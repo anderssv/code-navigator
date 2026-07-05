@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.111
+
+### New: `--fail-on-violation` CI gate for `cnavCycles` and `cnavRings`
+
+Both tasks can now fail the build when violations exceed a threshold: `--fail-on-violation=true --max-cycles=0` for cycles, `--fail-on-violation=true --max-violations=0` for rings (both `--mode=emergent` and `--mode=package`). Gradle throws `GradleException`, Maven throws `MojoFailureException`, after printing the normal output.
+
+### New: `cnavMoveSuggest` supports `--plan-file` what-if simulation
+
+Run `cnavMoveSuggest`, write the suggested move to a `plan.json`, then re-run with `--plan-file=plan.json` to see the updated suggestion list before executing — the same iterate-then-execute workflow already available on `cnavCycles`/`cnavRings`/`cnavDsm`/`cnavSimulateMove`/`cnavMetrics`/`cnavBalance`.
+
+### Fix: Maven `--plan-file` was a silent no-op on `cnavCycles`, `cnavRings`, `cnavDsm`, and `cnavMetrics`
+
+These Maven goals accepted `--plan-file` on the CLI but never applied the mutation to the extracted dependency graph, so the flag did nothing. Gradle's equivalents already worked correctly. Fixed by routing both build tools through shared core orchestrators (`CyclesOrchestrator`, `DsmOrchestrator`, `RingsOrchestrator`, `MetricsOrchestrator`, plus `VolatilityOrchestrator`/`CouplingOrchestrator`/`TypeAffinityOrchestrator` for parity), which also closed two more Maven-only gaps found along the way: `cnavTypeAffinity` wasn't reporting skipped files, and `cnavCoupling`'s empty-result message ignored `--format`.
+
 ## 0.1.110
 
 ### New: `cnavDead` respects `@Suppress("unused")` by default
