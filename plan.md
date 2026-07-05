@@ -694,9 +694,9 @@ Also found: `cnavCycles`/`cnavRings`/`cnavDsm`/`cnavMetrics` Maven mojos accept 
 Still open: `cnavSuggestStructure` and `cnavCohesion` — both consume the same dependency list and could benefit from the same plan-simulation wiring, using the same `dropSamePackageEdges=false` approach.
 
 ### Fix Maven `--plan-file` no-op on cnavCycles/cnavRings/cnavDsm/cnavMetrics
-**ACTIVE** | **Value: medium** | **Effort: low** | Source: internal (found while implementing cnavMoveSuggest plan-file support)
+**DONE** | **Value: medium** | **Effort: low** | Source: internal (found while implementing cnavMoveSuggest plan-file support)
 
-These Maven mojos declare a `plan-file` `@Parameter` and pass it through `enhanceProperties`, but never call `PlanMutator.apply`/`applyToClassSet` on the extracted dependencies — the flag is silently accepted and does nothing. Gradle's equivalents work correctly via `CodeNavigatorTask.applyPlan`. Maven has no shared base-task helper for this, so each mojo needs the same inline wiring `MoveSuggestMojo` now uses (parse via `PlanMutator.parseFile`, apply to dependencies + project class set).
+Fixed. Added shared `loadPlanSteps()`/`applyPlanFile()` helpers to `MavenSupport.kt` (mirroring Gradle's `CodeNavigatorTask.applyPlan`, since Maven mojos have no shared base task) and wired them into `CyclesMojo`, `DsmMojo`, `MetricsMojo` (simple `applyPlanFile(dependencies, planFile, log)` before matrix/cycle building) and `RingsMojo` (both `--mode=package` via `applyPlanFile`, and `--mode=emergent` via explicit `PlanMutator.apply`/`applyToClassSet` on both the project and external dependency extractions, since emergent mode needs the mutated class set for its project/external split). `MoveSuggestMojo` refactored to reuse `loadPlanSteps()` instead of parsing inline.
 
 ### `cnavMoveSuggest`: structural supertype gravity
 ~~**ACTIVE**~~ **DONE (v0.1.106-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(greitt)

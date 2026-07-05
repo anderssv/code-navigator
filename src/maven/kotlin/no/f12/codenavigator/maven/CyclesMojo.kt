@@ -13,6 +13,7 @@ import no.f12.codenavigator.navigation.dsm.CyclesConfig
 import no.f12.codenavigator.navigation.dsm.CyclesFormatter
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
+import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
@@ -81,7 +82,7 @@ class CyclesMojo : AbstractMojo() {
         val result = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal, filterTargets = true)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
-        val dependencies = result.data
+        val dependencies = applyPlanFile(result.data, planFile, log)
 
         val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
         val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)

@@ -11,6 +11,7 @@ import no.f12.codenavigator.navigation.dsm.EmergentRingFormatter
 import no.f12.codenavigator.navigation.dsm.RingDetector
 import no.f12.codenavigator.navigation.dsm.RingFormatter
 import no.f12.codenavigator.navigation.dsm.HintsConfigGenerator
+import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.RingsHintsConfig
 import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.types.ClassName
@@ -101,7 +102,7 @@ class RingsMojo : AbstractMojo() {
         SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { log.warn(it) }
         // Package mode does not apply cnav-config.json ring names: a topological-depth ranking
         // can't honestly assert a semantic layer label. The names belong to --mode=emergent.
-        val assignment = RingDetector.detect(extractResult.data)
+        val assignment = RingDetector.detect(applyPlanFile(extractResult.data, planFile, log))
         val rings = RingFormatter.format(assignment, format = format)
         return "${RingFormatter.PACKAGE_MODE_NOTICE}\n\n$rings" to assignment.violations.size
     }
@@ -118,13 +119,21 @@ class RingsMojo : AbstractMojo() {
     private fun detectEmergent(classDirectories: List<File>, projectClasses: Set<ClassName>, scope: Scope, format: OutputFormat): Pair<String, Int> {
         val projectResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true, includeSamePackage = true)
         val externalResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = true, filterTargets = false, includeSamePackage = true)
-        val externalOnly = externalResult.data.filter { it.targetClass !in projectClasses }
 
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(projectResult.skippedFiles, reportFile)?.let { log.warn(it) }
 
+        val plan = loadPlanSteps(planFile)
+        if (plan.isNotEmpty()) {
+            log.info("Applying plan: ${plan.size} step(s) from $planFile")
+        }
+        val mutatedClasses = PlanMutator.applyToClassSet(projectClasses, plan)
+        val mutatedProjectDeps = PlanMutator.apply(projectResult.data, plan, dropSamePackageEdges = false)
+        val mutatedExternalDeps = PlanMutator.apply(externalResult.data, plan, dropSamePackageEdges = false)
+        val externalOnly = mutatedExternalDeps.filter { it.targetClass !in mutatedClasses }
+
         val hintsConfig = RingsHintsConfig.loadFromDirectory(project.basedir)
-        val result = EmergentRingDetector.detect(projectResult.data, externalOnly, projectClasses, hintsConfig)
+        val result = EmergentRingDetector.detect(mutatedProjectDeps, externalOnly, mutatedClasses, hintsConfig)
         val ringNames = hintsConfig?.ringIndexNames() ?: emptyMap()
         val rings = EmergentRingFormatter.format(result, ringNames, hasHints = hintsConfig != null && hintsConfig.hasHints(), format = format)
 

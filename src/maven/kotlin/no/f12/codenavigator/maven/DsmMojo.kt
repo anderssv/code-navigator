@@ -80,7 +80,7 @@ class DsmMojo : AbstractMojo() {
         val result = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal, filterTargets = true)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
-        val dependencies = result.data
+        val dependencies = applyPlanFile(result.data, planFile, log)
 
         val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
         val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)

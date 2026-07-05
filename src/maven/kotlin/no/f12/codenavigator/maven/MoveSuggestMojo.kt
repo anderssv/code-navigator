@@ -56,7 +56,7 @@ class MoveSuggestMojo : AbstractMojo() {
 
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
         val extraction = PackageHealthExtractor.extract(classDirectories, config.packageFilter, reportFile)
-        val plan = planFile?.let { PlanMutator.parseFile(File(it)) } ?: emptyList()
+        val plan = loadPlanSteps(planFile)
         if (plan.isNotEmpty()) {
             log.info("Applying plan: ${plan.size} step(s) from $planFile")
         }

@@ -1,9 +1,13 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.navigation.dsm.PackageDependency
+import no.f12.codenavigator.navigation.dsm.PlanMutator
+import no.f12.codenavigator.navigation.dsm.PlanStep
 import no.f12.codenavigator.navigation.types.SourceSet
 import no.f12.codenavigator.registry.ClassFileStaleness
 import no.f12.codenavigator.registry.StalenessResult
 import org.apache.maven.plugin.MojoFailureException
+import org.apache.maven.plugin.logging.Log
 import org.apache.maven.project.MavenProject
 import java.io.File
 
@@ -31,6 +35,28 @@ fun MavenProject.taggedClassDirectories(): List<Pair<File, SourceSet>> {
         result.add(testDir to SourceSet.TEST)
     }
     return result
+}
+
+/** Parses a `--plan-file` (if given) into plan steps. Returns an empty list when absent. */
+fun loadPlanSteps(planFile: String?): List<PlanStep> =
+    planFile?.let { PlanMutator.parseFile(File(it)) } ?: emptyList()
+
+/**
+ * Loads and applies a `--plan-file` (if given) to a dependency list, mirroring Gradle's
+ * CodeNavigatorTask.applyPlan. Maven mojos have no shared base task, so each caller applies
+ * this to the extracted dependencies. [dropSamePackageEdges] must be false for tasks extracted
+ * with includeSamePackage=true (e.g. move-suggest, cohesion) — see PlanMutator.apply.
+ */
+fun applyPlanFile(
+    dependencies: List<PackageDependency>,
+    planFile: String?,
+    log: Log,
+    dropSamePackageEdges: Boolean = true,
+): List<PackageDependency> {
+    val plan = loadPlanSteps(planFile)
+    if (plan.isEmpty()) return dependencies
+    log.info("Applying plan: ${plan.size} step(s) from $planFile")
+    return PlanMutator.apply(dependencies, plan, dropSamePackageEdges)
 }
 
 fun MavenProject.resolveJar(jarValue: String): File {
