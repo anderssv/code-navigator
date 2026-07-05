@@ -6,15 +6,10 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.bytecode.RootPackageDetector
-import no.f12.codenavigator.navigation.types.Scope
-import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmConfig
-import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.DsmFormatter
 import no.f12.codenavigator.navigation.dsm.DsmHtmlRenderer
-import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
-import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.dsm.DsmOrchestrator
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
@@ -77,21 +72,14 @@ abstract class DsmTask : CodeNavigatorTask() {
         config.deprecations().forEach { logger.warn(it) }
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
-        val classDirectories = filteredDirs.map { it.first }
-
-        val projectClasses = scanProjectClasses(classDirectories)
-
-        val result = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal, filterTargets = true)
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val dependencies = applyPlan(result.data)
+        val output = DsmOrchestrator.run(config, taggedDirs, loadPlanSteps(), reportFile)
 
-        val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
-        val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)
+        output.skippedFileWarning?.let { logger.warn(it) }
+        val matrix = output.matrix
 
         if (matrix.packages.isEmpty() && config.cycleFilter == null && !config.cyclesOnly) {
-            val packageCount = projectClasses.map { it.packageName() }.distinct().size
+            val packageCount = output.projectClasses.map { it.packageName() }.distinct().size
             val hints = DsmFormatter.noResultsHints(packageCount)
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
             return

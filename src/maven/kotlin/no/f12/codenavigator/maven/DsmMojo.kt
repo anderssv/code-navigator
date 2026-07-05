@@ -6,14 +6,10 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.bytecode.RootPackageDetector
-import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmConfig
-import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.DsmFormatter
 import no.f12.codenavigator.navigation.dsm.DsmHtmlRenderer
-import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
-import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.dsm.DsmOrchestrator
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
@@ -67,26 +63,21 @@ class DsmMojo : AbstractMojo() {
         config.deprecations().forEach { log.warn(it) }
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
-        val classDirectories = filteredDirs.map { it.first }
+        val classDirectories = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }.map { it.first }
 
         if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
             log.warn("Classes directory does not exist — run 'mvn compile' first.")
             return
         }
 
-        val projectClasses = scanProjectClasses(classDirectories)
-
-        val result = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal, filterTargets = true)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
-        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
-        val dependencies = applyPlanFile(result.data, planFile, log)
+        val output = DsmOrchestrator.run(config, taggedDirs, loadPlanSteps(planFile), reportFile)
 
-        val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
-        val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)
+        output.skippedFileWarning?.let { log.warn(it) }
+        val matrix = output.matrix
 
         if (matrix.packages.isEmpty() && config.cycleFilter == null && !config.cyclesOnly) {
-            val packageCount = projectClasses.map { it.packageName() }.distinct().size
+            val packageCount = output.projectClasses.map { it.packageName() }.distinct().size
             val hints = DsmFormatter.noResultsHints(packageCount)
             println(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
             return

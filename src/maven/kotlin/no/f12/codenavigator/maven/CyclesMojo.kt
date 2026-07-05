@@ -6,18 +6,9 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.bytecode.RootPackageDetector
-import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
-import no.f12.codenavigator.navigation.dsm.CycleDetector
 import no.f12.codenavigator.navigation.dsm.CyclesConfig
 import no.f12.codenavigator.navigation.dsm.CyclesFormatter
-import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
-import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
-import no.f12.codenavigator.navigation.dsm.PlanMutator
-import no.f12.codenavigator.navigation.dsm.TestInvolvement
-import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
-import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
-import no.f12.codenavigator.navigation.types.Scope
+import no.f12.codenavigator.navigation.dsm.CyclesOrchestrator
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Execute
@@ -69,54 +60,33 @@ class CyclesMojo : AbstractMojo() {
         config.deprecations().forEach { log.warn(it) }
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
-        val classDirectories = filteredDirs.map { it.first }
+        val classDirectories = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }.map { it.first }
 
         if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
             log.warn("Classes directory does not exist — run 'mvn compile' first.")
             return
         }
 
-        val projectClasses = scanProjectClasses(classDirectories)
-
-        val result = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, config.includeExternal, filterTargets = true)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
-        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
-        val dependencies = applyPlanFile(result.data, planFile, log)
+        val output = CyclesOrchestrator.run(config, taggedDirs, loadPlanSteps(planFile), reportFile)
 
-        val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
-        val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)
+        output.skippedFileWarning?.let { log.warn(it) }
 
-        val adjacency = CycleDetector.adjacencyMapFrom(matrix)
-        val cycles = CycleDetector.findCycles(adjacency)
-        val details = CycleDetector.enrich(cycles, matrix)
-
-        if (details.isEmpty()) {
+        if (output.details.isEmpty()) {
             println(OutputWrapper.emptyResult(config.format, "No package cycles detected."))
             return
         }
 
-        val testNotice = if (config.scope == Scope.ALL) {
-            val resolver = SourceSetResolver.from(taggedDirs)
-            val classEdges = details.flatMap { it.edges }.flatMap { it.classEdges }
-            TestInvolvement.notice(
-                TestInvolvement.count(classEdges) { resolver.sourceSetOf(it) },
-                "cycle edges",
-            )
-        } else {
-            null
-        }
-
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(details, displayPrefix = displayPrefix).let { if (testNotice != null) "$it\n\n$testNotice" else it }
-        OutputFormat.JSON -> JsonFormatter.formatCycles(details, displayPrefix = displayPrefix)
-        OutputFormat.LLM -> LlmFormatter.formatCycles(details, displayPrefix = displayPrefix).let { if (testNotice != null) "$it\n\n$testNotice" else it }
+        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(output.details, displayPrefix = output.displayPrefix).let { if (output.testNotice != null) "$it\n\n${output.testNotice}" else it }
+        OutputFormat.JSON -> JsonFormatter.formatCycles(output.details, displayPrefix = output.displayPrefix)
+        OutputFormat.LLM -> LlmFormatter.formatCycles(output.details, displayPrefix = output.displayPrefix).let { if (output.testNotice != null) "$it\n\n${output.testNotice}" else it }
     }
 })
 
-        if (config.failOnViolation && details.size > config.maxCycles) {
-            throw MojoFailureException("cnav:cycles found ${details.size} cycle(s), exceeding --max-cycles=${config.maxCycles}")
+        if (config.failOnViolation && output.details.size > config.maxCycles) {
+            throw MojoFailureException("cnav:cycles found ${output.details.size} cycle(s), exceeding --max-cycles=${config.maxCycles}")
         }
     }
 

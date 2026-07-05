@@ -831,7 +831,11 @@ This pairs with the JSON-hints item and the JsonFormatter/LlmFormatter split. Do
 ### Reduce Gradle/Maven duplication via orchestrator extraction
 **ACTIVE** | **Value: medium** | **Effort: high** | Source: internal
 
-Every Gradle/Maven pair duplicates orchestration. Three pairs already have orchestrators. Extend to rest (~590 lines duplicated across 14 pairs). Tedious but mechanical.
+Every Gradle/Maven pair duplicates orchestration. Extracted `CyclesOrchestrator`, `DsmOrchestrator`, `RingsOrchestrator`, and `MetricsOrchestrator` (all in core) — `CyclesTask`/`CyclesMojo`, `DsmTask`/`DsmMojo`, `RingsTask`/`RingsMojo`, `MetricsTask`/`MetricsMojo` now call the same function instead of hand-rolling the extraction→plan-mutation→analysis pipeline twice. This is what prevented the `--plan-file` no-op bug (see above) from being possible in the first place — there's only one code path to get right.
+
+Notable finding while unifying `RingsOrchestrator`'s emergent mode: Gradle did one combined extraction (`includeExternal=true`) and split project/external deps by class-set membership; Maven did two separate extractions. Proved these produce identical results (same underlying bytecode scan, just filtered differently), so unified on Gradle's single-scan approach — also removes a redundant bytecode walk that Maven was doing.
+
+Remaining: MoveSuggest/Cohesion already had orchestrators before this round. Still duplicated: Balance, Strength, Distance, Volatility, Coupling, TypeAffinity, and the refactoring-operation tasks (Rename*, Move*, ChangeSignature, SafeDelete, ExecutePlan) — see "Reduce Gradle/Maven duplication" scope, ~9 pairs left of the original 14.
 
 ### Potentially dead code in cnav's own codebase
 **PARKED** | **Value: medium** | **Effort: low** | Source: internal
