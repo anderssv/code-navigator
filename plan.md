@@ -351,6 +351,8 @@ Single config file with three top-level sections. Designed in one pass to avoid 
 
 - **`defaults`** — Per-task CLI defaults applied before explicit params. Targets: `format` (all), `scope` (all structural), `packageFilter` (Dsm/Cycles/Rings/Metrics), `ports` (TestCoupling), `excludeAnnotated` (Dead), `maxFanIn` (MoveSuggest). **Concern**: implicit defaults hide active config — all output must show active defaults when config is in use.
 
+  Candidate addition (raised in field feedback on the `--fail-on-violation` CI gate, v0.1.111): `ci.maxCycles`/`ci.maxViolations` so CI scripts don't have to carry `--max-cycles`/`--max-violations` as explicit flags on every invocation — the threshold lives in the committed config instead. `--fail-on-violation` itself would likely stay a CLI-only flag (it's the "am I running in CI" signal, not a project-level constant).
+
 - **`modules`** — Multi-module include/exclude lists. `include` = explicit Gradle project paths or Maven artifact IDs. `exclude` = skip these. `include-regex` = pattern match. `auto-discover` = scan all subprojects that have the plugin applied.
 
 - **`rings`** — Ring hints and overrides (see semantics below). `ringNames` sets display labels. `hints` sets minimum ring by naming pattern. `overrides` sets FQCN-to-ring overrides.
