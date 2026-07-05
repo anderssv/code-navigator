@@ -6,11 +6,9 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.analysis.ChangeCouplingBuilder
 import no.f12.codenavigator.analysis.ChangeCouplingConfig
 import no.f12.codenavigator.analysis.ChangeCouplingFormatter
-import no.f12.codenavigator.analysis.GitLogRunner
-import no.f12.codenavigator.analysis.StalePairMarker
+import no.f12.codenavigator.analysis.CouplingOrchestrator
 
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
@@ -59,11 +57,7 @@ abstract class ChangeCouplingTask : CodeNavigatorTask() {
             TaskRegistry.COUPLING.enhanceProperties(buildOptionsMap()),
         )
 
-        val commits = GitLogRunner.run(project.projectDir, config.after, followRenames = config.followRenames)
-        val pairs = StalePairMarker.mark(
-            ChangeCouplingBuilder.build(commits, config.minSharedRevs, config.minCoupling, config.maxChangesetSize, config.top),
-            project.projectDir,
-        )
+        val pairs = CouplingOrchestrator.run(config, project.projectDir)
 
         if (pairs.isEmpty()) {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No coupling found."))

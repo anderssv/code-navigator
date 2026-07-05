@@ -6,11 +6,9 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.analysis.GitLogRunner
-import no.f12.codenavigator.analysis.HotspotBuilder
-import no.f12.codenavigator.analysis.PackageVolatilityBuilder
 import no.f12.codenavigator.analysis.PackageVolatilityFormatter
 import no.f12.codenavigator.analysis.VolatilityConfig
+import no.f12.codenavigator.analysis.VolatilityOrchestrator
 
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
@@ -49,9 +47,7 @@ abstract class PackageVolatilityTask : CodeNavigatorTask() {
             TaskRegistry.VOLATILITY.enhanceProperties(buildOptionsMap()),
         )
 
-        val commits = GitLogRunner.run(project.projectDir, config.after, followRenames = config.followRenames)
-        val hotspots = HotspotBuilder.build(commits, config.minRevs)
-        val result = PackageVolatilityBuilder.build(hotspots, config.top)
+        val result = VolatilityOrchestrator.run(config, project.projectDir)
 
         if (result.entries.isEmpty()) {
             val hints = PackageVolatilityFormatter.noResultsHints()

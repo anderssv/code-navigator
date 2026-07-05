@@ -6,11 +6,9 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.analysis.GitLogRunner
-import no.f12.codenavigator.analysis.HotspotBuilder
-import no.f12.codenavigator.analysis.PackageVolatilityBuilder
 import no.f12.codenavigator.analysis.PackageVolatilityFormatter
 import no.f12.codenavigator.analysis.VolatilityConfig
+import no.f12.codenavigator.analysis.VolatilityOrchestrator
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Mojo
 import org.apache.maven.plugins.annotations.Parameter
@@ -41,9 +39,7 @@ class PackageVolatilityMojo : AbstractMojo() {
     override fun execute() {
         val config = VolatilityConfig.parse(TaskRegistry.VOLATILITY.enhanceProperties(buildPropertyMap()))
 
-        val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
-        val hotspots = HotspotBuilder.build(commits, config.minRevs)
-        val result = PackageVolatilityBuilder.build(hotspots, config.top)
+        val result = VolatilityOrchestrator.run(config, project.basedir)
 
         if (result.entries.isEmpty()) {
             val hints = PackageVolatilityFormatter.noResultsHints()

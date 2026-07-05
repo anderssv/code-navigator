@@ -1,13 +1,9 @@
 package no.f12.codenavigator.gradle
 
-import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.OutputWrapper
-import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
-import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
-import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
-import no.f12.codenavigator.navigation.dsm.TypeAffinityBuilder
 import no.f12.codenavigator.navigation.dsm.TypeAffinityConfig
 import no.f12.codenavigator.navigation.dsm.TypeAffinityFormatter
+import no.f12.codenavigator.navigation.dsm.TypeAffinityOrchestrator
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.registry.TaskRegistry
 import org.gradle.api.tasks.Internal
@@ -45,16 +41,12 @@ abstract class TypeAffinityTask : CodeNavigatorTask() {
         val config = TypeAffinityConfig.parse(props)
         val scopeVal = Scope.parse(props["scope"])
 
-        val classDirectories = project.taggedClassDirectories()
-            .filter { scopeVal.matchesSourceSet(it.second) }
-            .map { it.first }
-        val projectClasses = scanProjectClasses(classDirectories)
-
-        val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
+        val taggedDirs = project.taggedClassDirectories()
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        SkippedFileReporter.report(extractResult.skippedFiles, reportFile)?.let { logger.warn(it) }
+        val output = TypeAffinityOrchestrator.run(config, taggedDirs, scopeVal, reportFile)
 
-        val result = TypeAffinityBuilder.analyze(extractResult.data, config.targetPackage, config.threshold)
+        output.skippedFileWarning?.let { logger.warn(it) }
+        val result = output.result
 
         if (result.singleOwnerTypes.isEmpty() && result.sharedTypes.isEmpty()) {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No types found in package '${config.targetPackage}' with external consumers."))
