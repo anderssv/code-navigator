@@ -35,7 +35,171 @@ Fixed: `*Kt` facade classes excluded from class-level dead code detection entire
 
 ---
 
-## Cycle & dependency analysis
+## Multi-module support
+
+### Full multi-module analysis — aggregate class dirs from all project modules
+**ACTIVE** | **Value: high** | **Effort: high** | Source: internal
+
+**Problem**: Every cnav task currently analyzes only the module it runs in (`taggedClassDirectories()` returns one module's `classesDirs`). For multi-module Gradle/Maven projects, this means:
+- `cnavDsm` shows only intra-module dependencies — misses cross-module edges entirely
+- `cnavCycles` can't detect cycles spanning module boundaries (e.g., `:shared` ↔ `:service`)
+- `cnavRings` has an incomplete dependency graph — a class may appear ring 0 when its actual framework dependency lives in another module
+- `cnavMoveSuggest` can't suggest moves to packages in sibling modules
+- `cnavDead` flags a class as dead when its only consumer is in another module's test scope
+- User must run `:module-a:cnavX` then `:module-b:cnavX` and manually combine outputs
+
+**Solution**: A new `--multi-module` mode that aggregates class directories + source roots from all (or selected) subprojects before running analysis. The bytecode layer (`DsmDependencyExtractor`, `CallGraphBuilder`, `SourceSetResolver`) already accepts `List<File>` and handles multiple directories — the gap is in collecting them and presenting results with module provenance.
+
+**Architecture**:
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│                       MultiModuleResolver                           │
+│  Discovers modules, collects (classDir → moduleName) mappings       │
+└────────────────┬───────────────────────────────────────────────────┘
+                 │
+                 ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                  AggregatedClassDirectoryProvider                    │
+│  Collects classes + source dirs + classpath from every module       │
+│  Tags each file/dir with its module of origin                       │
+└────────────────┬───────────────────────────────────────────────────┘
+                 │
+                 ▼
+┌────────────────────────────────────────────────────────────────────┐
+│              Existing analysis (no change needed)                    │
+│  DsmDependencyExtractor.extract(classDirectories, classpath)        │
+│  CallGraphBuilder.build(taggedDirs, classpath)                       │
+│  SourceSetResolver.from(taggedDirs)                                  │
+│  Any task that takes List<File> for class dirs                       │
+└────────────────┬───────────────────────────────────────────────────┘
+                 │
+                 ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                  ModuleAwareFormatter                                │
+│  Wraps existing formatters, adds module labels to output            │
+│  Renders module-column in tables, module-group in JSON              │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**Gradle implementation** — `MultiModuleResolver`:
+```kotlin
+class MultiModuleResolver(project: Project) {
+    val rootProject = project.rootProject
+    val modules: List<ModuleInfo> = rootProject.subprojects
+        .filter { hasCodeNavigatorPlugin(it) || isExplicitlyIncluded(it) }
+        .map { sub ->
+            val sourceSets = sub.extensions.getByType(SourceSetContainer::class.java)
+            ModuleInfo(
+                name = sub.name,
+                path = sub.path,                    // ":module-a"
+                classDirectories = sourceSets.getByName("main").output.classesDirs.files.toList(),
+                testClassDirectories = sourceSets.getByName("test").output.classesDirs.files.toList(),
+                sourceDirectories = sourceSets.getByName("main").allSource.srcDirs.toList(),
+            )
+        }
+
+    // Aggregated views
+    val allClassDirectories: List<File> = modules.flatMap { it.classDirectories }
+    val allTaggedDirectories: List<Pair<File, ModuleSourceSet>> = modules.flatMap { m ->
+        m.classDirectories.map { it to ModuleSourceSet(m.name, SourceSet.MAIN) } +
+        m.testClassDirectories.map { it to ModuleSourceSet(m.name, SourceSet.TEST) }
+    }
+    val allSourceDirectories: List<Pair<File, String>> = modules.flatMap { m ->
+        m.sourceDirectories.map { it to m.name }
+    }
+}
+```
+
+**Maven implementation** — `MavenReactorResolver`:
+```kotlin
+class MavenReactorResolver(project: MavenProject, session: MavenSession) {
+    val modules: List<ModuleInfo> = session.getAllProjects()
+        .filter { hasCodeNavigatorPlugin(it) || isExplicitlyIncluded(it) }
+        .map { sub ->
+            ModuleInfo(
+                name = sub.artifactId,
+                groupId = sub.groupId,
+                classDirectories = listOf(File(sub.build.outputDirectory)),
+                testClassDirectories = listOf(File(sub.build.testOutputDirectory)),
+                sourceDirectories = sub.compileSourceRoots.map { File(it as String) },
+            )
+        }
+}
+```
+
+**Detection strategy** — two modes:
+
+1. **Auto-detect**: When `--multi-module` is set, scan `rootProject.subprojects` (Gradle) or `session.getAllProjects()` (Maven). Include every subproject that:
+   - Has the code-navigator plugin applied (`project.plugins.hasPlugin("no.f12.code-navigator")`)
+   - OR has a `cnav-config.json` in its project root
+   - OR is explicitly listed in `cnav-config.json`'s `modules` section
+
+2. **Explicit config**: In `cnav-config.json` `modules` section (see consolidated config item below).
+
+**CLI**: Tasks get a `--multi-module` flag (boolean). When set, the task's orchestrator uses `MultiModuleResolver` instead of the single-project `taggedClassDirectories()`. Optionally `--modules=":shared,:service"` for explicit selection without config.
+
+**Output changes — module labels**:
+
+| Format | Current | Multi-module |
+|--------|---------|--------------|
+| TEXT | `com.example.foo.Service` | `[:shared] com.example.foo.Service` |
+| JSON | `"className": "com.example.foo.Service"` | `"className": "com.example.foo.Service", "module": ":shared"` |
+| LLM | Same as TEXT | Same as TEXT |
+| DSM | Packages as row/col labels | `module/package` compound labels, or module-color bands |
+
+**Module prefix strategy**: Show module prefix **only when ambiguous** (class exists in multiple modules with same FQCN) or when `--multi-module` is active. Single-module output unchanged.
+
+**Task-by-task impact**:
+
+| Task | What changes | New capability |
+|------|-------------|----------------|
+| `cnavDsm` | Row/col labels include module prefix | Cross-module dependency matrix. Upper-right quadrant shows inter-module deps. |
+| `cnavCycles` | No cycle detection change (graph is already unified) | Detects cycles spanning module boundaries. Labels each node with module. |
+| `cnavRings` | `ClassRingClassifier` gets module info | Sees all dependencies including those in other modules — more accurate ring assignment. Reports which module each violator belongs to. |
+| `cnavBalance` | `BalanceBuilder` gets module-tagged entries | Cross-module edges visible in strength/distance/volatility analysis. |
+| `cnavMoveSuggest` | `MoveSuggester` includes cross-module deps | Can suggest moves to sibling module packages. |
+| `cnavDead` | Cross-module callers included | A class called only from another module's tests is marked `TEST_ONLY`. A class called from no module is truly dead. |
+| `cnavCoupling` | Already path-based, no change needed | Benefits from unified view (co-change pairs across module boundaries already detected by git). |
+| `cnavChangedSince` | Already path-based | Already works across modules. |
+| `cnavSize` | Summed across modules | Total project size regardless of module split. |
+| `cnavMetrics` | Module-level rollup | Per-module metrics summary alongside project totals. |
+
+**The formatter barrier — why this strengthens it**:
+
+Multi-module support forces the long-needed cleanup: today's `taggedClassDirectories()` returns `List<Pair<File, SourceSet>>` — the source set tells us MAIN vs TEST but NOT which module. To support multi-module, this must become `List<Pair<File, ModuleSourceSet>>` where `ModuleSourceSet(name, sourceSet)`. That change ripples through every resolver, builder, and formatter.
+
+The **formatter boundary** strengthens because:
+- Formatters must now render module labels — this is a pure display concern that must NOT leak into analysis
+- Analysis (resolved class graph, cycle detection, ring assignment) must be identical whether modules come from one or many projects
+- The module-collection logic lives in a new `MultiModuleResolver` wrapper — analysis code never imports it
+
+The **domain boundary** strengthens because:
+- `ClassName` and `PackageName` remain the domain primitives — they don't carry module info
+- Module info is an infrastructure concern added at the presentation layer
+- If a class exists in two modules (same FQCN, different compilation), the resolver picks one (first wins + warning) or tags both — but the analysis layer never sees the ambiguity
+
+**Implementation order**:
+
+1. **Add `ModuleSourceSet` type** — replaces bare `SourceSet` in tagged-directory tuples. Add `name: String` field carrying the Gradle project path / Maven artifact ID.
+2. **Extract `ModuleClassDirectoryProvider` interface** — single-module and multi-module implementations. Single-module delegates to `taggedClassDirectories()`; multi-module delegates to `MultiModuleResolver`.
+3. **Build `MultiModuleResolver`** (Gradle + Maven variants) — collects from `rootProject.subprojects` / `session.getAllProjects()`, respects config includes/excludes.
+4. **Wire `--multi-module` flag into all structural tasks** (Dsm, Cycles, Rings, Balance, MoveSuggest, Dead, Cohesion, IntegrationStrength, Distance, Volatility).
+5. **Add module labels to formatters** — TEXT/JSON/LLM formatters render `module` prefix or field when multi-module is active. Start with `cnavDsm` (most visible impact), then `cnavCycles`, then `cnavRings`.
+6. **Add `--modules` CLI shortcut** — `--modules=":shared,:service"` to select specific modules without config.
+8. **Cross-module plan-file support** — move suggestions and execute-plan resolve target module from class location.
+
+**Test strategy**:
+- New `test-project-multi/` with 2-3 Gradle subprojects (`shared`, `service`, `web`) containing cross-module dependencies
+- Verify cross-module cycles are detected (service → shared → service)
+- Verify DSM shows inter-module cells
+- Verify rings use cross-module deps for classification
+- Verify dead code flagged only when no module references it
+- Verify move-suggest across module boundaries
+
+The test project itself becomes a forcing function for the formatter boundary — if formatters or analysis accidentally depend on single-module assumptions, the multi-module fixtures will catch it at compile time.
+
+**Strengthens formatter and domain barrier** | **Value: high** | **Effort: high**
 
 ### Cycle actionability — fix suggestions, edge ranking, and direction clarity
 ~~**ACTIVE**~~ **DONE (v0.1.103)** | **Value: high** | **Effort: high** | Source: field-test(bass-ra+greitt)
@@ -63,9 +227,9 @@ Implemented. Predicts cycle impact of moving a class to a different package with
 - Shows removed/added cycles. Validated on bass-ra-backend.
 
 ### Replace regex JSON parsing with Jackson
-**FUTURE** | **Value: low** | **Effort: low** | Source: internal
+**PARKED** | **Value: low** | **Effort: low** | Source: internal
 
-`PlanMutator.parseJson` currently uses regex extraction. Replace with Jackson (or kotlinx.serialization) for robustness. Add Jackson dependency or reuse one already on classpath via Maven plugin.
+`PlanMutator.parseJson` currently uses regex extraction. Replace with Jackson (or kotlinx.serialization) for robustness. Add Jackson dependency or reuse one already on classpath via Maven plugin. Low priority — no reported issues from regex approach.
 
 ### ~~cnavExecutePlan — execute a plan file~~ — DONE
 **DONE** | **Value: high** | **Effort: medium** | Source: design-discussion
@@ -75,7 +239,7 @@ Dedicated task (`cnavExecutePlan --plan-file=plan.json`) that reads a plan JSON 
 Plan format: `[{"action":"move","type":"com.example.api.Dto","to":"com.example.service"}]`
 
 ### Consider: operation sequences as the primary interface
-**FUTURE** | **Value: high** | **Effort: high** | Source: design-discussion
+**FUTURE** | **Value: high** | **Effort: very high** | Source: design-discussion
 
 Could the sequence-of-operations pattern (`--plan-file`) become the default mode rather than an add-on? Instead of many dedicated targets (cnavCycles, cnavDsm, cnavRings, cnavBalance, cnavSimulateMove), a single target accepts a JSON describing what to analyze and what virtual mutations to apply. This would:
 - Eliminate many separate targets in favour of one composable interface
@@ -91,7 +255,7 @@ Trade-offs:
 Could be a new single target (`cnavAnalyze --plan-file=...`) alongside the existing tasks, not replacing them immediately.
 
 ### Auto-suggest refactoring sequences
-**FUTURE** | **Value: high** | **Effort: high** | Source: design-discussion
+**FUTURE** | **Value: high** | **Effort: very high** | Source: design-discussion
 
 Now that `--plan-file` supports simulating N sequential moves, can we automatically suggest a sequence? Heuristics to explore:
 - Start with weakest-link edges from `CycleBreakAnalyzer` — for each, identify which class to move and where
@@ -140,147 +304,14 @@ Improve the default `--mode=package` to detect ring subpackages by their depende
 
 In emergent mode, report violations where a domain class (ring 0) within a package depends on an adapter class (ring 2) — upward dependencies within a package. Currently SCC collapse makes this hard to detect (cycles hide direction). May need pre-SCC edge analysis.
 
-### `.cnav-config.json` — Ring hints to correct heuristic misclassifications
+### `cnav-config.json` — consolidated project config (rings + modules + defaults)
 **ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(greitt, v0.1.106)
 
-**Problem**: Emergent mode classifies rings by dependency shape (framework imports → higher ring). Infrastructure classes with no framework imports (serializers, generators, config classes, renderers) get placed in ring 0 alongside domain logic. Users can't correct this without a config file.
+Single config file with three top-level sections. Designed in one pass to avoid three parser iterations.
 
-**Why not `cnavLayerCheck`'s format**: The old `.cnav-layers.json` defined layers as a linear stack with `peerLimit`, `testInfrastructure`, and allowed-dependency rules. That was an enforcement tool. This is a **hint** file — it nudges the classifier, it doesn't define architecture.
+**Problem**: Three separate config needs — (1) ring hints to correct classifier blind spots, (2) multi-module module discovery, (3) per-task defaults to eliminate repeated CLI flags. Each was scoped as a separate feature; sharing one file means one parser, one schema, one UX.
 
 **Schema**:
-
-```json
-{
-  "version": 1,
-  "ringNames": [
-    "domain", "port", "application", "infrastructure", "web-output", "web-input", "composition-root"
-  ],
-  "hints": {
-    "domain": ["*Domain*", "*Event", "*Exception", "*Types"],
-    "port": ["*Port", "*Repository", "*Client"],
-    "application": ["*Service", "*UseCase", "*Orchestrator"],
-    "infrastructure": ["*Impl", "*Config", "*Serializer", "*Generator", "*Renderer", "*Factory", "*Provider", "*Util*"],
-    "web-output": ["*Page", "*Component*"],
-    "web-input": ["*Route*", "*Routes", "*Controller", "*Endpoint"]
-  },
-  "overrides": {
-    "no.mikill.greitt.web.RoutePaths": "web-input",
-    "no.mikill.greitt.web.plugins.FileWatcher": "infrastructure"
-  }
-}
-```
-
-**Semantics**:
-
-- **`ringNames`**: Labels for display. Instead of "Ring 0", "Ring 1", etc., show "domain", "port", etc. Order determines ring number (first = innermost). Defaults to a reasonable set if omitted.
-
-- **`hints`**: Glob patterns matching simple class names (after stripping `Kt`/`Test` suffixes — same logic as the removed `cnavLayerCheck`). These set a **minimum ring** for matching classes. If the dependency graph calculates ring 0 but the class matches `*Serializer` (infrastructure ring 2), it gets promoted to ring 2. If the graph already places it at ring 3, it stays at ring 3 — hints never demote.
-
-  A class matches a hint pattern → its minimum ring is the order of the hinted ring. Its actual ring = `max(graphRing, hintMinimum)`.
-
-  The pattern list for a ring is checked in order and the first match wins. The `*` glob matches everything, so `"domain": ["*"]` would be the catch-all (match anything not caught by earlier patterns).
-
-- **`overrides`**: FQCN-to-ring mappings for classes that don't follow naming patterns. Only needed for 1-2 edge cases per project. Takes precedence over hints.
-
-**How the classifier changes**:
-
-1. Run standard emergent detection (framework-import heuristic + SCC collapse + longest-path) → `rawRings`
-2. For each class, check `overrides` first (FQCN match) → if found, use that ring
-3. For each class, check `hints` (glob match) → if found, compute `max(rawRing, hintMinimum)`
-4. If neither match, keep `rawRing`
-5. Recompute ring labels from `ringNames` for display
-
-**Effect on greitt**:
-
-Without config: NanoidGenerator at ring 0, MarkdownRenderer at ring 0, QrCodeGenerator at ring 0, ApplicationConfigKt at ring 0.
-With `hints: { "infrastructure": ["*Serializer", "*Generator", "*Renderer", "*Config", "*Impl"] }`:
-
-| Class | Raw ring | Hint match | Final ring |
-|-------|----------|------------|------------|
-| NanoidGenerator | 0 | `*Generator` → infrastructure (2) | 2 |
-| InstantDeserializer | 0 | `*Serializer` → infrastructure (2) | 2 |
-| MarkdownRenderer | 0 | `*Renderer` → infrastructure (2) | 2 |
-| QrCodeGenerator | 0 | `*Generator` → infrastructure (2) | 2 |
-| ApplicationConfigKt | 0 | `*Config` → infrastructure (2) | 2 |
-| PollsRepositoryImpl | 4 | `*Impl` → infrastructure (2) | 4 (already above minimum) |
-
-**Implementation**:
-
-1. Add `RingsHintsConfig` class — JSON parser for `cnav-config.json` (reuse `SimpleJson` from old `cnavLayerCheck` or use Jackson)
-2. Add `--hints-file` param to `cnavRings` task (defaults to `cnav-config.json` at project root, or `.cnav/rings.json`)
-3. In `ClassRingClassifier.classify()`, add a post-processing step that applies hints + overrides
-4. Update `EmergentRingFormatter` to use `ringNames` for display labels
-5. Add `--generate-hints` mode that analyzes current misclassifications and emits a suggested `cnav-config.json`:
-   - Finds all classes in ring 0 with external deps matching framework-like patterns → suggests `infrastructure` hints
-   - Finds all classes that are interfaces → suggests `port` hints
-   - Emits a `cnav-config.json` with comments explaining each suggestion
-
-**LLM workflow** (the primary user of this feature):
-
-```
-1. Run:  ./gradlew cnavRings --mode=emergent --scope=prod --format=llm
-2. Review: scan "Ring 0" for classes that aren't domain (serializers, configs, generators, renderers)
-3. Write:  create cnav-config.json with hints catching those patterns
-4. Verify: re-run cnavRings to confirm misclassified classes moved to correct rings
-```
-
-The `--generate-hints` flag automates step 2-3. The LLM should:
-  - Run `--generate-hints` first to get a starting config
-  - Review the suggestions (the tool may flag things that are intentionally in ring 0)
-  - Save to `cnav-config.json`, adjust any overrides, re-run
-
-**Self-documenting output**: When `cnavRings` detects classes in ring 0 that match infrastructure-like naming patterns (e.g., `*Serializer`, `*Generator`, `*Config`), the LLM formatter should append a tip at the end of the output:
-
-```
-Tip: Some classes in ring 0 look like infrastructure (serializers, generators, configs).
-To correct this, create cnav-config.json:
-  { "hints": { "infrastructure": ["*Serializer", "*Generator", "*Config"] } }
-See --generate-hints for a suggested starting config.
-```
-
-This ensures the LLM knows it can configure exceptions without reading docs or the plan. The tip only appears when heuristic misclassifications are detected (classes in ring 0 that match common infrastructure patterns like `*Config`, `*Serializer`, `*Generator`, `*Impl`).
-
-**Example `--generate-hints` output**:
-
-```
-// Suggested cnav-config.json — review before using
-// Based on 50 classes in ring 0 with infrastructure-like patterns:
-{
-  "version": 1,
-  "hints": {
-    "infrastructure": [
-      "*Serializer",    // InstantDeserializer, InstantSerializer, LocalDateSerializer — 5 classes
-      "*Generator",     // NanoidGenerator, QrCodeGenerator — 2 classes
-      "*Renderer",      // MarkdownRenderer — 1 class
-      "*Config",        // ApplicationConfig, DatabaseConfig, AuthenticationConfig — 3 classes
-      "*Watcher"        // FileWatcher — 1 class
-    ],
-    "port": [
-      "*Repository",    // PollsRepository, DevicesRepository — 2 classes
-      "*Client",        // EmailClient — 1 class
-      "*Port"           // PollMigrationPort — 1 class
-    ]
-  },
-  "overrides": {
-    "no.mikill.greitt.web.RoutePaths": "web-input",
-    "no.mikill.greitt.web.util.DateUtilsKt": "infrastructure"
-  }
-}
-```
-
-**What hints DON'T do**:
-
-- They don't define allowed dependencies. No `peerLimit`, no `fail-on=upward`, no layer rules. That's a separate concern for a future "enforcement" mode.
-- They don't define architecture. They just fix the 5-10 heuristic blind spots per project.
-- They don't replace the dependency graph. All ordering still comes from actual code structure.
-
-### `cnav-config.json` — Extend to per-project task defaults
-**PARKED** | **Value: medium** | **Effort: medium** | Source: field-test(greitt, v0.1.106)
-
-**Concern**: Implicit defaults make it hard to know what is in effect — CLI output won't reflect what was silently applied from config. Needs careful UX (e.g. always show active defaults in output) before implementing.
-
-The `cnav-config.json` currently only serves ring hints. Many tasks require project-specific flags that LLM agents must repeat on every invocation. A shared `defaults` section would eliminate this friction:
-
 ```json
 {
   "version": 1,
@@ -290,13 +321,24 @@ The `cnav-config.json` currently only serves ring hints. Many tasks require proj
     "rootPackage": "no.mikill.greitt",
     "packageFilter": "no.mikill.greitt",
     "ports": [".*Repository", ".*Client", ".*Port"],
-    "maxFanIn": 10
+    "maxFanIn": 10,
+    "excludeAnnotated": ["org.springframework.stereotype.Component"]
+  },
+  "modules": {
+    "include": [":shared", ":service", ":web"],
+    "exclude": [":integration-test"],
+    "include-regex": ".*-module$",
+    "auto-discover": true
   },
   "rings": {
     "ringNames": ["domain", "port", "application", "infrastructure", "web-output", "web-input", "composition-root"],
     "hints": {
-      "infrastructure": ["*Serializer", "*Generator", "*Renderer", "*Config", "*Impl"],
-      "port": ["*Repository", "*Client", "*Port"]
+      "domain": ["*Domain*", "*Event", "*Exception", "*Types"],
+      "port": ["*Port", "*Repository", "*Client"],
+      "application": ["*Service", "*UseCase", "*Orchestrator"],
+      "infrastructure": ["*Impl", "*Config", "*Serializer", "*Generator", "*Renderer", "*Factory", "*Provider", "*Util*"],
+      "web-output": ["*Page", "*Component*"],
+      "web-input": ["*Route*", "*Routes", "*Controller", "*Endpoint"]
     },
     "overrides": {
       "no.mikill.greitt.web.RoutePaths": "web-input"
@@ -305,30 +347,38 @@ The `cnav-config.json` currently only serves ring hints. Many tasks require proj
 }
 ```
 
-**Targets that benefit**:
+**Sections**:
 
-| Target | Config key | What it replaces |
-|--------|-----------|-----------------|
-| All tasks | `defaults.format` | `--format=llm` on every call |
-| All tasks | `defaults.scope` | `--scope=prod` on structural tasks |
-| `cnavDsm`, `cnavCycles`, `cnavRings`, `cnavMetrics` | `defaults.packageFilter` | `--package-filter=...` |
-| `cnavTestCoupling` | `defaults.ports` | `--ports=".*Repository\|.*Client"` |
-| `cnavDead` | `defaults.excludeAnnotated` | `--exclude-annotated=...` |
-| `cnavMoveSuggest` | `defaults.maxFanIn` | `--max-fan-in=...` |
-| `cnavRings` | `rings.*` | Ring hints, names, overrides |
+- **`defaults`** — Per-task CLI defaults applied before explicit params. Targets: `format` (all), `scope` (all structural), `packageFilter` (Dsm/Cycles/Rings/Metrics), `ports` (TestCoupling), `excludeAnnotated` (Dead), `maxFanIn` (MoveSuggest). **Concern**: implicit defaults hide active config — all output must show active defaults when config is in use.
+
+- **`modules`** — Multi-module include/exclude lists. `include` = explicit Gradle project paths or Maven artifact IDs. `exclude` = skip these. `include-regex` = pattern match. `auto-discover` = scan all subprojects that have the plugin applied.
+
+- **`rings`** — Ring hints and overrides (see semantics below). `ringNames` sets display labels. `hints` sets minimum ring by naming pattern. `overrides` sets FQCN-to-ring overrides.
+
+**Ring hints semantics**:
+
+- **`hints`**: Glob patterns matching simple class names (after stripping `Kt`/`Test` suffixes). Set a **minimum ring** for matching classes. If the graph calculates ring 0 but the class matches `*Serializer` (ring 2), it gets promoted to ring 2. Hints never demote. Actual ring = `max(graphRing, hintMinimum)`.
+- **`overrides`**: FQCN-to-ring mappings. Take precedence over hints. Only needed for 1-2 edge cases per project.
+- **`ringNames`**: Display labels for rings. Order determines ring number (first = innermost).
+
+**How the classifier changes**:
+
+1. Run emergent detection → `rawRings`
+2. Check `overrides` → if found, use that ring
+3. Check `hints` → if found, `max(rawRing, hintMinimum)`
+4. Otherwise keep `rawRing`
 
 **Implementation**:
 
-1. Extend `RingsHintsConfig` (or create `CnavConfig`) to parse a top-level `defaults` section
-2. For each task config, apply defaults BEFORE CLI params — CLI params take precedence
-3. Wire into `*Config.parse()` methods or a shared `ConfigDefaults` helper
-4. `cnavTestCoupling` reads `ports` from config if `--ports` not provided
-5. `cnavDead` reads `excludeAnnotated`/`treatAsDead` from config
+1. Add `CnavConfig` class — single JSON parser (Jackson or kotlinx.serialization). Parse all three sections.
+2. Add `--config-file` param to tasks (defaults to `cnav-config.json` at project root).
+3. Wire `defaults` into `*Config.parse()` methods — apply defaults BEFORE CLI params, CLI takes precedence.
+4. Wire `modules` into `MultiModuleResolver` include/exclude logic.
+5. Wire `rings` into `ClassRingClassifier.classify()` post-processing.
+6. Add `--generate-hints` mode to `cnavRings` — analyzes misclassifications and emits a suggested config.
+7. Always show active defaults in output header when config is loaded.
 
-**Benefit for LLM agents**: A single `cnav-config.json` at project root replaces the preamble pattern where agents ask "what's your package structure?" and users type the same 3-4 flags every session.
-
-**Estimate**: 2-3 hours
-
+**Ring hints — what they DON'T do**: No `peerLimit`, no `fail-on=upward`, no layer rules. They only fix heuristic blind spots. All ordering still comes from actual code structure.
 ### High violation count warning for `cnavRings`
 **PARKED** | **Value: low** | **Effort: low** | Source: internal
 
@@ -346,7 +396,7 @@ Implemented `cnavMovePackage --from-package=<pkg> --to-package=<pkg>` (Gradle + 
 **Known limitation**: Shares the same OpenRewrite worker metaspace issue as `cnavExecutePlan` — packages with 5+ classes may hit `OutOfMemoryError: Metaspace` with default JVM settings. Workaround: increase `org.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=1g` in `gradle.properties`.
 
 ### cnavMoveFunction — move top-level Kotlin functions
-**FUTURE** | **Value: medium** | **Effort: high** | Source: field-test(bass-ra)
+**PARKED** | **Value: low** | **Effort: high** | Source: field-test(bass-ra)
 
 Move top-level functions (e.g. `objectMapper()` from `di/Serialization.kt` to `config/Serialization.kt`). Top-level functions in Kotlin compile to `*Kt` facade classes, so bytecode-level tracking works, but the refactoring operation needs to handle the source differently (no class declaration to move, just function bodies).
 
@@ -412,13 +462,13 @@ Safety:
 ## Dead code & metrics
 
 ### Meta-annotation traversal for dead code filtering
-**ACTIVE** | **Value: medium** | **Effort: high** | Source: internal
+**FUTURE** | **Value: medium** | **Effort: high** | Source: internal
 
 `@RestController` is meta-annotated with `@Controller` which is meta-annotated with `@Component`. Currently, excluding `Component` does NOT exclude `@RestController`.
 
 - In `AnnotationExtractor`, scan annotation `.class` files from classpath JARs and resolve meta-annotations transitively.
 - Covers custom stereotype annotations automatically.
-- **Prerequisite**: `cnavJar` (classpath resolution infrastructure) — non-trivial to resolve annotation classes from JARs.
+- **Prerequisite**: `cnavJar` (classpath resolution infrastructure) — non-trivial to resolve annotation classes from JARs. Pending classpath JAR infrastructure.
 
 ### Transitive dead code detection
 **FUTURE** | **Value: medium** | **Effort: high** | Source: user-feedback(v0.38)
@@ -432,35 +482,79 @@ A method is "transitively dead" if all its callers are themselves dead. Iterate 
 `--baseline=<path>` parameter pointing to saved JSON output. On re-run, show diff. Alternative: just use `jq` to diff JSON externally.
 
 ### Dead code: flag methods called only from test scope
-**FUTURE** | **Value: medium** | **Effort: low** | Source: internal
+**ACTIVE** | **Value: medium** | **Effort: low** | Source: internal
 
-Use source set tagging (already available) to identify production methods/classes whose only callers are in the test source set.
-
-### `cnavRisk` — composite risk analysis
-**FUTURE** | **Value: medium** | **Effort: low** | Source: user-feedback(v0.38)
-
-`risk = change_frequency * complexity * coupling_degree`. Combines existing builders (Hotspot, Churn, Complexity) into ranked output. Low effort since all inputs exist — just composition and sorting.
+Use source set tagging (already available) to identify production methods/classes whose only callers are in the test source set. Quick win — source set tagging already exists, just needs a new confidence label and output filter.
 
 ### Per-package health dashboard
 **FUTURE** | **Value: low** | **Effort: medium** | Source: internal
 
 Aggregate all per-package metrics into a single view: volatility, coupling strength breakdown, distance profile, cycle involvement, balance assessment. Could be a mode of `cnavMetrics` (`--by-package=true`) or separate `cnavPackageHealth` task.
 
+### `cnavClassMetrics` — per-class cohesion + CK metrics
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: repowise comparison
+
+Single ASM visitor pass, per-class output: TCC/LCC cohesion (field-access graph) + WMC/CBO/DIT (Chidamber & Kemerer).
+
+**Problem**: cnavCohesion measures package-level cohesion (internal/total edges per package). This misses within-class structure — a class with 15 methods where only 3 share field access is cohesively weak but invisible at the package level. repowise demonstrated per-class metrics as a working approach.
+
+**Metrics**:
+- **TCC (Tight Class Cohesion)**: fraction of directly connected method pairs (methods accessing ≥1 common field). Low = class does too many unrelated things.
+- **LCC (Loose Class Cohesion)**: fraction of directly or transitively connected method pairs.
+- **WMC (Weighted Method Count)**: sum of McCabe cyclomatic complexity across all methods. Higher = harder to test.
+- **CBO (Coupling Between Objects)**: count of distinct types referenced (ex-JDK/stdlib). Higher = more context needed.
+- **DIT (Depth of Inheritance Tree)**: superclass chain length from `Object`/`Any`. Deeper = more inherited behavior.
+
+**Implementation** — two collectors in one ASM pass:
+
+1. **`FieldAccessAnalyzer`** — per method, track accessed instance fields. Exclude constructors, static initializers, synthetic accessors.
+2. **`CohesionGraphBuilder`** — adjacency matrix: edge if `accessedFields(A) ∩ accessedFields(B) ≠ ∅`. TCC = direct / total pairs, LCC = transitive closure.
+3. **WMC** — count branches (`if`, `when` arms, `for`, `while`, `catch`, `&&`, `||`, `?:`) per method. Base = 1, +1 per branch.
+4. **CBO** — distinct types in field/method/return/local signatures, ex-JDK (`java.lang`, `java.util`, Kotlin stdlib) and primitives.
+5. **DIT** — walk superclass chain via classpath. Interfaces excluded.
+
+**Result**:
+```kotlin
+data class ClassMetricsResult(
+    val className: ClassName,
+    val packageName: PackageName,
+    val totalMethods: Int,
+    val tcc: Double, val lcc: Double, val verdict: CohesionVerdict,
+    val wmc: Int, val cbo: Int, val dit: Int
+)
+```
+
+**Verdict** (cohesion): HIGH (TCC ≥ 0.7) / MEDIUM (0.4–0.7) / LOW (TCC < 0.4, LCC ≥ 0.7) / MONOLITH (TCC < 0.4, LCC < 0.7).
+
+**Filtering**: `--min-methods=5`, `--min-tcc=0.0`, `--max-wmc=20`, `--max-cbo=10`.
+
+**TEXT**:
+```
+Class                        TCC    LCC   Vldct  WMC  CBO  DIT
+com.example.OrderService     0.12  0.30  MNLTH  34   12   3
+com.example.OrderValidator   0.70  0.90  HIGH    8    5   2
+```
+
+**JSON**: per-entry fields `tcc`, `lcc`, `verdict`, `wmc`, `cbo`, `dit`.
+
+**Integration**: New task `cnavClassMetrics`. Self-contained ASM visitor, no dependency on `DsmDependencyExtractor` or `CallGraphBuilder`. ~200 lines core + formatters.
+
+**Improvement over repowise**: filters constructors/synthetic accessors (repowise inflated TCC), adds transitive LCC detection, excludes JDK from CBO, counts only `superclass` for DIT.
+
 ---
 
 ## Standalone new tasks
 
-### `cnavConverge` — intersect cycles, rings, and coupling into a single high-confidence signal
+### `cnavConverge` — composite architectural signal (intersect + risk scoring)
 **ACTIVE** | **Value: high** | **Effort: high** | Source: field-test(bass-ra)
 
-Field use found the clearest architectural signal came from manually intersecting three independent views rather than trusting any single composite (cnavBalance was the unreliable one). A `cnavConverge` task would automate the recipe:
+Two analysis modes producing ranked problem lists:
 
-- Run cnavCycles (structure), cnavRings (layering), cnavCoupling (evolution/git) over the same scope.
-- Report only edges where ≥2 independent views AGREE — that intersection is the high-confidence finding.
-- Separately flag clean-but-high-churn pairs (no cycle, forward edges, but co-change ≥ threshold) as missing-abstraction candidates — the thing structure alone can't see.
-- Classify into the confidence matrix: ACT NOW (cycle ∩ high-coupling), LATENT (cycle ∩ low-coupling), MISSING ABSTRACTION (clean ∩ high-coupling), IGNORE.
+**Mode 1 — Intersection** (primary): Run cnavCycles (structure), cnavRings (layering), cnavCoupling (git). Report only edges where ≥2 independent views agree. Classify: ACT NOW (cycle ∩ high-coupling), LATENT (cycle ∩ low-coupling), MISSING ABSTRACTION (clean ∩ high-coupling), IGNORE.
 
-The intersection is more robust than weighted averaging on small/nested/package-by-feature codebases. Reference: the bass-ra `architecture-signal-recipe.md`. Combine bytecode views (cycles/rings) with the git-history view (coupling); needs scope alignment (coupling is path-based, not source-set-based — see the cnavCoupling --scope item).
+**Mode 2 — Risk scoring** (secondary): `risk = change_frequency × complexity × coupling_degree`. Combines Hotspot, Churn, and Complexity builders. Low effort — all inputs exist. Available via `cnavConverge --mode=risk` or standalone when only risk ordering is needed.
+
+The intersection mode is more robust than weighted averaging on small/nested/package-by-feature codebases. Reference: bass-ra `architecture-signal-recipe.md`. Needs scope alignment (coupling is path-based, not source-set-based — see cnavCoupling --scope item).
 
 ### `cnavTestHealth` — verify all test methods actually ran
 **ACTIVE** | **Value: medium** | **Effort: medium** | Source: user-feedback
@@ -468,26 +562,26 @@ The intersection is more robust than weighted averaging on small/nested/package-
 Count `@Test`-annotated methods from bytecode, compare against JUnit XML results, flag the delta. Catches silently skipped tests (e.g., non-`Unit` return types).
 
 ### `cnavTestCoverage` — per-test-class coverage proximity analysis
-**FUTURE** | **Value: low** | **Effort: high** | Source: internal
+**REJECTED** | **Value: low** | **Effort: high** | Source: internal
 
-Identify production classes only tested "at distance". Requires JaCoCo integration (TestExecutionListener + per-test exec files). High effort for specialized use case.
+Identify production classes only tested "at distance". Requires JaCoCo integration (TestExecutionListener + per-test exec files). High effort for specialized use case. JaCoCo integration scope is too large for the value. Reject — not worth the complexity.
 
 ### `cnavDiff` — structural diff between builds
-**FUTURE** | **Value: medium** | **Effort: medium** | Source: internal
+**PARKED** | **Value: low** | **Effort: medium** | Source: internal
 
-Compare two compiled states: added/removed/changed classes, methods, dependency edges. `--baseline=<path>`, `--affected=true`.
+Compare two compiled states: added/removed/changed classes, methods, dependency edges. No demand from field use. Most diff needs handled by git-based tasks.
 
 ### `cnavUnused` — unused build dependencies
-**FUTURE** | **Value: medium** | **Effort: medium** | Source: internal
+**PARKED** | **Value: low** | **Effort: medium** | Source: internal
 
-For each declared dependency JAR, extract package list. Scan project bytecode for references. Dependencies with zero references are candidates for removal. Caveat: runtime-only deps (JDBC drivers, logging backends) need exclusion mechanism.
+For each declared dependency JAR, extract package list. Scan project bytecode for references. Dependencies with zero references are candidates for removal. Caveat: runtime-only deps (JDBC drivers, logging backends) need exclusion mechanism. Niche — existing tools (gradle-lint, dependency-analysis) already cover this.
 
 ---
 
 ## TDD practice enforcement
 
 ### `cnavFakeCoverage` — verify all ports have fakes
-**FUTURE** | **Value: medium** | **Effort: low** | Source: internal
+**PARKED** | **Value: low** | **Effort: low** | Source: internal
 
 Scan interfaces matching a pattern (`*Repository`, `*Client`), check each has at least one implementation in test source set. InterfaceRegistry + test source filter — infrastructure exists.
 
@@ -498,12 +592,12 @@ Scan interfaces matching a pattern (`*Repository`, `*Client`), check each has at
 - **Concise "all clear" output**: When no violations found, one-liner confirmation instead of ~15 lines of guidance.
 
 ### `cnavContextUsage` — verify consistent test context usage
-**FUTURE** | **Value: low** | **Effort: medium** | Source: internal
+**PARKED** | **Value: low** | **Effort: medium** | Source: internal
 
 Check that test classes use a shared test context rather than constructing dependencies ad-hoc.
 
 ### `cnavInterfacePurity` — check interfaces use domain types
-**FUTURE** | **Value: low** | **Effort: medium** | Source: internal
+**PARKED** | **Value: low** | **Effort: medium** | Source: internal
 
 For interfaces matching a pattern, check method signatures reference only domain-package types (not DTO/infrastructure types).
 
@@ -519,7 +613,7 @@ Interpretation footers and notices (e.g. the `BALANCE_INTERPRETATION`/`COUPLING_
 Applies to: `cnavBalance`, `cnavCoupling`, `cnavRings`, `cnavCycles` (any task that appends an interpretation/notice today). Decide on a consistent shape (wrapper object vs. extra fields) before implementing.
 
 ### `test-involvement` line for cnavBalance
-**ACTIVE** | **Value: low** | **Effort: medium** | Source: field-test(bass-ra)
+**PARKED** | **Value: low** | **Effort: medium** | Source: field-test(bass-ra)
 
 The `test-involvement: N of M … involve test sources` line (printed when scope=all) was added to cnavCycles and cnavRings (emergent), which retain class-level edges end-to-end. cnavBalance was deferred: its public result (`BalanceEntry`/`BalanceOutput`) is package-level and `BalanceOrchestrator` consumes the class-level `extractResult.data` internally without surfacing it. To add the line for Balance, thread a test-involvement count out of the orchestrator (it already has the class-level deps + can build a `SourceSetResolver` from the unfiltered tagged dirs) into `BalanceOutput`, then render via `TestInvolvement.notice(...)`. Do this together with the JSON-hints refactor and the formatting-boundary cleanup so the count is rendered by the formatter, not concatenated in the task.
 
