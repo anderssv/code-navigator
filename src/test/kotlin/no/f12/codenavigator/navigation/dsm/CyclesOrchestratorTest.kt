@@ -69,4 +69,43 @@ class CyclesOrchestratorTest {
 
         assertTrue(output.details.isEmpty(), "Expected the simulated move to eliminate the cycle")
     }
+
+    @Test
+    fun `plan-file move drops only the newly same-package edge, not unrelated cross-package edges`() {
+        // A third class in its own package still calls Service. After moving Service into
+        // Controller's package, dropSamePackageEdges=true (the default used by cnavCycles/cnavDsm)
+        // must only drop the edge that became intra-package (api<->service) — not this unrelated one.
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/report/Reporter", "Reporter.kt",
+            "summarize", listOf(Call("com/example/service/Service", "process", "()V")),
+        )
+        val plan = listOf(PlanStep.Move(ClassName("com.example.service.Service"), PackageName("com.example.api")))
+
+        val dsmConfig = DsmConfig(
+            rootPackage = PackageName(""),
+            packageFilter = null,
+            includeExternal = false,
+            depth = 2,
+            htmlPath = null,
+            format = no.f12.codenavigator.config.OutputFormat.TEXT,
+            cyclesOnly = false,
+            cycleFilter = null,
+            scope = Scope.ALL,
+        )
+        val dsmOutput = DsmOrchestrator.run(dsmConfig, taggedDirs, plan, reportFile)
+
+        // Cell keys are truncated relative to the auto-detected root prefix ("com.example"),
+        // so "com.example.report" -> "com.example.api" shows up as "report" -> "api".
+        assertTrue(
+            dsmOutput.matrix.cells.containsKey(PackageName("report") to PackageName("api")),
+            "Reporter -> (moved) Service edge should survive — it was cross-package before and after the move",
+        )
+        assertTrue(
+            dsmOutput.matrix.cells.keys.none { (from, to) -> from == PackageName("api") && to == PackageName("api") },
+            "Controller <-> Service should not appear as a same-package cell once Service moves into api",
+        )
+
+        val cyclesOutput = CyclesOrchestrator.run(config(), taggedDirs, plan, reportFile)
+        assertTrue(cyclesOutput.details.isEmpty(), "Cycle should still be eliminated")
+    }
 }

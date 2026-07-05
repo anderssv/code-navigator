@@ -4,7 +4,14 @@
 
 ### New: `--fail-on-violation` CI gate for `cnavCycles` and `cnavRings`
 
-Both tasks can now fail the build when violations exceed a threshold: `--fail-on-violation=true --max-cycles=0` for cycles, `--fail-on-violation=true --max-violations=0` for rings (both `--mode=emergent` and `--mode=package`). Gradle throws `GradleException`, Maven throws `MojoFailureException`, after printing the normal output.
+Both tasks can now fail the build when violations exceed a threshold, so CI catches structural regressions instead of them drifting back in silently:
+
+```bash
+./gradlew cnavCycles --scope=prod --fail-on-violation=true --max-cycles=0
+./gradlew cnavRings  --scope=prod --fail-on-violation=true --max-violations=0
+```
+
+Works for `cnavRings` in both `--mode=emergent` and `--mode=package`. Raise `--max-cycles`/`--max-violations` above 0 to allow a known baseline while blocking further regressions, then ratchet the threshold down as violations are fixed. Gradle throws `GradleException`, Maven throws `MojoFailureException`, after printing the normal output.
 
 ### New: `cnavMoveSuggest` supports `--plan-file` what-if simulation
 

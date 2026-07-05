@@ -446,7 +446,7 @@ object TaskRegistry {
 
     val CYCLE_DETECTION = TaskDef(
         goal = "cycles",
-        description = "Detect dependency cycles using Tarjan's SCC algorithm",
+        description = "Detect dependency cycles using Tarjan's SCC algorithm. Supports --fail-on-violation for CI gating.",
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE, FAIL_ON_VIOLATION, MAX_CYCLES) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
@@ -796,7 +796,7 @@ object TaskRegistry {
 
     val RINGS = TaskDef(
         goal = "rings",
-        description = "Auto-detect hexagonal architecture rings and report violations. Use --mode=emergent for class-level ring detection based on import shapes.",
+        description = "Auto-detect hexagonal architecture rings and report violations. Use --mode=emergent for class-level ring detection based on import shapes. Supports --fail-on-violation for CI gating.",
         params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE, BOOTSTRAP_CONFIG, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
