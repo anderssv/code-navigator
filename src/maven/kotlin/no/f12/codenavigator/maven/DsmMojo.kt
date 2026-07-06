@@ -59,7 +59,7 @@ class DsmMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = DsmConfig.parse(TaskRegistry.DSM.enhanceProperties(buildPropertyMap()))
+        val config = DsmConfig.parse(TaskRegistry.DSM.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         config.deprecations().forEach { log.warn(it) }
 
         val taggedDirs = project.taggedClassDirectories()

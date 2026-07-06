@@ -43,7 +43,7 @@ class MoveSuggestMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = MoveSuggestConfig.parse(TaskRegistry.MOVE_SUGGEST.enhanceProperties(buildPropertyMap()))
+        val config = MoveSuggestConfig.parse(TaskRegistry.MOVE_SUGGEST.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

@@ -56,7 +56,7 @@ class CyclesMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = CyclesConfig.parse(TaskRegistry.CYCLE_DETECTION.enhanceProperties(buildPropertyMap()))
+        val config = CyclesConfig.parse(TaskRegistry.CYCLE_DETECTION.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         config.deprecations().forEach { log.warn(it) }
 
         val taggedDirs = project.taggedClassDirectories()

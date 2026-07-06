@@ -62,7 +62,7 @@ class MetricsMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.METRICS.enhanceProperties(buildPropertyMap())
+        val props = TaskRegistry.METRICS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
         val config = MetricsConfig.parse(props)
         config.deprecations().forEach { log.warn(it) }
 

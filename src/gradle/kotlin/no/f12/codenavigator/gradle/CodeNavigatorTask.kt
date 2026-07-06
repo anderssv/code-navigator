@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.config.CnavConfig
 import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.PlanStep
 import no.f12.codenavigator.navigation.dsm.PackageDependency
@@ -29,6 +30,9 @@ abstract class CodeNavigatorTask : DefaultTask() {
      * Builds the property map from @Option-annotated fields on this task.
      * Subclasses override [taskOptionsMap] to add task-specific options.
      * Also checks for legacy -P property usage and fails with a helpful message.
+     *
+     * cnav-config.json's `defaults` section is merged in underneath — explicit task options
+     * always win. See [CnavConfig].
      */
     protected fun buildOptionsMap(): Map<String, String?> {
         checkForLegacyProperties()
@@ -36,7 +40,7 @@ abstract class CodeNavigatorTask : DefaultTask() {
         format?.let { map["format"] = it }
         planFile?.let { map["plan-file"] = it }
         map.putAll(taskOptionsMap())
-        return map
+        return CnavConfig.applyDefaults(map, project.projectDir)
     }
 
     /**

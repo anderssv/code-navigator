@@ -51,7 +51,7 @@ class RingsMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.RINGS.enhanceProperties(buildPropertyMap())
+        val props = TaskRegistry.RINGS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
         val outputFormat = ParamDef.parseFormat(props)
         val scopeFilter = Scope.parse(props["scope"])
         val modeVal = props["mode"] ?: "emergent"

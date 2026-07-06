@@ -68,7 +68,7 @@ class DeadCodeMojo : AbstractMojo() {
             return
         }
 
-        val config = DeadCodeConfig.parse(TaskRegistry.DEAD.enhanceProperties(buildPropertyMap()))
+        val config = DeadCodeConfig.parse(TaskRegistry.DEAD.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val cacheDir = File(project.build.directory, "cnav")
         val result = CallGraphCache.getOrBuild(File(cacheDir, "call-graph.cache"), listOf(classesDir))

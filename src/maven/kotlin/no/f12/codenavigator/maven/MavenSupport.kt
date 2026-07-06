@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.CnavConfig
 import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.PlanStep
 import no.f12.codenavigator.navigation.types.SourceSet
@@ -38,6 +39,10 @@ fun MavenProject.taggedClassDirectories(): List<Pair<File, SourceSet>> {
 /** Parses a `--plan-file` (if given) into plan steps. Returns an empty list when absent. */
 fun loadPlanSteps(planFile: String?): List<PlanStep> =
     planFile?.let { PlanMutator.parseFile(File(it)) } ?: emptyList()
+
+/** Merges cnav-config.json's `defaults` section under [properties] — explicit mojo properties always win. See [CnavConfig]. */
+fun MavenProject.applyConfigDefaults(properties: Map<String, String?>): Map<String, String?> =
+    CnavConfig.applyDefaults(properties, basedir)
 
 fun MavenProject.resolveJar(jarValue: String): File {
     if (isArtifactCoordinate(jarValue)) {

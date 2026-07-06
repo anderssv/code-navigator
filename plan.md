@@ -305,82 +305,42 @@ Improve the default `--mode=package` to detect ring subpackages by their depende
 In emergent mode, report violations where a domain class (ring 0) within a package depends on an adapter class (ring 2) — upward dependencies within a package. Currently SCC collapse makes this hard to detect (cycles hide direction). May need pre-SCC edge analysis.
 
 ### `cnav-config.json` — consolidated project config (rings + modules + defaults)
-**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(greitt, v0.1.106)
+**PARTIALLY DONE** | **Value: high** | **Effort: medium** | Source: field-test(greitt, v0.1.106)
 
-Single config file with three top-level sections. Designed in one pass to avoid three parser iterations.
+One file, three top-level sections, sharing one location (`cnav-config.json` at project root) — but each section still has its own parser rather than a single unified one (see note at the end).
 
-**Problem**: Three separate config needs — (1) ring hints to correct classifier blind spots, (2) multi-module module discovery, (3) per-task defaults to eliminate repeated CLI flags. Each was scoped as a separate feature; sharing one file means one parser, one schema, one UX.
-
-**Schema**:
+**Actual current schema** (flat, not nested under a `"config"` wrapper):
 ```json
 {
-  "version": 1,
   "defaults": {
     "format": "llm",
     "scope": "prod",
-    "rootPackage": "no.mikill.greitt",
     "packageFilter": "no.mikill.greitt",
-    "ports": [".*Repository", ".*Client", ".*Port"],
-    "maxFanIn": 10,
     "excludeAnnotated": ["org.springframework.stereotype.Component"]
   },
-  "modules": {
-    "include": [":shared", ":service", ":web"],
-    "exclude": [":integration-test"],
-    "include-regex": ".*-module$",
-    "auto-discover": true
+  "ringNames": ["domain", "port", "application", "infrastructure", "web-output", "web-input", "composition-root"],
+  "hints": {
+    "domain": ["*Domain*", "*Event", "*Exception", "*Types"],
+    "port": ["*Port", "*Repository", "*Client"]
   },
-  "rings": {
-    "ringNames": ["domain", "port", "application", "infrastructure", "web-output", "web-input", "composition-root"],
-    "hints": {
-      "domain": ["*Domain*", "*Event", "*Exception", "*Types"],
-      "port": ["*Port", "*Repository", "*Client"],
-      "application": ["*Service", "*UseCase", "*Orchestrator"],
-      "infrastructure": ["*Impl", "*Config", "*Serializer", "*Generator", "*Renderer", "*Factory", "*Provider", "*Util*"],
-      "web-output": ["*Page", "*Component*"],
-      "web-input": ["*Route*", "*Routes", "*Controller", "*Endpoint"]
-    },
-    "overrides": {
-      "no.mikill.greitt.web.RoutePaths": "web-input"
-    }
+  "overrides": {
+    "no.mikill.greitt.web.RoutePaths": "web-input"
   }
 }
 ```
 
-**Sections**:
+**`rings` (hints/overrides/ringNames)** — **DONE**, predates this item. Fully implemented in `RingsHintsConfig` (loaded via `RingsHintsConfig.loadFromDirectory`), wired into `EmergentRingDetector`/`ClassRingClassifier`. `hints` sets a **minimum ring** by glob pattern on the simple class name (`Kt`/`Test` suffixes stripped) — never demotes, `actualRing = max(rawRing, hintMinimum)`. `overrides` (FQCN → ring name) take precedence over hints. `ringNames` sets display labels; order determines ring number (first = innermost). `cnavRings --bootstrap-config` generates a starting file from emergent detection. Covered by `RingsHintsConfigTest`.
 
-- **`defaults`** — Per-task CLI defaults applied before explicit params. Targets: `format` (all), `scope` (all structural), `packageFilter` (Dsm/Cycles/Rings/Metrics), `ports` (TestCoupling), `excludeAnnotated` (Dead), `maxFanIn` (MoveSuggest). **Concern**: implicit defaults hide active config — all output must show active defaults when config is in use.
+**`defaults`** — **DONE** (v0.1.112). New `CnavConfig.loadDefaults`/`applyDefaults` in core (`no.f12.codenavigator.config`) reads the `defaults` object as string values and merges it under a task's properties map — **any param name for any task works generically**, since it's just a key/value merge before `ParamDef.parseFrom(properties)` runs; there's no per-task allowlist, unmatched keys are silently ignored exactly like an unrecognized CLI flag. Precedence: explicit CLI options > `cnav-config.json` defaults > a task's own hardcoded `ParamDef` default.
+- **Gradle**: wired once, centrally, in `CodeNavigatorTask.buildOptionsMap()` — covers **every** Gradle task automatically, no per-task changes needed.
+- **Maven**: no shared base task exists (see orchestrator-extraction notes above), so each mojo needs an explicit `project.applyConfigDefaults(buildPropertyMap())` wrap (added to `MavenSupport.kt`). Wired so far only for the 7 mojos this plan item originally called out by name: `cnavDsm`, `cnavCycles`, `cnavRings`, `cnavMetrics`, `cnavTestCoupling`, `cnavDead`, `cnavMoveSuggest`. **The remaining ~30 Maven mojos do NOT yet read `cnav-config.json` defaults** — this is a known, documented gap (not a silent one), follow-up mechanical work.
+- Verified end-to-end against the real plugin (Gradle composite build) that a config default applies when no CLI flag is given, and that an explicit CLI flag still overrides it.
+- Not done: "always show active defaults in output header when config is in use" (original concern about implicit defaults hiding active config) — no output currently surfaces which defaults came from the file vs CLI vs hardcoded.
+- Also candidate but not implemented: `ci.maxCycles`/`ci.maxViolations` for the `--fail-on-violation` CI gate (raised in v0.1.111 field feedback) — works today via the generic mechanism (`{"defaults": {"max-cycles": "0"}}`), just not given dedicated `ci.*` schema treatment.
 
-  Candidate addition (raised in field feedback on the `--fail-on-violation` CI gate, v0.1.111): `ci.maxCycles`/`ci.maxViolations` so CI scripts don't have to carry `--max-cycles`/`--max-violations` as explicit flags on every invocation — the threshold lives in the committed config instead. `--fail-on-violation` itself would likely stay a CLI-only flag (it's the "am I running in CI" signal, not a project-level constant).
+**`modules`** — **NOT DONE**, blocked on multi-module support (separate ACTIVE item above) not existing yet; no consumer to wire it into.
 
-- **`modules`** — Multi-module include/exclude lists. `include` = explicit Gradle project paths or Maven artifact IDs. `exclude` = skip these. `include-regex` = pattern match. `auto-discover` = scan all subprojects that have the plugin applied.
-
-- **`rings`** — Ring hints and overrides (see semantics below). `ringNames` sets display labels. `hints` sets minimum ring by naming pattern. `overrides` sets FQCN-to-ring overrides.
-
-**Ring hints semantics**:
-
-- **`hints`**: Glob patterns matching simple class names (after stripping `Kt`/`Test` suffixes). Set a **minimum ring** for matching classes. If the graph calculates ring 0 but the class matches `*Serializer` (ring 2), it gets promoted to ring 2. Hints never demote. Actual ring = `max(graphRing, hintMinimum)`.
-- **`overrides`**: FQCN-to-ring mappings. Take precedence over hints. Only needed for 1-2 edge cases per project.
-- **`ringNames`**: Display labels for rings. Order determines ring number (first = innermost).
-
-**How the classifier changes**:
-
-1. Run emergent detection → `rawRings`
-2. Check `overrides` → if found, use that ring
-3. Check `hints` → if found, `max(rawRing, hintMinimum)`
-4. Otherwise keep `rawRing`
-
-**Implementation**:
-
-1. Add `CnavConfig` class — single JSON parser (Jackson or kotlinx.serialization). Parse all three sections.
-2. Add `--config-file` param to tasks (defaults to `cnav-config.json` at project root).
-3. Wire `defaults` into `*Config.parse()` methods — apply defaults BEFORE CLI params, CLI takes precedence.
-4. Wire `modules` into `MultiModuleResolver` include/exclude logic.
-5. Wire `rings` into `ClassRingClassifier.classify()` post-processing.
-6. Add `--generate-hints` mode to `cnavRings` — analyzes misclassifications and emits a suggested config.
-7. Always show active defaults in output header when config is loaded.
-
-**Ring hints — what they DON'T do**: No `peerLimit`, no `fail-on=upward`, no layer rules. They only fix heuristic blind spots. All ordering still comes from actual code structure.
+**Deferred cleanup**: literally merging `RingsHintsConfig` and `CnavConfig` into one parser (instead of two independent readers of the same file) was skipped to avoid risk to the already-tested rings-hints code path. Low priority — revisit only if the two ever need to share more logic than "read the same file."
 ### High violation count warning for `cnavRings`
 **PARKED** | **Value: low** | **Effort: low** | Source: internal
 
@@ -484,9 +444,9 @@ A method is "transitively dead" if all its callers are themselves dead. Iterate 
 `--baseline=<path>` parameter pointing to saved JSON output. On re-run, show diff. Alternative: just use `jq` to diff JSON externally.
 
 ### Dead code: flag methods called only from test scope
-**ACTIVE** | **Value: medium** | **Effort: low** | Source: internal
+**DONE (already implemented)** | **Value: medium** | **Effort: low** | Source: internal
 
-Use source set tagging (already available) to identify production methods/classes whose only callers are in the test source set. Quick win — source set tagging already exists, just needs a new confidence label and output filter.
+Already fully implemented — this plan item was stale. `DeadCodeReason.TEST_ONLY` (vs `NO_REFERENCES`), `ConfidenceScorer` downgrading test-only items to `MEDIUM` confidence, and `--scope=prod`/`--scope=test`/`--scope=all` filtering are all live and covered by `DeadCodeFinderTest` (`scope PROD filters out TEST_ONLY items`, `scope TEST filters to only TEST_ONLY items`, etc.). Landed back in the `testOnly` filter work (see `bcd6f42`, CHANGELOG "dead code reason tagging").
 
 ### Per-package health dashboard
 **FUTURE** | **Value: low** | **Effort: medium** | Source: internal
