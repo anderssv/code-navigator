@@ -30,7 +30,7 @@ object CallTreeMojoSupport {
         usageHint: String,
     ) {
         val config = try {
-            CallGraphConfig.parse(taskDef.enhanceProperties(properties))
+            CallGraphConfig.parse(taskDef.enhanceProperties(project.applyConfigDefaults(properties)))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(usageHint)
         }
@@ -49,7 +49,7 @@ object CallTreeMojoSupport {
         val methods = graph.findMethods(config.method)
 
         if (methods.isEmpty()) {
-            println("No methods found matching '${config.method}'")
+            println(OutputWrapper.emptyResult(config.format, "No methods found matching '${config.method}'"))
             return
         }
 

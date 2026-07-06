@@ -38,7 +38,7 @@ class RenameMethodMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            RenameMethodConfig.parse(TaskRegistry.RENAME_METHOD_TASK.enhanceProperties(buildPropertyMap()))
+            RenameMethodConfig.parse(TaskRegistry.RENAME_METHOD_TASK.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             println(OutputWrapper.emptyResult(OutputFormat.LLM, "rename-method failed: ${e.message}",
                 TaskRegistry.RENAME_METHOD_TASK.renderExamples(BuildTool.MAVEN)))

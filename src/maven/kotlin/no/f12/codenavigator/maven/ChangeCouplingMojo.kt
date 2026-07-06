@@ -43,7 +43,7 @@ class ChangeCouplingMojo : AbstractMojo() {
     private var top: String? = null
 
     override fun execute() {
-        val config = ChangeCouplingConfig.parse(TaskRegistry.COUPLING.enhanceProperties(buildPropertyMap()))
+        val config = ChangeCouplingConfig.parse(TaskRegistry.COUPLING.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val pairs = CouplingOrchestrator.run(config, project.basedir)
 

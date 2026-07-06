@@ -45,7 +45,7 @@ class TypeHierarchyMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            TypeHierarchyConfig.parse(TaskRegistry.TYPE_HIERARCHY.enhanceProperties(buildPropertyMap()))
+            TypeHierarchyConfig.parse(TaskRegistry.TYPE_HIERARCHY.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(e.message)
         }

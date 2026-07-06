@@ -51,7 +51,7 @@ class RankMojo : AbstractMojo() {
             return
         }
 
-        val config = RankConfig.parse(TaskRegistry.RANK.enhanceProperties(buildPropertyMap()))
+        val config = RankConfig.parse(TaskRegistry.RANK.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val result = CallGraphCache.getOrBuildTagged(File(project.build.directory, "cnav/call-graph.cache"), taggedDirs)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")

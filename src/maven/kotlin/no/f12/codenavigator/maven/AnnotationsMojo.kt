@@ -46,7 +46,7 @@ class AnnotationsMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            AnnotationQueryConfig.parse(TaskRegistry.ANNOTATIONS.enhanceProperties(buildPropertyMap()))
+            AnnotationQueryConfig.parse(TaskRegistry.ANNOTATIONS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "Missing required property. Usage: mvn cnav:annotations -Dpattern=<regex> [-Dmethods=true]",

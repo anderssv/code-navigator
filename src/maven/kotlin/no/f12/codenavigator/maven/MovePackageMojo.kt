@@ -37,7 +37,7 @@ open class MovePackageMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            MovePackageConfig.parse(TaskRegistry.MOVE_PACKAGE_TASK.enhanceProperties(buildPropertyMap()))
+            MovePackageConfig.parse(TaskRegistry.MOVE_PACKAGE_TASK.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             println(OutputWrapper.emptyResult(OutputFormat.LLM, "move-package failed: ${e.message}",
                 TaskRegistry.MOVE_PACKAGE_TASK.renderExamples(BuildTool.MAVEN)))

@@ -53,7 +53,7 @@ class BalanceMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = BalanceConfig.parse(TaskRegistry.BALANCE.enhanceProperties(buildPropertyMap()))
+        val config = BalanceConfig.parse(TaskRegistry.BALANCE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

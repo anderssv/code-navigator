@@ -48,7 +48,7 @@ class ClassDetailMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            FindClassDetailConfig.parse(TaskRegistry.CLASS_DETAIL.enhanceProperties(buildPropertyMap()))
+            FindClassDetailConfig.parse(TaskRegistry.CLASS_DETAIL.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "Missing required property 'pattern'. Usage: mvn cnav:class-detail -Dpattern=<regex>",

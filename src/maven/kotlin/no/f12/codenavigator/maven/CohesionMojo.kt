@@ -38,7 +38,7 @@ class CohesionMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = CohesionConfig.parse(TaskRegistry.COHESION.enhanceProperties(buildPropertyMap()))
+        val config = CohesionConfig.parse(TaskRegistry.COHESION.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

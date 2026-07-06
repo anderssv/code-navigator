@@ -36,7 +36,7 @@ class SafeDeleteMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            SafeDeleteConfig.parse(TaskRegistry.SAFE_DELETE_TASK.enhanceProperties(buildPropertyMap()))
+            SafeDeleteConfig.parse(TaskRegistry.SAFE_DELETE_TASK.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             println(OutputWrapper.emptyResult(OutputFormat.LLM, "safe-delete failed: ${e.message}",
                 TaskRegistry.SAFE_DELETE_TASK.renderExamples(BuildTool.MAVEN)))

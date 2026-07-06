@@ -42,7 +42,7 @@ class IntegrationStrengthMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = StrengthConfig.parse(TaskRegistry.STRENGTH.enhanceProperties(buildPropertyMap()))
+        val config = StrengthConfig.parse(TaskRegistry.STRENGTH.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

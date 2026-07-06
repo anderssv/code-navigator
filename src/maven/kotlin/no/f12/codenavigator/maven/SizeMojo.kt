@@ -32,7 +32,7 @@ class SizeMojo : AbstractMojo() {
     private var over: String? = null
 
     override fun execute() {
-        val config = FileSizeConfig.parse(TaskRegistry.SIZE.enhanceProperties(buildPropertyMap()))
+        val config = FileSizeConfig.parse(TaskRegistry.SIZE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
             .map { root -> File(root as String) }

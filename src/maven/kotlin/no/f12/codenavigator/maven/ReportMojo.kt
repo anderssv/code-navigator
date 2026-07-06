@@ -79,7 +79,7 @@ class ReportMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.REPORT.enhanceProperties(buildPropertyMap())
+        val props = TaskRegistry.REPORT.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
         val outputFormat = ParamDef.parseFormat(props)
         val scopeFilter = Scope.parse(props["scope"])
         val topN = props["top"]?.toIntOrNull() ?: 20

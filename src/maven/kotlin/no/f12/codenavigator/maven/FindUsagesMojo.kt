@@ -64,7 +64,7 @@ class FindUsagesMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            FindUsagesConfig.parse(TaskRegistry.FIND_USAGES.enhanceProperties(buildPropertyMap()))
+            FindUsagesConfig.parse(TaskRegistry.FIND_USAGES.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "${e.message}\n" +

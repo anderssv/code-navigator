@@ -36,7 +36,7 @@ class CodeAgeMojo : AbstractMojo() {
     private var noFollow: Boolean = false
 
     override fun execute() {
-        val config = CodeAgeConfig.parse(TaskRegistry.CODE_AGE.enhanceProperties(buildPropertyMap()))
+        val config = CodeAgeConfig.parse(TaskRegistry.CODE_AGE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
         val ages = CodeAgeBuilder.build(commits, LocalDate.now(), config.top)

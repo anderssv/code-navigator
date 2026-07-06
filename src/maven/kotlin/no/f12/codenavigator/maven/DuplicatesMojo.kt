@@ -36,7 +36,7 @@ class DuplicatesMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
-        val config = DuplicateConfig.parse(TaskRegistry.DUPLICATES.enhanceProperties(buildPropertyMap()))
+        val config = DuplicateConfig.parse(TaskRegistry.DUPLICATES.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val taggedSourceRoots = project.compileSourceRoots.map { File(it as String) to SourceSet.MAIN } +
             project.testCompileSourceRoots.map { File(it as String) to SourceSet.TEST }

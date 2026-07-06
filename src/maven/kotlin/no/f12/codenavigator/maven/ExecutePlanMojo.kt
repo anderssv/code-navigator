@@ -36,7 +36,7 @@ open class ExecutePlanMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            ExecutePlanConfig.parse(TaskRegistry.EXECUTE_PLAN_TASK.enhanceProperties(buildPropertyMap()))
+            ExecutePlanConfig.parse(TaskRegistry.EXECUTE_PLAN_TASK.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             println(OutputWrapper.emptyResult(OutputFormat.LLM, "execute-plan failed: ${e.message}",
                 TaskRegistry.EXECUTE_PLAN_TASK.renderExamples(BuildTool.MAVEN)))

@@ -36,7 +36,7 @@ class TypeAffinityMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = TypeAffinityConfig.parse(TaskRegistry.TYPE_AFFINITY.enhanceProperties(buildPropertyMap()))
+        val config = TypeAffinityConfig.parse(TaskRegistry.TYPE_AFFINITY.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         val scopeVal = Scope.parse(buildPropertyMap()["scope"])
 
         val taggedDirs = project.taggedClassDirectories()

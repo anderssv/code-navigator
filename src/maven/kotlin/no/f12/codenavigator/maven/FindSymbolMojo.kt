@@ -52,7 +52,7 @@ class FindSymbolMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            FindSymbolConfig.parse(TaskRegistry.FIND_SYMBOL.enhanceProperties(buildPropertyMap()))
+            FindSymbolConfig.parse(TaskRegistry.FIND_SYMBOL.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(e.message)
         }

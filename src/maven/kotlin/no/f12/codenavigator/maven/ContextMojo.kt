@@ -56,7 +56,7 @@ class ContextMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            ContextConfig.parse(TaskRegistry.CONTEXT.enhanceProperties(buildPropertyMap()))
+            ContextConfig.parse(TaskRegistry.CONTEXT.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "Missing required property 'pattern'. Usage: mvn cnav:context -Dpattern=<regex>",

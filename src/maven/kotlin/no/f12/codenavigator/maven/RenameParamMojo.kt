@@ -41,7 +41,7 @@ class RenameParamMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            RenameParamConfig.parse(TaskRegistry.RENAME_PARAM_TASK.enhanceProperties(buildPropertyMap()))
+            RenameParamConfig.parse(TaskRegistry.RENAME_PARAM_TASK.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             println(OutputWrapper.emptyResult(OutputFormat.LLM, "rename-param failed: ${e.message}",
                 TaskRegistry.RENAME_PARAM_TASK.renderExamples(BuildTool.MAVEN)))

@@ -60,7 +60,7 @@ class ComplexityMojo : AbstractMojo() {
         }
 
         val config = try {
-            ComplexityConfig.parse(TaskRegistry.COMPLEXITY.enhanceProperties(buildPropertyMap()))
+            ComplexityConfig.parse(TaskRegistry.COMPLEXITY.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(e.message)
         }

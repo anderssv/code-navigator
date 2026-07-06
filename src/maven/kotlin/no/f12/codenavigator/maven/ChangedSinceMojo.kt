@@ -46,7 +46,7 @@ class ChangedSinceMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = ChangedSinceConfig.parse(TaskRegistry.CHANGED_SINCE.enhanceProperties(buildPropertyMap()))
+        val config = ChangedSinceConfig.parse(TaskRegistry.CHANGED_SINCE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         if (config.ref == null) {
             log.error("Required parameter 'ref' not set. Usage: -Dref=<git-ref> (branch, tag, or commit SHA)")

@@ -40,7 +40,7 @@ class SuggestStructureMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = SuggestStructureConfig.parse(TaskRegistry.SUGGEST_STRUCTURE.enhanceProperties(buildPropertyMap()))
+        val config = SuggestStructureConfig.parse(TaskRegistry.SUGGEST_STRUCTURE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

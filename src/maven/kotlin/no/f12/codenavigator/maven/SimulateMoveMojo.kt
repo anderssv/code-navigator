@@ -53,7 +53,7 @@ class SimulateMoveMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = SimulateMoveConfig.parse(TaskRegistry.SIMULATE_MOVE.enhanceProperties(buildPropertyMap()))
+        val config = SimulateMoveConfig.parse(TaskRegistry.SIMULATE_MOVE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

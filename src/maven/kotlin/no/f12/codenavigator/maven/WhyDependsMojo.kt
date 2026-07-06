@@ -41,7 +41,7 @@ class WhyDependsMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = WhyDependsConfig.parse(buildPropertyMap())
+        val config = WhyDependsConfig.parse(project.applyConfigDefaults(buildPropertyMap()))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

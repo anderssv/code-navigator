@@ -46,7 +46,7 @@ class PackageDepsMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = PackageDepsConfig.parse(TaskRegistry.PACKAGE_DEPS.enhanceProperties(buildPropertyMap()))
+        val config = PackageDepsConfig.parse(TaskRegistry.PACKAGE_DEPS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

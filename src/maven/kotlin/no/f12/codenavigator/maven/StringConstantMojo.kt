@@ -40,7 +40,7 @@ class StringConstantMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = StringConstantConfig.parse(
-            TaskRegistry.FIND_STRING_CONSTANT.enhanceProperties(buildPropertyMap()),
+            TaskRegistry.FIND_STRING_CONSTANT.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())),
         )
 
         val taggedDirs = project.taggedClassDirectories()

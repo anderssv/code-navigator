@@ -46,7 +46,7 @@ class ListClassesMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = ListClassesConfig.parse(TaskRegistry.LIST_CLASSES.enhanceProperties(buildPropertyMap()))
+        val config = ListClassesConfig.parse(TaskRegistry.LIST_CLASSES.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val classes = if (config.jar != null) {
             val jarFile = project.resolveJar(config.jar!!)

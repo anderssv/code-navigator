@@ -44,7 +44,7 @@ class FindInterfaceImplsMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            FindInterfaceImplsConfig.parse(TaskRegistry.FIND_INTERFACES.enhanceProperties(buildPropertyMap()))
+            FindInterfaceImplsConfig.parse(TaskRegistry.FIND_INTERFACES.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(e.message)
         }
