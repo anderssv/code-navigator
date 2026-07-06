@@ -587,9 +587,9 @@ The `test-involvement: N of M … involve test sources` line (printed when scope
 All refactoring tasks (Gradle + Maven) now catch `IllegalArgumentException` on config parse and show `usageHint()` + `renderExamples()` instead of a raw stack trace.
 
 ### `TaskGuidance` — structured context output for all tasks
-**ACTIVE** | **Value: medium** | **Effort: high** | Source: internal
+**PARTIALLY DONE** | **Value: medium** | **Effort: high** | Source: internal
 
-When an LLM runs a task without context parameters, include guidance explaining what the task checks, how to determine the right parameter values, and how to read results.
+The `TaskGuidance` data class already exists (`no.f12.codenavigator.formatting.TaskGuidance`, 13 lines: `purpose`/`parameterGuidance`/`interpretation`) and has exactly one real instance — `TestCouplingGuidance.GUIDANCE`, used by `TestCouplingTask`/`TestCouplingMojo` via `OutputWrapper.wrapWithGuidance(...)`. That's a working precedent, not the full rollout — the plan's actual ask ("for all tasks", "replaces scattered `*_INTERPRETATION` constants") hasn't happened. The scattered `*_INTERPRETATION` constants (balance, coupling, rings, etc.) are still scattered. Remaining work: define a `TaskGuidance` instance per task and wire it into the no-params fallback / LLM header uniformly, following the `TestCouplingGuidance` pattern.
 
 ```kotlin
 data class TaskGuidance(
@@ -598,8 +598,6 @@ data class TaskGuidance(
     val interpretation: String,
 )
 ```
-
-Replaces scattered `*_INTERPRETATION` constants with single source of truth per task. Reused in LLM output header, AgentHelpText, and no-params fallback.
 
 ### ~~Refactoring result LLM hints for follow-up actions~~ — DONE (v0.1.105-SNAPSHOT)
 **DONE** | **Value: medium** | **Effort: low** | Source: internal
@@ -617,9 +615,9 @@ Covered: `generateCompact()` has "When Refactoring" block (line 150) + "Common R
 Searching for `@Test` returns empty without `--methods=true`. Workaround is easy (pass the flag). Auto-enable when results are empty.
 
 ### `cnavFindCallees`: hide library internals by default
-**ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra, v0.1.97)
+**DONE (already implemented)** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra, v0.1.97)
 
-Output noisy for methods calling Java library code. Collapse or hide library-internal methods by default (`--project-only`).
+Stale — already resolved. `PROJECTONLY` (`--project-only`) defaults to `"true"` (`ParamDef` default value, description literally says "Hide JDK/stdlib/library classes (default: on)") and is included in both `FIND_CALLEES` and `FIND_CALLERS`' param lists with no override, so `CallGraphConfig.projectOnly` is `true` unless a caller explicitly passes `--project-only=false`. Verified by reading `CallGraphConfig.parse` → `TaskRegistry.PROJECTONLY.parseFrom(properties)` and the filter application in `buildFilter()`. No code change needed.
 
 ### `cnavFindCallees` callee explosion
 **ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(v0.1.47)
