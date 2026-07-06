@@ -371,6 +371,8 @@ Now that `cnavRenameMethod` has been migrated to PSI (v0.1.90), the compiler int
 
 Inspired by [Martin](https://github.com/audunstrand/martin) by Audun Fauchald Strand.
 
+**Catalog updated**: `cnavSafeDelete` and `cnavChangeSignature` (steps 3 and 5 below) are already implemented (`SafeDeleteTask`/`SafeDeleteMojo`, `ChangeSignatureTask`/`ChangeSignatureMojo`, both with `*WorkAction` PSI editors) — struck from the remaining work, kept in the order list for context. Nothing else in the full catalog exists yet (confirmed: no `extract-*`, `convert-to-*`, `inline`, `add-named-arguments`, `introduce-parameter-object`, `pull-up-method`, `replace-constructor-with-factory`, or `encapsulate-field` goals registered in `TaskRegistry`).
+
 **Effort key (post-PSI migration):**
 - **Low** = PSI tree walking + text replacement, no type resolution needed.
 - **Medium** = Needs bytecode-guided location finding or cross-file coordination.
@@ -379,9 +381,9 @@ Inspired by [Martin](https://github.com/audunstrand/martin) by Audun Fauchald St
 **Recommended implementation order (quick wins first):**
 1. `cnavConvertToExpressionBody` / `cnavConvertToBlockBody` — trivial, validates pattern (low)
 2. `cnavExtractVariable` / `cnavExtractConstant` — single-file (low)
-3. `cnavSafeDelete` — leverages existing dead code detection (low)
+3. ~~`cnavSafeDelete`~~ — **DONE**, leverages existing dead code detection (low)
 4. `cnavConvertToDataClass` — single-file with PSI validation (low)
-5. `cnavChangeSignature` — reuses RenameLocationFinder, high value for agents (medium)
+5. ~~`cnavChangeSignature`~~ — **DONE**, reuses RenameLocationFinder, high value for agents (medium)
 6. `cnavExtractParameter` — combines single-file + cross-file (medium)
 7. `cnavExtractInterface` — medium, high value for architecture improvements
 
@@ -400,7 +402,7 @@ Inline / simplify:
 - `cnavConvertToExpressionBody` / `cnavConvertToBlockBody` (low)
 
 Signature & structure:
-- `cnavChangeSignature` (medium)
+- ~~`cnavChangeSignature`~~ — **DONE** (medium)
 - `cnavAddNamedArguments` (medium)
 - `cnavIntroduceParameterObject` (medium)
 - `cnavPullUpMethod` (medium)
@@ -414,7 +416,7 @@ Type conversions:
 - `cnavConvertPropertyToFunction` (medium)
 
 Safety:
-- `cnavSafeDelete` (low)
+- ~~`cnavSafeDelete`~~ — **DONE** (low)
 - `cnavEncapsulateField` (medium)
 
 **Notes:**
@@ -441,9 +443,9 @@ A method is "transitively dead" if all its callers are themselves dead. Iterate 
 - Confidence levels: `DEAD` (zero callers), `TRANSITIVELY_DEAD` (all callers dead), `TEST_ONLY` (only test callers), `SHRINKING` (declining caller trend).
 
 ### `cnavDead` baseline diff — confirm cleanup was complete
-**FUTURE** | **Value: low** | **Effort: low** | Source: internal
+**DONE (already implemented)** | **Value: low** | **Effort: low** | Source: internal
 
-`--baseline=<path>` parameter pointing to saved JSON output. On re-run, show diff. Alternative: just use `jq` to diff JSON externally.
+Stale — already fully built. `--baseline=<path>` parameter exists on `cnavDead` (Gradle: `DeadCodeTask`), reads a previous `cnavDead` JSON output via `DeadCodeBaselineDiff.parseBaseline`/`.compare`, and renders removed/remaining/new dead code via `DeadCodeBaselineDiffFormatter` for all three output formats. Covered by `DeadCodeBaselineDiffTest`.
 
 ### Dead code: flag methods called only from test scope
 **DONE (already implemented)** | **Value: medium** | **Effort: low** | Source: internal
@@ -814,19 +816,19 @@ Self-analysis found: `CallGraphCache.build()`, `ClassIndexCache.build()`, `Inter
 - **Cover `LlmFormatter`/`JsonFormatter` uncovered branches** — primary agent-facing formatters at ~80%.
 
 ### Break `formatting` ↔ `navigation.relations` cycle
-**PARKED** | **Value: medium** | **Effort: low** | Source: internal
+**DONE (already implemented)** | **Value: medium** | **Effort: low** | Source: internal
 
-Move `UsageFormatterTest` to `formatting` test package.
+Stale — already resolved. `UsageFormatterTest` lives at `src/test/kotlin/no/f12/codenavigator/formatting/UsageFormatterTest.kt`; only one copy exists in the whole repo.
 
 ### Move misplaced root-package test classes
-**PARKED** | **Value: low** | **Effort: low** | Source: internal
+**DONE (already implemented)** | **Value: low** | **Effort: low** | Source: internal
 
-`ClassFileStalenessTest`, `TaskDefTest`, `TaskRegistryTest` etc. belong in sub-packages.
+Stale — already resolved. `ClassFileStalenessTest` and `TaskRegistryTest` now live under `no.f12.codenavigator.registry` (matching their production classes); `TaskDefTest` no longer exists as a separate file. Only 3 files remain in the root `no.f12.codenavigator` test package — `AgentHelpTextTest`, `ConfigHelpTextTest`, `HelpTextTest` — and those are legitimately root-level (they test the plugin's own root-level help generators, not misplaced).
 
 ### Fix DANGER balance: root package → callgraph/implementors
-**PARKED** | **Value: medium** | **Effort: low** | Source: internal(v0.1.83)
+**LIKELY DONE (unverified)** | **Value: medium** | **Effort: low** | Source: internal(v0.1.83)
 
-Root package references concrete callgraph/implementor types. May resolve when misplaced test classes are moved.
+Likely resolved as a side effect of the item above — production code in the root `no.f12.codenavigator` package is now only 3 help-text generators (`HelpText`, `AgentHelpText`, `ConfigHelpText`), none of which `import` any `callgraph`/`implementor` type (only prose mentions in help strings). Not confirmed by actually re-running `cnavBalance` against this repo — do that before fully closing this out, since the original finding was root package → concrete callgraph/implementor **type coupling**, not just file placement.
 
 ### Evaluate other JVM languages to support
 **PARKED** | **Value: medium** | **Effort: low (research)** | Source: internal
