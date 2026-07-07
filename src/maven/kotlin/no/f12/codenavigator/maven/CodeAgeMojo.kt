@@ -42,7 +42,7 @@ class CodeAgeMojo : AbstractMojo() {
         val ages = CodeAgeBuilder.build(commits, LocalDate.now(), config.top)
 
         if (ages.isEmpty()) {
-            println("No files found.")
+            println(OutputWrapper.emptyResult(config.format, "No files found."))
             return
         }
 

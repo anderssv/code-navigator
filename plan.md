@@ -775,6 +775,26 @@ Fixed both concrete offenders named below (v0.1.112). `CyclesOrchestrator`/`Ring
 
 Neither `--mode=package` nor `--mode=emergent` produce structured JSON — both return the same prose `RingFormatter`/`EmergentRingFormatter` text wrapped in markers regardless of `--format`. Needs a real `JsonFormatter.formatRings(assignment)` / `formatEmergentRings(result)` pair (ring assignments, violations, mixed-ring packages, hints-applied flag, test-involvement) — the same shape of work the `cnavCycles` JSON field fix above just did for cycles. Natural follow-on to "Interpretation/hint fields in JSON output" below, and to the `JsonFormatter`/`LlmFormatter` split.
 
+### ~~Maven empty-result paths bypass OutputWrapper~~ — DONE (v0.1.112)
+**DONE** | **Value: high** | **Effort: low** | Source: internal (pattern audit after the formatting-layer boundary fix)
+
+Found systemically while auditing for other pattern deviations: 13 Maven mojos used a raw `println("...")` on their no-results path instead of `OutputWrapper.emptyResult(config.format, ...)` — confirmed every Gradle counterpart did it correctly. Silently broke `--format=json`/`--format=llm` (no `CNAV_BEGIN`/`CNAV_END` markers, non-JSON body) whenever the result set was empty, Maven-only. Fixed in: `AuthorAnalysisMojo`, `ChangedSinceMojo` (2 spots), `ClassDetailMojo`, `CodeAgeMojo`, `ChurnMojo`, `ContextMojo`, `ComplexityMojo`, `DeadCodeMojo`, `FindInterfaceImplsMojo`, `HotspotsMojo`, `RankMojo`, `PackageDepsMojo`, `StringConstantMojo`, `TypeHierarchyMojo`. Verified live via a local `mvn install` + scratch project: `find-interfaces`/`complexity` with no matches now correctly emit `{"results":[],"hints":[]}` wrapped in markers under `--format=json`.
+
+### `CallTreeTaskSupport`/`CallTreeMojoSupport` duplicate the find-callers/find-callees pipeline
+**ACTIVE** | **Value: medium** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
+
+Unlike `cnavCycles`/`cnavRings`/`cnavDsm`/etc., `find-callers`/`find-callees` have no shared core orchestrator — `CallTreeTaskSupport` (Gradle-only, `src/gradle/`) and `CallTreeMojoSupport` (Maven-only, `src/maven/`) each independently implement the full pipeline (call graph build, method matching, tree building, formatting). They've already drifted: Maven applies `enhanceProperties`/`applyConfigDefaults` *inside* the shared support function; Gradle applies both at the caller (`FindCallersTask`/`FindCalleesTask`) before ever calling into `CallTreeTaskSupport`. Currently harmless (both end up correct), but it's exactly the shape of asymmetry that turned into the real `--plan-file` no-op bug elsewhere. Fix: extract a core `CallTreeOrchestrator` (or similar) that both `CallTreeTaskSupport`/`CallTreeMojoSupport` become thin adapters over, following the pattern already used for cycles/rings/dsm/metrics/volatility/coupling/type-affinity.
+
+### `ContextTask`/`ContextMojo` duplicate their pipeline — no shared orchestrator
+**ACTIVE** | **Value: medium** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
+
+`cnavContext` ("class detail + callers + callees + interfaces in one call") has no core orchestrator either — `ContextTask` and `ContextMojo` each inline the full extraction pipeline independently (~145/~130 lines respectively, near-identical). This was also one of the 13 mojos with the `println`-bypasses-`OutputWrapper` bug above, which is exactly the kind of thing a shared orchestrator would have made structurally impossible to get wrong on one side only. Same fix shape as the `CallTreeTaskSupport` item above.
+
+### `cnavReport` has no real JSON output format
+**PARKED** | **Value: low** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
+
+`ReportTask`/`ReportMojo` also echo the same rendered string across all three `when (format) { TEXT,DIFF -> output; JSON -> output; LLM -> output }` branches — the same shape as the `cnavRings` JSON gap above. Likely lower priority: `cnavReport` is a composite markdown aggregator of other tasks' output (which themselves may or may not have real JSON), so "real JSON for the composite report" is a bigger design question (aggregate the sub-results structurally, not their rendered text) rather than a quick formatter fix. Parked until `cnavRings`' JSON gap is addressed first, since Report includes Rings' output.
+
 ### Review implementations for spread logic + shared lookup extraction
 **ACTIVE** | **Value: medium** | **Effort: high** | Source: internal
 

@@ -63,7 +63,7 @@ class ChangedSinceMojo : AbstractMojo() {
 
         val gitPaths = GitDiffRunner.run(project.basedir, config.ref!!)
         if (gitPaths.isEmpty()) {
-            println("No changed files since ${config.ref}.")
+            println(OutputWrapper.emptyResult(config.format, "No changed files since ${config.ref}."))
             return
         }
 
@@ -76,10 +76,10 @@ class ChangedSinceMojo : AbstractMojo() {
 
         if (resolution.resolved.isEmpty()) {
             if (resolution.unresolved.isNotEmpty()) {
-                println("${resolution.unresolved.size} changed file(s), none mapped to project classes:")
-                resolution.unresolved.forEach { println("  $it") }
+                val msg = "${resolution.unresolved.size} changed file(s), none mapped to project classes:\n${resolution.unresolved.joinToString("\n") { "  $it" }}"
+                println(OutputWrapper.emptyResult(config.format, msg))
             } else {
-                println("No changed files since ${config.ref}.")
+                println(OutputWrapper.emptyResult(config.format, "No changed files since ${config.ref}."))
             }
             return
         }

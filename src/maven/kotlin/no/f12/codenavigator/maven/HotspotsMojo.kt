@@ -44,7 +44,7 @@ class HotspotsMojo : AbstractMojo() {
         val hotspots = HotspotBuilder.build(commits, config.minRevs, config.top)
 
         if (hotspots.isEmpty()) {
-            println("No hotspots found.")
+            println(OutputWrapper.emptyResult(config.format, "No hotspots found."))
             return
         }
 

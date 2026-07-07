@@ -75,7 +75,7 @@ class TypeHierarchyMojo : AbstractMojo() {
         val results = allResults.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         if (results.isEmpty()) {
-            println("No classes found matching '${config.pattern}'")
+            println(OutputWrapper.emptyResult(config.format, "No classes found matching '${config.pattern}'"))
             return
         }
 

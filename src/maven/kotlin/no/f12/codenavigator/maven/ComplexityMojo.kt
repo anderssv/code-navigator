@@ -80,7 +80,7 @@ class ComplexityMojo : AbstractMojo() {
         val truncated = filtered.take(config.top)
 
         if (truncated.isEmpty()) {
-            println("No matching classes found.")
+            println(OutputWrapper.emptyResult(config.format, "No matching classes found."))
             return
         }
 

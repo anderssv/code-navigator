@@ -41,7 +41,7 @@ class ChurnMojo : AbstractMojo() {
         val churn = ChurnBuilder.build(commits, config.top)
 
         if (churn.isEmpty()) {
-            println("No churn data found.")
+            println(OutputWrapper.emptyResult(config.format, "No churn data found."))
             return
         }
 

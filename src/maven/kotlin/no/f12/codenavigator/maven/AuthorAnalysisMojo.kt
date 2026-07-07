@@ -44,7 +44,7 @@ class AuthorAnalysisMojo : AbstractMojo() {
         val modules = AuthorAnalysisBuilder.build(commits, config.minRevs, config.top)
 
         if (modules.isEmpty()) {
-            println("No files found.")
+            println(OutputWrapper.emptyResult(config.format, "No files found."))
             return
         }
 

@@ -70,7 +70,7 @@ class PackageDepsMojo : AbstractMojo() {
         val packages = if (config.packagePattern != null) {
             val matches = deps.findPackages(config.packagePattern)
             if (matches.isEmpty()) {
-                println("No packages found matching '${config.packagePattern}'")
+                println(OutputWrapper.emptyResult(config.format, "No packages found matching '${config.packagePattern}'"))
                 return
             }
             matches

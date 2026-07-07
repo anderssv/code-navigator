@@ -88,7 +88,7 @@ class ClassDetailMojo : AbstractMojo() {
         }
 
         if (matchingDetails.isEmpty()) {
-            println("No classes found matching '${config.pattern}'")
+            println(OutputWrapper.emptyResult(config.format, "No classes found matching '${config.pattern}'"))
             return
         }
 

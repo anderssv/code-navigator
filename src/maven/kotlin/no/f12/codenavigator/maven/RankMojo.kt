@@ -62,7 +62,7 @@ class RankMojo : AbstractMojo() {
         val filtered = ranked.filter { graph.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         if (filtered.isEmpty()) {
-            println("No ranked types found.")
+            println(OutputWrapper.emptyResult(config.format, "No ranked types found."))
             return
         }
 

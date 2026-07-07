@@ -101,7 +101,7 @@ class DeadCodeMojo : AbstractMojo() {
         ))
 
         if (dead.isEmpty()) {
-            println("No potential dead code found.")
+            println(OutputWrapper.emptyResult(config.format, "No potential dead code found."))
             return
         }
 

@@ -57,7 +57,7 @@ class StringConstantMojo : AbstractMojo() {
         val matches = result.data.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         if (matches.isEmpty()) {
-            println("No string constants matching '${config.pattern.pattern}' found.")
+            println(OutputWrapper.emptyResult(config.format, "No string constants matching '${config.pattern.pattern}' found."))
             return
         }
 

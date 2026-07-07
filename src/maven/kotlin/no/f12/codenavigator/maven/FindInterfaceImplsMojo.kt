@@ -66,7 +66,7 @@ class FindInterfaceImplsMojo : AbstractMojo() {
         val matchingInterfaces = registry.findInterfaces(config.pattern)
 
         if (matchingInterfaces.isEmpty()) {
-            println("No interfaces found matching '${config.pattern}'")
+            println(OutputWrapper.emptyResult(config.format, "No interfaces found matching '${config.pattern}'"))
             return
         }
 
