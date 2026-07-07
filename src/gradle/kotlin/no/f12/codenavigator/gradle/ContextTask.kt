@@ -7,17 +7,9 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
-import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
-import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
-import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
-import no.f12.codenavigator.navigation.relations.callgraph.CallTreeBuilder
-import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
-import no.f12.codenavigator.navigation.classinfo.ClassDetailScanner
-import no.f12.codenavigator.navigation.context.ContextBuilder
 import no.f12.codenavigator.navigation.context.ContextConfig
 import no.f12.codenavigator.navigation.context.ContextFormatter
-import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistryCache
+import no.f12.codenavigator.navigation.context.ContextOrchestrator
 
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.Internal
@@ -68,76 +60,22 @@ abstract class ContextTask : CodeNavigatorTask() {
         }
 
         val taggedDirs = project.taggedClassDirectories()
-        val classDirectories = taggedDirs.map { it.first }
+        val cacheDir = File(project.layout.buildDirectory.asFile.get(), "cnav")
+        val output = ContextOrchestrator.run(config, taggedDirs, cacheDir)
 
-        val classResult = ClassDetailScanner.scan(classDirectories, config.pattern)
-        val classReportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        SkippedFileReporter.report(classResult.skippedFiles, classReportFile)?.let { logger.warn(it) }
-        val matchingDetails = classResult.data
+        output.skippedFileWarnings.forEach { logger.warn(it) }
 
-        if (matchingDetails.isEmpty()) {
+        if (output.results.isEmpty()) {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No classes found matching '${config.pattern}'"))
             return
-        }
-
-        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/call-graph.cache")
-        val graphResult = CallGraphCache.getOrBuildTagged(cacheFile, taggedDirs)
-        SkippedFileReporter.report(graphResult.skippedFiles, classReportFile)?.let { logger.warn(it) }
-        val graph = graphResult.data
-
-        val interfaceRegistry = InterfaceRegistryCache.getOrBuild(
-            File(project.layout.buildDirectory.asFile.get(), "cnav/interface-registry.cache"),
-            classDirectories,
-        ).data
-        val interfaceImplementors = interfaceRegistry.implementorMap()
-        val classToInterfaces = interfaceRegistry.classToInterfacesMap()
-
-        val annotations = AnnotationExtractor.scanAll(classDirectories)
-        val filter = config.buildFilter(graph)
-
-        val results = matchingDetails.map { classDetail ->
-            val methods = classDetail.methods.map { method ->
-                MethodRef(classDetail.className, method.name)
-            }
-
-            val callers = CallTreeBuilder.build(
-                graph, methods, config.maxDepth, CallDirection.CALLERS, filter,
-                interfaceImplementors = interfaceImplementors,
-                classToInterfaces = classToInterfaces,
-                classAnnotations = annotations.classAnnotations,
-                methodAnnotations = annotations.methodAnnotations,
-                classAnnotationParameters = annotations.classAnnotationParameters,
-                methodAnnotationParameters = annotations.methodAnnotationParameters,
-            )
-
-            val callees = CallTreeBuilder.build(
-                graph, methods, config.maxDepth, CallDirection.CALLEES, filter,
-                interfaceImplementors = interfaceImplementors,
-                classToInterfaces = classToInterfaces,
-                classAnnotations = annotations.classAnnotations,
-                methodAnnotations = annotations.methodAnnotations,
-                classAnnotationParameters = annotations.classAnnotationParameters,
-                methodAnnotationParameters = annotations.methodAnnotationParameters,
-            )
-
-            val implementors = interfaceRegistry.implementorsOf(classDetail.className)
-            val implementedInterfaces = interfaceRegistry.interfacesOf(classDetail.className).sorted().toList()
-
-            ContextBuilder.build(
-                classDetail = classDetail,
-                callers = callers,
-                callees = callees,
-                implementors = implementors,
-                implementedInterfaces = implementedInterfaces,
-            )
         }
 
         logger.lifecycle(
             OutputWrapper.formatAndWrap(config.format) { format ->
                 when (format) {
-                    OutputFormat.TEXT, OutputFormat.DIFF -> results.joinToString("\n\n") { ContextFormatter.format(it) }
-                    OutputFormat.JSON -> "[${results.joinToString(",") { JsonFormatter.formatContext(it) }}]"
-                    OutputFormat.LLM -> results.joinToString("\n\n") { LlmFormatter.formatContext(it) }
+                    OutputFormat.TEXT, OutputFormat.DIFF -> output.results.joinToString("\n\n") { ContextFormatter.format(it) }
+                    OutputFormat.JSON -> "[${output.results.joinToString(",") { JsonFormatter.formatContext(it) }}]"
+                    OutputFormat.LLM -> output.results.joinToString("\n\n") { LlmFormatter.formatContext(it) }
                 }
             },
         )

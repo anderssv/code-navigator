@@ -788,9 +788,11 @@ Extracted `CallTreeOrchestrator` (core, `navigation.relations.callgraph`) — ca
 Verified live for both build tools (Gradle composite build + local `mvn install` scratch project): a real caller/callee match and a no-match (`--format=json`) both produce identical, correct output through the shared orchestrator. New test: `CallTreeOrchestratorTest`.
 
 ### `ContextTask`/`ContextMojo` duplicate their pipeline — no shared orchestrator
-**ACTIVE** | **Value: medium** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
+**DONE (v0.1.112)** | **Value: medium** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
 
-`cnavContext` ("class detail + callers + callees + interfaces in one call") has no core orchestrator either — `ContextTask` and `ContextMojo` each inline the full extraction pipeline independently (~145/~130 lines respectively, near-identical). This was also one of the 13 mojos with the `println`-bypasses-`OutputWrapper` bug above, which is exactly the kind of thing a shared orchestrator would have made structurally impossible to get wrong on one side only. Same fix shape as the `CallTreeTaskSupport` item above.
+Extracted `ContextOrchestrator` (core, `navigation.context`) — class detail scan, call-graph build, interface registry, annotation scan, and the per-class caller/callee/implementor assembly all now live once. Both skipped-file reports (class scan and call-graph build report independently, as before) surface as a `List<String>` on the output rather than being logged inline mid-pipeline, so the Task/Mojo just iterates and warns. `ContextTask`/`ContextMojo` are now thin adapters: config-parse error wrapping (`GradleException` vs `MojoFailureException`) and the Maven-only `taggedDirs.isEmpty()` pre-check stay build-tool-specific, everything else is one shared function.
+
+Verified live for both build tools (Gradle composite build + local `mvn install` scratch project): a real match (class detail + caller/callee tree) and a `--format=json` no-match both produce correct, matching output. New test: `ContextOrchestratorTest`.
 
 ### `cnavReport` has no real JSON output format
 **PARKED** | **Value: low** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
