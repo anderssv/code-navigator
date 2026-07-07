@@ -1,6 +1,7 @@
 package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.dsm.EmergentRingFormatter
 import no.f12.codenavigator.navigation.dsm.EmergentRingsOutput
@@ -85,13 +86,19 @@ class RingsMojo : AbstractMojo() {
 
     private fun renderPackage(output: PackageRingsOutput, format: OutputFormat): Pair<String, Int> {
         output.skippedFileWarning?.let { log.warn(it) }
-        val rings = RingFormatter.format(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE, format = format)
+        val rings = when (format) {
+            OutputFormat.JSON -> JsonFormatter.formatRings(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE)
+            else -> RingFormatter.format(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE, format = format)
+        }
         return rings to output.assignment.violations.size
     }
 
     private fun renderEmergent(output: EmergentRingsOutput, format: OutputFormat): Pair<String, Int> {
         output.skippedFileWarning?.let { log.warn(it) }
-        val rings = EmergentRingFormatter.format(output.result, output.ringNames, hasHints = output.hasHints, format = format, testInvolvement = output.testInvolvement)
+        val rings = when (format) {
+            OutputFormat.JSON -> JsonFormatter.formatEmergentRings(output.result, output.ringNames, hasHints = output.hasHints, testInvolvement = output.testInvolvement)
+            else -> EmergentRingFormatter.format(output.result, output.ringNames, hasHints = output.hasHints, format = format, testInvolvement = output.testInvolvement)
+        }
         return rings to output.result.violations.size
     }
 

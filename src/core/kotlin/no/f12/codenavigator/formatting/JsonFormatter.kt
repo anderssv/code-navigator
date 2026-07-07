@@ -24,6 +24,8 @@ import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.dsm.CycleDetail
+import no.f12.codenavigator.navigation.dsm.ClassRingAssignment
+import no.f12.codenavigator.navigation.dsm.RingAssignment
 import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.navigation.deadcode.DeadCode
@@ -424,6 +426,99 @@ object JsonFormatter {
             JsonRaw(jsonObject("testInvolved" to it.testInvolved, "total" to it.total))
         }
         return jsonObject("displayPrefix" to prefix, "cycles" to JsonRaw(cyclesJson), "testInvolvement" to testInvolvementJson)
+    }
+
+    fun formatRings(
+        result: RingAssignment,
+        ringNames: Map<Int, String> = emptyMap(),
+        configNotice: String? = null,
+    ): String {
+        val ringLabel: (Int) -> String = { ring -> ringNames[ring] ?: if (ring == 0) "domain" else "ring $ring" }
+
+        val ringsJson = jsonArray(result.rings.entries.sortedWith(compareBy({ it.value }, { it.key.toString() }))) { (pkg, ring) ->
+            jsonObject(
+                "package" to pkg.toString(),
+                "ring" to ring,
+                "ringName" to ringLabel(ring),
+                "isCompositionRoot" to (pkg in result.compositionRoots),
+            )
+        }
+
+        val filteredViolations = result.violations.filter { v ->
+            v.sourcePackage !in result.compositionRoots && v.targetPackage !in result.compositionRoots
+        }
+        val violationsJson = jsonArray(filteredViolations) { v ->
+            jsonObject(
+                "type" to v.type.name,
+                "sourcePackage" to v.sourcePackage.toString(),
+                "targetPackage" to v.targetPackage.toString(),
+                "sourceRing" to v.sourceRing,
+                "targetRing" to v.targetRing,
+            )
+        }
+
+        return jsonObject(
+            "rings" to JsonRaw(ringsJson),
+            "violations" to JsonRaw(violationsJson),
+            "configNotice" to configNotice,
+        )
+    }
+
+    fun formatEmergentRings(
+        result: ClassRingAssignment,
+        ringNames: Map<Int, String> = emptyMap(),
+        hasHints: Boolean = false,
+        testInvolvement: TestInvolvement.Counts? = null,
+    ): String {
+        val ringLabel: (Int) -> String = { ring -> ringNames[ring] ?: if (ring == 0) "domain" else "ring $ring" }
+
+        val classRingsJson = jsonArray(result.classRings.entries.sortedWith(compareBy({ it.value }, { it.key.toString() }))) { (className, ring) ->
+            jsonObject(
+                "className" to className.toString(),
+                "ring" to ring,
+                "ringName" to ringLabel(ring),
+            )
+        }
+
+        val mixedPackages = result.packageSummary.filter { it.value.isMixedRing }.toSortedMap()
+        val mixedPackagesJson = jsonArray(mixedPackages.entries.toList()) { (pkg, summary) ->
+            jsonObject(
+                "package" to pkg.toString(),
+                "minRing" to summary.minRing,
+                "maxRing" to summary.maxRing,
+                "classesByRing" to JsonRaw(
+                    jsonArray(summary.classesByRing.toSortedMap().entries.toList()) { (ring, classes) ->
+                        jsonObject(
+                            "ring" to ring,
+                            "ringName" to ringLabel(ring),
+                            "classes" to JsonRaw(jsonStringArray(classes.sorted().map { it.toString() })),
+                        )
+                    },
+                ),
+            )
+        }
+
+        val violationsJson = jsonArray(result.violations) { v ->
+            jsonObject(
+                "type" to v.type.name,
+                "sourceClass" to v.sourceClass.toString(),
+                "targetClass" to v.targetClass.toString(),
+                "sourceRing" to v.sourceRing,
+                "targetRing" to v.targetRing,
+            )
+        }
+
+        val testInvolvementJson = testInvolvement?.let {
+            JsonRaw(jsonObject("testInvolved" to it.testInvolved, "total" to it.total))
+        }
+
+        return jsonObject(
+            "classRings" to JsonRaw(classRingsJson),
+            "mixedRingPackages" to JsonRaw(mixedPackagesJson),
+            "violations" to JsonRaw(violationsJson),
+            "hintsApplied" to hasHints,
+            "testInvolvement" to testInvolvementJson,
+        )
     }
 
     fun formatMetrics(metrics: MetricsResult): String =
