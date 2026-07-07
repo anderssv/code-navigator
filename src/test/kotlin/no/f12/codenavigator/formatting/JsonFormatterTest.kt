@@ -25,6 +25,7 @@ import no.f12.codenavigator.navigation.symbol.SymbolKind
 import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.dsm.CycleDetail
 import no.f12.codenavigator.navigation.dsm.CycleEdge
+import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.types.SourceSet
 import no.f12.codenavigator.navigation.context.ContextResult
@@ -754,6 +755,24 @@ class JsonFormatterTest {
         assertTrue(result.contains("\"to\":\"service\""))
         assertTrue(result.contains("\"source\":\"api.Controller\""))
         assertTrue(result.contains("\"target\":\"service.Service\""))
+    }
+
+    @Test
+    fun `formatCycles includes testInvolvement field when provided`() {
+        val details = aSingleCycle()
+
+        val result = JsonFormatter.formatCycles(details, testInvolvement = TestInvolvement.Counts(testInvolved = 1, total = 2))
+
+        assertTrue(result.contains("\"testInvolvement\":{\"testInvolved\":1,\"total\":2}"), "Should include structured testInvolvement, got: $result")
+    }
+
+    @Test
+    fun `formatCycles omits testInvolvement field when null`() {
+        val details = aSingleCycle()
+
+        val result = JsonFormatter.formatCycles(details, testInvolvement = null)
+
+        assertTrue(!result.contains("testInvolvement"), "Should omit testInvolvement key entirely when null, got: $result")
     }
 
     @Test

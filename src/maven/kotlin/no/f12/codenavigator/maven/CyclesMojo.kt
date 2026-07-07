@@ -79,9 +79,9 @@ class CyclesMojo : AbstractMojo() {
 
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(output.details, displayPrefix = output.displayPrefix).let { if (output.testNotice != null) "$it\n\n${output.testNotice}" else it }
-        OutputFormat.JSON -> JsonFormatter.formatCycles(output.details, displayPrefix = output.displayPrefix)
-        OutputFormat.LLM -> LlmFormatter.formatCycles(output.details, displayPrefix = output.displayPrefix).let { if (output.testNotice != null) "$it\n\n${output.testNotice}" else it }
+        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
+        OutputFormat.JSON -> JsonFormatter.formatCycles(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
+        OutputFormat.LLM -> LlmFormatter.formatCycles(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
     }
 })
 

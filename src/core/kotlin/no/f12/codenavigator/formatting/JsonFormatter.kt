@@ -24,6 +24,7 @@ import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.dsm.CycleDetail
+import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.navigation.deadcode.DeadCode
 import no.f12.codenavigator.navigation.metrics.MetricsResult
@@ -397,7 +398,11 @@ object JsonFormatter {
             )
         }
 
-    fun formatCycles(details: List<CycleDetail>, displayPrefix: PackageName = PackageName("")): String {
+    fun formatCycles(
+        details: List<CycleDetail>,
+        displayPrefix: PackageName = PackageName(""),
+        testInvolvement: TestInvolvement.Counts? = null,
+    ): String {
         val cyclesJson = jsonArray(details) { detail ->
             jsonObject(
                 "packages" to JsonRaw(jsonStringArray(detail.packages.map { it.toString() })),
@@ -415,7 +420,10 @@ object JsonFormatter {
             )
         }
         val prefix = if (displayPrefix.isNotEmpty()) displayPrefix.toString() else null
-        return jsonObject("displayPrefix" to prefix, "cycles" to JsonRaw(cyclesJson))
+        val testInvolvementJson = testInvolvement?.let {
+            JsonRaw(jsonObject("testInvolved" to it.testInvolved, "total" to it.total))
+        }
+        return jsonObject("displayPrefix" to prefix, "cycles" to JsonRaw(cyclesJson), "testInvolvement" to testInvolvementJson)
     }
 
     fun formatMetrics(metrics: MetricsResult): String =

@@ -10,6 +10,7 @@ object EmergentRingFormatter {
         ringNames: Map<Int, String> = emptyMap(),
         hasHints: Boolean = false,
         format: OutputFormat = OutputFormat.TEXT,
+        testInvolvement: TestInvolvement.Counts? = null,
     ): String {
         val sb = StringBuilder()
 
@@ -101,6 +102,14 @@ object EmergentRingFormatter {
             sb.appendLine("hints: glob patterns on the simple class name — promote classes matching a pattern to (or above) a ring.")
             sb.appendLine("overrides: fully qualified class names — use these for specific classes that don't match a naming pattern.")
             sb.appendLine("Both only promote rings, never demote. Overrides always take precedence over glob hints.")
+        }
+
+        testInvolvement?.let { counts ->
+            TestInvolvement.notice(counts, "violations")?.let { notice ->
+                sb.appendLine()
+                sb.appendLine()
+                sb.append(notice)
+            }
         }
 
         return sb.toString().trimEnd()

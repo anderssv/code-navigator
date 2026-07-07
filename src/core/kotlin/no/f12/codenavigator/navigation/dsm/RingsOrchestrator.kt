@@ -17,7 +17,7 @@ data class EmergentRingsOutput(
     val result: ClassRingAssignment,
     val ringNames: Map<Int, String>,
     val hasHints: Boolean,
-    val testNotice: String?,
+    val testInvolvement: TestInvolvement.Counts?,
     val skippedFileWarning: String?,
 )
 
@@ -93,10 +93,10 @@ object RingsOrchestrator {
         val result = EmergentRingDetector.detect(projectDeps, externalDeps, mutatedClasses, hintsConfig)
         val ringNames = hintsConfig?.ringIndexNames() ?: emptyMap()
 
-        val testNotice = if (scope == Scope.ALL) {
+        val testInvolvement = if (scope == Scope.ALL) {
             val resolver = SourceSetResolver.from(taggedDirs)
             val edges = result.violations.map { it.sourceClass to it.targetClass }
-            TestInvolvement.notice(TestInvolvement.count(edges) { resolver.sourceSetOf(it) }, "violations")
+            TestInvolvement.count(edges) { resolver.sourceSetOf(it) }
         } else {
             null
         }
@@ -105,7 +105,7 @@ object RingsOrchestrator {
             result = result,
             ringNames = ringNames,
             hasHints = hintsConfig != null && hintsConfig.hasHints(),
-            testNotice = testNotice,
+            testInvolvement = testInvolvement,
             skippedFileWarning = skippedFileWarning,
         )
     }

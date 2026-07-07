@@ -12,7 +12,7 @@ import java.io.File
 data class CyclesOutput(
     val details: List<CycleDetail>,
     val displayPrefix: PackageName,
-    val testNotice: String?,
+    val testInvolvement: TestInvolvement.Counts?,
     val skippedFileWarning: String?,
 )
 
@@ -39,17 +39,14 @@ object CyclesOrchestrator {
         val cycles = CycleDetector.findCycles(adjacency)
         val details = CycleDetector.enrich(cycles, matrix)
 
-        val testNotice = if (details.isNotEmpty() && config.scope == Scope.ALL) {
+        val testInvolvement = if (details.isNotEmpty() && config.scope == Scope.ALL) {
             val resolver = SourceSetResolver.from(taggedDirs)
             val classEdges = details.flatMap { it.edges }.flatMap { it.classEdges }
-            TestInvolvement.notice(
-                TestInvolvement.count(classEdges) { resolver.sourceSetOf(it) },
-                "cycle edges",
-            )
+            TestInvolvement.count(classEdges) { resolver.sourceSetOf(it) }
         } else {
             null
         }
 
-        return CyclesOutput(details, displayPrefix, testNotice, skippedFileWarning)
+        return CyclesOutput(details, displayPrefix, testInvolvement, skippedFileWarning)
     }
 }

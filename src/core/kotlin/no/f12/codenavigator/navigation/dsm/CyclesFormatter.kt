@@ -4,7 +4,11 @@ import no.f12.codenavigator.navigation.types.PackageName
 
 object CyclesFormatter {
 
-    fun format(details: List<CycleDetail>, displayPrefix: PackageName = PackageName("")): String {
+    fun format(
+        details: List<CycleDetail>,
+        displayPrefix: PackageName = PackageName(""),
+        testInvolvement: TestInvolvement.Counts? = null,
+    ): String {
         if (details.isEmpty()) return "No dependency cycles found."
 
         return buildString {
@@ -15,6 +19,13 @@ object CyclesFormatter {
             append(details.joinToString("\n\n") { detail ->
                 formatCycle(detail, displayPrefix)
             })
+            testInvolvement?.let { counts ->
+                TestInvolvement.notice(counts, "cycle edges")?.let { notice ->
+                    appendLine()
+                    appendLine()
+                    append(notice)
+                }
+            }
         }.trimEnd()
     }
 

@@ -71,13 +71,7 @@ abstract class RingsTask : CodeNavigatorTask() {
             is RingsAnalysis.Emergent -> renderEmergent(analysis.output, format)
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(format) { format ->
-            when (format) {
-                OutputFormat.TEXT, OutputFormat.DIFF -> output
-                OutputFormat.JSON -> output
-                OutputFormat.LLM -> output
-            }
-        })
+        logger.lifecycle(OutputWrapper.wrap(output, format))
 
         if (failOnViolationVal && violationCount > maxViolationsVal) {
             throw GradleException("cnavRings found $violationCount violation(s), exceeding --max-violations=$maxViolationsVal")
@@ -86,14 +80,13 @@ abstract class RingsTask : CodeNavigatorTask() {
 
     private fun renderPackage(output: PackageRingsOutput, format: OutputFormat): Pair<String, Int> {
         output.skippedFileWarning?.let { logger.warn(it) }
-        val rings = RingFormatter.format(output.assignment, format = format)
-        return "${RingFormatter.PACKAGE_MODE_NOTICE}\n\n$rings" to output.assignment.violations.size
+        val rings = RingFormatter.format(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE, format = format)
+        return rings to output.assignment.violations.size
     }
 
     private fun renderEmergent(output: EmergentRingsOutput, format: OutputFormat): Pair<String, Int> {
         output.skippedFileWarning?.let { logger.warn(it) }
-        val rings = EmergentRingFormatter.format(output.result, output.ringNames, hasHints = output.hasHints, format = format)
-        val rendered = if (output.testNotice != null) "$rings\n\n${output.testNotice}" else rings
-        return rendered to output.result.violations.size
+        val rings = EmergentRingFormatter.format(output.result, output.ringNames, hasHints = output.hasHints, format = format, testInvolvement = output.testInvolvement)
+        return rings to output.result.violations.size
     }
 }

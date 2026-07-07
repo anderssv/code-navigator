@@ -25,6 +25,7 @@ import no.f12.codenavigator.navigation.rank.RankedType
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.dsm.CycleDetail
 import no.f12.codenavigator.navigation.dsm.CycleEdge
+import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.types.SourceSet
@@ -549,6 +550,15 @@ class LlmFormatterTest {
 
         assertTrue(result.startsWith("prefix:com.example\n"), "Should start with prefix line, got:\n$result")
         assertTrue(result.contains("CYCLE"), "Should contain cycle info")
+    }
+
+    @Test
+    fun `formatCycles appends test-involvement notice when provided`() {
+        val details = aSingleCycle()
+
+        val result = LlmFormatter.formatCycles(details, testInvolvement = TestInvolvement.Counts(testInvolved = 1, total = 2))
+
+        assertTrue(result.contains("test-involvement: 1 of 2 cycle edges involve test sources"), "Should render the notice, got:\n$result")
     }
 
     // === Annotation query formatting ===

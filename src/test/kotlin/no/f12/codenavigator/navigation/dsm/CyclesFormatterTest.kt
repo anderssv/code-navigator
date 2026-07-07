@@ -173,4 +173,38 @@ class CyclesFormatterTest {
 
         assertTrue(output.contains("com.example.api.Controller -> com.example.service.Service"), "Should show full class names when no prefix, got:\n$output")
     }
+
+    @Test
+    fun `appends test-involvement notice when provided`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
+                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("service.Service") to ClassName("api.Controller"))),
+                ),
+            ),
+        )
+
+        val output = CyclesFormatter.format(details, testInvolvement = TestInvolvement.Counts(testInvolved = 1, total = 2))
+
+        assertTrue(output.contains("test-involvement: 1 of 2 cycle edges involve test sources"), "Should render the notice, got:\n$output")
+    }
+
+    @Test
+    fun `omits test-involvement notice when null`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
+                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("service.Service") to ClassName("api.Controller"))),
+                ),
+            ),
+        )
+
+        val output = CyclesFormatter.format(details, testInvolvement = null)
+
+        assertTrue(!output.contains("test-involvement"), "Should not render a notice when testInvolvement is null")
+    }
 }

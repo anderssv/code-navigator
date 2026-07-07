@@ -14,6 +14,7 @@ import no.f12.codenavigator.navigation.relations.callgraph.CallTreeNode
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.dsm.CycleBreakAnalyzer
 import no.f12.codenavigator.navigation.dsm.CycleDetail
+import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
 import no.f12.codenavigator.navigation.classinfo.ClassDetail
@@ -262,7 +263,11 @@ object LlmFormatter {
             }
         }.withInterpretation(COMPLEXITY_INTERPRETATION)
 
-    fun formatCycles(details: List<CycleDetail>, displayPrefix: PackageName = PackageName("")): String {
+    fun formatCycles(
+        details: List<CycleDetail>,
+        displayPrefix: PackageName = PackageName(""),
+        testInvolvement: TestInvolvement.Counts? = null,
+    ): String {
         if (details.isEmpty()) return "(no cycles)"
 
         return buildString {
@@ -284,6 +289,13 @@ object LlmFormatter {
                     }
                 }
             })
+            testInvolvement?.let { counts ->
+                TestInvolvement.notice(counts, "cycle edges")?.let { notice ->
+                    appendLine()
+                    appendLine()
+                    append(notice)
+                }
+            }
         }.withInterpretation(CYCLES_INTERPRETATION)
     }
 

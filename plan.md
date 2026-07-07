@@ -572,16 +572,18 @@ For interfaces matching a pattern, check method signatures reference only domain
 ## Output & UX
 
 ### Interpretation/hint fields in JSON output
-**ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra)
+**PARTIALLY DONE** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra)
 
-Interpretation footers and notices (e.g. the `BALANCE_INTERPRETATION`/`COUPLING_INTERPRETATION` strings, the `test-involvement: N of M …` line, the package-mode notice) are only appended to TEXT and LLM output. JSON consumers get none of this guidance. Add structured equivalents to the JSON output so non-TEXT/LLM clients can react to the same signals — e.g. a top-level `interpretation` string and/or a `notices: []` array, or per-result fields like `testInvolvement: { testInvolved, total }`. This keeps the JSON contract machine-readable while carrying the same steer the LLM/TEXT formats already provide.
+First concrete instance shipped (v0.1.112): `JsonFormatter.formatCycles` now emits `"testInvolvement":{"testInvolved":N,"total":M}` as a real structured field, landed as part of the formatting-layer-boundary fix. Establishes the shape (per-result field, not a wrapper object) — reuse this pattern for the rest.
 
-Applies to: `cnavBalance`, `cnavCoupling`, `cnavRings`, `cnavCycles` (any task that appends an interpretation/notice today). Decide on a consistent shape (wrapper object vs. extra fields) before implementing.
+Still only TEXT/LLM: `BALANCE_INTERPRETATION`/`COUPLING_INTERPRETATION` strings, `cnavRings`' test-involvement line and package-mode notice (`cnavRings` JSON isn't structured at all yet — see the new item above), and any other task's interpretation footer. Applies to: `cnavBalance`, `cnavCoupling`, `cnavRings` (any task that appends an interpretation/notice today).
 
 ### `test-involvement` line for cnavBalance
 **PARKED** | **Value: low** | **Effort: medium** | Source: field-test(bass-ra)
 
-The `test-involvement: N of M … involve test sources` line (printed when scope=all) was added to cnavCycles and cnavRings (emergent), which retain class-level edges end-to-end. cnavBalance was deferred: its public result (`BalanceEntry`/`BalanceOutput`) is package-level and `BalanceOrchestrator` consumes the class-level `extractResult.data` internally without surfacing it. To add the line for Balance, thread a test-involvement count out of the orchestrator (it already has the class-level deps + can build a `SourceSetResolver` from the unfiltered tagged dirs) into `BalanceOutput`, then render via `TestInvolvement.notice(...)`. Do this together with the JSON-hints refactor and the formatting-boundary cleanup so the count is rendered by the formatter, not concatenated in the task.
+The `test-involvement: N of M … involve test sources` line (printed when scope=all) was added to cnavCycles and cnavRings (emergent), which retain class-level edges end-to-end. cnavBalance was deferred: its public result (`BalanceEntry`/`BalanceOutput`) is package-level and `BalanceOrchestrator` consumes the class-level `extractResult.data` internally without surfacing it. To add the line for Balance, thread a test-involvement count out of the orchestrator (it already has the class-level deps + can build a `SourceSetResolver` from the unfiltered tagged dirs) into `BalanceOutput`, then render via `TestInvolvement.notice(...)`.
+
+The formatting-boundary cleanup this was waiting on is now done (see above) — `TestInvolvement.Counts` flowing through as a field on the orchestrator's output, rendered by the formatter, is the established pattern (`CyclesOutput`/`EmergentRingsOutput`). Apply the same pattern here whenever this gets picked up.
 
 ### ~~Per-task help with usage on error~~ — DONE
 ~~**ACTIVE**~~ **DONE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
@@ -762,20 +764,16 @@ Expand from single-hop blast radius into multi-signal impact predictor: direct c
 ## Internal code quality
 
 ### Restore formatting-layer boundary — outer layers pass result objects, formatters emit output
-**ACTIVE** | **Value: high** | **Effort: medium** | Source: internal
+**DONE (named offenders fixed)** | **Value: high** | **Effort: medium** | Source: internal
 
-The layering rule (parsing → resolution → formatting) has eroded at the task/mojo boundary: outer layers (Gradle tasks, Maven mojos) increasingly assemble output *strings* by concatenating onto formatter output instead of passing result structures to formatters and letting the formatters render every attribute.
+Fixed both concrete offenders named below (v0.1.112). `CyclesOrchestrator`/`RingsOrchestrator` now carry raw `TestInvolvement.Counts?` (not pre-rendered text) on their output; `CyclesFormatter`/`JsonFormatter.formatCycles`/`LlmFormatter.formatCycles` and `EmergentRingFormatter.format` each accept `testInvolvement` and render the notice themselves, per format. `RingFormatter.format` already had an unused `configNotice: String?` hook — wired `RingsTask`/`RingsMojo` to pass `RingFormatter.PACKAGE_MODE_NOTICE` through it instead of prefixing the string themselves. `CyclesTask`/`CyclesMojo`/`RingsTask`/`RingsMojo` no longer concatenate onto formatter output or branch per `OutputFormat` outside the formatter — Rings' pointless `when (format) { TEXT,DIFF -> output; JSON -> output; LLM -> output }` echo (three identical branches) was replaced with a direct `OutputWrapper.wrap(output, format)`. `JsonFormatter.formatCycles` now emits a real structured `"testInvolvement":{"testInvolved":N,"total":M}` field — the JSON-hints item's first concrete instance. Verified live (Gradle composite build): TEXT/LLM notice text unchanged, JSON field present and correctly shaped, `PACKAGE_MODE_NOTICE` correctly positioned after the section header. New tests: `CyclesFormatterTest`, `JsonFormatterTest`, `LlmFormatterTest`.
 
-Concrete offenders introduced/observed:
-- `RingsTask`/`RingsMojo` and `CyclesTask`/`CyclesMojo` string-concat the `test-involvement` notice and `PACKAGE_MODE_NOTICE` onto formatter output (`"$body\n\n$testNotice"`), and branch per `OutputFormat` in the task.
-- Rings emergent/package output is returned as a pre-rendered `String` from the task and echoed identically for TEXT/JSON/LLM — the task, not a formatter, owns the format.
+**Found but deliberately not fixed — a bigger, separate gap**: `cnavRings --format=json` isn't real JSON at all, for either mode. `RingFormatter.format()` and `EmergentRingFormatter.format()` are the *only* renderers for rings, and both always produce prose-shaped text regardless of `format` (the `format` param only toggles whether LLM-only action hints are appended) — there's no `JsonFormatter.formatRings`/`formatEmergentRings` equivalent at all. So today, `cnavRings --format=json` returns the same prose text as TEXT, just wrapped in `---CNAV_BEGIN---`/`---CNAV_END---` markers with no structural change. This is bigger than a boundary violation — it's a missing capability — so it's logged as a new item below rather than folded into this one.
 
-Target design:
-- Tasks/mojos build a result object (e.g. carrying violations + `testInvolvement` counts + applicable notices) and hand it to the formatter.
-- Formatters own ALL rendering, including notices/interpretations, per output format (so JSON can emit structured fields — see "Interpretation/hint fields in JSON output").
-- Outer layers must not receive formatted text from deeper layers and must not append to it.
+### `cnavRings` has no real JSON output format
+**ACTIVE** | **Value: medium** | **Effort: medium** | Source: internal (found while fixing the formatting-layer boundary)
 
-This pairs with the JSON-hints item and the JsonFormatter/LlmFormatter split. Do this refactor before adding more notice/interpretation surfaces, to stop the bleed.
+Neither `--mode=package` nor `--mode=emergent` produce structured JSON — both return the same prose `RingFormatter`/`EmergentRingFormatter` text wrapped in markers regardless of `--format`. Needs a real `JsonFormatter.formatRings(assignment)` / `formatEmergentRings(result)` pair (ring assignments, violations, mixed-ring packages, hints-applied flag, test-involvement) — the same shape of work the `cnavCycles` JSON field fix above just did for cycles. Natural follow-on to "Interpretation/hint fields in JSON output" below, and to the `JsonFormatter`/`LlmFormatter` split.
 
 ### Review implementations for spread logic + shared lookup extraction
 **ACTIVE** | **Value: medium** | **Effort: high** | Source: internal
