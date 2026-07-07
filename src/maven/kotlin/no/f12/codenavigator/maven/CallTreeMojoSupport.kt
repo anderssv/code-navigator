@@ -6,14 +6,10 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskDef
-import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
-import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
-import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraphConfig
-import no.f12.codenavigator.navigation.relations.callgraph.CallTreeBuilder
 import no.f12.codenavigator.navigation.relations.callgraph.CallTreeFormatter
-import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistryCache
+import no.f12.codenavigator.navigation.relations.callgraph.CallTreeOrchestrator
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugin.logging.Log
 import org.apache.maven.project.MavenProject
@@ -29,6 +25,7 @@ object CallTreeMojoSupport {
         direction: CallDirection,
         usageHint: String,
     ) {
+        taskDef.deprecations(properties).forEach { log.warn(it) }
         val config = try {
             CallGraphConfig.parse(taskDef.enhanceProperties(project.applyConfigDefaults(properties)))
         } catch (e: IllegalArgumentException) {
@@ -40,46 +37,23 @@ object CallTreeMojoSupport {
             log.warn("Classes directory does not exist: ${File(project.build.outputDirectory)} — run 'mvn compile' first.")
             return
         }
-        val classDirectories = taggedDirs.map { it.first }
 
-        val result = CallGraphCache.getOrBuildTagged(File(project.build.directory, "cnav/call-graph.cache"), taggedDirs)
-        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
-        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
-        val graph = result.data
-        val methods = graph.findMethods(config.method)
+        val cacheDir = File(project.build.directory, "cnav")
+        val output = CallTreeOrchestrator.run(config, taggedDirs, cacheDir, direction)
 
-        if (methods.isEmpty()) {
+        output.skippedFileWarning?.let { log.warn(it) }
+
+        if (output.trees.isEmpty()) {
             println(OutputWrapper.emptyResult(config.format, "No methods found matching '${config.method}'"))
             return
         }
 
-        val interfaceRegistry = InterfaceRegistryCache.getOrBuild(
-            File(project.build.directory, "cnav/interface-registry.cache"),
-            classDirectories,
-        ).data
-        val interfaceImplementors = interfaceRegistry.implementorMap()
-        val classToInterfaces = interfaceRegistry.classToInterfacesMap()
-
-        val annotations = AnnotationExtractor.scanAll(classDirectories)
-
-        val trees = CallTreeBuilder.build(
-            graph, methods, config.maxDepth, direction, config.buildFilter(graph),
-            interfaceImplementors = interfaceImplementors,
-            classToInterfaces = classToInterfaces,
-            classAnnotations = annotations.classAnnotations,
-            methodAnnotations = annotations.methodAnnotations,
-            classAnnotationParameters = annotations.classAnnotationParameters,
-            methodAnnotationParameters = annotations.methodAnnotationParameters,
-        )
-
-        val classHint = CallTreeFormatter.classMatchHint(config.method, methods)
-
         println(
             OutputWrapper.formatAndWrap(config.format) { format ->
                 when (format) {
-                    OutputFormat.TEXT, OutputFormat.DIFF -> CallTreeFormatter.renderTrees(trees, direction) + (classHint?.let { "\n\n$it" } ?: "")
-                    OutputFormat.JSON -> JsonFormatter.renderCallTrees(trees, direction)
-                    OutputFormat.LLM -> LlmFormatter.renderCallTrees(trees, direction) + (classHint?.let { "\n\n$it" } ?: "")
+                    OutputFormat.TEXT, OutputFormat.DIFF -> CallTreeFormatter.renderTrees(output.trees, direction) + (output.classHint?.let { "\n\n$it" } ?: "")
+                    OutputFormat.JSON -> JsonFormatter.renderCallTrees(output.trees, direction)
+                    OutputFormat.LLM -> LlmFormatter.renderCallTrees(output.trees, direction) + (output.classHint?.let { "\n\n$it" } ?: "")
                 }
             },
         )
