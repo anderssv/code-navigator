@@ -113,7 +113,7 @@ src/
 2. **Rename a param?** Rename in TaskRegistry first. Then update Gradle and Maven to match.
 3. **Tests enforce sync**: `TaskRegistryTest` verifies that every `ParamDef` in a `TaskDef` has corresponding option/parameter declarations in the Gradle task and Maven mojo. If you add a param to TaskRegistry but forget to add it to the task class, the test fails.
 4. **Never add a parameter only in Gradle or Maven** — if TaskRegistry doesn't know about it, it doesn't exist.
-5. **Help text, agent help, and usage examples** are all generated from TaskRegistry metadata — never hand-curated.
+5. **Help text, agent help, and usage examples** are mostly generated from TaskRegistry metadata — but not uniformly. `AgentHelpText.kt`'s "Task Reference" and "Global Parameters" sections (`cnavAgentHelp`) genuinely iterate `TaskRegistry.ALL_TASKS.flatMap { it.params }` — add a param to `TaskDef.params` and it appears there automatically. `HelpText.kt`'s (`cnavHelp`) per-task "Parameters:" blocks are **hand-written prose** — each needs an explicit `${pd(TaskRegistry.X)}` line added to that task's section, or the param silently won't show up there even though it exists in TaskRegistry and works. When adding a param, update both, and don't assume `cnavHelp` "just works" because `cnavAgentHelp` does.
 
 ### Why this matters
 
@@ -178,6 +178,34 @@ Formatters never reach back into parsed data. When two formatters need the same 
 - Bugs are isolated to one layer.
 - New output format = new formatter only, no duplicated resolution logic.
 - Tests per layer are fast and focused.
+
+### Structured signals, not pre-rendered text, flow into formatters
+
+When a task computes something like "N of M edges touch test sources," pass the raw counts (e.g. `TestInvolvement.Counts`) as a field on the result object — don't render it to a notice string and string-concat it onto formatter output in the task. Formatters render every attribute, including notices/interpretations, per output format; that's the only way JSON can expose a structured field (`"testInvolvement":{"testInvolved":N,"total":M}`) instead of silently only supporting TEXT/LLM. Tasks/mojos must not receive formatted text from a deeper layer and append to it, and must not branch on `OutputFormat` themselves outside a formatter call.
+
+Same idea elsewhere: `DeadCodeReason` (`NO_REFERENCES`/`TEST_ONLY`) and `DeadCodeConfidence` (`HIGH`/`MEDIUM`/`LOW`) are typed signals carrying the *why*, not a boolean carrying only the *whether*.
+
+### Orchestrator pattern for Gradle/Maven parity
+
+Analysis pipelines (extraction → plan-mutation → detection) live once in a core `*Orchestrator` object (e.g. `CyclesOrchestrator`, `RingsOrchestrator`, `BalanceOrchestrator`, `MoveSuggestOrchestrator`, `CohesionOrchestrator`). The Gradle task and the Maven mojo both call the exact same orchestrator function — nothing pipeline-shaped is reimplemented per build tool. This isn't just DRY: a real bug shipped because it wasn't followed — Maven mojos accepted `--plan-file` on the CLI and silently did nothing with it, because each mojo had its own hand-rolled copy of the pipeline that Gradle's version had evolved past. Extracting a shared orchestrator makes that class of drift a compile error instead of a silent gap.
+
+Not applied to the refactoring-operation tasks (Rename*, Move*, ChangeSignature, SafeDelete) — their core rewrite logic (`RenameMethodRewriter`, `RenameLocationFinder`, etc.) is already directly shared and called identically from both sides; only Gradle wraps it in `WorkerExecutor` classloader isolation (`kotlin-compiler-embeddable` can't share a classloader with Gradle's own Kotlin runtime — Maven has no such conflict, so it calls the rewriter directly). There's no duplicated pipeline there to extract.
+
+### Two-phase PSI refactoring
+
+ASM finds locations (call sites, implementors) in the main classloader — fast, no compiler needed. PSI then performs the actual text edit, isolated in a Gradle `WorkerExecutor` classloader for the reason above. Maven skips the isolation step and calls the PSI rewriter in-process.
+
+### Plan-file "what-if" simulation
+
+`PlanStep`/`PlanMutator` mutate the in-memory dependency graph — not source files — so `--plan-file` on analysis tasks (`cnavCycles`, `cnavRings`, `cnavDsm`, `cnavMetrics`, `cnavBalance`, `cnavSimulateMove`, `cnavMoveSuggest`) can preview a move's structural impact before `cnavExecutePlan` applies it for real.
+
+`PlanMutator.apply(dependencies, plan, dropSamePackageEdges)` defaults `dropSamePackageEdges` to `true` — correct for cycle/DSM/ring analysis, where an edge that becomes intra-package after a simulated move is noise. Pass `false` for anything extracted with `includeSamePackage=true` (move-suggest, cohesion), since those same-package edges are exactly what scores gravity at the destination — dropping them there would silently corrupt the simulation.
+
+### `cnav-config.json` layered defaults
+
+`CnavConfig.applyDefaults` merges a project's `cnav-config.json` `defaults` section under CLI-provided properties. It's generic by construction — any param name for any task works, since it's just a map merge ahead of `ParamDef.parseFrom`, no per-task allowlist. Precedence: CLI > `cnav-config.json` > a task's hardcoded `ParamDef` default.
+
+Gradle gets this for every task from one central hook (`CodeNavigatorTask.buildOptionsMap()`). Maven has no shared base Mojo class, so every mojo wraps its own `buildPropertyMap()` with `project.applyConfigDefaults(...)` individually — remember this when adding a new mojo, since there's no compile-time enforcement the way `TaskRegistryTest` enforces param sync.
 
 ## Release Process
 
