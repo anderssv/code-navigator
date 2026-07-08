@@ -230,4 +230,4 @@ Requires GPG key + Sonatype credentials in `~/.m2/settings.xml` (server id `cent
 
 `plan.md` → active roadmap. `plan-completed.md` → archive of finished work.
 
-When a feature is done, mark it with `~~` strikethrough and `— DONE (vX.Y.Z)` in the heading, then move the section to `plan-completed.md`. Periodically batch-move all completed sections to keep `plan.md` focused on remaining work.
+When a feature is done, mark it with `~~` strikethrough and `— DONE (vX.Y.Z)` in the heading, then move the section to `plan-completed.md` **immediately, in the same pass** — don't leave it in `plan.md` for a later cleanup. `plan.md` should only ever contain ACTIVE/FUTURE/PARKED/REJECTED work; a `DONE` item sitting in `plan.md` is a sign the move was skipped, not a valid steady state.

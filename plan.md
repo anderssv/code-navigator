@@ -18,28 +18,6 @@ Not reproducible in v0.1.102. May have been fixed as a side-effect of other chan
 
 Already works — test exists and passes. Likely was a field-test environment issue.
 
-### cnavMoveFile produces no output
-~~**ACTIVE**~~ **DONE (v0.1.102)** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
-
-Fixed: error handling added so failures produce proper CNAV_BEGIN/CNAV_END output.
-
-### cnavRenameProperty inconsistent resolution
-~~**ACTIVE**~~ **DONE (v0.1.102)** | **Value: medium** | **Effort: high** | Source: field-test(bass-ra, v0.1.97)
-
-Fixed: constructor params without `val/var` that initialize body properties are now renamed correctly (both the param name and the initializer reference).
-
-### ~~cnavDead false positive on extension functions~~ — DONE (v0.1.102)
-~~**ACTIVE**~~ **DONE (v0.1.102)** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
-
-Fixed: `*Kt` facade classes excluded from class-level dead code detection entirely (`DeadCodeFinder.kt:203`). Method-level dead code on facades is still reported. `ConfidenceScorer` cleaned up.
-
-### cnavHotspots shows deleted files and splits history across renames
-**DONE** | **Value: medium** | **Effort: low** | Source: user-feedback
-
-Two bugs, same root cause: `HotspotBuilder` aggregated purely by `FileChange.path` string, and `GitLogParser.resolveRenamePath` discarded the old side of a rename entirely, keeping only the new path. This meant (1) a file's revision history got split into two separate hotspot entries — one under the old path (pre-rename commits) and one under the new path — instead of being summed, and (2) files deleted at any point in history (including old rename names, once no longer summed) stayed in the output forever, since there was no check against what still exists on disk.
-
-Fixed: `FileChange` gained a `renamedFrom: String?` field (`GitLogParser` now captures both sides of a rename instead of only the new path). `HotspotBuilder.build` builds a rename-chain map from all `renamedFrom` edges in the commit list (handles transitive chains, A→B→C, via forward traversal with a cycle guard) and redirects every historical path through it before aggregating — so pre- and post-rename revisions land in one entry. Added an optional `projectDir: File?` param; when provided, a file is only included if it still exists on disk at its final path — `HotspotTask`/`HotspotsMojo` pass their project directory. Existing tests unaffected (no default value change breaks old callers); new tests cover direct rename merge, transitive chains, same-name-but-unrelated-file non-merging, and existence filtering with/without `projectDir`. Verified live against this repo's own real git history (via a throwaway `git worktree`, removed after): previously-deleted files (`LayerChecker.kt`, `LayerCheckConfig.kt`, `ExtractPropertiesTest.kt`) no longer appear even at `--top=1000`; this repo has no actual renames in its history to exercise the merge path live, but the parser/builder unit tests cover it directly.
-
 ---
 
 ## Multi-module support
@@ -231,42 +209,10 @@ The test project itself becomes a forcing function for the formatter boundary �
 
 **Strengthens formatter and domain barrier** | **Value: high** | **Effort: high**
 
-### Cycle actionability — fix suggestions, edge ranking, and direction clarity
-~~**ACTIVE**~~ **DONE (v0.1.103)** | **Value: high** | **Effort: high** | Source: field-test(bass-ra+greitt)
-
-Implemented:
-1. **Edge direction + counts**: Per-edge ref counts shown in both TEXT and LLM formats.
-2. **Edge ranking — "which edge to break first"**: `CycleBreakAnalyzer` computes break-score (edge removal splits/shrinks SCC) and ranks by weight. Top 3 weakest links shown.
-3. **Fix suggestions**: Weakest links section tells user which edges to target.
-
-Remaining (deferred to future iteration):
-- Ring degeneration guidance (identify easiest-to-extract package in giant cycles)
-- Test-only edge flagging in cycle output
-
-### Test-source separation — exclude test edges from structural analysis
-~~**ACTIVE**~~ **DONE (already implemented)** | **Value: high** | **Effort: low** | Source: field-test(greitt+bass-ra)
-
-All structural tasks (cnavDsm, cnavCycles, cnavBalance, cnavRings) already support `--scope=prod` which filters class directories by source set. Verified on greitt: 90→0 ring violations, 1→0 cycles when excluding test sources. No code change needed.
-
-### DSM what-if simulation (`cnavSimulateMove`)
-~~**ACTIVE**~~ **DONE (v0.1.103)** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra)
-
-Implemented. Predicts cycle impact of moving a class to a different package without modifying code:
-- `cnavSimulateMove --type=Cache --to-package=no.example.ra --scope=prod`
-- Mutates dependency graph in memory, re-runs cycle detection, diffs before/after
-- Shows removed/added cycles. Validated on bass-ra-backend.
-
 ### Replace regex JSON parsing with Jackson
 **PARKED** | **Value: low** | **Effort: low** | Source: internal
 
 `PlanMutator.parseJson` currently uses regex extraction. Replace with Jackson (or kotlinx.serialization) for robustness. Add Jackson dependency or reuse one already on classpath via Maven plugin. Low priority — no reported issues from regex approach.
-
-### ~~cnavExecutePlan — execute a plan file~~ — DONE
-**DONE** | **Value: high** | **Effort: medium** | Source: design-discussion
-
-Dedicated task (`cnavExecutePlan --plan-file=plan.json`) that reads a plan JSON and applies each move step sequentially using `MoveClassRewriter`. Class names are resolved to FQCNs upfront via the compiled class index (no fuzzy matching in rewriting logic). Supports `--preview` to dry-run.
-
-Plan format: `[{"action":"move","type":"com.example.api.Dto","to":"com.example.service"}]`
 
 ### Consider: operation sequences as the primary interface
 **FUTURE** | **Value: high** | **Effort: very high** | Source: design-discussion
@@ -313,16 +259,6 @@ Current dependency analysis works at package granularity (`cnavPackageDeps`, `cn
 - **Single-file mode**: `--file=OrderService.kt` — direct deps. `--reverse=true` — files that depend on this one. `--depth=N` — transitive tree.
 - **All-files mode**: `--all=true` — full file-dep graph (fan-in/fan-out ranking, orphan detection, file-level cycle detection).
 - **Alternative framing**: Extend `cnavDsm` with `--granularity=file|package|class` instead of a separate task.
-
-### Class-level ring detection for `cnavRings`
-~~**ACTIVE**~~ **DONE (v0.1.103-SNAPSHOT)** | **Value: high** | **Effort: high** | Source: field-test(greitt, v0.1.102)
-
-Implemented `--mode=emergent` which classifies each class into a ring by import shape (framework imports = adapter, SCC collapse for cycles, longest-path for layering). Shows mixed-ring package summaries. Ring detection is by dependency shape only, never naming conventions.
-
-**Remaining follow-ups** (not blocking, separate items):
-- Structural mode improvement (detect ring subpackages by shape)
-- Intra-package ring violations (domain class depending on adapter within same package)
-- Actionable guidance (suggest port extraction)
 
 ### Structural ring mode improvement
 **FUTURE** | **Value: medium** | **Effort: medium** | Source: field-test(greitt, v0.1.102)
@@ -381,13 +317,6 @@ When violation count exceeds a threshold (>50), add a note: "High violation coun
 ---
 
 ## Refactoring operations
-
-### ~~cnavMovePackage — batch move all classes in a package~~ — DONE (v0.1.105-SNAPSHOT)
-**DONE** | **Value: high** | **Effort: low** | Source: field-test(bass-ra)
-
-Implemented `cnavMovePackage --from-package=<pkg> --to-package=<pkg>` (Gradle + Maven). Scans project classes, filters by source package, then iterates `MoveClassWorkAction` for each class. Supports `--preview`. Reuses `ExecutePlanFormatter` for consistent batch output.
-
-**Known limitation**: Shares the same OpenRewrite worker metaspace issue as `cnavExecutePlan` — packages with 5+ classes may hit `OutOfMemoryError: Metaspace` with default JVM settings. Workaround: increase `org.gradle.jvmargs=-Xmx2g -XX:MaxMetaspaceSize=1g` in `gradle.properties`.
 
 ### cnavMoveFunction — move top-level Kotlin functions
 **PARKED** | **Value: low** | **Effort: high** | Source: field-test(bass-ra)
@@ -472,72 +401,10 @@ Safety:
 A method is "transitively dead" if all its callers are themselves dead. Iterate until fixed point.
 - Confidence levels: `DEAD` (zero callers), `TRANSITIVELY_DEAD` (all callers dead), `TEST_ONLY` (only test callers), `SHRINKING` (declining caller trend).
 
-### `cnavDead` baseline diff — confirm cleanup was complete
-**DONE (already implemented)** | **Value: low** | **Effort: low** | Source: internal
-
-Stale — already fully built. `--baseline=<path>` parameter exists on `cnavDead` (Gradle: `DeadCodeTask`), reads a previous `cnavDead` JSON output via `DeadCodeBaselineDiff.parseBaseline`/`.compare`, and renders removed/remaining/new dead code via `DeadCodeBaselineDiffFormatter` for all three output formats. Covered by `DeadCodeBaselineDiffTest`.
-
-### Dead code: flag methods called only from test scope
-**DONE (already implemented)** | **Value: medium** | **Effort: low** | Source: internal
-
-Already fully implemented — this plan item was stale. `DeadCodeReason.TEST_ONLY` (vs `NO_REFERENCES`), `ConfidenceScorer` downgrading test-only items to `MEDIUM` confidence, and `--scope=prod`/`--scope=test`/`--scope=all` filtering are all live and covered by `DeadCodeFinderTest` (`scope PROD filters out TEST_ONLY items`, `scope TEST filters to only TEST_ONLY items`, etc.). Landed back in the `testOnly` filter work (see `bcd6f42`, CHANGELOG "dead code reason tagging").
-
 ### Per-package health dashboard
 **FUTURE** | **Value: low** | **Effort: medium** | Source: internal
 
 Aggregate all per-package metrics into a single view: volatility, coupling strength breakdown, distance profile, cycle involvement, balance assessment. Could be a mode of `cnavMetrics` (`--by-package=true`) or separate `cnavPackageHealth` task.
-
-### `cnavClassMetrics` — per-class cohesion + CK metrics
-**DONE** | **Value: high** | **Effort: medium** | Source: repowise comparison
-
-Single ASM visitor pass, per-class output: TCC/LCC cohesion (field-access graph) + WMC/CBO/DIT (Chidamber & Kemerer).
-
-**Problem**: cnavCohesion measures package-level cohesion (internal/total edges per package). This misses within-class structure — a class with 15 methods where only 3 share field access is cohesively weak but invisible at the package level. repowise demonstrated per-class metrics as a working approach.
-
-**Metrics**:
-- **TCC (Tight Class Cohesion)**: fraction of directly connected method pairs (methods accessing ≥1 common field). Low = class does too many unrelated things.
-- **LCC (Loose Class Cohesion)**: fraction of directly or transitively connected method pairs.
-- **WMC (Weighted Method Count)**: sum of McCabe cyclomatic complexity across all methods. Higher = harder to test.
-- **CBO (Coupling Between Objects)**: count of distinct types referenced (ex-JDK/stdlib). Higher = more context needed.
-- **DIT (Depth of Inheritance Tree)**: superclass chain length from `Object`/`Any`. Deeper = more inherited behavior.
-
-**Implementation** — two collectors in one ASM pass:
-
-1. **`FieldAccessAnalyzer`** — per method, track accessed instance fields. Exclude constructors, static initializers, synthetic accessors.
-2. **`CohesionGraphBuilder`** — adjacency matrix: edge if `accessedFields(A) ∩ accessedFields(B) ≠ ∅`. TCC = direct / total pairs, LCC = transitive closure.
-3. **WMC** — count branches (`if`, `when` arms, `for`, `while`, `catch`, `&&`, `||`, `?:`) per method. Base = 1, +1 per branch.
-4. **CBO** — distinct types in field/method/return/local signatures, ex-JDK (`java.lang`, `java.util`, Kotlin stdlib) and primitives.
-5. **DIT** — walk superclass chain via classpath. Interfaces excluded.
-
-**Result**:
-```kotlin
-data class ClassMetricsResult(
-    val className: ClassName,
-    val packageName: PackageName,
-    val totalMethods: Int,
-    val tcc: Double, val lcc: Double, val verdict: CohesionVerdict,
-    val wmc: Int, val cbo: Int, val dit: Int
-)
-```
-
-**Verdict** (cohesion): HIGH (TCC ≥ 0.7) / MEDIUM (0.4–0.7) / LOW (TCC < 0.4, LCC ≥ 0.7) / MONOLITH (TCC < 0.4, LCC < 0.7).
-
-**Filtering**: `--min-methods=5`, `--min-tcc=0.0`, `--max-wmc=20`, `--max-cbo=10`.
-
-**TEXT**:
-```
-Class                        TCC    LCC   Vldct  WMC  CBO  DIT
-com.example.OrderService     0.12  0.30  MNLTH  34   12   3
-com.example.OrderValidator   0.70  0.90  HIGH    8    5   2
-```
-
-**JSON**: per-entry fields `tcc`, `lcc`, `verdict`, `wmc`, `cbo`, `dit`.
-
-**Integration**: New task `cnavClassMetrics`. Self-contained ASM visitor, no dependency on `DsmDependencyExtractor` or `CallGraphBuilder`. ~200 lines core + formatters.
-
-**Improvement over repowise**: filters constructors/synthetic accessors (repowise inflated TCC), adds transitive LCC detection, excludes JDK from CBO, counts only `superclass` for DIT.
-
-Implemented in `no.f12.codenavigator.navigation.classmetrics`: `FieldAccessAnalyzer` (per-method field-access via bytecode, excludes `<init>`/`<clinit>`/synthetic/property-accessor methods using the existing `KotlinMethodFilter`), `CohesionGraphBuilder` (pure TCC/LCC via union-find, no bytecode), `MethodComplexityAnalyzer` (WMC via conditional-jump/switch-case/catch-block counting), `TypeCouplingAnalyzer` (CBO via ASM `Type` on field/method/local descriptors, excluding self/JDK/`javax`/Kotlin-stdlib), and `ClassMetricsAnalyzer` (orchestrates all four plus a project-wide superclass map for DIT — one light metadata pass to build the map, one full bytecode pass per eligible class; interfaces and `$`-generated classes excluded from output, matching the existing `ClassComplexityAnalyzer` convention). CBO deliberately covers only field/method/local **signatures**, not call targets — kept distinct from the existing fan-out metrics in `cnavComplexity`/`cnavDsm`. New task wired end-to-end: `ClassMetricsConfig`/`ClassMetricsOrchestrator`/`ClassMetricsFormatter` (core), `ClassMetricsTask`/`ClassMetricsMojo` (thin adapters, same shared-orchestrator shape as the other analysis tasks), registered in `TaskRegistry` (new `ParamType.DOUBLE` for `--min-tcc`) and `HelpText`. Verified live via an ephemeral Gradle composite build: TEXT/JSON/LLM all correct, `--min-tcc` filtering works. New tests: `CohesionGraphBuilderTest`, `FieldAccessAnalyzerTest`, `MethodComplexityAnalyzerTest`, `TypeCouplingAnalyzerTest`, `ClassMetricsAnalyzerTest`, `ClassMetricsFormatterTest`, `ClassMetricsOrchestratorTest`, plus `JsonFormatterTest`/`LlmFormatterTest` additions — all using hand-crafted ASM fixtures (`ClassWriter`) for exact bytecode-shape control, following the `DsmDependencyExtractorTest`/`TestClassWriter` precedent rather than relying on real-kotlinc-output guessing.
 
 ---
 
@@ -617,11 +484,6 @@ The `test-involvement: N of M … involve test sources` line (printed when scope
 
 The formatting-boundary cleanup this was waiting on is now done (see above) — `TestInvolvement.Counts` flowing through as a field on the orchestrator's output, rendered by the formatter, is the established pattern (`CyclesOutput`/`EmergentRingsOutput`). Apply the same pattern here whenever this gets picked up.
 
-### ~~Per-task help with usage on error~~ — DONE
-~~**ACTIVE**~~ **DONE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
-
-All refactoring tasks (Gradle + Maven) now catch `IllegalArgumentException` on config parse and show `usageHint()` + `renderExamples()` instead of a raw stack trace.
-
 ### `TaskGuidance` — structured context output for all tasks
 **PARTIALLY DONE** | **Value: medium** | **Effort: high** | Source: internal
 
@@ -635,30 +497,10 @@ data class TaskGuidance(
 )
 ```
 
-### ~~Refactoring result LLM hints for follow-up actions~~ — DONE (v0.1.105-SNAPSHOT)
-**DONE** | **Value: medium** | **Effort: low** | Source: internal
-
-Implemented `RefactoringHints` helper in core. Each formatter's LLM output now includes task-specific follow-up suggestions after applied operations (non-preview). Move/execute-plan suggest structural verification (`cnavPackageDeps`, `cnavRings`, `cnavCycles`). Rename/delete/change-signature suggest `cnavFindUsages` for verification.
-
-### ~~Refactoring task discoverability~~ — DONE
-~~**ACTIVE**~~ **DONE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.72)
-
-Covered: `generateCompact()` has "When Refactoring" block (line 150) + "Common Refactoring Tasks" section + explicit `"I'm about to rename/move/delete → move-class/rename-method --preview"` hint in the Exploring section.
-
 ### `cnavAnnotations`: methods=true as default for common annotations
 **ACTIVE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
 
 Searching for `@Test` returns empty without `--methods=true`. Workaround is easy (pass the flag). Auto-enable when results are empty.
-
-### `cnavFindCallees`: hide library internals by default
-**DONE (already implemented)** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra, v0.1.97)
-
-Stale — already resolved. `PROJECTONLY` (`--project-only`) defaults to `"true"` (`ParamDef` default value, description literally says "Hide JDK/stdlib/library classes (default: on)") and is included in both `FIND_CALLEES` and `FIND_CALLERS`' param lists with no override, so `CallGraphConfig.projectOnly` is `true` unless a caller explicitly passes `--project-only=false`. Verified by reading `CallGraphConfig.parse` → `TaskRegistry.PROJECTONLY.parseFrom(properties)` and the filter application in `buildFilter()`. No code change needed.
-
-### `cnavFindCallees` callee explosion
-**ACTIVE** | **Value: medium** | **Effort: medium** | Source: field-test(v0.1.47)
-
-`CallTreeBuilder` expands ALL polymorphic implementors. Solutions: collapse dispatch groups into "N implementors" node, add max-children limit, lower default depth.
 
 ### Preview-by-default for write commands
 **FUTURE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra)
@@ -679,29 +521,6 @@ Suggests moving ports into domain packages. Algorithm optimizes for proximity wi
 **FUTURE** | **Value: low** | **Effort: low** | Source: field-test(greitt)
 
 Suggestions like "move `MenuItemTest` to `web.components`" are confusing. Default to excluding test classes.
-
-### `cnavMoveSuggest` + `--plan-file` support
-**DONE** | **Value: medium** | **Effort: low** | Source: field-test(greitt)
-
-Implemented for both Gradle and Maven. `MoveSuggestTask`/`MoveSuggestMojo` now extract via `PackageHealthExtractor`, mutate the dependency list and project class set through `PlanMutator`, then feed the mutated `PackageHealthExtraction` into `MoveSuggestOrchestrator.fromExtraction`.
-
-Important nuance found during implementation: `PlanMutator.apply()` used to unconditionally drop edges that land in the same package after a simulated move — correct for cycle/DSM/ring analysis, but wrong for move-suggest (extracted with `includeSamePackage=true`), since those intra-package edges are exactly what scores gravity at the destination. Added a `dropSamePackageEdges` parameter (default `true`, preserving existing callers) and pass `false` from move-suggest.
-
-Also found: `cnavCycles`/`cnavRings`/`cnavDsm`/`cnavMetrics` Maven mojos accept `--plan-file` as a CLI property but never actually apply the mutation to the dependency graph — silent no-op on the Maven side only (Gradle tasks apply it correctly via `CodeNavigatorTask.applyPlan`). See new item below.
-
-Still open: `cnavSuggestStructure` and `cnavCohesion` — both consume the same dependency list and could benefit from the same plan-simulation wiring, using the same `dropSamePackageEdges=false` approach.
-
-### Fix Maven `--plan-file` no-op on cnavCycles/cnavRings/cnavDsm/cnavMetrics
-**DONE** | **Value: medium** | **Effort: low** | Source: internal (found while implementing cnavMoveSuggest plan-file support)
-
-Fixed. Added shared `loadPlanSteps()`/`applyPlanFile()` helpers to `MavenSupport.kt` (mirroring Gradle's `CodeNavigatorTask.applyPlan`, since Maven mojos have no shared base task) and wired them into `CyclesMojo`, `DsmMojo`, `MetricsMojo` (simple `applyPlanFile(dependencies, planFile, log)` before matrix/cycle building) and `RingsMojo` (both `--mode=package` via `applyPlanFile`, and `--mode=emergent` via explicit `PlanMutator.apply`/`applyToClassSet` on both the project and external dependency extractions, since emergent mode needs the mutated class set for its project/external split). `MoveSuggestMojo` refactored to reuse `loadPlanSteps()` instead of parsing inline.
-
-### `cnavMoveSuggest`: structural supertype gravity
-~~**ACTIVE**~~ **DONE (v0.1.106-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(greitt)
-
-Detects `implements`/`extends` relationships as additional dependency gravity in `MoveSuggester`. These edges bypass the ubiquitous-type filter, so fakes (which primarily depend on interfaces that many classes use) are now correctly suggested for co-location with their interface's package.
-
-Implementation: `DsmDependencyExtractor` extracts structural supertypes via a dedicated ASM pass. `MoveSuggester.suggest()` accepts them as a separate parameter and applies weight 3 per structural edge, immune to `maxFanIn` filtering.
 
 ### `cnavRings`: external protocol classes misclassified
 **FUTURE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
@@ -754,13 +573,6 @@ A single logical call site produces 3-4 lines (`.new` + `.<init>` + `.checkcast`
 
 ## Classpath / JAR scanning
 
-### ~~Maven: `--jar` support for Mojos~~ — DONE
-~~**ACTIVE**~~ **DONE** | **Value: medium** | **Effort: low** | Source: internal
-
-~~Add `@Parameter(property = "jar")` to `ListClassesMojo`, `FindClassMojo`, `ClassDetailMojo`, `FindSymbolMojo`.~~
-
-Already implemented: all four mojos have `@Parameter(property = "jar")` and full jar branch logic.
-
 ### Full classpath scanning option
 **FUTURE** | **Value: medium** | **Effort: medium** | Source: internal
 
@@ -769,13 +581,6 @@ Already implemented: all four mojos have `@Parameter(property = "jar")` and full
 ---
 
 ## CI & enforcement
-
-### CI fail-on-violation mode
-**DONE** | **Value: high** | **Effort: low** | Source: internal
-
-Implemented for `cnavCycles` (`--fail-on-violation=true --max-cycles=0`) and `cnavRings` (`--fail-on-violation=true --max-violations=0`, both `--mode=emergent` and `--mode=package`). `cnavLayerCheck` was removed in v0.1.97 (superseded by `cnavRings`), so it's not part of this. `cnavCohesion` excluded — it produces a ranked score list, not a violation count, so "fail on violation" doesn't map cleanly onto it.
-
-Gradle throws `GradleException`, Maven throws `MojoFailureException`, after printing the normal output.
 
 ---
 
@@ -794,37 +599,6 @@ Expand from single-hop blast radius into multi-signal impact predictor: direct c
 ---
 
 ## Internal code quality
-
-### Restore formatting-layer boundary — outer layers pass result objects, formatters emit output
-**DONE (named offenders fixed)** | **Value: high** | **Effort: medium** | Source: internal
-
-Fixed both concrete offenders named below (v0.1.112). `CyclesOrchestrator`/`RingsOrchestrator` now carry raw `TestInvolvement.Counts?` (not pre-rendered text) on their output; `CyclesFormatter`/`JsonFormatter.formatCycles`/`LlmFormatter.formatCycles` and `EmergentRingFormatter.format` each accept `testInvolvement` and render the notice themselves, per format. `RingFormatter.format` already had an unused `configNotice: String?` hook — wired `RingsTask`/`RingsMojo` to pass `RingFormatter.PACKAGE_MODE_NOTICE` through it instead of prefixing the string themselves. `CyclesTask`/`CyclesMojo`/`RingsTask`/`RingsMojo` no longer concatenate onto formatter output or branch per `OutputFormat` outside the formatter — Rings' pointless `when (format) { TEXT,DIFF -> output; JSON -> output; LLM -> output }` echo (three identical branches) was replaced with a direct `OutputWrapper.wrap(output, format)`. `JsonFormatter.formatCycles` now emits a real structured `"testInvolvement":{"testInvolved":N,"total":M}` field — the JSON-hints item's first concrete instance. Verified live (Gradle composite build): TEXT/LLM notice text unchanged, JSON field present and correctly shaped, `PACKAGE_MODE_NOTICE` correctly positioned after the section header. New tests: `CyclesFormatterTest`, `JsonFormatterTest`, `LlmFormatterTest`.
-
-**Found but deliberately not fixed — a bigger, separate gap**: `cnavRings --format=json` isn't real JSON at all, for either mode. `RingFormatter.format()` and `EmergentRingFormatter.format()` are the *only* renderers for rings, and both always produce prose-shaped text regardless of `format` (the `format` param only toggles whether LLM-only action hints are appended) — there's no `JsonFormatter.formatRings`/`formatEmergentRings` equivalent at all. So today, `cnavRings --format=json` returns the same prose text as TEXT, just wrapped in `---CNAV_BEGIN---`/`---CNAV_END---` markers with no structural change. This is bigger than a boundary violation — it's a missing capability — so it's logged as a new item below rather than folded into this one.
-
-### `cnavRings` has no real JSON output format
-**DONE** | **Value: medium** | **Effort: medium** | Source: internal (found while fixing the formatting-layer boundary)
-
-Implemented `JsonFormatter.formatRings(assignment, ringNames, configNotice)` (package mode) and `JsonFormatter.formatEmergentRings(result, ringNames, hasHints, testInvolvement)` (emergent mode). Package mode emits `rings` (package/ring/ringName/isCompositionRoot), `violations` (filtered to drop composition-root edges, matching TEXT), and `configNotice`. Emergent mode emits `classRings`, `mixedRingPackages` (only packages with `isMixedRing`, matching TEXT's scope), `violations`, `hintsApplied`, and `testInvolvement`. `RingsTask`/`RingsMojo` branch on `OutputFormat.JSON` to call these instead of `RingFormatter`/`EmergentRingFormatter`; TEXT/DIFF/LLM unchanged (LLM already varies via the existing `format` param on those formatters). New tests in `JsonFormatterTest`. Verified live via an ephemeral Gradle composite build (temporary scratch project, not committed): both `--mode=package --format=json` and `--mode=emergent --format=json` produce correctly-shaped JSON; `--format` omitted still produces the original prose output unchanged.
-
-### ~~Maven empty-result paths bypass OutputWrapper~~ — DONE (v0.1.112)
-**DONE** | **Value: high** | **Effort: low** | Source: internal (pattern audit after the formatting-layer boundary fix)
-
-Found systemically while auditing for other pattern deviations: 13 Maven mojos used a raw `println("...")` on their no-results path instead of `OutputWrapper.emptyResult(config.format, ...)` — confirmed every Gradle counterpart did it correctly. Silently broke `--format=json`/`--format=llm` (no `CNAV_BEGIN`/`CNAV_END` markers, non-JSON body) whenever the result set was empty, Maven-only. Fixed in: `AuthorAnalysisMojo`, `ChangedSinceMojo` (2 spots), `ClassDetailMojo`, `CodeAgeMojo`, `ChurnMojo`, `ContextMojo`, `ComplexityMojo`, `DeadCodeMojo`, `FindInterfaceImplsMojo`, `HotspotsMojo`, `RankMojo`, `PackageDepsMojo`, `StringConstantMojo`, `TypeHierarchyMojo`. Verified live via a local `mvn install` + scratch project: `find-interfaces`/`complexity` with no matches now correctly emit `{"results":[],"hints":[]}` wrapped in markers under `--format=json`.
-
-### `CallTreeTaskSupport`/`CallTreeMojoSupport` duplicate the find-callers/find-callees pipeline
-**DONE (v0.1.112)** | **Value: medium** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
-
-Extracted `CallTreeOrchestrator` (core, `navigation.relations.callgraph`) — call graph build, skipped-file reporting, method matching, interface-registry lookup, annotation scan, tree building, and `classHint` computation all now live once. `CallTreeTaskSupport` (Gradle) and `CallTreeMojoSupport` (Maven) are now thin adapters: each keeps its own config-parse error wrapping (`GradleException` vs `MojoFailureException`), its own `enhanceProperties`/`applyConfigDefaults` call site (unchanged — the asymmetry there was cosmetic, not a bug, so left as-is rather than force identical call-site ordering), and its own logger vs `println`, but the pipeline itself is one function both call. Also gave `CallTreeMojoSupport` the `taskDef.deprecations(properties)` warning it was missing (Gradle had it, Maven silently didn't warn on deprecated `--method` usage).
-
-Verified live for both build tools (Gradle composite build + local `mvn install` scratch project): a real caller/callee match and a no-match (`--format=json`) both produce identical, correct output through the shared orchestrator. New test: `CallTreeOrchestratorTest`.
-
-### `ContextTask`/`ContextMojo` duplicate their pipeline — no shared orchestrator
-**DONE (v0.1.112)** | **Value: medium** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
-
-Extracted `ContextOrchestrator` (core, `navigation.context`) — class detail scan, call-graph build, interface registry, annotation scan, and the per-class caller/callee/implementor assembly all now live once. Both skipped-file reports (class scan and call-graph build report independently, as before) surface as a `List<String>` on the output rather than being logged inline mid-pipeline, so the Task/Mojo just iterates and warns. `ContextTask`/`ContextMojo` are now thin adapters: config-parse error wrapping (`GradleException` vs `MojoFailureException`) and the Maven-only `taggedDirs.isEmpty()` pre-check stay build-tool-specific, everything else is one shared function.
-
-Verified live for both build tools (Gradle composite build + local `mvn install` scratch project): a real match (class detail + caller/callee tree) and a `--format=json` no-match both produce correct, matching output. New test: `ContextOrchestratorTest`.
 
 ### `cnavReport` has no real JSON output format
 **PARKED** | **Value: low** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
@@ -846,17 +620,6 @@ Verified live for both build tools (Gradle composite build + local `mvn install`
 
 `JsonFormatter` (364 outgoing, 77 types, fanIn=261) and `LlmFormatter` are highest-complexity classes. Change together 96% of the time. Split into per-feature formatters; top-level becomes thin dispatcher. Wide change touching many files.
 
-### Reduce Gradle/Maven duplication via orchestrator extraction
-**DONE (analysis tasks)** | **Value: medium** | **Effort: high** | Source: internal
-
-Every analysis-task Gradle/Maven pair duplicated orchestration. Extracted `CyclesOrchestrator`, `DsmOrchestrator`, `RingsOrchestrator`, `MetricsOrchestrator`, `VolatilityOrchestrator`, `CouplingOrchestrator`, and `TypeAffinityOrchestrator` (all in core) — every Task/Mojo pair for cycles, dsm, rings, metrics, volatility, coupling, and type-affinity now calls the same function instead of hand-rolling the extraction→(plan-mutation→)analysis pipeline twice. This is what prevented the `--plan-file` no-op bug (see above) from being possible in the first place — there's only one code path to get right. Balance, Strength (IntegrationStrength), Distance (PackageDistance), and SuggestStructure already had orchestrators before this work started.
-
-Two more real divergences found and fixed while doing this: Maven's `TypeAffinityMojo` never called `SkippedFileReporter.report(...)` (skipped-file warnings silently dropped, Maven-only); Maven's `ChangeCouplingMojo` used a raw `println("No coupling found.")` on the empty-result path instead of `OutputWrapper.emptyResult(config.format, ...)` (ignored `--format`, Maven-only).
-
-Notable finding while unifying `RingsOrchestrator`'s emergent mode: Gradle did one combined extraction (`includeExternal=true`) and split project/external deps by class-set membership; Maven did two separate extractions. Proved these produce identical results (same underlying bytecode scan, just filtered differently), so unified on Gradle's single-scan approach — also removes a redundant bytecode walk that Maven was doing.
-
-**Deliberately out of scope**: the refactoring-operation tasks (Rename*, Move*, ChangeSignature, SafeDelete, ExecutePlan) are a different shape. Their actual rewrite logic (`RenameMethodRewriter`, `RenameLocationFinder`, etc.) is *already* shared in core and called identically from both sides — Gradle just wraps it in `WorkerExecutor` classloader isolation (required because `kotlin-compiler-embeddable` conflicts with Gradle's own Kotlin runtime on the same classloader), while Maven calls it directly since it doesn't need that isolation. There's no duplicated pipeline to unify there, just an unavoidable execution-shell difference — extracting a shared "orchestrator" wouldn't add the same divergence-proofing value it did for the analysis tasks above.
-
 ### Potentially dead code in cnav's own codebase
 **PARKED** | **Value: medium** | **Effort: low** | Source: internal
 
@@ -868,16 +631,6 @@ Self-analysis found: `CallGraphCache.build()`, `ClassIndexCache.build()`, `Inter
 - **Cache KotlinParser in rewriter tests** — 71% of test time in 5 classes. Sharing parsed AST could cut from 10.4s to ~3-4s.
 - **Add `FieldExtractor` tests** — 0% coverage, only non-Gradle core class at zero.
 - **Cover `LlmFormatter`/`JsonFormatter` uncovered branches** — primary agent-facing formatters at ~80%.
-
-### Break `formatting` ↔ `navigation.relations` cycle
-**DONE (already implemented)** | **Value: medium** | **Effort: low** | Source: internal
-
-Stale — already resolved. `UsageFormatterTest` lives at `src/test/kotlin/no/f12/codenavigator/formatting/UsageFormatterTest.kt`; only one copy exists in the whole repo.
-
-### Move misplaced root-package test classes
-**DONE (already implemented)** | **Value: low** | **Effort: low** | Source: internal
-
-Stale — already resolved. `ClassFileStalenessTest` and `TaskRegistryTest` now live under `no.f12.codenavigator.registry` (matching their production classes); `TaskDefTest` no longer exists as a separate file. Only 3 files remain in the root `no.f12.codenavigator` test package — `AgentHelpTextTest`, `ConfigHelpTextTest`, `HelpTextTest` — and those are legitimately root-level (they test the plugin's own root-level help generators, not misplaced).
 
 ### Fix DANGER balance: root package → callgraph/implementors
 **LIKELY DONE (unverified)** | **Value: medium** | **Effort: low** | Source: internal(v0.1.83)
@@ -915,10 +668,6 @@ Current model works. Revisit when real-world usage reveals friction.
 ---
 
 ## Martin integration & compiler infrastructure
-
-### ~~Embedded Kotlin Compiler Frontend~~ — DONE (v0.1.90)
-
-Two-phase architecture: ASM location finding → PSI editing in isolated classloader. `kotlin-compiler-embeddable:2.0.21`. Remaining: BindingContext not yet used.
 
 ### Martin as external tool integration
 **FUTURE** | **Value: medium** | **Effort: high** | Source: internal
