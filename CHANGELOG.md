@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.1.112
+
+### New: `cnavClassMetrics` — per-class cohesion and CK metrics
+
+New task computing TCC/LCC cohesion (fraction of method pairs sharing field access) plus WMC (summed cyclomatic complexity), CBO (coupling between objects, signature-based), and DIT (superclass chain depth) per class. Verdict (HIGH/MEDIUM/LOW/MONOLITH) flags classes worth splitting. Filterable via `--min-methods`, `--min-tcc`, `--max-wmc`, `--max-cbo`.
+
+### New: `cnavDsm --multi-module` aggregates across a project's real dependencies (Gradle only)
+
+`cnavDsm` can now aggregate class directories across a multi-project Gradle build instead of seeing only the module it runs in. Inclusion follows the actual dependency graph, not project-tree proximity: the invoked project's own subtree is always included, real `project(...)` dependencies are walked in transitively, and unrelated sibling modules are excluded even if they happen to have the plugin applied. Output labels rows/columns with their originating module (`[:shared] api`) in TEXT/LLM, and adds a `packageModules` field in JSON.
+
+### New: `cnav-config.json` `defaults` section
+
+A `defaults` object in `cnav-config.json` lets a project commit shared task options instead of repeating them on every CLI invocation (`{"defaults": {"format": "llm", "scope": "prod"}}`). Works generically for any task/param — CLI options always take precedence, then `cnav-config.json`, then a task's own hardcoded default. Wired centrally for all Gradle tasks and individually across all ~48 Maven mojos.
+
+### New: `cnavRings` real JSON output
+
+`--format=json` on `cnavRings` now returns structured JSON (ring assignments, violations, mixed-ring packages, hints-applied flag, test-involvement) for both `--mode=package` and `--mode=emergent`, instead of the same prose text as `--format=text` wrapped in markers.
+
+### Fix: `cnavHotspots` split a file's history across renames and never dropped deleted files
+
+A renamed file's revision/churn history was split into two separate entries — one under the old path, one under the new — instead of being summed. Deleted files (including old rename names) stayed in the output indefinitely since nothing checked whether they still existed. Both fixed: renames (including transitive chains) are now merged into one entry, and files no longer present on disk are excluded.
+
+### Fix: 13 Maven mojos ignored `--format` on their empty-result path
+
+`AuthorAnalysisMojo`, `ChangedSinceMojo`, `ClassDetailMojo`, `CodeAgeMojo`, `ChurnMojo`, `ContextMojo`, `ComplexityMojo`, `DeadCodeMojo`, `FindInterfaceImplsMojo`, `HotspotsMojo`, `RankMojo`, `PackageDepsMojo`, `StringConstantMojo`, and `TypeHierarchyMojo` used a raw `println(...)` on the no-results path instead of `OutputWrapper.emptyResult(...)`, silently breaking `--format=json`/`--format=llm` (no `CNAV_BEGIN`/`CNAV_END` markers, non-JSON body) whenever the result set was empty. Gradle equivalents were already correct.
+
 ## 0.1.111
 
 ### New: `--fail-on-violation` CI gate for `cnavCycles` and `cnavRings`
