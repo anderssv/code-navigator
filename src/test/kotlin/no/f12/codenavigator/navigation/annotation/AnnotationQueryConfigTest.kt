@@ -8,8 +8,6 @@ import no.f12.codenavigator.config.OutputFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class AnnotationQueryConfigTest {
 
@@ -28,17 +26,24 @@ class AnnotationQueryConfigTest {
     }
 
     @Test
-    fun `methods defaults to false`() {
+    fun `targets defaults to all three`() {
         val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Service"))
 
-        assertFalse(config.methods)
+        assertEquals(AnnotationTarget.ALL, config.targets)
     }
 
     @Test
-    fun `parses methods=true`() {
-        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Transactional", "methods" to "true"))
+    fun `parses a single target`() {
+        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Transactional", "target" to "method"))
 
-        assertTrue(config.methods)
+        assertEquals(setOf(AnnotationTarget.METHOD), config.targets)
+    }
+
+    @Test
+    fun `parses multiple targets`() {
+        val config = AnnotationQueryConfig.parse(mapOf("pattern" to "Inject", "target" to "class,field"))
+
+        assertEquals(setOf(AnnotationTarget.CLASS, AnnotationTarget.FIELD), config.targets)
     }
 
     @Test

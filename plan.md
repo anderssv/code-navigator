@@ -497,11 +497,6 @@ data class TaskGuidance(
 )
 ```
 
-### `cnavAnnotations`: methods=true as default for common annotations
-**ACTIVE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
-
-Searching for `@Test` returns empty without `--methods=true`. Workaround is easy (pass the flag). Auto-enable when results are empty.
-
 ### Preview-by-default for write commands
 **FUTURE** | **Value: medium** | **Effort: low** | Source: field-test(bass-ra)
 

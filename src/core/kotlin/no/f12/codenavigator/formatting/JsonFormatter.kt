@@ -398,6 +398,12 @@ object JsonFormatter {
                         "annotations" to JsonRaw(jsonStringArray(method.annotations.sorted().map { it.value })),
                     )
                 }),
+                "fields" to JsonRaw(jsonArray(match.matchedFields) { field ->
+                    jsonObject(
+                        "field" to field.field.fieldName,
+                        "annotations" to JsonRaw(jsonStringArray(field.annotations.sorted().map { it.value })),
+                    )
+                }),
             )
         }
 

@@ -18,15 +18,21 @@ object AnnotationQueryFormatter {
                 for (method in match.matchedMethods) {
                     appendLine()
                     val sortedAnnotations = method.annotations.sorted()
-                    append("  ${method.method.methodName} [${sortedAnnotations.joinToString(", ") { "@${it.simpleName()}" }}]")
+                    append("  method ${method.method.methodName} [${sortedAnnotations.joinToString(", ") { "@${it.simpleName()}" }}]")
+                }
+                for (field in match.matchedFields) {
+                    appendLine()
+                    val sortedAnnotations = field.annotations.sorted()
+                    append("  field ${field.field.fieldName} [${sortedAnnotations.joinToString(", ") { "@${it.simpleName()}" }}]")
                 }
             }
         }
     }
 
-    fun noResultsHints(pattern: String, methods: Boolean): List<String> = buildList {
-        if (!methods) {
-            add("Only class-level annotations are searched by default. Use --methods=true to also search method-level annotations (e.g. @Test, @Override).")
+    fun noResultsHints(pattern: String, targets: Set<AnnotationTarget> = AnnotationTarget.ALL): List<String> = buildList {
+        if (targets != AnnotationTarget.ALL) {
+            val searched = targets.sorted().joinToString(",") { it.name.lowercase() }
+            add("Only searching target(s): $searched. Use --target=class,method,field to search everything.")
         }
         add("Only RUNTIME and CLASS retention annotations are visible in bytecode. SOURCE retention annotations (e.g. @Suppress) cannot be found.")
     }

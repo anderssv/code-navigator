@@ -56,6 +56,9 @@ import no.f12.codenavigator.navigation.dsm.ClassRingViolation
 import no.f12.codenavigator.navigation.dsm.PackageRingSummary
 import no.f12.codenavigator.navigation.classmetrics.ClassCohesionVerdict
 import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
+import no.f12.codenavigator.navigation.annotation.AnnotationMatch
+import no.f12.codenavigator.navigation.annotation.FieldAnnotationMatch
+import no.f12.codenavigator.navigation.annotation.FieldRef
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -884,6 +887,29 @@ class JsonFormatterTest {
 
         assertTrue(result.contains("\"method\":\"getUsers\""))
         assertTrue(result.contains("\"annotations\":[\"GetMapping\"]"))
+    }
+
+    @Test
+    fun `formats annotation matches with fields as JSON`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.MyService"),
+                sourceFile = "MyService.kt",
+                classAnnotations = emptySet(),
+                matchedMethods = emptyList(),
+                matchedFields = listOf(
+                    FieldAnnotationMatch(
+                        field = FieldRef(ClassName("com.example.MyService"), "repo"),
+                        annotations = setOf(AnnotationName("Inject")),
+                    ),
+                ),
+            ),
+        )
+
+        val result = JsonFormatter.formatAnnotations(matches)
+
+        assertTrue(result.contains("\"field\":\"repo\""))
+        assertTrue(result.contains("\"fields\":[{\"field\":\"repo\",\"annotations\":[\"Inject\"]}]"))
     }
 
     @Test

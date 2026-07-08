@@ -240,7 +240,11 @@ object LlmFormatter {
                 }
                 for (method in match.matchedMethods) {
                     appendLine()
-                    append("  ${method.method.methodName} ${method.annotations.sorted().joinToString(",") { "@${it.simpleName()}" }}")
+                    append("  method ${method.method.methodName} ${method.annotations.sorted().joinToString(",") { "@${it.simpleName()}" }}")
+                }
+                for (field in match.matchedFields) {
+                    appendLine()
+                    append("  field ${field.field.fieldName} ${field.annotations.sorted().joinToString(",") { "@${it.simpleName()}" }}")
                 }
             }
         }

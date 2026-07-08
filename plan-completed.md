@@ -1437,3 +1437,11 @@ Stale — already resolved. `ClassFileStalenessTest` and `TaskRegistryTest` now 
 ## ~~Embedded Kotlin Compiler Frontend~~ — DONE (v0.1.90)
 
 Two-phase architecture: ASM location finding → PSI editing in isolated classloader. `kotlin-compiler-embeddable:2.0.21`. Remaining: BindingContext not yet used.
+
+---
+
+## ~~cnavAnnotations: methods=true as default for common annotations~~ — DONE
+
+**Value: low** | **Effort: low**
+
+Original ask was narrow ("auto-enable `--methods=true` when results are empty"), but investigation found a bigger issue: the `--methods` flag added zero value — `AnnotationExtractor.extract()` already scanned method-level annotations unconditionally in the same bytecode pass regardless of the flag, so it was purely a display filter on data already extracted, not a performance knob. The output already visually distinguished class vs. method matches (indentation). So instead of patching the confusing default, replaced it: added FIELD-level annotation scanning (new `visitField` extraction, previously absent entirely — no `@Inject`/`@Autowired`-on-field support existed), and replaced the boolean `--methods` flag with `--target=class,method,field` (comma-separated, `AnnotationTarget` enum), defaulting to **all three targets searched by default**. `--methods` kept as a deprecated no-op (warns, points to `--target`) rather than removed outright, per existing deprecation convention (`INCLUDETEST`/`ROOT_PACKAGE`). Output now labels each match explicitly (`method foo [@Test]` / `field bar [@Inject]`) in TEXT/LLM; JSON adds a `fields` array alongside `methods`. `noResultsHints` now hints toward broadening `--target` instead of the old "pass --methods=true" message. New tests across `AnnotationExtractorTest`, `AnnotationQueryBuilderTest`, `AnnotationQueryFormatterTest`, `AnnotationQueryConfigTest`, `JsonFormatterTest`/`LlmFormatterTest`. Verified live: `--pattern=Test` (a method-only annotation) now matches by default with no flag; `--target=class` correctly excludes it with a hint; deprecated `--methods=true` still works with a warning; JSON includes the new `fields` array.

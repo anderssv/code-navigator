@@ -10,25 +10,37 @@ import no.f12.codenavigator.navigation.bytecode.createClassReader
 import org.objectweb.asm.AnnotationVisitor
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
 import java.io.File
+
+data class FieldRef(
+    val className: ClassName,
+    val fieldName: String,
+) {
+    val qualifiedName: String get() = "$className.$fieldName"
+}
 
 data class AnnotationScanResult(
     val className: ClassName,
     val sourceFile: String?,
     val classAnnotations: Set<AnnotationName>,
     val methodAnnotations: Map<MethodRef, Set<AnnotationName>>,
+    val fieldAnnotations: Map<FieldRef, Set<AnnotationName>> = emptyMap(),
     val classAnnotationParameters: Map<AnnotationName, Map<String, String>> = emptyMap(),
     val methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>> = emptyMap(),
+    val fieldAnnotationParameters: Map<FieldRef, Map<AnnotationName, Map<String, String>>> = emptyMap(),
 )
 
 data class AggregatedAnnotations(
     val classAnnotations: Map<ClassName, Set<AnnotationName>>,
     val methodAnnotations: Map<MethodRef, Set<AnnotationName>>,
+    val fieldAnnotations: Map<FieldRef, Set<AnnotationName>> = emptyMap(),
     val classAnnotationParameters: Map<ClassName, Map<AnnotationName, Map<String, String>>>,
     val methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>>,
+    val fieldAnnotationParameters: Map<FieldRef, Map<AnnotationName, Map<String, String>>> = emptyMap(),
 )
 
 /**
@@ -44,8 +56,10 @@ object AnnotationExtractor {
         var sourceFile: String? = null
         val classAnnotations = mutableSetOf<AnnotationName>()
         val methodAnnotations = mutableMapOf<MethodRef, Set<AnnotationName>>()
+        val fieldAnnotations = mutableMapOf<FieldRef, Set<AnnotationName>>()
         val classAnnotationParams = mutableMapOf<AnnotationName, Map<String, String>>()
         val methodAnnotationParams = mutableMapOf<MethodRef, MutableMap<AnnotationName, Map<String, String>>>()
+        val fieldAnnotationParams = mutableMapOf<FieldRef, MutableMap<AnnotationName, Map<String, String>>>()
 
         reader.accept(
             object : ClassVisitor(Opcodes.ASM9) {
@@ -67,6 +81,35 @@ object AnnotationExtractor {
                 override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? {
                     if (descriptor == null) return null
                     return collectAnnotation(descriptor, classAnnotations, classAnnotationParams)
+                }
+
+                override fun visitField(
+                    access: Int,
+                    name: String,
+                    descriptor: String,
+                    signature: String?,
+                    value: Any?,
+                ): FieldVisitor? {
+                    if (name in KotlinMethodFilter.EXCLUDED_FIELDS || access and Opcodes.ACC_SYNTHETIC != 0) {
+                        return null
+                    }
+                    val fieldRef = FieldRef(className, name)
+                    val annotations = mutableSetOf<AnnotationName>()
+                    val paramMap = mutableMapOf<AnnotationName, Map<String, String>>()
+
+                    return object : FieldVisitor(Opcodes.ASM9) {
+                        override fun visitAnnotation(descriptor: String?, visible: Boolean): AnnotationVisitor? {
+                            if (descriptor == null) return null
+                            return collectAnnotation(descriptor, annotations, paramMap)
+                        }
+
+                        override fun visitEnd() {
+                            if (annotations.isNotEmpty()) {
+                                fieldAnnotations[fieldRef] = annotations
+                                fieldAnnotationParams[fieldRef] = paramMap
+                            }
+                        }
+                    }
                 }
 
                 override fun visitMethod(
@@ -106,8 +149,10 @@ object AnnotationExtractor {
             sourceFile = sourceFile,
             classAnnotations = classAnnotations,
             methodAnnotations = methodAnnotations,
+            fieldAnnotations = fieldAnnotations,
             classAnnotationParameters = classAnnotationParams,
             methodAnnotationParameters = methodAnnotationParams,
+            fieldAnnotationParameters = fieldAnnotationParams,
         )
     }
 
@@ -119,8 +164,10 @@ object AnnotationExtractor {
     fun scanAll(classDirectories: List<File>): AggregatedAnnotations {
         val classAnnotations = mutableMapOf<ClassName, Set<AnnotationName>>()
         val methodAnnotations = mutableMapOf<MethodRef, Set<AnnotationName>>()
+        val fieldAnnotations = mutableMapOf<FieldRef, Set<AnnotationName>>()
         val classAnnotationParams = mutableMapOf<ClassName, Map<AnnotationName, Map<String, String>>>()
         val methodAnnotationParams = mutableMapOf<MethodRef, Map<AnnotationName, Map<String, String>>>()
+        val fieldAnnotationParams = mutableMapOf<FieldRef, Map<AnnotationName, Map<String, String>>>()
 
         for (dir in classDirectories) {
             dir.walk()
@@ -134,6 +181,8 @@ object AnnotationExtractor {
                         }
                         methodAnnotations.putAll(result.methodAnnotations)
                         methodAnnotationParams.putAll(result.methodAnnotationParameters)
+                        fieldAnnotations.putAll(result.fieldAnnotations)
+                        fieldAnnotationParams.putAll(result.fieldAnnotationParameters)
                     } catch (_: UnsupportedBytecodeVersionException) {
                         // Skip files we can't read
                     }
@@ -143,8 +192,10 @@ object AnnotationExtractor {
         return AggregatedAnnotations(
             classAnnotations = classAnnotations,
             methodAnnotations = methodAnnotations,
+            fieldAnnotations = fieldAnnotations,
             classAnnotationParameters = classAnnotationParams,
             methodAnnotationParameters = methodAnnotationParams,
+            fieldAnnotationParameters = fieldAnnotationParams,
         )
     }
 

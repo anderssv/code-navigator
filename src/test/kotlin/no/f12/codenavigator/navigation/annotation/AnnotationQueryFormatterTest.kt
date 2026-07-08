@@ -72,7 +72,65 @@ class AnnotationQueryFormatterTest {
 
         val expected = """
             com.example.MyController (MyController.kt) [@RestController]
-              getUsers [@GetMapping]
+              method getUsers [@GetMapping]
+        """.trimIndent()
+        assertEquals(expected, result)
+    }
+
+    @Test
+    fun `formats class with field matches`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.MyService"),
+                sourceFile = "MyService.kt",
+                classAnnotations = emptySet(),
+                matchedMethods = emptyList(),
+                matchedFields = listOf(
+                    FieldAnnotationMatch(
+                        field = FieldRef(ClassName("com.example.MyService"), "repo"),
+                        annotations = setOf(AnnotationName("Inject")),
+                    ),
+                ),
+            ),
+        )
+
+        val result = AnnotationQueryFormatter.format(matches)
+
+        val expected = """
+            com.example.MyService (MyService.kt)
+              field repo [@Inject]
+        """.trimIndent()
+        assertEquals(expected, result)
+    }
+
+    @Test
+    fun `formats class with both method and field matches`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.MyService"),
+                sourceFile = "MyService.kt",
+                classAnnotations = emptySet(),
+                matchedMethods = listOf(
+                    MethodAnnotationMatch(
+                        method = MethodRef(ClassName("com.example.MyService"), "run"),
+                        annotations = setOf(AnnotationName("Scheduled")),
+                    ),
+                ),
+                matchedFields = listOf(
+                    FieldAnnotationMatch(
+                        field = FieldRef(ClassName("com.example.MyService"), "repo"),
+                        annotations = setOf(AnnotationName("Inject")),
+                    ),
+                ),
+            ),
+        )
+
+        val result = AnnotationQueryFormatter.format(matches)
+
+        val expected = """
+            com.example.MyService (MyService.kt)
+              method run [@Scheduled]
+              field repo [@Inject]
         """.trimIndent()
         assertEquals(expected, result)
     }
@@ -130,24 +188,24 @@ class AnnotationQueryFormatterTest {
 
         val expected = """
             com.example.Plain (Plain.kt)
-              scheduled [@Scheduled]
+              method scheduled [@Scheduled]
         """.trimIndent()
         assertEquals(expected, result)
     }
 
     @Test
-    fun `noResultsGuidance includes methods hint when methods is false`() {
-        val hints = AnnotationQueryFormatter.noResultsHints("Test", methods = false)
+    fun `noResultsHints includes target hint when targets is narrowed`() {
+        val hints = AnnotationQueryFormatter.noResultsHints("Test", targets = setOf(AnnotationTarget.CLASS))
 
-        assertTrue(hints.any { it.contains("--methods=true") })
+        assertTrue(hints.any { it.contains("--target=class,method,field") })
         assertTrue(hints.any { it.contains("SOURCE retention") })
     }
 
     @Test
-    fun `noResultsGuidance omits methods hint when methods is true`() {
-        val hints = AnnotationQueryFormatter.noResultsHints("Test", methods = true)
+    fun `noResultsHints omits target hint when all targets are searched`() {
+        val hints = AnnotationQueryFormatter.noResultsHints("Test", targets = AnnotationTarget.ALL)
 
-        assertTrue(hints.none { it.contains("--methods=true") })
+        assertTrue(hints.none { it.contains("--target=") })
         assertTrue(hints.any { it.contains("SOURCE retention") })
     }
 }

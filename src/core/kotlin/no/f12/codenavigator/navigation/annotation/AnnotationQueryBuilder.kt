@@ -11,10 +11,16 @@ data class AnnotationMatch(
     val sourceFile: String?,
     val classAnnotations: Set<AnnotationName>,
     val matchedMethods: List<MethodAnnotationMatch>,
+    val matchedFields: List<FieldAnnotationMatch> = emptyList(),
 )
 
 data class MethodAnnotationMatch(
     val method: MethodRef,
+    val annotations: Set<AnnotationName>,
+)
+
+data class FieldAnnotationMatch(
+    val field: FieldRef,
     val annotations: Set<AnnotationName>,
 )
 
@@ -23,7 +29,7 @@ object AnnotationQueryBuilder {
     fun query(
         classDirectories: List<File>,
         pattern: String,
-        methods: Boolean,
+        targets: Set<AnnotationTarget> = AnnotationTarget.ALL,
     ): List<AnnotationMatch> {
         val regex = Regex(pattern, RegexOption.IGNORE_CASE)
         val results = mutableListOf<AnnotationMatch>()
@@ -36,8 +42,9 @@ object AnnotationQueryBuilder {
                     .forEach { classFile ->
                         try {
                             val scanResult = AnnotationExtractor.extract(classFile)
-                            val classMatches = scanResult.classAnnotations.any { it.matches(regex) }
-                            val matchingMethods = if (methods) {
+                            val classMatches = AnnotationTarget.CLASS in targets &&
+                                scanResult.classAnnotations.any { it.matches(regex) }
+                            val matchingMethods = if (AnnotationTarget.METHOD in targets) {
                                 scanResult.methodAnnotations
                                     .filter { (_, annotations) -> annotations.any { it.matches(regex) } }
                                     .map { (methodRef, annotations) -> MethodAnnotationMatch(methodRef, annotations) }
@@ -45,14 +52,23 @@ object AnnotationQueryBuilder {
                             } else {
                                 emptyList()
                             }
+                            val matchingFields = if (AnnotationTarget.FIELD in targets) {
+                                scanResult.fieldAnnotations
+                                    .filter { (_, annotations) -> annotations.any { it.matches(regex) } }
+                                    .map { (fieldRef, annotations) -> FieldAnnotationMatch(fieldRef, annotations) }
+                                    .sortedBy { it.field.fieldName }
+                            } else {
+                                emptyList()
+                            }
 
-                            if (classMatches || matchingMethods.isNotEmpty()) {
+                            if (classMatches || matchingMethods.isNotEmpty() || matchingFields.isNotEmpty()) {
                                 results.add(
                                     AnnotationMatch(
                                         className = scanResult.className,
                                         sourceFile = scanResult.sourceFile,
                                         classAnnotations = scanResult.classAnnotations,
                                         matchedMethods = matchingMethods,
+                                        matchedFields = matchingFields,
                                     ),
                                 )
                             }

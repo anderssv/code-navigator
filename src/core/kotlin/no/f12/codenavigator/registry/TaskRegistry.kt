@@ -272,7 +272,8 @@ object TaskRegistry {
     val JAR = ParamDef("jar", "<path-or-artifact>", "Scan a JAR file instead of project classes. Value: file path or artifact coordinate (group:name)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val REF = ParamDef("ref", "<git-ref>", "Git ref to compare against (branch, tag, or commit SHA)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val STRING_PATTERN = ParamDef("pattern", "<regex>", "Regex to match against string constant values", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val METHODS = ParamDef("methods", "true", "Also search method-level annotations", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
+    val METHODS = ParamDef("methods", "true", "Deprecated: class, method, and field annotations are all searched by default now", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'methods' is deprecated. All targets (class, method, field) are searched by default now. Use 'target=class,method,field' to filter to specific targets.")
+    val TARGET = ParamDef("target", "class,method,field", "Annotation targets to search (default: all)", flag = false, defaultValue = "class,method,field", enhancePattern = false, type = ParamType.LIST_STRING)
     val CONTEXT_MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth (default: 2)", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
     val RENAME_CLASS = ParamDef("target-class", "<fqcn>", "Fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_METHOD = ParamDef("method", "<name>", "Method name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -673,14 +674,14 @@ object TaskRegistry {
 
     val ANNOTATIONS = TaskDef(
         goal = "annotations",
-        description = "Find classes and methods by annotation pattern",
-        params = FORMAT_PARAMS + listOf(PATTERN, METHODS) + SOURCE_SET_PARAMS + listOf(INCLUDETEST),
+        description = "Find classes, methods, and fields by annotation pattern",
+        params = FORMAT_PARAMS + listOf(PATTERN, METHODS, TARGET) + SOURCE_SET_PARAMS + listOf(INCLUDETEST),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
             UsageExample(listOf(PATTERN to "RestController")),
-            UsageExample(listOf(PATTERN to "\".*Mapping\"", METHODS to "true")),
-            UsageExample(listOf(PATTERN to "Scheduled", METHODS to "true")),
+            UsageExample(listOf(PATTERN to "\".*Mapping\"")),
+            UsageExample(listOf(PATTERN to "Inject", TARGET to "field")),
         ),
     )
 

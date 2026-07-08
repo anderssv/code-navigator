@@ -1083,6 +1083,7 @@ class TaskRegistryTest {
             "max-cbo" to ParamType.INT,
             "multi-module" to ParamType.BOOLEAN,
             "max-implementors" to ParamType.INT,
+            "target" to ParamType.LIST_STRING,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }

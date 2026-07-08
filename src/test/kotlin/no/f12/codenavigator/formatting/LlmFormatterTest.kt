@@ -27,6 +27,8 @@ import no.f12.codenavigator.navigation.dsm.CycleDetail
 import no.f12.codenavigator.navigation.dsm.CycleEdge
 import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
+import no.f12.codenavigator.navigation.annotation.FieldAnnotationMatch
+import no.f12.codenavigator.navigation.annotation.FieldRef
 import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.types.SourceSet
 import no.f12.codenavigator.navigation.context.ContextResult
@@ -621,7 +623,29 @@ class LlmFormatterTest {
 
         val result = LlmFormatter.formatAnnotations(matches)
 
-        assertEquals("com.example.MyController MyController.kt @RestController\n  getUsers @GetMapping", result)
+        assertEquals("com.example.MyController MyController.kt @RestController\n  method getUsers @GetMapping", result)
+    }
+
+    @Test
+    fun `formats annotation matches with fields`() {
+        val matches = listOf(
+            AnnotationMatch(
+                className = ClassName("com.example.MyService"),
+                sourceFile = "MyService.kt",
+                classAnnotations = emptySet(),
+                matchedMethods = emptyList(),
+                matchedFields = listOf(
+                    FieldAnnotationMatch(
+                        field = FieldRef(ClassName("com.example.MyService"), "repo"),
+                        annotations = setOf(AnnotationName("Inject")),
+                    ),
+                ),
+            ),
+        )
+
+        val result = LlmFormatter.formatAnnotations(matches)
+
+        assertEquals("com.example.MyService MyService.kt\n  field repo @Inject", result)
     }
 
     @Test

@@ -26,9 +26,13 @@ abstract class AnnotationsTask : CodeNavigatorTask() {
     @get:Internal
     var pattern: String? = null
 
-    @Option(option = "methods", description = "Also search method-level annotations")
+    @Option(option = "methods", description = "Deprecated: class, method, and field annotations are all searched by default now")
     @get:Internal
     var methods: String? = null
+
+    @Option(option = "target", description = "Annotation targets to search: class, method, field (default: all)")
+    @get:Internal
+    var target: String? = null
 
     @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
     @get:Internal
@@ -41,6 +45,7 @@ abstract class AnnotationsTask : CodeNavigatorTask() {
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         pattern?.let { put("pattern", it) }
         methods?.let { put("methods", it) }
+        target?.let { put("target", it) }
         scope?.let { put("scope", it) }
         includeTest?.let { put("include-test", it) }
     }
@@ -60,11 +65,11 @@ abstract class AnnotationsTask : CodeNavigatorTask() {
         val taggedDirs = project.taggedClassDirectories()
         val resolver = SourceSetResolver.from(taggedDirs)
 
-        val allMatches = AnnotationQueryBuilder.query(resolver.classDirectories, config.pattern, config.methods)
+        val allMatches = AnnotationQueryBuilder.query(resolver.classDirectories, config.pattern, config.targets)
         val matches = allMatches.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         if (matches.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No annotations matching '${config.pattern}' found.", AnnotationQueryFormatter.noResultsHints(config.pattern, config.methods)))
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No annotations matching '${config.pattern}' found.", AnnotationQueryFormatter.noResultsHints(config.pattern, config.targets)))
             return
         }
 

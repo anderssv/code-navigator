@@ -65,6 +65,29 @@ class AnnotationExtractorTest {
     }
 
     @Test
+    fun `extracts field-level annotation`() {
+        val classFile = testProjectClasses.resolve("com/example/variants/annotated/PaymentProcessor.class")
+
+        val result = AnnotationExtractor.extract(classFile)
+
+        val gatewayRef = FieldRef(ClassName("com.example.variants.annotated.PaymentProcessor"), "gateway")
+        val annotations = result.fieldAnnotations[gatewayRef] ?: emptySet()
+        assertTrue(
+            annotations.any { it.value.contains("Inject") },
+            "gateway field should have @Inject. Got: ${result.fieldAnnotations}",
+        )
+    }
+
+    @Test
+    fun `field with no annotations is absent from fieldAnnotations`() {
+        val classFile = testProjectClasses.resolve("com/example/variants/annotated/PlainService.class")
+
+        val result = AnnotationExtractor.extract(classFile)
+
+        assertTrue(result.fieldAnnotations.isEmpty(), "PlainService has no annotated fields. Got: ${result.fieldAnnotations}")
+    }
+
+    @Test
     fun `class with no annotations has empty annotation set`() {
         val classFile = testProjectClasses.resolve("com/example/variants/annotated/PlainService.class")
 

@@ -36,6 +36,9 @@ class AnnotationsMojo : AbstractMojo() {
     @Parameter(property = "methods")
     private var methods: String? = null
 
+    @Parameter(property = "target")
+    private var target: String? = null
+
     @Parameter(property = "include-test")
     private var includeTest: String? = null
 
@@ -61,7 +64,7 @@ class AnnotationsMojo : AbstractMojo() {
             return
         }
 
-        val allMatches = AnnotationQueryBuilder.query(resolver.classDirectories, config.pattern, config.methods)
+        val allMatches = AnnotationQueryBuilder.query(resolver.classDirectories, config.pattern, config.targets)
         val matches = allMatches.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         println(OutputWrapper.formatAndWrap(config.format) { format ->
@@ -77,6 +80,7 @@ class AnnotationsMojo : AbstractMojo() {
         format?.let { put("format", it) }
         pattern?.let { put("pattern", it) }
         methods?.let { put("methods", it) }
+        target?.let { put("target", it) }
         includeTest?.let { put("include-test", it) }
         scope?.let { put("scope", it) }
     }
