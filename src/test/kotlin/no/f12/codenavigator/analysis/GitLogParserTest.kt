@@ -127,6 +127,7 @@ class GitLogParserTest {
         assertEquals(1, result.size)
         assertEquals(1, result[0].files.size)
         assertEquals("src/new/Foo.kt", result[0].files[0].path)
+        assertEquals("src/old/Foo.kt", result[0].files[0].renamedFrom)
         assertEquals(5, result[0].files[0].added)
         assertEquals(3, result[0].files[0].deleted)
     }
@@ -143,6 +144,7 @@ class GitLogParserTest {
         assertEquals(1, result.size)
         assertEquals(1, result[0].files.size)
         assertEquals("src/new/Foo.kt", result[0].files[0].path)
+        assertEquals("src/old/Foo.kt", result[0].files[0].renamedFrom)
     }
 
     @Test
@@ -156,6 +158,7 @@ class GitLogParserTest {
 
         assertEquals(1, result.size)
         assertEquals("src/main/kotlin/Foo.kt", result[0].files[0].path)
+        assertEquals("Foo.kt", result[0].files[0].renamedFrom)
     }
 
     @Test
@@ -169,6 +172,7 @@ class GitLogParserTest {
 
         assertEquals(1, result.size)
         assertEquals("src/Foo.kt", result[0].files[0].path)
+        assertEquals("src/old/Foo.kt", result[0].files[0].renamedFrom)
     }
 
     @Test
@@ -182,6 +186,19 @@ class GitLogParserTest {
 
         assertEquals(1, result.size)
         assertEquals("src/NewName.kt", result[0].files[0].path)
+        assertEquals("src/OldName.kt", result[0].files[0].renamedFrom)
+    }
+
+    @Test
+    fun `parse leaves renamedFrom null for a plain file change`() {
+        val input = """
+            --abc123--2024-01-15--Anders Sveen
+            5	3	src/Foo.kt
+        """.trimIndent()
+
+        val result = GitLogParser.parse(input)
+
+        assertEquals(null, result[0].files[0].renamedFrom)
     }
 
     // === filterBuildOutput tests ===

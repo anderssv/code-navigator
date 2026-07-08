@@ -25,6 +25,7 @@ import no.f12.codenavigator.navigation.classinfo.MethodDetail
 import no.f12.codenavigator.navigation.dsm.PackageDependencies
 import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.symbol.SymbolInfo
+import no.f12.codenavigator.navigation.dsm.DsmFormatter
 import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType
 import no.f12.codenavigator.navigation.types.Scope
@@ -46,6 +47,7 @@ import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.CohesionResult
 import no.f12.codenavigator.navigation.dsm.MoveSuggestionResult
 import no.f12.codenavigator.navigation.dsm.StrengthResult
+import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
 
 object LlmFormatter {
 
@@ -368,12 +370,12 @@ object LlmFormatter {
             }
         }.withInterpretation(BALANCE_INTERPRETATION)
 
-    fun formatDsm(matrix: DsmMatrix): String = buildString {
+    fun formatDsm(matrix: DsmMatrix, moduleLabels: Map<PackageName, Set<String>> = emptyMap()): String = buildString {
         val prefix = matrix.displayPrefix
         if (prefix.isNotEmpty()) {
             appendLine("prefix:$prefix")
         }
-        append("packages:${matrix.packages.joinToString(",")}")
+        append("packages:${matrix.packages.joinToString(",") { DsmFormatter.labelFor(it, moduleLabels) }}")
         if (matrix.cells.isEmpty()) {
             append("\n(no dependencies)")
         } else {
@@ -450,6 +452,8 @@ object LlmFormatter {
 
     internal const val CYCLES_INTERPRETATION = "Interpretation: Package cycles prevent independent compilation and deployment. To break a cycle, identify the weakest edge (fewest class references) and extract an interface or move the referenced class. Use cnavWhyDepends for edge details."
 
+    internal const val CLASS_METRICS_INTERPRETATION = "Interpretation: TCC/LCC measure cohesion (fraction of method pairs sharing field access). HIGH (TCC>=0.7) = cohesive. MEDIUM (0.4-0.7) = acceptable. LOW (TCC<0.4, LCC>=0.7) = weakly cohesive but methods still chain-connect via shared fields. MONOLITH (TCC<0.4, LCC<0.7) = disjoint method groups — candidate for splitting into separate classes. WMC = summed cyclomatic complexity (higher = harder to test). CBO = distinct non-JDK/stdlib types referenced in signatures (higher = more context needed to understand the class). DIT = superclass chain depth (deeper = more inherited behavior to reason about)."
+
     private fun StringBuilder.renderChildren(children: List<CallTreeNode>, direction: CallDirection, depth: Int) {
         val indent = "  ".repeat(depth)
         for (node in children) {
@@ -517,4 +521,9 @@ object LlmFormatter {
         result.suggestions.joinToString("\n") { s ->
             "${s.className.value} current=${s.currentPackage} suggested=${s.suggestedPackage} own=${s.edgesToCurrent} target=${s.edgesToSuggested} confidence=${"%.2f".format(s.confidence)}"
         }.withInterpretation(MOVE_SUGGEST_INTERPRETATION)
+
+    fun formatClassMetrics(results: List<ClassMetricsResult>): String =
+        results.joinToString("\n") { r ->
+            "${r.className} methods=${r.totalMethods} tcc=${"%.2f".format(r.tcc)} lcc=${"%.2f".format(r.lcc)} verdict=${r.verdict} wmc=${r.wmc} cbo=${r.cbo} dit=${r.dit}"
+        }.withInterpretation(CLASS_METRICS_INTERPRETATION)
 }

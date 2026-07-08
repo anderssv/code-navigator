@@ -12,6 +12,17 @@ import org.gradle.api.tasks.options.Option
 import java.io.File
 
 /**
+ * Implemented by tasks that support `--multi-module`. Lets the plugin's generic staleness
+ * pre-check (registered before any @Option properties or @TaskAction code run) know whether
+ * to check the aggregated multi-module source/class dirs instead of just this project's own —
+ * a bare aggregator root project has no source of its own, so the single-module check would
+ * always fail there once `--multi-module` is meant to take over.
+ */
+interface MultiModuleCapable {
+    val multiModuleFlag: String?
+}
+
+/**
  * Base class for all code-navigator tasks.
  * Provides shared options (format, plan-file), a helper to build the options map
  * that Config.parse() methods expect, and detection of legacy -P property usage.

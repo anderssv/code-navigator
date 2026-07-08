@@ -49,7 +49,7 @@ abstract class HotspotTask : CodeNavigatorTask() {
         )
 
         val commits = GitLogRunner.run(project.projectDir, config.after, followRenames = config.followRenames)
-        val hotspots = HotspotBuilder.build(commits, config.minRevs, config.top)
+        val hotspots = HotspotBuilder.build(commits, config.minRevs, config.top, projectDir = project.projectDir)
 
         if (hotspots.isEmpty()) {
             logger.lifecycle(OutputWrapper.emptyResult(config.format, "No hotspots found."))

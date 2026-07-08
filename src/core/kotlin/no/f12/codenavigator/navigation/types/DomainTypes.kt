@@ -5,6 +5,9 @@ enum class SourceSet(val label: String) {
     TEST("test"),
 }
 
+/** Tags a class directory with both its source set and the module (Gradle project path / Maven artifact) it came from, for --multi-module aggregation. */
+data class ModuleSourceSet(val moduleName: String, val sourceSet: SourceSet)
+
 enum class Scope {
     ALL,
     PROD,

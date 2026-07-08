@@ -6,6 +6,8 @@ data class FileChange(
     val added: Int,
     val deleted: Int,
     val path: String,
+    /** The path this file was renamed from in this commit, or null if it wasn't a rename. */
+    val renamedFrom: String? = null,
 )
 
 data class GitCommit(
@@ -61,7 +63,8 @@ object GitLogParser {
                 if (parts.size == 3) {
                     val added = parts[0].toIntOrNull() ?: 0
                     val deleted = parts[1].toIntOrNull() ?: 0
-                    currentFiles.add(FileChange(added, deleted, resolveRenamePath(parts[2])))
+                    val (newPath, oldPath) = resolveRenamePath(parts[2])
+                    currentFiles.add(FileChange(added, deleted, newPath, renamedFrom = oldPath))
                 }
             }
         }
@@ -73,24 +76,28 @@ object GitLogParser {
         return commits
     }
 
-    private val BRACE_RENAME = Regex("^(.*?)\\{[^}]* => ([^}]*)\\}(.*)$")
-    private val FULL_RENAME = Regex("^.+ => (.+)$")
+    private val BRACE_RENAME = Regex("^(.*?)\\{([^}]*) => ([^}]*)\\}(.*)$")
+    private val FULL_RENAME = Regex("^(.+) => (.+)$")
 
-    private fun resolveRenamePath(raw: String): String {
+    /** Returns (newPath, oldPath) — oldPath is null when the raw entry isn't a rename. */
+    private fun resolveRenamePath(raw: String): Pair<String, String?> {
         val braceMatch = BRACE_RENAME.matchEntire(raw)
         if (braceMatch != null) {
             val prefix = braceMatch.groupValues[1]
-            val newPart = braceMatch.groupValues[2]
-            val suffix = braceMatch.groupValues[3]
-            return buildPath(prefix, newPart, suffix)
+            val oldPart = braceMatch.groupValues[2]
+            val newPart = braceMatch.groupValues[3]
+            val suffix = braceMatch.groupValues[4]
+            val newPath = buildPath(prefix, newPart, suffix)
+            val oldPath = buildPath(prefix, oldPart, suffix)
+            return newPath to oldPath.takeIf { it != newPath }
         }
 
         val fullMatch = FULL_RENAME.matchEntire(raw)
         if (fullMatch != null) {
-            return fullMatch.groupValues[1]
+            return fullMatch.groupValues[2] to fullMatch.groupValues[1]
         }
 
-        return raw
+        return raw to null
     }
 
     private fun buildPath(vararg segments: String): String =

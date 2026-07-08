@@ -44,6 +44,7 @@ import no.f12.codenavigator.navigation.dsm.BalanceResult
 import no.f12.codenavigator.navigation.dsm.CohesionResult
 import no.f12.codenavigator.navigation.dsm.MoveSuggestionResult
 import no.f12.codenavigator.navigation.dsm.StrengthResult
+import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
 
 @JvmInline
 private value class JsonRaw(val json: String)
@@ -218,7 +219,7 @@ object JsonFormatter {
             )
         }
 
-    fun formatDsm(matrix: DsmMatrix): String {
+    fun formatDsm(matrix: DsmMatrix, moduleLabels: Map<PackageName, Set<String>> = emptyMap()): String {
         val prefix = matrix.displayPrefix
         val packages = jsonStringArray(matrix.packages.map { it.toString() })
         val cells = jsonArray(matrix.cells.entries.toList().sortedBy { "${it.key.first}-${it.key.second}" }) { (key, count) ->
@@ -239,7 +240,25 @@ object JsonFormatter {
             jsonObject("packageA" to a.toString(), "packageB" to b.toString(), "forwardRefs" to counts.first, "backwardRefs" to counts.second)
         }
         val prefixStr = if (prefix.isNotEmpty()) prefix.toString() else null
-        return jsonObject("displayPrefix" to prefixStr, "packages" to JsonRaw(packages), "cells" to JsonRaw(cells), "cycles" to JsonRaw(cyclesJson))
+        val packageModules = if (moduleLabels.isEmpty()) {
+            null
+        } else {
+            JsonRaw(
+                jsonArray(matrix.packages) { pkg ->
+                    jsonObject(
+                        "package" to pkg.toString(),
+                        "modules" to JsonRaw(jsonStringArray((moduleLabels[pkg] ?: emptySet()).sorted())),
+                    )
+                },
+            )
+        }
+        return jsonObject(
+            "displayPrefix" to prefixStr,
+            "packages" to JsonRaw(packages),
+            "packageModules" to packageModules,
+            "cells" to JsonRaw(cells),
+            "cycles" to JsonRaw(cyclesJson),
+        )
     }
 
     fun formatDsmCycles(matrix: DsmMatrix, cycleFilter: Pair<PackageName, PackageName>? = null): String {
@@ -681,6 +700,21 @@ object JsonFormatter {
                 "externalEdges" to entry.externalEdges,
                 "cohesion" to entry.cohesion,
                 "verdict" to entry.verdict.name,
+            )
+        }
+
+    fun formatClassMetrics(results: List<ClassMetricsResult>): String =
+        jsonArray(results) { r ->
+            jsonObject(
+                "className" to r.className.toString(),
+                "package" to r.packageName.toString(),
+                "totalMethods" to r.totalMethods,
+                "tcc" to r.tcc,
+                "lcc" to r.lcc,
+                "verdict" to r.verdict.name,
+                "wmc" to r.wmc,
+                "cbo" to r.cbo,
+                "dit" to r.dit,
             )
         }
 

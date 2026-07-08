@@ -390,4 +390,56 @@ class DsmFormatterTest {
 
         assertTrue(hints.none { it.contains("single package") }, "Should not mention single package for multi-package: $hints")
     }
+
+    // === multi-module labeling ===
+
+    @Test
+    fun `labelFor returns plain package name when no module info is present`() {
+        val label = DsmFormatter.labelFor(PackageName("api"), emptyMap())
+
+        assertEquals("api", label)
+    }
+
+    @Test
+    fun `labelFor prefixes a single module`() {
+        val label = DsmFormatter.labelFor(PackageName("api"), mapOf(PackageName("api") to setOf(":shared")))
+
+        assertEquals("[:shared] api", label)
+    }
+
+    @Test
+    fun `labelFor sorts and joins multiple modules for an ambiguous package`() {
+        val label = DsmFormatter.labelFor(PackageName("api"), mapOf(PackageName("api") to setOf(":service", ":shared")))
+
+        assertEquals("[:service,:shared] api", label)
+    }
+
+    @Test
+    fun `format renders module prefix in legend and row labels when moduleLabels is provided`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("model")),
+            cells = mapOf((PackageName("api") to PackageName("model")) to 1),
+            classDependencies = emptyMap(),
+        )
+        val moduleLabels = mapOf(PackageName("api") to setOf(":service"), PackageName("model") to setOf(":shared"))
+
+        val result = DsmFormatter.format(matrix, moduleLabels)
+
+        assertTrue(result.contains("1: [:service] api"), "Should label legend with module, got:\n$result")
+        assertTrue(result.contains("2: [:shared] model"), "Should label legend with module, got:\n$result")
+        assertTrue(result.contains("[:service] api"), "Should label row with module, got:\n$result")
+    }
+
+    @Test
+    fun `format is unchanged when moduleLabels is empty`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("model")),
+            cells = mapOf((PackageName("api") to PackageName("model")) to 1),
+            classDependencies = emptyMap(),
+        )
+
+        val result = DsmFormatter.format(matrix, emptyMap())
+
+        assertTrue(!result.contains("["), "Should not show module brackets when moduleLabels is empty")
+    }
 }

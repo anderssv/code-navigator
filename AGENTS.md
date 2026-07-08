@@ -15,6 +15,10 @@ Refactoring operations try to be as deterministic as possible, but sometimes res
 - **Version**: `build.gradle.kts` + `pom.xml` (keep in sync, `-SNAPSHOT` for dev)
 - **Plan**: `plan.md` (roadmap), `plan-completed.md` (done)
 
+### Workflow policy
+
+Never leave a pre-existing bug you notice while working, even if it's unrelated to the task at hand. Either fix it (preferred), or — only if fixing it would create too much unrelated change right now — note it explicitly (e.g. in `plan.md` or a code comment) so it isn't silently lost. Don't just skip past it.
+
 ### Testing in local projects
 
 When testing changes in a local project (e.g., Greitt):

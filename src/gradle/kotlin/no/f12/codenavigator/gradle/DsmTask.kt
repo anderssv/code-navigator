@@ -6,10 +6,13 @@ import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
+import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.dsm.DsmConfig
 import no.f12.codenavigator.navigation.dsm.DsmFormatter
 import no.f12.codenavigator.navigation.dsm.DsmHtmlRenderer
 import no.f12.codenavigator.navigation.dsm.DsmOrchestrator
+import no.f12.codenavigator.navigation.types.ClassName
+import no.f12.codenavigator.navigation.types.SourceSet
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
@@ -17,7 +20,7 @@ import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class DsmTask : CodeNavigatorTask() {
+abstract class DsmTask : CodeNavigatorTask(), MultiModuleCapable {
 
     @Option(option = "package-filter", description = "Only include packages under this prefix")
     @get:Internal
@@ -51,6 +54,14 @@ abstract class DsmTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
+    @Option(option = "multi-module", description = "Aggregate class directories from this project's real project dependencies (siblings not on the dependency graph are excluded)")
+    @get:Internal
+    var multiModule: String? = null
+
+    @get:Internal
+    override val multiModuleFlag: String?
+        get() = multiModule
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
@@ -60,6 +71,7 @@ abstract class DsmTask : CodeNavigatorTask() {
         cycle?.let { put("cycle", it) }
         rootPackage?.let { put("root-package", it) }
         scope?.let { put("scope", it) }
+        multiModule?.let { put("multi-module", it) }
     }
 
     @TaskAction
@@ -71,9 +83,25 @@ abstract class DsmTask : CodeNavigatorTask() {
         val config = DsmConfig.parse(props)
         config.deprecations().forEach { logger.warn(it) }
 
-        val taggedDirs = project.taggedClassDirectories()
+        val isMultiModule = TaskRegistry.MULTI_MODULE.parseFrom(props)
+        val taggedDirs: List<Pair<File, SourceSet>>
+        val moduleOfClass: Map<ClassName, String>
+        if (isMultiModule) {
+            val moduleTaggedDirs = MultiModuleResolver.resolve(project)
+            taggedDirs = moduleTaggedDirs.map { (dir, mss) -> dir to mss.sourceSet }
+            moduleOfClass = buildMap {
+                for ((dir, mss) in moduleTaggedDirs) {
+                    if (!dir.exists()) continue
+                    scanProjectClasses(listOf(dir)).forEach { put(it, mss.moduleName) }
+                }
+            }
+        } else {
+            taggedDirs = project.taggedClassDirectories()
+            moduleOfClass = emptyMap()
+        }
+
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        val output = DsmOrchestrator.run(config, taggedDirs, loadPlanSteps(), reportFile)
+        val output = DsmOrchestrator.run(config, taggedDirs, loadPlanSteps(), reportFile, moduleOfClass)
 
         output.skippedFileWarning?.let { logger.warn(it) }
         val matrix = output.matrix
@@ -87,9 +115,9 @@ abstract class DsmTask : CodeNavigatorTask() {
 
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCycles(matrix, config.cycleFilter) else DsmFormatter.format(matrix)
-        OutputFormat.JSON -> if (config.cyclesOnly || config.cycleFilter != null) JsonFormatter.formatDsmCycles(matrix, config.cycleFilter) else JsonFormatter.formatDsm(matrix)
-        OutputFormat.LLM -> if (config.cyclesOnly || config.cycleFilter != null) LlmFormatter.formatDsmCycles(matrix, config.cycleFilter) else LlmFormatter.formatDsm(matrix)
+        OutputFormat.TEXT, OutputFormat.DIFF -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCycles(matrix, config.cycleFilter) else DsmFormatter.format(matrix, output.moduleLabels)
+        OutputFormat.JSON -> if (config.cyclesOnly || config.cycleFilter != null) JsonFormatter.formatDsmCycles(matrix, config.cycleFilter) else JsonFormatter.formatDsm(matrix, output.moduleLabels)
+        OutputFormat.LLM -> if (config.cyclesOnly || config.cycleFilter != null) LlmFormatter.formatDsmCycles(matrix, config.cycleFilter) else LlmFormatter.formatDsm(matrix, output.moduleLabels)
     }
 })
 

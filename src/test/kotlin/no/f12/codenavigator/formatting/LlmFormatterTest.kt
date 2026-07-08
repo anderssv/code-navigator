@@ -48,6 +48,8 @@ import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.IntegrationStrength
 import no.f12.codenavigator.navigation.dsm.PackageStrengthEntry
 import no.f12.codenavigator.navigation.dsm.StrengthResult
+import no.f12.codenavigator.navigation.classmetrics.ClassCohesionVerdict
+import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -285,6 +287,20 @@ class LlmFormatterTest {
         val result = LlmFormatter.formatDsm(matrix)
 
         assertEquals("packages:api,service\napi->service:2\nservice->api:1\nCYCLES: api<->service", result)
+    }
+
+    @Test
+    fun `formats dsm with module labels when moduleLabels is provided`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("model")),
+            cells = emptyMap(),
+            classDependencies = emptyMap(),
+        )
+        val moduleLabels = mapOf(PackageName("api") to setOf(":service"), PackageName("model") to setOf(":shared"))
+
+        val result = LlmFormatter.formatDsm(matrix, moduleLabels)
+
+        assertEquals("packages:[:service] api,[:shared] model\n(no dependencies)", result)
     }
 
     // === DSM cycles-only formatting ===
@@ -1153,6 +1169,30 @@ class LlmFormatterTest {
         val result = LlmFormatter.formatSize(entries)
 
         assertEquals("services/UserService.kt lines=61\ndomain/Domain.kt lines=22", result)
+    }
+
+    // === Class metrics formatting ===
+
+    @Test
+    fun `formats class metrics with interpretation footer`() {
+        val entry = ClassMetricsResult(
+            className = ClassName("com.example.OrderService"),
+            packageName = PackageName("com.example"),
+            totalMethods = 5,
+            tcc = 0.12,
+            lcc = 0.3,
+            verdict = ClassCohesionVerdict.MONOLITH,
+            wmc = 34,
+            cbo = 12,
+            dit = 3,
+        )
+
+        val result = LlmFormatter.formatClassMetrics(listOf(entry))
+
+        assertEquals(
+            "com.example.OrderService methods=5 tcc=0.12 lcc=0.30 verdict=MONOLITH wmc=34 cbo=12 dit=3\n\n${LlmFormatter.CLASS_METRICS_INTERPRETATION}",
+            result,
+        )
     }
 
 }

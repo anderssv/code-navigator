@@ -41,6 +41,12 @@ sealed class ParamType<T>(val parse: (value: String?, defaultValue: String?) -> 
         },
     )
 
+    data object DOUBLE : ParamType<Double>(
+        parse = { value, defaultValue ->
+            value?.toDoubleOrNull() ?: defaultValue?.toDoubleOrNull() ?: 0.0
+        },
+    )
+
     data object FLAG : ParamType<Boolean>(
         parse = { value, _ ->
             value != null
@@ -209,6 +215,11 @@ object TaskRegistry {
     val PROJECTONLY = ParamDef("project-only", "false", "Hide JDK/stdlib/library classes (default: on)", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val FILTER_SYNTHETIC = ParamDef("filter-synthetic", "false", "Set false to include synthetic methods (equals, hashCode, copy, componentN, etc.)", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val TOP = ParamDef("top", "<N>", "Max results", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
+    val MIN_METHODS = ParamDef("min-methods", "<N>", "Minimum eligible method count to include a class", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
+    val MIN_TCC = ParamDef("min-tcc", "<0.0-1.0>", "Minimum Tight Class Cohesion to include a class", flag = false, defaultValue = "0.0", enhancePattern = false, type = ParamType.DOUBLE)
+    val MAX_WMC = ParamDef("max-wmc", "<N>", "Maximum WMC (summed cyclomatic complexity) to include a class", flag = false, defaultValue = "${Int.MAX_VALUE}", enhancePattern = false, type = ParamType.INT)
+    val MAX_CBO = ParamDef("max-cbo", "<N>", "Maximum CBO (coupling between objects) to include a class", flag = false, defaultValue = "${Int.MAX_VALUE}", enhancePattern = false, type = ParamType.INT)
+    val MULTI_MODULE = ParamDef("multi-module", "true", "Aggregate class directories from this project's real project dependencies, transitively (Gradle only). Unrelated sibling modules are excluded even when the plugin is applied there.", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val OVER = ParamDef("over", "<N>", "Only show files over N lines", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
     val AFTER = ParamDef("after", "YYYY-MM-DD", "Only consider commits after this date", flag = false, defaultValue = "1 year ago", enhancePattern = false, type = ParamType.DATE)
     val NO_FOLLOW = ParamDef("no-follow", "", "Disable git rename tracking", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
@@ -431,7 +442,7 @@ object TaskRegistry {
     val DSM = TaskDef(
         goal = "dsm",
         description = "Generate Dependency Structure Matrix",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE, ROOT_PACKAGE) + SOURCE_SET_PARAMS + PLAN_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE, ROOT_PACKAGE, MULTI_MODULE) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
@@ -441,6 +452,7 @@ object TaskRegistry {
             UsageExample(listOf(DSM_HTML to "build/dsm.html")),
             UsageExample(listOf(CYCLES to "true")),
             UsageExample(listOf(CYCLE to "api,service")),
+            UsageExample(listOf(MULTI_MODULE to "true")),
         ),
     )
 
@@ -593,6 +605,19 @@ object TaskRegistry {
             UsageExample(listOf(PATTERN to "Service")),
             UsageExample(listOf(PATTERN to "\".*Controller\"", PROJECTONLY to "false")),
             UsageExample(listOf(PATTERN to "\"domain\\\\..*\"", DETAIL to "true")),
+        ),
+    )
+
+    val CLASS_METRICS = TaskDef(
+        goal = "class-metrics",
+        description = "Per-class cohesion (TCC/LCC) and complexity (WMC/CBO/DIT) metrics",
+        params = FORMAT_PARAMS + listOf(MIN_METHODS, MIN_TCC, MAX_WMC, MAX_CBO) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(MIN_METHODS to "5")),
+            UsageExample(listOf(MIN_TCC to "0.0", MAX_WMC to "20")),
         ),
     )
 
@@ -1025,6 +1050,7 @@ object TaskRegistry {
         FIND_STRING_CONSTANT,
         ANNOTATIONS,
         COMPLEXITY,
+        CLASS_METRICS,
         METRICS,
         HOTSPOTS,
         CHURN,

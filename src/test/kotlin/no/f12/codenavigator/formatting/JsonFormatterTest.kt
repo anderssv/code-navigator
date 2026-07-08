@@ -54,6 +54,8 @@ import no.f12.codenavigator.navigation.dsm.RingViolationType
 import no.f12.codenavigator.navigation.dsm.ClassRingAssignment
 import no.f12.codenavigator.navigation.dsm.ClassRingViolation
 import no.f12.codenavigator.navigation.dsm.PackageRingSummary
+import no.f12.codenavigator.navigation.classmetrics.ClassCohesionVerdict
+import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -564,6 +566,40 @@ class JsonFormatterTest {
         assertTrue(result.contains("\"cycles\""))
         assertTrue(result.contains("\"api\""))
         assertTrue(result.contains("\"service\""))
+    }
+
+    @Test
+    fun `dsm omits packageModules field when moduleLabels is empty`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api")),
+            cells = emptyMap(),
+            classDependencies = emptyMap(),
+        )
+
+        val result = JsonFormatter.formatDsm(matrix, emptyMap())
+
+        assertTrue(!result.contains("packageModules"), "Should omit packageModules key entirely when empty, got: $result")
+    }
+
+    @Test
+    fun `dsm includes packageModules field when moduleLabels is provided`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("model")),
+            cells = mapOf((PackageName("api") to PackageName("model")) to 1),
+            classDependencies = emptyMap(),
+        )
+        val moduleLabels = mapOf(PackageName("api") to setOf(":service"), PackageName("model") to setOf(":shared", ":service"))
+
+        val result = JsonFormatter.formatDsm(matrix, moduleLabels)
+
+        assertTrue(
+            result.contains("""{"package":"api","modules":[":service"]}"""),
+            "Should include single-module entry, got: $result",
+        )
+        assertTrue(
+            result.contains("""{"package":"model","modules":[":service",":shared"]}"""),
+            "Should include sorted multi-module entry, got: $result",
+        )
     }
 
     // === DSM cycles-only formatting ===
@@ -1437,6 +1473,37 @@ class JsonFormatterTest {
 
         assertTrue(withCounts.contains("\"testInvolvement\":{\"testInvolved\":2,\"total\":5}"))
         assertTrue(!withoutCounts.contains("testInvolvement"))
+    }
+
+    // === Class metrics formatting ===
+
+    @Test
+    fun `formatClassMetrics returns empty array for no results`() {
+        val result = JsonFormatter.formatClassMetrics(emptyList())
+
+        assertEquals("[]", result)
+    }
+
+    @Test
+    fun `formatClassMetrics includes all metric fields`() {
+        val entry = ClassMetricsResult(
+            className = ClassName("com.example.OrderService"),
+            packageName = PackageName("com.example"),
+            totalMethods = 5,
+            tcc = 0.12,
+            lcc = 0.3,
+            verdict = ClassCohesionVerdict.MONOLITH,
+            wmc = 34,
+            cbo = 12,
+            dit = 3,
+        )
+
+        val result = JsonFormatter.formatClassMetrics(listOf(entry))
+
+        assertEquals(
+            """[{"className":"com.example.OrderService","package":"com.example","totalMethods":5,"tcc":0.12,"lcc":0.3,"verdict":"MONOLITH","wmc":34,"cbo":12,"dit":3}]""",
+            result,
+        )
     }
 
 }

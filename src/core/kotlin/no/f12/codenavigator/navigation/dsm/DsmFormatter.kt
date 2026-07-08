@@ -11,7 +11,7 @@ object DsmFormatter {
         }
     }
 
-    fun format(matrix: DsmMatrix): String {
+    fun format(matrix: DsmMatrix, moduleLabels: Map<PackageName, Set<String>> = emptyMap()): String {
         val packages = matrix.packages
         if (packages.isEmpty()) return "No inter-package dependencies found."
         val prefix = matrix.displayPrefix
@@ -25,7 +25,7 @@ object DsmFormatter {
             appendLine()
             appendLine("Legend:")
             packages.forEachIndexed { i, pkg ->
-                appendLine("  ${(i + 1).toString().padStart(3)}: $pkg")
+                appendLine("  ${(i + 1).toString().padStart(3)}: ${labelFor(pkg, moduleLabels)}")
             }
             appendLine()
 
@@ -35,7 +35,7 @@ object DsmFormatter {
             appendLine()
 
             val colWidth = maxOf(packages.size.toString().length, 4)
-            val labelWidth = packages.maxOf { it.toString().length }.coerceAtLeast(10)
+            val labelWidth = packages.maxOf { labelFor(it, moduleLabels).length }.coerceAtLeast(10)
 
             append("".padEnd(labelWidth + 6))
             packages.forEachIndexed { i, _ ->
@@ -47,7 +47,7 @@ object DsmFormatter {
             appendLine("-".repeat(totalWidth))
 
             packages.forEachIndexed { rowIdx, rowPkg ->
-                append("${(rowIdx + 1).toString().padStart(3)}. ${rowPkg.toString().padEnd(labelWidth)}")
+                append("${(rowIdx + 1).toString().padStart(3)}. ${labelFor(rowPkg, moduleLabels).padEnd(labelWidth)}")
                 packages.forEachIndexed { colIdx, colPkg ->
                     val cell = when {
                         rowIdx == colIdx -> "."
@@ -100,5 +100,12 @@ object DsmFormatter {
                 }
             }
         }.trimEnd()
+    }
+
+    /** Renders "[:module] pkg" when module info is available (--multi-module); plain "pkg" otherwise. */
+    internal fun labelFor(pkg: PackageName, moduleLabels: Map<PackageName, Set<String>>): String {
+        val modules = moduleLabels[pkg]
+        if (modules.isNullOrEmpty()) return pkg.toString()
+        return "[${modules.sorted().joinToString(",")}] $pkg"
     }
 }
