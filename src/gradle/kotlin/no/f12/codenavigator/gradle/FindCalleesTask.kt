@@ -34,6 +34,10 @@ abstract class FindCalleesTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
+    @Option(option = "max-implementors", description = "Max polymorphic implementors to expand per interface call site before collapsing the rest into a '+N more' note")
+    @get:Internal
+    var maxImplementors: String? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         pattern?.let { put("pattern", it) }
         method?.let { put("method", it) }
@@ -41,6 +45,7 @@ abstract class FindCalleesTask : CodeNavigatorTask() {
         projectOnly?.let { put("project-only", it) }
         filterSynthetic?.let { put("filter-synthetic", it) }
         scope?.let { put("scope", it) }
+        maxImplementors?.let { put("max-implementors", it) }
     }
 
     @TaskAction

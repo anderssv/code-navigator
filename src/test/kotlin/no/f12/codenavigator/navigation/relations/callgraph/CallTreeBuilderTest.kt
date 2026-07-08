@@ -651,4 +651,105 @@ class CallTreeBuilderTest {
 
         assertEquals(null, result[0].sourceSet)
     }
+
+    // === Implementor collapsing tests ===
+
+    @Test
+    fun `implementors within maxImplementors are all expanded and not collapsed`() {
+        val controller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val interfaceMethod = MethodRef(ClassName("com.example.Repository"), "save")
+        val impls = (1..3).map { ClassName("com.example.RepositoryImpl$it") }
+        val graph = CallGraph(mapOf(controller to setOf(interfaceMethod)))
+        val interfaceImplementors = mapOf(ClassName("com.example.Repository") to impls.toSet())
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(controller), maxDepth = 3, CallDirection.CALLEES,
+            interfaceImplementors = interfaceImplementors,
+            maxImplementors = 5,
+        )
+
+        val calleeNames = result[0].children.map { it.method.qualifiedName }
+        assertEquals(4, result[0].children.size, "interface method + 3 implementors, none collapsed")
+        assertTrue(impls.all { "$it.save" in calleeNames })
+        val interfaceNode = result[0].children.first { it.method.qualifiedName == "com.example.Repository.save" }
+        assertEquals(0, interfaceNode.collapsedImplementorCount)
+    }
+
+    @Test
+    fun `implementors beyond maxImplementors are collapsed onto the interface node`() {
+        val controller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val interfaceMethod = MethodRef(ClassName("com.example.Repository"), "save")
+        val impls = (1..8).map { ClassName("com.example.RepositoryImpl$it") }
+        val graph = CallGraph(mapOf(controller to setOf(interfaceMethod)))
+        val interfaceImplementors = mapOf(ClassName("com.example.Repository") to impls.toSet())
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(controller), maxDepth = 3, CallDirection.CALLEES,
+            interfaceImplementors = interfaceImplementors,
+            maxImplementors = 3,
+        )
+
+        val children = result[0].children
+        val implementorChildren = children.filter { it.method.className.value.startsWith("com.example.RepositoryImpl") }
+        assertEquals(3, implementorChildren.size, "Only the first 3 (sorted) implementors should be expanded")
+
+        val interfaceNode = children.first { it.method.qualifiedName == "com.example.Repository.save" }
+        assertEquals(5, interfaceNode.collapsedImplementorCount, "8 total - 3 expanded = 5 collapsed")
+    }
+
+    @Test
+    fun `collapsed implementors are chosen deterministically by sorted qualifiedName`() {
+        val controller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val interfaceMethod = MethodRef(ClassName("com.example.Repository"), "save")
+        val impls = setOf(
+            ClassName("com.example.Charlie"),
+            ClassName("com.example.Alpha"),
+            ClassName("com.example.Bravo"),
+        )
+        val graph = CallGraph(mapOf(controller to setOf(interfaceMethod)))
+        val interfaceImplementors = mapOf(ClassName("com.example.Repository") to impls)
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(controller), maxDepth = 3, CallDirection.CALLEES,
+            interfaceImplementors = interfaceImplementors,
+            maxImplementors = 1,
+        )
+
+        val implementorChildren = result[0].children.filter { it.method.className.value != "com.example.Repository" }
+        assertEquals(listOf("com.example.Alpha.save"), implementorChildren.map { it.method.qualifiedName })
+    }
+
+    @Test
+    fun `implementor collapsing does not apply to CALLERS direction`() {
+        val impls = (1..8).map { ClassName("com.example.ServiceImpl$it") }
+        val interfaceMethod = MethodRef(ClassName("com.example.Service"), "process")
+        val classToInterfaces = impls.associateWith { setOf(ClassName("com.example.Service")) }
+        val callers = impls.map { impl -> MethodRef(ClassName("com.example.CallerOf${impl.simpleName()}"), "call") }
+        val graph = CallGraph(callers.zip(impls).associate { (caller, impl) -> caller to setOf(MethodRef(impl, "process")) })
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(interfaceMethod), maxDepth = 3, CallDirection.CALLERS,
+            classToInterfaces = classToInterfaces,
+            maxImplementors = 3,
+        )
+
+        assertEquals(0, result[0].collapsedImplementorCount, "Collapsing is CALLEES-only")
+    }
+
+    @Test
+    fun `default maxImplementors matches CallTreeBuilder DEFAULT_MAX_IMPLEMENTORS`() {
+        val controller = MethodRef(ClassName("com.example.Controller"), "handle")
+        val interfaceMethod = MethodRef(ClassName("com.example.Repository"), "save")
+        val impls = (1..CallTreeBuilder.DEFAULT_MAX_IMPLEMENTORS + 2).map { ClassName("com.example.RepositoryImpl$it") }
+        val graph = CallGraph(mapOf(controller to setOf(interfaceMethod)))
+        val interfaceImplementors = mapOf(ClassName("com.example.Repository") to impls.toSet())
+
+        val result = CallTreeBuilder.build(
+            graph, listOf(controller), maxDepth = 3, CallDirection.CALLEES,
+            interfaceImplementors = interfaceImplementors,
+        )
+
+        val interfaceNode = result[0].children.first { it.method.qualifiedName == "com.example.Repository.save" }
+        assertEquals(2, interfaceNode.collapsedImplementorCount)
+    }
 }

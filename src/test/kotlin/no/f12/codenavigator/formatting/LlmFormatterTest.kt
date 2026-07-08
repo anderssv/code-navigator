@@ -178,6 +178,33 @@ class LlmFormatterTest {
     }
 
     @Test
+    fun `formats collapsed implementor count as a suffix note`() {
+        val trees = listOf(
+            CallTreeNode(
+                method = MethodRef(ClassName("com.example.Controller"), "handle"),
+                sourceFile = "Controller.kt",
+                lineNumber = null,
+                children = listOf(
+                    CallTreeNode(
+                        method = MethodRef(ClassName("com.example.Repository"), "save"),
+                        sourceFile = "Repository.kt",
+                        lineNumber = null,
+                        children = emptyList(),
+                        collapsedImplementorCount = 5,
+                    )
+                ),
+            )
+        )
+
+        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLEES)
+
+        assertEquals(
+            "com.example.Controller.handle Controller.kt\n  → com.example.Repository.save Repository.kt (+5 more implementors, use --max-implementors to see all)",
+            result,
+        )
+    }
+
+    @Test
     fun `formats interfaces compactly`() {
         val registry = InterfaceRegistry(mapOf(
             ClassName("com.example.Repository") to listOf(

@@ -38,6 +38,9 @@ class FindCalleesMojo : AbstractMojo() {
     @Parameter(property = "method")
     private var method: String? = null
 
+    @Parameter(property = "max-implementors")
+    private var maxImplementors: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -59,5 +62,6 @@ class FindCalleesMojo : AbstractMojo() {
         filterSynthetic?.let { put("filter-synthetic", it) }
         scope?.let { put("scope", it) }
         method?.let { put("method", it) }
+        maxImplementors?.let { put("max-implementors", it) }
     }
 }

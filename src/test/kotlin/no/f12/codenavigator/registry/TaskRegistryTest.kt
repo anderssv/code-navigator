@@ -1082,6 +1082,7 @@ class TaskRegistryTest {
             "max-wmc" to ParamType.INT,
             "max-cbo" to ParamType.INT,
             "multi-module" to ParamType.BOOLEAN,
+            "max-implementors" to ParamType.INT,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }

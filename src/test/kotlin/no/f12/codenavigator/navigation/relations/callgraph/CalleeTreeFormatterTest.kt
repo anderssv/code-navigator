@@ -296,9 +296,89 @@ class CalleeTreeFormatterTest {
             """
             com.example.ServiceA.run
               → com.example.RepoA.save (RepoA.kt)
-            
+
             com.example.ServiceB.run
               → com.example.RepoB.save (RepoB.kt)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `collapsed implementor count renders as a suffix note`() {
+        val interfaceNode = CallTreeNode(
+            method = MethodRef(ClassName("com.example.Repository"), "save"),
+            sourceFile = "Repository.kt",
+            lineNumber = null,
+            children = emptyList(),
+            collapsedImplementorCount = 5,
+        )
+        val root = CallTreeNode(
+            method = MethodRef(ClassName("com.example.Controller"), "handle"),
+            sourceFile = "Controller.kt",
+            lineNumber = null,
+            children = listOf(interfaceNode),
+        )
+
+        val result = CallTreeFormatter.renderTrees(listOf(root), CallDirection.CALLEES)
+
+        assertEquals(
+            """
+            com.example.Controller.handle
+              → com.example.Repository.save (Repository.kt) (+5 more implementors, use --max-implementors to see all)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `singular implementor wording when exactly one is collapsed`() {
+        val interfaceNode = CallTreeNode(
+            method = MethodRef(ClassName("com.example.Repository"), "save"),
+            sourceFile = "Repository.kt",
+            lineNumber = null,
+            children = emptyList(),
+            collapsedImplementorCount = 1,
+        )
+        val root = CallTreeNode(
+            method = MethodRef(ClassName("com.example.Controller"), "handle"),
+            sourceFile = "Controller.kt",
+            lineNumber = null,
+            children = listOf(interfaceNode),
+        )
+
+        val result = CallTreeFormatter.renderTrees(listOf(root), CallDirection.CALLEES)
+
+        assertEquals(
+            """
+            com.example.Controller.handle
+              → com.example.Repository.save (Repository.kt) (+1 more implementor, use --max-implementors to see all)
+            """.trimIndent(),
+            result,
+        )
+    }
+
+    @Test
+    fun `no suffix when nothing was collapsed`() {
+        val node = CallTreeNode(
+            method = MethodRef(ClassName("com.example.Repository"), "save"),
+            sourceFile = "Repository.kt",
+            lineNumber = null,
+            children = emptyList(),
+        )
+        val root = CallTreeNode(
+            method = MethodRef(ClassName("com.example.Controller"), "handle"),
+            sourceFile = "Controller.kt",
+            lineNumber = null,
+            children = listOf(node),
+        )
+
+        val result = CallTreeFormatter.renderTrees(listOf(root), CallDirection.CALLEES)
+
+        assertEquals(
+            """
+            com.example.Controller.handle
+              → com.example.Repository.save (Repository.kt)
             """.trimIndent(),
             result,
         )

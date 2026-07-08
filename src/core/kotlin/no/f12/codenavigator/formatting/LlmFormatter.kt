@@ -459,8 +459,9 @@ object LlmFormatter {
         for (node in children) {
             val lineRef = node.lineNumber?.let { ":$it" } ?: ""
             val sourceSetTag = node.sourceSet?.let { " [${it.label}]" } ?: ""
+            val collapsedTag = CallTreeFormatter.collapsedImplementorsTag(node)
             appendLine()
-            append("$indent${direction.arrow} ${node.method.qualifiedName} ${node.sourceFile ?: "<unknown>"}$lineRef${formatAnnotationTags(node.annotations)}$sourceSetTag")
+            append("$indent${direction.arrow} ${node.method.qualifiedName} ${node.sourceFile ?: "<unknown>"}$lineRef${formatAnnotationTags(node.annotations)}$sourceSetTag$collapsedTag")
             if (node.children.isNotEmpty()) {
                 renderChildren(node.children, direction, depth + 1)
             }

@@ -625,6 +625,7 @@ object JsonFormatter {
             "annotations" to if (node.annotations.isNotEmpty()) JsonRaw(renderAnnotationTags(node.annotations)) else null,
             "children" to JsonRaw(children),
             "frameworkEntryPointHint" to hint,
+            "collapsedImplementorCount" to if (node.collapsedImplementorCount > 0) node.collapsedImplementorCount else null,
         )
     }
 

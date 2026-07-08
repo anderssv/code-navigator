@@ -13,6 +13,8 @@ data class CallGraphConfig(
     val filterSynthetic: Boolean,
     val scope: Scope,
     val format: OutputFormat,
+    /** Only meaningful for CALLEES: max polymorphic implementors expanded per interface call site. */
+    val maxImplementors: Int = CallTreeBuilder.DEFAULT_MAX_IMPLEMENTORS,
 ) {
     fun buildFilter(graph: CallGraph): ((MethodRef) -> Boolean)? {
         val filters = buildList {
@@ -37,6 +39,7 @@ data class CallGraphConfig(
                 filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
                 scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
                 format = ParamDef.parseFormat(properties),
+                maxImplementors = TaskRegistry.MAX_IMPLEMENTORS.parseFrom(properties),
             )
         }
     }

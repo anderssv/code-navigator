@@ -49,6 +49,7 @@ object CallTreeOrchestrator {
             methodAnnotations = annotations.methodAnnotations,
             classAnnotationParameters = annotations.classAnnotationParameters,
             methodAnnotationParameters = annotations.methodAnnotationParameters,
+            maxImplementors = config.maxImplementors,
         )
 
         val classHint = CallTreeFormatter.classMatchHint(config.method, methods)

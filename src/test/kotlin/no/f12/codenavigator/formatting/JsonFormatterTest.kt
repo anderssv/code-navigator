@@ -378,6 +378,38 @@ class JsonFormatterTest {
         )
     }
 
+    @Test
+    fun `call tree JSON includes collapsedImplementorCount when implementors were collapsed`() {
+        val interfaceNode = CallTreeNode(
+            method = MethodRef(ClassName("com.example.Repository"), "save"),
+            sourceFile = "Repository.kt",
+            lineNumber = null,
+            children = emptyList(),
+            collapsedImplementorCount = 5,
+        )
+        val root = CallTreeNode(
+            method = MethodRef(ClassName("com.example.Controller"), "handle"),
+            sourceFile = "Controller.kt",
+            lineNumber = null,
+            children = listOf(interfaceNode),
+        )
+
+        val result = JsonFormatter.renderCallTrees(listOf(root))
+
+        assertTrue(result.contains(""""collapsedImplementorCount":5"""), "Should include collapsedImplementorCount, got: $result")
+    }
+
+    @Test
+    fun `call tree JSON omits collapsedImplementorCount when nothing was collapsed`() {
+        val graph = CallGraph(emptyMap())
+        val method = MethodRef(ClassName("com.example.Service"), "doWork")
+
+        val trees = CallTreeBuilder.build(graph, listOf(method), maxDepth = 3, CallDirection.CALLEES)
+        val result = JsonFormatter.renderCallTrees(trees)
+
+        assertTrue(!result.contains("collapsedImplementorCount"), "Should omit collapsedImplementorCount when zero, got: $result")
+    }
+
     // === Interface formatting ===
 
     @Test

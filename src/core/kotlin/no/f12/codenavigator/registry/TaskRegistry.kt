@@ -212,6 +212,7 @@ object TaskRegistry {
     val LEGACY_METHOD = ParamDef("method", "<regex>", "Deprecated: use pattern instead", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'method' is deprecated for find-callers/find-callees. Use 'pattern' instead (Gradle: --pattern=MyClass.myMethod, Maven: -Dpattern=MyClass.myMethod).")
     val METHOD = ParamDef("method", "<regex>", "Method name regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth", flag = false, defaultValue = "3", enhancePattern = false, type = ParamType.INT)
+    val MAX_IMPLEMENTORS = ParamDef("max-implementors", "<N>", "Max polymorphic implementors to expand per interface call site before collapsing the rest into a '+N more' note", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
     val PROJECTONLY = ParamDef("project-only", "false", "Hide JDK/stdlib/library classes (default: on)", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val FILTER_SYNTHETIC = ParamDef("filter-synthetic", "false", "Set false to include synthetic methods (equals, hashCode, copy, componentN, etc.)", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val TOP = ParamDef("top", "<N>", "Max results", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
@@ -372,7 +373,7 @@ object TaskRegistry {
     val FIND_CALLEES = TaskDef(
         goal = "find-callees",
         description = "Full call hierarchy: find all methods called by a method, recursively",
-        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE),
+        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE, MAX_IMPLEMENTORS),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallees",
@@ -380,6 +381,7 @@ object TaskRegistry {
             UsageExample(listOf(CALL_PATTERN to "resetPassword", MAXDEPTH to "3")),
             UsageExample(listOf(CALL_PATTERN to "\".*Controller\\\\.handle.*\"", MAXDEPTH to "5")),
             UsageExample(listOf(CALL_PATTERN to "\"Service\\\\.create\"", MAXDEPTH to "5", PROJECTONLY to "true")),
+            UsageExample(listOf(CALL_PATTERN to "\"Repository\\\\.save\"", MAX_IMPLEMENTORS to "10")),
         ),
     )
 

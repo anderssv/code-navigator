@@ -89,6 +89,7 @@ object HelpText {
         appendLine("      ${pd(TaskRegistry.PROJECTONLY)}")
         appendLine("      ${pd(TaskRegistry.FILTER_SYNTHETIC)}")
         appendLine("      ${pd(TaskRegistry.SCOPE, "Show only callees from production or test source set")}")
+        appendLine("      ${pd(TaskRegistry.MAX_IMPLEMENTORS)}")
         examples(TaskRegistry.FIND_CALLEES)
         appendLine()
         appendLine("  ${t("class-detail")}")

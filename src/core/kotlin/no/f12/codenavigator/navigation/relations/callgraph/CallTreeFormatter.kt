@@ -62,7 +62,8 @@ object CallTreeFormatter {
             val sourceFile = node.sourceFile ?: "<unknown>"
             val lineRef = node.lineNumber?.let { ":$it" } ?: ""
             val sourceSetTag = node.sourceSet?.let { " [${it.label}]" } ?: ""
-            appendLine("$indent${direction.arrow} ${node.method.qualifiedName} ($sourceFile$lineRef)${formatAnnotationTags(node.annotations)}$sourceSetTag")
+            val collapsedTag = collapsedImplementorsTag(node)
+            appendLine("$indent${direction.arrow} ${node.method.qualifiedName} ($sourceFile$lineRef)${formatAnnotationTags(node.annotations)}$sourceSetTag$collapsedTag")
             if (node.children.isNotEmpty()) {
                 renderChildren(node.children, direction, depth + 1)
             }
@@ -74,6 +75,14 @@ object CallTreeFormatter {
         val frameworkAnnotation = node.annotations.firstOrNull { it.framework != null } ?: return null
         return "@${frameworkAnnotation.name.simpleName()} is a ${frameworkAnnotation.framework} entry point; invoked by the framework at runtime."
     }
+
+    /** " (+N more implementors, use --max-implementors=N to see all)" or "" when nothing was collapsed. */
+    internal fun collapsedImplementorsTag(node: CallTreeNode): String =
+        if (node.collapsedImplementorCount > 0) {
+            " (+${node.collapsedImplementorCount} more implementor${if (node.collapsedImplementorCount == 1) "" else "s"}, use --max-implementors to see all)"
+        } else {
+            ""
+        }
 
     /**
      * When a pattern matches multiple methods all in the same class, and the pattern
