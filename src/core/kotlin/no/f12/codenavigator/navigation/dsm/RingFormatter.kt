@@ -1,6 +1,9 @@
 package no.f12.codenavigator.navigation.dsm
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.formatting.JsonRaw
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
 
 /** Separates a factual observation (shown in all formats) from an action recommendation (LLM only). */
 data class RingHint(
@@ -81,6 +84,42 @@ object RingFormatter {
         }
 
         return sb.toString().trimEnd()
+    }
+
+    fun formatJson(
+        result: RingAssignment,
+        ringNames: Map<Int, String> = emptyMap(),
+        configNotice: String? = null,
+    ): String {
+        val ringLabel: (Int) -> String = { ring -> ringNames[ring] ?: if (ring == 0) "domain" else "ring $ring" }
+
+        val ringsJson = jsonArray(result.rings.entries.sortedWith(compareBy({ it.value }, { it.key.toString() }))) { (pkg, ring) ->
+            jsonObject(
+                "package" to pkg.toString(),
+                "ring" to ring,
+                "ringName" to ringLabel(ring),
+                "isCompositionRoot" to (pkg in result.compositionRoots),
+            )
+        }
+
+        val filteredViolations = result.violations.filter { v ->
+            v.sourcePackage !in result.compositionRoots && v.targetPackage !in result.compositionRoots
+        }
+        val violationsJson = jsonArray(filteredViolations) { v ->
+            jsonObject(
+                "type" to v.type.name,
+                "sourcePackage" to v.sourcePackage.toString(),
+                "targetPackage" to v.targetPackage.toString(),
+                "sourceRing" to v.sourceRing,
+                "targetRing" to v.targetRing,
+            )
+        }
+
+        return jsonObject(
+            "rings" to JsonRaw(ringsJson),
+            "violations" to JsonRaw(violationsJson),
+            "configNotice" to configNotice,
+        )
     }
 
     /** Appends the Notes section: observations always, actions only for LLM format. */

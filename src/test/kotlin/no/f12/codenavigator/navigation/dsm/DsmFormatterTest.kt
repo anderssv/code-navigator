@@ -442,4 +442,82 @@ class DsmFormatterTest {
 
         assertTrue(!result.contains("["), "Should not show module brackets when moduleLabels is empty")
     }
+
+    // === formatJson/formatCyclesJson (moved from JsonFormatter.formatDsm/formatDsmCycles) ===
+
+    @Test
+    fun `formatJson produces empty JSON for an empty matrix`() {
+        val matrix = DsmMatrix(emptyList(), emptyMap(), emptyMap())
+
+        val result = DsmFormatter.formatJson(matrix)
+
+        assertEquals("""{"packages":[],"cells":[],"cycles":[]}""", result)
+    }
+
+    @Test
+    fun `formatJson includes packageModules when moduleLabels is provided`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api")),
+            cells = emptyMap(),
+            classDependencies = emptyMap(),
+        )
+
+        val result = DsmFormatter.formatJson(matrix, mapOf(PackageName("api") to setOf(":service")))
+
+        assertTrue(result.contains("""{"package":"api","modules":[":service"]}"""))
+    }
+
+    @Test
+    fun `formatCyclesJson includes forward and backward edges`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("service")),
+            cells = mapOf(
+                (PackageName("api") to PackageName("service")) to 1,
+                (PackageName("service") to PackageName("api")) to 1,
+            ),
+            classDependencies = mapOf(
+                (PackageName("api") to PackageName("service")) to setOf(ClassName("api.Controller") to ClassName("service.Service")),
+                (PackageName("service") to PackageName("api")) to setOf(ClassName("service.Service") to ClassName("api.Controller")),
+            ),
+        )
+
+        val result = DsmFormatter.formatCyclesJson(matrix)
+
+        assertTrue(result.contains("\"packageA\":\"api\""))
+        assertTrue(result.contains("\"forwardEdges\":[{\"source\":\"api.Controller\",\"target\":\"service.Service\"}]"))
+    }
+
+    // === formatLlm/formatCyclesLlm (moved from LlmFormatter.formatDsm/formatDsmCycles) ===
+
+    @Test
+    fun `formatLlm produces no-dependencies message for an empty matrix`() {
+        val matrix = DsmMatrix(emptyList(), emptyMap(), emptyMap())
+
+        val result = DsmFormatter.formatLlm(matrix)
+
+        assertEquals("packages:\n(no dependencies)", result)
+    }
+
+    @Test
+    fun `formatLlm labels packages by module`() {
+        val matrix = DsmMatrix(
+            packages = listOf(PackageName("api"), PackageName("model")),
+            cells = emptyMap(),
+            classDependencies = emptyMap(),
+        )
+        val moduleLabels = mapOf(PackageName("api") to setOf(":service"), PackageName("model") to setOf(":shared"))
+
+        val result = DsmFormatter.formatLlm(matrix, moduleLabels)
+
+        assertEquals("packages:[:service] api,[:shared] model\n(no dependencies)", result)
+    }
+
+    @Test
+    fun `formatCyclesLlm returns no-cycles message for an empty matrix`() {
+        val matrix = DsmMatrix(emptyList(), emptyMap(), emptyMap())
+
+        val result = DsmFormatter.formatCyclesLlm(matrix)
+
+        assertEquals("(no cycles)", result)
+    }
 }

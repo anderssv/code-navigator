@@ -207,4 +207,59 @@ class CyclesFormatterTest {
 
         assertTrue(!output.contains("test-involvement"), "Should not render a notice when testInvolvement is null")
     }
+
+    // === formatJson (moved from JsonFormatter.formatCycles) ===
+
+    @Test
+    fun `formatJson returns empty cycles array for empty input`() {
+        val output = CyclesFormatter.formatJson(emptyList())
+
+        assertEquals("""{"cycles":[]}""", output)
+    }
+
+    @Test
+    fun `formatJson includes packages and class edges`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
+                ),
+            ),
+        )
+
+        val output = CyclesFormatter.formatJson(details)
+
+        assertTrue(output.contains("\"packages\":[\"api\",\"service\"]"))
+        assertTrue(output.contains("\"source\":\"api.Controller\""))
+        assertTrue(output.contains("\"target\":\"service.Service\""))
+    }
+
+    // === formatLlm (moved from LlmFormatter.formatCycles) ===
+
+    @Test
+    fun `formatLlm returns no-cycles message for empty input`() {
+        val output = CyclesFormatter.formatLlm(emptyList())
+
+        assertEquals("(no cycles)", output)
+    }
+
+    @Test
+    fun `formatLlm includes cycle and break suggestion with interpretation footer`() {
+        val details = listOf(
+            CycleDetail(
+                packages = listOf(PackageName("api"), PackageName("service")),
+                edges = listOf(
+                    CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
+                    CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("service.Service") to ClassName("api.Controller"))),
+                ),
+            ),
+        )
+
+        val output = CyclesFormatter.formatLlm(details)
+
+        assertTrue(output.contains("CYCLE api,service"))
+        assertTrue(output.contains("break:"))
+        assertTrue(output.contains(CyclesFormatter.CYCLES_INTERPRETATION))
+    }
 }

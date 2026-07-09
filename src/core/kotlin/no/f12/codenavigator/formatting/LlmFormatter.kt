@@ -25,6 +25,7 @@ import no.f12.codenavigator.navigation.classinfo.MethodDetail
 import no.f12.codenavigator.navigation.dsm.PackageDependencies
 import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.symbol.SymbolInfo
+import no.f12.codenavigator.navigation.dsm.CyclesFormatter
 import no.f12.codenavigator.navigation.dsm.DsmFormatter
 import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType
@@ -273,37 +274,7 @@ object LlmFormatter {
         details: List<CycleDetail>,
         displayPrefix: PackageName = PackageName(""),
         testInvolvement: TestInvolvement.Counts? = null,
-    ): String {
-        if (details.isEmpty()) return "(no cycles)"
-
-        return buildString {
-            if (displayPrefix.isNotEmpty()) {
-                appendLine("prefix:$displayPrefix")
-            }
-            append(details.joinToString("\n") { detail ->
-                buildString {
-                    append("CYCLE ${detail.packages.joinToString(",")}")
-                    for (edge in detail.edges) {
-                        val classStr = edge.classEdges.sortedBy { "${it.first}-${it.second}" }
-                            .joinToString(",") { "${it.first.stripPackagePrefix(displayPrefix)}->${it.second.stripPackagePrefix(displayPrefix)}" }
-                        append("\n  ${edge.from}->${edge.to}(${edge.classEdges.size}): $classStr")
-                    }
-                    val ranked = CycleBreakAnalyzer.rankEdges(detail)
-                    val breakPoints = ranked.filter { it.breaksycle }.take(3)
-                    if (breakPoints.isNotEmpty()) {
-                        append("\n  break: ${breakPoints.joinToString(",") { "${it.from}->${it.to}(${it.weight})" }}")
-                    }
-                }
-            })
-            testInvolvement?.let { counts ->
-                TestInvolvement.notice(counts, "cycle edges")?.let { notice ->
-                    appendLine()
-                    appendLine()
-                    append(notice)
-                }
-            }
-        }.withInterpretation(CYCLES_INTERPRETATION)
-    }
+    ): String = CyclesFormatter.formatLlm(details, displayPrefix, testInvolvement)
 
     fun formatMetrics(metrics: MetricsResult): String = buildString {
         append("classes=${metrics.totalClasses}")
@@ -374,61 +345,13 @@ object LlmFormatter {
             }
         }.withInterpretation(BALANCE_INTERPRETATION)
 
-    fun formatDsm(matrix: DsmMatrix, moduleLabels: Map<PackageName, Set<String>> = emptyMap()): String = buildString {
-        val prefix = matrix.displayPrefix
-        if (prefix.isNotEmpty()) {
-            appendLine("prefix:$prefix")
-        }
-        append("packages:${matrix.packages.joinToString(",") { DsmFormatter.labelFor(it, moduleLabels) }}")
-        if (matrix.cells.isEmpty()) {
-            append("\n(no dependencies)")
-        } else {
-            for ((key, count) in matrix.cells.entries.sortedBy { "${it.key.first}-${it.key.second}" }) {
-                append("\n${key.first}->${key.second}:$count")
-                val classDeps = matrix.classDependencies[key]
-                if (!classDeps.isNullOrEmpty()) {
-                    val classStr = classDeps.sortedBy { "${it.first}-${it.second}" }
-                        .joinToString(",") { "${it.first.stripPackagePrefix(prefix)}->${it.second.stripPackagePrefix(prefix)}" }
-                    append(" [$classStr]")
-                }
-            }
-            val cyclicPairs = matrix.findCyclicPairs()
-            if (cyclicPairs.isNotEmpty()) {
-                val cycleStr = cyclicPairs.joinToString(",") { (a, b, _) -> "$a<->$b" }
-                append("\nCYCLES: $cycleStr")
-            }
-        }
-    }
+    fun formatDsm(matrix: DsmMatrix, moduleLabels: Map<PackageName, Set<String>> = emptyMap()): String =
+        DsmFormatter.formatLlm(matrix, moduleLabels)
 
-    fun formatDsmCycles(matrix: DsmMatrix, cycleFilter: Pair<PackageName, PackageName>? = null): String {
-        val cyclicPairs = matrix.findCyclicPairs(cycleFilter)
-        if (cyclicPairs.isEmpty()) return "(no cycles)"
-        val prefix = matrix.displayPrefix
-
-        return buildString {
-            if (prefix.isNotEmpty()) {
-                appendLine("prefix:$prefix")
-            }
-            append(cyclicPairs.joinToString("\n") { (a, b, counts) ->
-                val fwd = matrix.classDependencies[a to b]
-                val bwd = matrix.classDependencies[b to a]
-                val fwdStr = fwd?.sortedBy { "${it.first}-${it.second}" }
-                    ?.joinToString(",") { "${it.first.stripPackagePrefix(prefix)}->${it.second.stripPackagePrefix(prefix)}" } ?: ""
-                val bwdStr = bwd?.sortedBy { "${it.first}-${it.second}" }
-                    ?.joinToString(",") { "${it.first.stripPackagePrefix(prefix)}->${it.second.stripPackagePrefix(prefix)}" } ?: ""
-                buildString {
-                    append("CYCLE $a<->$b ${counts.first}/${counts.second}")
-                    if (fwdStr.isNotEmpty()) append("\n  $a->$b: $fwdStr")
-                    if (bwdStr.isNotEmpty()) append("\n  $b->$a: $bwdStr")
-                }
-            })
-        }
-    }
+    fun formatDsmCycles(matrix: DsmMatrix, cycleFilter: Pair<PackageName, PackageName>? = null): String =
+        DsmFormatter.formatCyclesLlm(matrix, cycleFilter)
 
     // --- Interpretation constants ---
-
-    private fun String.withInterpretation(interpretation: String): String =
-        if (isEmpty()) this else "$this\n\n$interpretation"
 
     internal const val HOTSPOT_INTERPRETATION = "Interpretation: Files with high revision counts change frequently and are likely complexity hotspots. Prioritize refactoring files that are both hot (many revisions) and large (high churn). Cross-reference with coupling to find risky change clusters."
 
@@ -453,8 +376,6 @@ object LlmFormatter {
     internal const val COHESION_INTERPRETATION = "Interpretation: Cohesion ratio = internal edges / total edges. COHESIVE (>0.5) = classes collaborate more with each other than with outsiders. REVIEW (<0.5) = package may contain unrelated classes. THIN_LAYER (0.0) = no internal collaboration, consider merging into a neighbor."
 
     internal const val MOVE_SUGGEST_INTERPRETATION = "Interpretation: Classes with more edges to another package than their own are potentially misplaced. High confidence + low own-edges = strong signal. Verify intent before moving — composition roots, drivers, and thin adapters are expected to have outward edges."
-
-    internal const val CYCLES_INTERPRETATION = "Interpretation: Package cycles prevent independent compilation and deployment. To break a cycle, identify the weakest edge (fewest class references) and extract an interface or move the referenced class. Use cnavWhyDepends for edge details."
 
     internal const val CLASS_METRICS_INTERPRETATION = "Interpretation: TCC/LCC measure cohesion (fraction of method pairs sharing field access). HIGH (TCC>=0.7) = cohesive. MEDIUM (0.4-0.7) = acceptable. LOW (TCC<0.4, LCC>=0.7) = weakly cohesive but methods still chain-connect via shared fields. MONOLITH (TCC<0.4, LCC<0.7) = disjoint method groups — candidate for splitting into separate classes. WMC = summed cyclomatic complexity (higher = harder to test). CBO = distinct non-JDK/stdlib types referenced in signatures (higher = more context needed to understand the class). DIT = superclass chain depth (deeper = more inherited behavior to reason about)."
 

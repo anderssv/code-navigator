@@ -611,9 +611,11 @@ Expand from single-hop blast radius into multi-signal impact predictor: direct c
 **Shared lookup**: Class resolution and method finding duplicated across ChangeSignature, RenameMethod, RenameProperty, SafeDelete. Extract shared `DeclarationFinder`. Design: stream-like — general lookup first, then filtered down.
 
 ### Split JsonFormatter and LlmFormatter per-feature
-**ACTIVE** | **Value: medium** | **Effort: high** | Source: internal(v0.1.83)
+**ACTIVE (pilot done)** | **Value: medium** | **Effort: high** | Source: internal(v0.1.83)
 
 `JsonFormatter` (364 outgoing, 77 types, fanIn=261) and `LlmFormatter` are highest-complexity classes. Change together 96% of the time. Split into per-feature formatters; top-level becomes thin dispatcher. Wide change touching many files.
+
+Pilot done: DSM/Cycles/Rings functions (`formatDsm`, `formatDsmCycles`, `formatCycles`, `formatRings`, `formatEmergentRings`) moved to `DsmFormatter`/`CyclesFormatter`/`RingFormatter`/`EmergentRingFormatter` in `navigation.dsm` (as `formatJson`/`formatLlm` methods alongside the existing TEXT `format`). `JsonFormatter`/`LlmFormatter` now hold one-line delegates for these — signatures unchanged, so all ~30 existing call sites (Task/Mojo/tests) needed zero changes. Shared JSON-building primitives (`jsonObject`, `jsonArray`, `JsonRaw`, etc.) and the LLM `withInterpretation` helper were extracted to `internal` top-level functions in new `formatting/JsonBuilder.kt` / `formatting/LlmFormatting.kt` files so per-feature formatters can reuse them without duplicating string-escaping logic. `JsonFormatter.kt` 739→543 lines, `LlmFormatter.kt` 534→455 lines. Remaining ~30 functions across both files still need the same treatment in follow-up passes, one feature area at a time.
 
 ### Potentially dead code in cnav's own codebase
 **PARKED** | **Value: medium** | **Effort: low** | Source: internal

@@ -1,6 +1,10 @@
 package no.f12.codenavigator.navigation.dsm
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.formatting.JsonRaw
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
+import no.f12.codenavigator.formatting.jsonStringArray
 import no.f12.codenavigator.navigation.types.PackageName
 
 object EmergentRingFormatter {
@@ -113,6 +117,63 @@ object EmergentRingFormatter {
         }
 
         return sb.toString().trimEnd()
+    }
+
+    fun formatJson(
+        result: ClassRingAssignment,
+        ringNames: Map<Int, String> = emptyMap(),
+        hasHints: Boolean = false,
+        testInvolvement: TestInvolvement.Counts? = null,
+    ): String {
+        val ringLabel: (Int) -> String = { ring -> ringNames[ring] ?: if (ring == 0) "domain" else "ring $ring" }
+
+        val classRingsJson = jsonArray(result.classRings.entries.sortedWith(compareBy({ it.value }, { it.key.toString() }))) { (className, ring) ->
+            jsonObject(
+                "className" to className.toString(),
+                "ring" to ring,
+                "ringName" to ringLabel(ring),
+            )
+        }
+
+        val mixedPackages = result.packageSummary.filter { it.value.isMixedRing }.toSortedMap()
+        val mixedPackagesJson = jsonArray(mixedPackages.entries.toList()) { (pkg, summary) ->
+            jsonObject(
+                "package" to pkg.toString(),
+                "minRing" to summary.minRing,
+                "maxRing" to summary.maxRing,
+                "classesByRing" to JsonRaw(
+                    jsonArray(summary.classesByRing.toSortedMap().entries.toList()) { (ring, classes) ->
+                        jsonObject(
+                            "ring" to ring,
+                            "ringName" to ringLabel(ring),
+                            "classes" to JsonRaw(jsonStringArray(classes.sorted().map { it.toString() })),
+                        )
+                    },
+                ),
+            )
+        }
+
+        val violationsJson = jsonArray(result.violations) { v ->
+            jsonObject(
+                "type" to v.type.name,
+                "sourceClass" to v.sourceClass.toString(),
+                "targetClass" to v.targetClass.toString(),
+                "sourceRing" to v.sourceRing,
+                "targetRing" to v.targetRing,
+            )
+        }
+
+        val testInvolvementJson = testInvolvement?.let {
+            JsonRaw(jsonObject("testInvolved" to it.testInvolved, "total" to it.total))
+        }
+
+        return jsonObject(
+            "classRings" to JsonRaw(classRingsJson),
+            "mixedRingPackages" to JsonRaw(mixedPackagesJson),
+            "violations" to JsonRaw(violationsJson),
+            "hintsApplied" to hasHints,
+            "testInvolvement" to testInvolvementJson,
+        )
     }
 }
 

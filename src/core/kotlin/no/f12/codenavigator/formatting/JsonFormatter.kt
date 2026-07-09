@@ -20,12 +20,16 @@ import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistry
 import no.f12.codenavigator.navigation.dsm.PackageDependencies
 import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.symbol.SymbolInfo
+import no.f12.codenavigator.navigation.dsm.DsmFormatter
 import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
 import no.f12.codenavigator.navigation.dsm.CycleDetail
+import no.f12.codenavigator.navigation.dsm.CyclesFormatter
 import no.f12.codenavigator.navigation.dsm.ClassRingAssignment
+import no.f12.codenavigator.navigation.dsm.EmergentRingFormatter
 import no.f12.codenavigator.navigation.dsm.RingAssignment
+import no.f12.codenavigator.navigation.dsm.RingFormatter
 import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.navigation.deadcode.DeadCode
@@ -45,9 +49,6 @@ import no.f12.codenavigator.navigation.dsm.CohesionResult
 import no.f12.codenavigator.navigation.dsm.MoveSuggestionResult
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
-
-@JvmInline
-private value class JsonRaw(val json: String)
 
 object JsonFormatter {
 
@@ -219,74 +220,11 @@ object JsonFormatter {
             )
         }
 
-    fun formatDsm(matrix: DsmMatrix, moduleLabels: Map<PackageName, Set<String>> = emptyMap()): String {
-        val prefix = matrix.displayPrefix
-        val packages = jsonStringArray(matrix.packages.map { it.toString() })
-        val cells = jsonArray(matrix.cells.entries.toList().sortedBy { "${it.key.first}-${it.key.second}" }) { (key, count) ->
-            val classDeps = matrix.classDependencies[key]
-            jsonObject(
-                "from" to key.first.toString(),
-                "to" to key.second.toString(),
-                "count" to count,
-                "classes" to JsonRaw(
-                    jsonArray(classDeps?.toList()?.sortedBy { "${it.first}-${it.second}" } ?: emptyList()) { (src, tgt) ->
-                        jsonObject("source" to src.stripPackagePrefix(prefix).toString(), "target" to tgt.stripPackagePrefix(prefix).toString())
-                    },
-                ),
-            )
-        }
-        val cycles = matrix.findCyclicPairs()
-        val cyclesJson = jsonArray(cycles) { (a, b, counts) ->
-            jsonObject("packageA" to a.toString(), "packageB" to b.toString(), "forwardRefs" to counts.first, "backwardRefs" to counts.second)
-        }
-        val prefixStr = if (prefix.isNotEmpty()) prefix.toString() else null
-        val packageModules = if (moduleLabels.isEmpty()) {
-            null
-        } else {
-            JsonRaw(
-                jsonArray(matrix.packages) { pkg ->
-                    jsonObject(
-                        "package" to pkg.toString(),
-                        "modules" to JsonRaw(jsonStringArray((moduleLabels[pkg] ?: emptySet()).sorted())),
-                    )
-                },
-            )
-        }
-        return jsonObject(
-            "displayPrefix" to prefixStr,
-            "packages" to JsonRaw(packages),
-            "packageModules" to packageModules,
-            "cells" to JsonRaw(cells),
-            "cycles" to JsonRaw(cyclesJson),
-        )
-    }
+    fun formatDsm(matrix: DsmMatrix, moduleLabels: Map<PackageName, Set<String>> = emptyMap()): String =
+        DsmFormatter.formatJson(matrix, moduleLabels)
 
-    fun formatDsmCycles(matrix: DsmMatrix, cycleFilter: Pair<PackageName, PackageName>? = null): String {
-        val cycles = matrix.findCyclicPairs(cycleFilter)
-        val prefix = matrix.displayPrefix
-        val cyclesJson = jsonArray(cycles) { (a, b, counts) ->
-            val fwdEdges = matrix.classDependencies[a to b]
-            val bwdEdges = matrix.classDependencies[b to a]
-            jsonObject(
-                "packageA" to a.toString(),
-                "packageB" to b.toString(),
-                "forwardRefs" to counts.first,
-                "backwardRefs" to counts.second,
-                "forwardEdges" to JsonRaw(
-                    jsonArray(fwdEdges?.toList()?.sortedBy { "${it.first}-${it.second}" } ?: emptyList()) { (src, tgt) ->
-                        jsonObject("source" to src.stripPackagePrefix(prefix).toString(), "target" to tgt.stripPackagePrefix(prefix).toString())
-                    },
-                ),
-                "backwardEdges" to JsonRaw(
-                    jsonArray(bwdEdges?.toList()?.sortedBy { "${it.first}-${it.second}" } ?: emptyList()) { (src, tgt) ->
-                        jsonObject("source" to src.stripPackagePrefix(prefix).toString(), "target" to tgt.stripPackagePrefix(prefix).toString())
-                    },
-                ),
-            )
-        }
-        val prefixStr = if (prefix.isNotEmpty()) prefix.toString() else null
-        return jsonObject("displayPrefix" to prefixStr, "cycles" to JsonRaw(cyclesJson))
-    }
+    fun formatDsmCycles(matrix: DsmMatrix, cycleFilter: Pair<PackageName, PackageName>? = null): String =
+        DsmFormatter.formatCyclesJson(matrix, cycleFilter)
 
     fun formatUsages(usages: List<UsageSite>): String =
         jsonArray(usages.sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))) { u ->
@@ -429,122 +367,20 @@ object JsonFormatter {
         details: List<CycleDetail>,
         displayPrefix: PackageName = PackageName(""),
         testInvolvement: TestInvolvement.Counts? = null,
-    ): String {
-        val cyclesJson = jsonArray(details) { detail ->
-            jsonObject(
-                "packages" to JsonRaw(jsonStringArray(detail.packages.map { it.toString() })),
-                "edges" to JsonRaw(jsonArray(detail.edges) { edge ->
-                    jsonObject(
-                        "from" to edge.from.toString(),
-                        "to" to edge.to.toString(),
-                        "classEdges" to JsonRaw(
-                            jsonArray(edge.classEdges.toList().sortedBy { "${it.first}-${it.second}" }) { (src, tgt) ->
-                                jsonObject("source" to src.stripPackagePrefix(displayPrefix).toString(), "target" to tgt.stripPackagePrefix(displayPrefix).toString())
-                            },
-                        ),
-                    )
-                }),
-            )
-        }
-        val prefix = if (displayPrefix.isNotEmpty()) displayPrefix.toString() else null
-        val testInvolvementJson = testInvolvement?.let {
-            JsonRaw(jsonObject("testInvolved" to it.testInvolved, "total" to it.total))
-        }
-        return jsonObject("displayPrefix" to prefix, "cycles" to JsonRaw(cyclesJson), "testInvolvement" to testInvolvementJson)
-    }
+    ): String = CyclesFormatter.formatJson(details, displayPrefix, testInvolvement)
 
     fun formatRings(
         result: RingAssignment,
         ringNames: Map<Int, String> = emptyMap(),
         configNotice: String? = null,
-    ): String {
-        val ringLabel: (Int) -> String = { ring -> ringNames[ring] ?: if (ring == 0) "domain" else "ring $ring" }
-
-        val ringsJson = jsonArray(result.rings.entries.sortedWith(compareBy({ it.value }, { it.key.toString() }))) { (pkg, ring) ->
-            jsonObject(
-                "package" to pkg.toString(),
-                "ring" to ring,
-                "ringName" to ringLabel(ring),
-                "isCompositionRoot" to (pkg in result.compositionRoots),
-            )
-        }
-
-        val filteredViolations = result.violations.filter { v ->
-            v.sourcePackage !in result.compositionRoots && v.targetPackage !in result.compositionRoots
-        }
-        val violationsJson = jsonArray(filteredViolations) { v ->
-            jsonObject(
-                "type" to v.type.name,
-                "sourcePackage" to v.sourcePackage.toString(),
-                "targetPackage" to v.targetPackage.toString(),
-                "sourceRing" to v.sourceRing,
-                "targetRing" to v.targetRing,
-            )
-        }
-
-        return jsonObject(
-            "rings" to JsonRaw(ringsJson),
-            "violations" to JsonRaw(violationsJson),
-            "configNotice" to configNotice,
-        )
-    }
+    ): String = RingFormatter.formatJson(result, ringNames, configNotice)
 
     fun formatEmergentRings(
         result: ClassRingAssignment,
         ringNames: Map<Int, String> = emptyMap(),
         hasHints: Boolean = false,
         testInvolvement: TestInvolvement.Counts? = null,
-    ): String {
-        val ringLabel: (Int) -> String = { ring -> ringNames[ring] ?: if (ring == 0) "domain" else "ring $ring" }
-
-        val classRingsJson = jsonArray(result.classRings.entries.sortedWith(compareBy({ it.value }, { it.key.toString() }))) { (className, ring) ->
-            jsonObject(
-                "className" to className.toString(),
-                "ring" to ring,
-                "ringName" to ringLabel(ring),
-            )
-        }
-
-        val mixedPackages = result.packageSummary.filter { it.value.isMixedRing }.toSortedMap()
-        val mixedPackagesJson = jsonArray(mixedPackages.entries.toList()) { (pkg, summary) ->
-            jsonObject(
-                "package" to pkg.toString(),
-                "minRing" to summary.minRing,
-                "maxRing" to summary.maxRing,
-                "classesByRing" to JsonRaw(
-                    jsonArray(summary.classesByRing.toSortedMap().entries.toList()) { (ring, classes) ->
-                        jsonObject(
-                            "ring" to ring,
-                            "ringName" to ringLabel(ring),
-                            "classes" to JsonRaw(jsonStringArray(classes.sorted().map { it.toString() })),
-                        )
-                    },
-                ),
-            )
-        }
-
-        val violationsJson = jsonArray(result.violations) { v ->
-            jsonObject(
-                "type" to v.type.name,
-                "sourceClass" to v.sourceClass.toString(),
-                "targetClass" to v.targetClass.toString(),
-                "sourceRing" to v.sourceRing,
-                "targetRing" to v.targetRing,
-            )
-        }
-
-        val testInvolvementJson = testInvolvement?.let {
-            JsonRaw(jsonObject("testInvolved" to it.testInvolved, "total" to it.total))
-        }
-
-        return jsonObject(
-            "classRings" to JsonRaw(classRingsJson),
-            "mixedRingPackages" to JsonRaw(mixedPackagesJson),
-            "violations" to JsonRaw(violationsJson),
-            "hintsApplied" to hasHints,
-            "testInvolvement" to testInvolvementJson,
-        )
-    }
+    ): String = EmergentRingFormatter.formatJson(result, ringNames, hasHints, testInvolvement)
 
     fun formatMetrics(metrics: MetricsResult): String =
         jsonObject(
@@ -657,38 +493,6 @@ object JsonFormatter {
                 "supertypes" to JsonRaw(renderSupertypes(st.supertypes)),
             )
         }
-
-    private fun <T> jsonArray(items: List<T>, render: (T) -> String): String {
-        if (items.isEmpty()) return "[]"
-        return items.joinToString(",", "[", "]") { render(it) }
-    }
-
-    private fun jsonStringArray(items: List<String>): String {
-        if (items.isEmpty()) return "[]"
-        return items.joinToString(",", "[", "]") { "\"${escapeJson(it)}\"" }
-    }
-
-    private fun jsonObject(vararg pairs: Pair<String, Any?>): String =
-        pairs
-            .filter { (_, v) -> v != null }
-            .joinToString(",", "{", "}") { (k, v) ->
-                "\"${escapeJson(k)}\":${jsonValue(v!!)}"
-            }
-
-    private fun jsonValue(value: Any): String = when (value) {
-        is String -> "\"${escapeJson(value)}\""
-        is JsonRaw -> value.json
-        is Number -> value.toString()
-        is Boolean -> value.toString()
-        else -> "\"${escapeJson(value.toString())}\""
-    }
-
-    private fun escapeJson(s: String): String =
-        s.replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t")
 
     private fun renderAnnotations(annotations: List<AnnotationDetail>): String =
         jsonArray(annotations) { a ->
