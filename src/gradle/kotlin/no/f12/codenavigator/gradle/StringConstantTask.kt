@@ -2,8 +2,6 @@ package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.types.Scope
@@ -57,8 +55,8 @@ abstract class StringConstantTask : CodeNavigatorTask() {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> StringConstantFormatter.format(matches)
-        OutputFormat.JSON -> JsonFormatter.formatStringConstants(matches)
-        OutputFormat.LLM -> LlmFormatter.formatStringConstants(matches)
+        OutputFormat.JSON -> StringConstantFormatter.formatJson(matches)
+        OutputFormat.LLM -> StringConstantFormatter.formatLlm(matches)
     }
 })
     }

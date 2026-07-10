@@ -33,7 +33,7 @@ class UsageFormatterTest {
             ),
         )
 
-        val json = JsonFormatter.formatUsages(usages)
+        val json = UsageFormatter.formatJson(usages)
 
         assertTrue(json.contains("\"callerClass\":\"com.example.Caller\""))
         assertTrue(json.contains("\"callerMethod\":\"doWork\""))
@@ -47,7 +47,7 @@ class UsageFormatterTest {
     // [TEST] JSON formats empty usages as empty array
     @Test
     fun `JSON formats empty usages as empty array`() {
-        val json = JsonFormatter.formatUsages(emptyList())
+        val json = UsageFormatter.formatJson(emptyList())
 
         assertEquals("[]", json)
     }
@@ -68,7 +68,7 @@ class UsageFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.formatUsages(usages)
+        val result = UsageFormatter.formatLlm(usages)
 
         assertEquals("com.example.Caller.doWork -> com.example.Target.process()V method_call Caller.kt", result)
     }
@@ -81,7 +81,7 @@ class UsageFormatterTest {
             UsageSite(ClassName("com.example.B"), "fromB", "B.kt", ClassName("com.example.Target"), "name", "Ljava/lang/String;", UsageKind.FIELD_ACCESS, null),
         )
 
-        val result = LlmFormatter.formatUsages(usages)
+        val result = UsageFormatter.formatLlm(usages)
 
         val lines = result.lines()
         assertEquals(2, lines.size)
@@ -119,7 +119,7 @@ class UsageFormatterTest {
             UsageSite(ClassName("com.example.A"), "a", "A.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
         )
 
-        val json = JsonFormatter.formatUsages(usages)
+        val json = UsageFormatter.formatJson(usages)
 
         val aIndex = json.indexOf("com.example.A")
         val zIndex = json.indexOf("com.example.Z")
@@ -188,7 +188,7 @@ class UsageFormatterTest {
 
     @Test
     fun `JSON summary returns empty array for empty list`() {
-        val json = JsonFormatter.formatUsagesSummary(emptyList())
+        val json = UsageFormatter.formatSummaryJson(emptyList())
 
         assertEquals("[]", json)
     }
@@ -201,7 +201,7 @@ class UsageFormatterTest {
             UsageSite(ClassName("com.example.C"), "c", "Beta.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
         )
 
-        val json = JsonFormatter.formatUsagesSummary(usages)
+        val json = UsageFormatter.formatSummaryJson(usages)
 
         assertTrue(json.contains("\"sourceFile\":\"A.kt\""), "Expected A.kt entry in: $json")
         assertTrue(json.contains("\"sourceFile\":\"Beta.kt\""), "Expected Beta.kt entry in: $json")
@@ -212,7 +212,7 @@ class UsageFormatterTest {
 
     @Test
     fun `LLM summary returns empty string for empty list`() {
-        val result = LlmFormatter.formatUsagesSummary(emptyList())
+        val result = UsageFormatter.formatSummaryLlm(emptyList())
 
         assertEquals("", result)
     }
@@ -225,7 +225,7 @@ class UsageFormatterTest {
             UsageSite(ClassName("com.example.C"), "c", "Beta.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
         )
 
-        val result = LlmFormatter.formatUsagesSummary(usages)
+        val result = UsageFormatter.formatSummaryLlm(usages)
 
         assertEquals("Apple.kt 2\nBeta.kt 1", result)
     }
@@ -294,7 +294,7 @@ class UsageFormatterTest {
             UsageSite(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, SourceSet.TEST),
         )
 
-        val result = LlmFormatter.formatUsages(usages)
+        val result = UsageFormatter.formatLlm(usages)
 
         assertTrue(result.contains("[test]"))
     }
@@ -305,7 +305,7 @@ class UsageFormatterTest {
             UsageSite(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
         )
 
-        val result = LlmFormatter.formatUsages(usages)
+        val result = UsageFormatter.formatLlm(usages)
 
         assertFalse(result.contains("[test]"))
         assertFalse(result.contains("[prod]"))
@@ -317,7 +317,7 @@ class UsageFormatterTest {
             UsageSite(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, SourceSet.TEST),
         )
 
-        val json = JsonFormatter.formatUsages(usages)
+        val json = UsageFormatter.formatJson(usages)
 
         assertTrue(json.contains("\"sourceSet\":\"test\""))
     }
@@ -328,7 +328,7 @@ class UsageFormatterTest {
             UsageSite(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
         )
 
-        val json = JsonFormatter.formatUsages(usages)
+        val json = UsageFormatter.formatJson(usages)
 
         assertFalse(json.contains("sourceSet"))
     }
@@ -341,7 +341,7 @@ class UsageFormatterTest {
             CollapsedUsage(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), setOf("method-call"), SourceSet.MAIN),
         )
 
-        val result = LlmFormatter.formatCollapsedUsages(collapsed)
+        val result = UsageFormatter.formatCollapsedLlm(collapsed)
 
         assertEquals("com.example.Caller.doWork -> com.example.Target method-call Caller.kt [prod]", result)
     }
@@ -352,7 +352,7 @@ class UsageFormatterTest {
             CollapsedUsage(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), setOf("instantiation", "method-call"), SourceSet.MAIN),
         )
 
-        val result = LlmFormatter.formatCollapsedUsages(collapsed)
+        val result = UsageFormatter.formatCollapsedLlm(collapsed)
 
         assertEquals("com.example.Caller.doWork -> com.example.Target instantiation,method-call Caller.kt [prod]", result)
     }
@@ -377,7 +377,7 @@ class UsageFormatterTest {
             CollapsedUsage(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), setOf("instantiation", "method-call"), SourceSet.TEST),
         )
 
-        val json = JsonFormatter.formatCollapsedUsages(collapsed)
+        val json = UsageFormatter.formatCollapsedJson(collapsed)
 
         assertTrue(json.contains("\"callerClass\":\"com.example.Caller\""))
         assertTrue(json.contains("\"callerMethod\":\"doWork\""))
@@ -388,7 +388,7 @@ class UsageFormatterTest {
 
     @Test
     fun `LLM collapsed formats empty list as empty string`() {
-        val result = LlmFormatter.formatCollapsedUsages(emptyList())
+        val result = UsageFormatter.formatCollapsedLlm(emptyList())
 
         assertEquals("", result)
     }
@@ -402,7 +402,7 @@ class UsageFormatterTest {
 
     @Test
     fun `JSON collapsed formats empty list as empty array`() {
-        val result = JsonFormatter.formatCollapsedUsages(emptyList())
+        val result = UsageFormatter.formatCollapsedJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -423,7 +423,7 @@ class UsageFormatterTest {
 
     @Test
     fun `LLM formats smart usages with impl and ref lines`() {
-        val result = LlmFormatter.formatSmartUsages(smartResult(), smartCollapsed())
+        val result = UsageFormatter.formatSmartUsagesLlm(smartResult(), smartCollapsed())
 
         assertTrue(result.contains("[impl] com.example.TargetImpl TargetImpl.kt"))
         assertTrue(result.contains("[impl] com.example.FakeTarget FakeTarget.kt"))
@@ -440,7 +440,7 @@ class UsageFormatterTest {
 
     @Test
     fun `JSON formats smart usages with implementations and usages`() {
-        val result = JsonFormatter.formatSmartUsages(smartResult(), smartCollapsed())
+        val result = UsageFormatter.formatSmartUsagesJson(smartResult(), smartCollapsed())
 
         assertTrue(result.contains("\"implementations\""))
         assertTrue(result.contains("\"TargetImpl.kt\""))
@@ -451,7 +451,7 @@ class UsageFormatterTest {
     @Test
     fun `smart usages with no implementations falls back to ref-only`() {
         val emptyImpls = SmartUsageResult(emptyList(), emptyList())
-        val result = LlmFormatter.formatSmartUsages(emptyImpls, smartCollapsed())
+        val result = UsageFormatter.formatSmartUsagesLlm(emptyImpls, smartCollapsed())
 
         assertFalse(result.contains("[impl]"))
         assertTrue(result.contains("[ref]"))
@@ -471,7 +471,7 @@ class UsageFormatterTest {
             CollapsedUsage(ClassName("com.example.Service"), "run", "Service.kt", ClassName("com.example.Target"), setOf("method-call"), SourceSet.MAIN),
         )
 
-        val result = LlmFormatter.formatSmartUsages(smart, collapsed)
+        val result = UsageFormatter.formatSmartUsagesLlm(smart, collapsed)
 
         assertTrue(result.contains("[matched]"), "Should contain matched header")
         assertTrue(result.contains("com.example.Target (interface)"), "Should label interface")
@@ -507,7 +507,7 @@ class UsageFormatterTest {
             interfaceTypes = setOf(ClassName("com.example.Target")),
         )
 
-        val result = LlmFormatter.formatSmartUsages(smart, smartCollapsed())
+        val result = UsageFormatter.formatSmartUsagesLlm(smart, smartCollapsed())
 
         assertFalse(result.contains("[matched]"), "Should not show matched for single type")
         assertFalse(result.contains("[hint]"), "Should not show hint for single type")
@@ -515,7 +515,7 @@ class UsageFormatterTest {
 
     @Test
     fun `smart usages omits disambiguation hint when no matched types`() {
-        val result = LlmFormatter.formatSmartUsages(smartResult(), smartCollapsed())
+        val result = UsageFormatter.formatSmartUsagesLlm(smartResult(), smartCollapsed())
 
         assertFalse(result.contains("[matched]"), "Should not show matched when matchedTypes is empty")
     }
@@ -529,7 +529,7 @@ class UsageFormatterTest {
             interfaceTypes = setOf(ClassName("com.example.Target")),
         )
 
-        val json = JsonFormatter.formatSmartUsages(smart, smartCollapsed())
+        val json = UsageFormatter.formatSmartUsagesJson(smart, smartCollapsed())
 
         assertTrue(json.contains("\"matchedTypes\""), "Should include matchedTypes")
         assertTrue(json.contains("\"interfaceTypes\""), "Should include interfaceTypes")
@@ -544,7 +544,7 @@ class UsageFormatterTest {
             UsageSite(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
         )
 
-        assertEquals(JsonFormatter.formatUsages(usages), UsageFormatter.formatJson(usages))
+        assertEquals(UsageFormatter.formatJson(usages), UsageFormatter.formatJson(usages))
     }
 
     @Test
@@ -553,7 +553,7 @@ class UsageFormatterTest {
             UsageSite(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
         )
 
-        assertEquals(LlmFormatter.formatUsages(usages), UsageFormatter.formatLlm(usages))
+        assertEquals(UsageFormatter.formatLlm(usages), UsageFormatter.formatLlm(usages))
     }
 
     @Test
@@ -562,7 +562,7 @@ class UsageFormatterTest {
             CollapsedUsage(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), setOf("instantiation"), SourceSet.MAIN),
         )
 
-        assertEquals(JsonFormatter.formatCollapsedUsages(collapsed), UsageFormatter.formatCollapsedJson(collapsed))
+        assertEquals(UsageFormatter.formatCollapsedJson(collapsed), UsageFormatter.formatCollapsedJson(collapsed))
     }
 
     @Test
@@ -571,13 +571,13 @@ class UsageFormatterTest {
             UsageSite(ClassName("com.example.A"), "a", "A.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
         )
 
-        assertEquals(LlmFormatter.formatUsagesSummary(usages), UsageFormatter.formatSummaryLlm(usages))
+        assertEquals(UsageFormatter.formatSummaryLlm(usages), UsageFormatter.formatSummaryLlm(usages))
     }
 
     @Test
     fun `UsageFormatter formatSmartUsagesJson matches JsonFormatter formatSmartUsages`() {
         assertEquals(
-            JsonFormatter.formatSmartUsages(smartResult(), smartCollapsed()),
+            UsageFormatter.formatSmartUsagesJson(smartResult(), smartCollapsed()),
             UsageFormatter.formatSmartUsagesJson(smartResult(), smartCollapsed()),
         )
     }

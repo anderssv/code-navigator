@@ -2,8 +2,6 @@ package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.formatting.TableFormatter
 import no.f12.codenavigator.registry.TaskRegistry
@@ -21,6 +19,7 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
+import no.f12.codenavigator.navigation.classinfo.ClassInfoFormatter
 
 @DisableCachingByDefault(because = "Produces console output only")
 abstract class ListClassesTask : CodeNavigatorTask() {
@@ -84,8 +83,8 @@ abstract class ListClassesTask : CodeNavigatorTask() {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> TableFormatter.format(filtered)
-        OutputFormat.JSON -> JsonFormatter.formatClasses(filtered)
-        OutputFormat.LLM -> LlmFormatter.formatClasses(filtered)
+        OutputFormat.JSON -> ClassInfoFormatter.formatJson(filtered)
+        OutputFormat.LLM -> ClassInfoFormatter.formatLlm(filtered)
     }
 })
     }

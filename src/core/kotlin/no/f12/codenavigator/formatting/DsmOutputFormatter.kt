@@ -23,8 +23,8 @@ object DsmOutputFormatter {
         return OutputWrapper.formatAndWrap(format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> PackageDistanceFormatter.format(result)
-        OutputFormat.JSON -> JsonFormatter.formatDistance(result)
-        OutputFormat.LLM -> LlmFormatter.formatDistance(result)
+        OutputFormat.JSON -> PackageDistanceFormatter.formatJson(result)
+        OutputFormat.LLM -> PackageDistanceFormatter.formatLlm(result)
     }
 }
     }
@@ -36,8 +36,8 @@ object DsmOutputFormatter {
         return OutputWrapper.formatAndWrap(format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> StrengthFormatter.format(result)
-        OutputFormat.JSON -> JsonFormatter.formatStrength(result)
-        OutputFormat.LLM -> LlmFormatter.formatStrength(result)
+        OutputFormat.JSON -> StrengthFormatter.formatJson(result)
+        OutputFormat.LLM -> StrengthFormatter.formatLlm(result)
     }
 }
     }
@@ -49,8 +49,8 @@ object DsmOutputFormatter {
         return OutputWrapper.formatAndWrap(format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> CohesionFormatter.format(result)
-        OutputFormat.JSON -> JsonFormatter.formatCohesion(result)
-        OutputFormat.LLM -> LlmFormatter.formatCohesion(result)
+        OutputFormat.JSON -> CohesionFormatter.formatJson(result)
+        OutputFormat.LLM -> CohesionFormatter.formatLlm(result)
     }
 }
     }
@@ -62,8 +62,8 @@ object DsmOutputFormatter {
         return OutputWrapper.formatAndWrap(format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> MoveSuggestFormatter.format(result)
-        OutputFormat.JSON -> JsonFormatter.formatMoveSuggestions(result)
-        OutputFormat.LLM -> LlmFormatter.formatMoveSuggestions(result)
+        OutputFormat.JSON -> MoveSuggestFormatter.formatJson(result)
+        OutputFormat.LLM -> MoveSuggestFormatter.formatLlm(result)
     }
 }
     }
@@ -75,8 +75,8 @@ object DsmOutputFormatter {
         return OutputWrapper.formatAndWrap(format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> BalanceFormatter.format(result)
-        OutputFormat.JSON -> JsonFormatter.formatBalance(result)
-        OutputFormat.LLM -> LlmFormatter.formatBalance(result)
+        OutputFormat.JSON -> BalanceFormatter.formatJson(result)
+        OutputFormat.LLM -> BalanceFormatter.formatLlm(result)
     }
 }
     }

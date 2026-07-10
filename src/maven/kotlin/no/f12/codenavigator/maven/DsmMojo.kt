@@ -2,8 +2,6 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.DsmConfig
@@ -93,8 +91,8 @@ class DsmMojo : AbstractMojo() {
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCycles(matrix, config.cycleFilter) else DsmFormatter.format(matrix)
-        OutputFormat.JSON -> if (config.cyclesOnly || config.cycleFilter != null) JsonFormatter.formatDsmCycles(matrix, config.cycleFilter) else JsonFormatter.formatDsm(matrix)
-        OutputFormat.LLM -> if (config.cyclesOnly || config.cycleFilter != null) LlmFormatter.formatDsmCycles(matrix, config.cycleFilter) else LlmFormatter.formatDsm(matrix)
+        OutputFormat.JSON -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCyclesJson(matrix, config.cycleFilter) else DsmFormatter.formatJson(matrix)
+        OutputFormat.LLM -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCyclesLlm(matrix, config.cycleFilter) else DsmFormatter.formatLlm(matrix)
     }
 })
 

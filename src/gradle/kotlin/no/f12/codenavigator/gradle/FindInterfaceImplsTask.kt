@@ -3,8 +3,6 @@ package no.f12.codenavigator.gradle
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.registry.BuildTool
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.types.Scope
@@ -74,8 +72,8 @@ abstract class FindInterfaceImplsTask : CodeNavigatorTask() {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> InterfaceFormatter.format(registry, matchingInterfaces)
-        OutputFormat.JSON -> JsonFormatter.formatInterfaces(registry, matchingInterfaces)
-        OutputFormat.LLM -> LlmFormatter.formatInterfaces(registry, matchingInterfaces)
+        OutputFormat.JSON -> InterfaceFormatter.formatJson(registry, matchingInterfaces)
+        OutputFormat.LLM -> InterfaceFormatter.formatLlm(registry, matchingInterfaces)
     }
 })
     }

@@ -2,8 +2,6 @@ package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.analysis.ChangeCouplingConfig
@@ -67,8 +65,8 @@ abstract class ChangeCouplingTask : CodeNavigatorTask() {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> ChangeCouplingFormatter.format(pairs)
-        OutputFormat.JSON -> JsonFormatter.formatCoupling(pairs)
-        OutputFormat.LLM -> LlmFormatter.formatCoupling(pairs)
+        OutputFormat.JSON -> ChangeCouplingFormatter.formatJson(pairs)
+        OutputFormat.LLM -> ChangeCouplingFormatter.formatLlm(pairs)
     }
 })
     }

@@ -2,8 +2,6 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
@@ -79,8 +77,8 @@ class MetricsMojo : AbstractMojo() {
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> MetricsFormatter.format(metrics)
-        OutputFormat.JSON -> JsonFormatter.formatMetrics(metrics)
-        OutputFormat.LLM -> LlmFormatter.formatMetrics(metrics)
+        OutputFormat.JSON -> MetricsFormatter.formatJson(metrics)
+        OutputFormat.LLM -> MetricsFormatter.formatLlm(metrics)
     }
 })
     }

@@ -5,8 +5,6 @@ import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.analysis.DuplicateConfig
 import no.f12.codenavigator.analysis.DuplicateFormatter
 import no.f12.codenavigator.analysis.DuplicateScanner
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 
@@ -53,8 +51,8 @@ abstract class DuplicatesTask : CodeNavigatorTask() {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> DuplicateFormatter.format(groups)
-        OutputFormat.JSON -> JsonFormatter.formatDuplicates(groups)
-        OutputFormat.LLM -> LlmFormatter.formatDuplicates(groups)
+        OutputFormat.JSON -> DuplicateFormatter.formatJson(groups)
+        OutputFormat.LLM -> DuplicateFormatter.formatLlm(groups)
     }
 })
     }

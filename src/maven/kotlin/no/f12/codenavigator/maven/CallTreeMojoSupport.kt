@@ -2,8 +2,6 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskDef
 import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
@@ -52,8 +50,8 @@ object CallTreeMojoSupport {
             OutputWrapper.formatAndWrap(config.format) { format ->
                 when (format) {
                     OutputFormat.TEXT, OutputFormat.DIFF -> CallTreeFormatter.renderTrees(output.trees, direction) + (output.classHint?.let { "\n\n$it" } ?: "")
-                    OutputFormat.JSON -> JsonFormatter.renderCallTrees(output.trees, direction)
-                    OutputFormat.LLM -> LlmFormatter.renderCallTrees(output.trees, direction) + (output.classHint?.let { "\n\n$it" } ?: "")
+                    OutputFormat.JSON -> CallTreeFormatter.formatJson(output.trees, direction)
+                    OutputFormat.LLM -> CallTreeFormatter.formatLlm(output.trees, direction) + (output.classHint?.let { "\n\n$it" } ?: "")
                 }
             },
         )

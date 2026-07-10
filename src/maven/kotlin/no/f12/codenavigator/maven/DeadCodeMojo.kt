@@ -2,8 +2,6 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
@@ -126,8 +124,8 @@ class DeadCodeMojo : AbstractMojo() {
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> DeadCodeFormatter.format(dead, config.scope)
-        OutputFormat.JSON -> JsonFormatter.formatDead(dead, config.scope)
-        OutputFormat.LLM -> LlmFormatter.formatDead(dead, config.scope)
+        OutputFormat.JSON -> DeadCodeFormatter.formatJson(dead, config.scope)
+        OutputFormat.LLM -> DeadCodeFormatter.formatLlm(dead, config.scope)
     }
 })
     }

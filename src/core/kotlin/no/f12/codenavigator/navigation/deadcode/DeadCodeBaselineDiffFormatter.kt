@@ -1,6 +1,6 @@
 package no.f12.codenavigator.navigation.deadcode
+import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
 
-import no.f12.codenavigator.formatting.JsonFormatter
 
 object DeadCodeBaselineDiffFormatter {
 
@@ -27,9 +27,9 @@ object DeadCodeBaselineDiffFormatter {
 
     fun formatJson(diff: DeadCodeDiff): String = buildString {
         appendLine("{")
-        appendLine("""  "removed": ${JsonFormatter.formatDead(diff.removed)},""")
-        appendLine("""  "remaining": ${JsonFormatter.formatDead(diff.remaining)},""")
-        append("""  "new": ${JsonFormatter.formatDead(diff.new)}""")
+        appendLine("""  "removed": ${DeadCodeFormatter.formatJson(diff.removed)},""")
+        appendLine("""  "remaining": ${DeadCodeFormatter.formatJson(diff.remaining)},""")
+        append("""  "new": ${DeadCodeFormatter.formatJson(diff.new)}""")
         appendLine()
         append("}")
     }

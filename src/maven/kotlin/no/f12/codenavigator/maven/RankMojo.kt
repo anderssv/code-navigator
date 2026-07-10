@@ -2,8 +2,6 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
@@ -69,8 +67,8 @@ class RankMojo : AbstractMojo() {
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> RankFormatter.format(filtered)
-        OutputFormat.JSON -> JsonFormatter.formatRank(filtered)
-        OutputFormat.LLM -> LlmFormatter.formatRank(filtered)
+        OutputFormat.JSON -> RankFormatter.formatJson(filtered)
+        OutputFormat.LLM -> RankFormatter.formatLlm(filtered)
     }
 })
     }

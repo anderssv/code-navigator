@@ -3,8 +3,6 @@ package no.f12.codenavigator.gradle
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.DsmOutputFormatter
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.ParamDef
 import no.f12.codenavigator.registry.TaskRegistry

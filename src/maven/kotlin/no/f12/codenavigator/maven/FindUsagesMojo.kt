@@ -2,8 +2,6 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.relations.callgraph.FindUsagesConfig
@@ -101,14 +99,14 @@ class FindUsagesMojo : AbstractMojo() {
                     else -> UsageFormatter.formatSmartUsages(smartResult, output.collapsed)
                 }
                 OutputFormat.JSON -> when {
-                    config.groupBy == GroupBy.FILE -> JsonFormatter.formatUsagesSummary(output.usages)
-                    config.raw -> JsonFormatter.formatUsages(output.usages)
-                    else -> JsonFormatter.formatSmartUsages(smartResult, output.collapsed)
+                    config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummaryJson(output.usages)
+                    config.raw -> UsageFormatter.formatJson(output.usages)
+                    else -> UsageFormatter.formatSmartUsagesJson(smartResult, output.collapsed)
                 }
                 OutputFormat.LLM -> when {
-                    config.groupBy == GroupBy.FILE -> LlmFormatter.formatUsagesSummary(output.usages)
-                    config.raw -> LlmFormatter.formatUsages(output.usages)
-                    else -> LlmFormatter.formatSmartUsages(smartResult, output.collapsed)
+                    config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummaryLlm(output.usages)
+                    config.raw -> UsageFormatter.formatLlm(output.usages)
+                    else -> UsageFormatter.formatSmartUsagesLlm(smartResult, output.collapsed)
                 }
             }
         })

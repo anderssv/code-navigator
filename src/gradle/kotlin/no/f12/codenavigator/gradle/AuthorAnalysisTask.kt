@@ -2,8 +2,6 @@ package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.analysis.AuthorAnalysisBuilder
@@ -59,8 +57,8 @@ abstract class AuthorAnalysisTask : CodeNavigatorTask() {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> AuthorAnalysisFormatter.format(modules)
-        OutputFormat.JSON -> JsonFormatter.formatAuthors(modules)
-        OutputFormat.LLM -> LlmFormatter.formatAuthors(modules)
+        OutputFormat.JSON -> AuthorAnalysisFormatter.formatJson(modules)
+        OutputFormat.LLM -> AuthorAnalysisFormatter.formatLlm(modules)
     }
 })
     }

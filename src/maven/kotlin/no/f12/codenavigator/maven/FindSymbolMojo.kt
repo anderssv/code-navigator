@@ -2,8 +2,6 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
@@ -93,8 +91,8 @@ class FindSymbolMojo : AbstractMojo() {
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> SymbolTableFormatter.format(matches)
-        OutputFormat.JSON -> JsonFormatter.formatSymbols(matches)
-        OutputFormat.LLM -> LlmFormatter.formatSymbols(matches)
+        OutputFormat.JSON -> SymbolTableFormatter.formatJson(matches)
+        OutputFormat.LLM -> SymbolTableFormatter.formatLlm(matches)
     }
 })
     }

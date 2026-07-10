@@ -1,6 +1,5 @@
 package no.f12.codenavigator.formatting
 
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.analysis.ChangeCouplingFormatter
 import no.f12.codenavigator.analysis.ChurnFormatter
 import no.f12.codenavigator.analysis.CodeAgeFormatter
@@ -76,6 +75,23 @@ import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import no.f12.codenavigator.navigation.annotation.AnnotationQueryFormatter
+import no.f12.codenavigator.navigation.relations.callgraph.CallTreeFormatter
+import no.f12.codenavigator.navigation.changedsince.ChangedSinceFormatter
+import no.f12.codenavigator.navigation.classinfo.ClassDetailFormatter
+import no.f12.codenavigator.navigation.classinfo.ClassInfoFormatter
+import no.f12.codenavigator.navigation.context.ContextFormatter
+import no.f12.codenavigator.navigation.dsm.CyclesFormatter
+import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
+import no.f12.codenavigator.navigation.dsm.DsmFormatter
+import no.f12.codenavigator.analysis.DuplicateFormatter
+import no.f12.codenavigator.analysis.FileSizeFormatter
+import no.f12.codenavigator.navigation.relations.implementors.InterfaceFormatter
+import no.f12.codenavigator.navigation.metrics.MetricsFormatter
+import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
+import no.f12.codenavigator.navigation.stringconstant.StringConstantFormatter
+import no.f12.codenavigator.navigation.symbol.SymbolTableFormatter
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyFormatter
 
 class LlmFormatterTest {
 
@@ -86,14 +102,14 @@ class LlmFormatterTest {
             ClassInfo(ClassName("com.example.Bar"), "Bar.kt", "com/example/Bar.kt", true),
         )
 
-        val result = LlmFormatter.formatClasses(classes)
+        val result = ClassInfoFormatter.formatLlm(classes)
 
         assertEquals("com.example.Bar Bar.kt\ncom.example.Foo Foo.kt", result)
     }
 
     @Test
     fun `empty class list returns empty string`() {
-        assertEquals("", LlmFormatter.formatClasses(emptyList()))
+        assertEquals("", ClassInfoFormatter.formatLlm(emptyList()))
     }
 
     @Test
@@ -103,7 +119,7 @@ class LlmFormatterTest {
             SymbolInfo(PackageName("com.example"), ClassName("com.example.Service"), "name", SymbolKind.FIELD, "Service.kt"),
         )
 
-        val result = LlmFormatter.formatSymbols(symbols)
+        val result = SymbolTableFormatter.formatLlm(symbols)
 
         assertEquals("com.example.Service.doWork method Service.kt\ncom.example.Service.name field Service.kt", result)
     }
@@ -122,7 +138,7 @@ class LlmFormatterTest {
             )
         )
 
-        val result = LlmFormatter.formatClassDetails(details)
+        val result = ClassDetailFormatter.formatLlm(details)
 
         assertEquals(
             "com.example.UserService UserService.kt implements:UserOperations fields:repo:UserRepository methods:findById(long):User",
@@ -146,7 +162,7 @@ class LlmFormatterTest {
             )
         )
 
-        val result = LlmFormatter.formatClassDetails(details)
+        val result = ClassDetailFormatter.formatLlm(details)
 
         assertEquals(
             "com.example.UserService UserService.kt annotations:@Service fields:@Inject+repo:UserRepository methods:@Cacheable(value=\"users\")+findById(long):User",
@@ -172,7 +188,7 @@ class LlmFormatterTest {
             )
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals("com.example.Service.doWork Service.kt\n  ← com.example.Controller.handle Controller.kt", result)
     }
@@ -195,7 +211,7 @@ class LlmFormatterTest {
             )
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals("com.example.Service.doWork Service.kt:15\n  ← com.example.Controller.handle Controller.kt:42", result)
     }
@@ -219,7 +235,7 @@ class LlmFormatterTest {
             )
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLEES)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLEES)
 
         assertEquals(
             "com.example.Controller.handle Controller.kt\n  → com.example.Repository.save Repository.kt (+5 more implementors, use --max-implementors to see all)",
@@ -236,7 +252,7 @@ class LlmFormatterTest {
             )
         ))
 
-        val result = LlmFormatter.formatInterfaces(registry, listOf(ClassName("com.example.Repository")))
+        val result = InterfaceFormatter.formatLlm(registry, listOf(ClassName("com.example.Repository")))
 
         assertEquals("com.example.Repository: com.example.MemRepo(MemRepo.kt),com.example.SqlRepo(SqlRepo.kt)", result)
     }
@@ -247,7 +263,7 @@ class LlmFormatterTest {
             PackageName("com.example.api") to listOf(PackageName("com.example.service"), PackageName("com.example.model")),
         ))
 
-        val result = LlmFormatter.formatPackageDeps(deps, listOf(PackageName("com.example.api")), false)
+        val result = PackageDependencyFormatter.formatLlm(deps, listOf(PackageName("com.example.api")), false)
 
         assertEquals("com.example.api -> com.example.service,com.example.model", result)
     }
@@ -259,7 +275,7 @@ class LlmFormatterTest {
             PackageName("com.example.service") to listOf(PackageName("com.example.model")),
         ))
 
-        val result = LlmFormatter.formatPackageDeps(deps, listOf(PackageName("com.example.model")), true)
+        val result = PackageDependencyFormatter.formatLlm(deps, listOf(PackageName("com.example.model")), true)
 
         assertEquals("com.example.model <- com.example.api,com.example.service", result)
     }
@@ -270,7 +286,7 @@ class LlmFormatterTest {
     fun `formats hotspots compactly`() {
         val hotspots = aHotspotPair()
 
-        val result = LlmFormatter.formatHotspots(hotspots)
+        val result = HotspotFormatter.formatLlm(hotspots)
 
         assertEquals("src/Foo.kt revisions=10 churn=150\nsrc/Bar.kt revisions=5 churn=30\n\n${HotspotFormatter.HOTSPOT_INTERPRETATION}", result)
     }
@@ -281,7 +297,7 @@ class LlmFormatterTest {
     fun `formats coupling compactly`() {
         val pairs = aCoupledPair()
 
-        val result = LlmFormatter.formatCoupling(pairs)
+        val result = ChangeCouplingFormatter.formatLlm(pairs)
 
         assertEquals("src/Foo.kt -- src/Bar.kt degree=85% shared=10 avg=12\n\n${ChangeCouplingFormatter.COUPLING_INTERPRETATION}", result)
     }
@@ -292,7 +308,7 @@ class LlmFormatterTest {
     fun `formats churn compactly`() {
         val churn = aChurnPair()
 
-        val result = LlmFormatter.formatChurn(churn)
+        val result = ChurnFormatter.formatLlm(churn)
 
         assertEquals("src/Foo.kt added=100 deleted=50 commits=10\nsrc/Bar.kt added=30 deleted=10 commits=5\n\n${ChurnFormatter.CHURN_INTERPRETATION}", result)
     }
@@ -309,7 +325,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.formatDsm(matrix)
+        val result = DsmFormatter.formatLlm(matrix)
 
         assertEquals("packages:api,model\napi->model:3 [Controller->User]", result)
     }
@@ -318,7 +334,7 @@ class LlmFormatterTest {
     fun `formats empty dsm`() {
         val matrix = DsmMatrix(emptyList(), emptyMap(), emptyMap())
 
-        val result = LlmFormatter.formatDsm(matrix)
+        val result = DsmFormatter.formatLlm(matrix)
 
         assertEquals("packages:\n(no dependencies)", result)
     }
@@ -334,7 +350,7 @@ class LlmFormatterTest {
             classDependencies = emptyMap(),
         )
 
-        val result = LlmFormatter.formatDsm(matrix)
+        val result = DsmFormatter.formatLlm(matrix)
 
         assertEquals("packages:api,service\napi->service:2\nservice->api:1\nCYCLES: api<->service", result)
     }
@@ -348,7 +364,7 @@ class LlmFormatterTest {
         )
         val moduleLabels = mapOf(PackageName("api") to setOf(":service"), PackageName("model") to setOf(":shared"))
 
-        val result = LlmFormatter.formatDsm(matrix, moduleLabels)
+        val result = DsmFormatter.formatLlm(matrix, moduleLabels)
 
         assertEquals("packages:[:service] api,[:shared] model\n(no dependencies)", result)
     }
@@ -359,7 +375,7 @@ class LlmFormatterTest {
     fun `formatDsmCycles with no cycles produces no-cycles message`() {
         val matrix = DsmMatrix(emptyList(), emptyMap(), emptyMap())
 
-        val result = LlmFormatter.formatDsmCycles(matrix)
+        val result = DsmFormatter.formatCyclesLlm(matrix)
 
         assertEquals("(no cycles)", result)
     }
@@ -378,7 +394,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.formatDsmCycles(matrix)
+        val result = DsmFormatter.formatCyclesLlm(matrix)
 
         assertEquals(
             "CYCLE api<->service 2/1\n  api->service: Controller->Service\n  service->api: Service->Controller",
@@ -390,14 +406,14 @@ class LlmFormatterTest {
 
     @Test
     fun `empty rank list returns empty string`() {
-        assertEquals("", LlmFormatter.formatRank(emptyList()))
+        assertEquals("", RankFormatter.formatLlm(emptyList()))
     }
 
     @Test
     fun `formats ranked types compactly`() {
         val ranked = aRankedTypePair()
 
-        val result = LlmFormatter.formatRank(ranked)
+        val result = RankFormatter.formatLlm(ranked)
 
         assertEquals(
             "com.example.Core rank=0.4200 in=5 out=2\ncom.example.Service rank=0.1500 in=2 out=3\n\n${RankFormatter.RANK_INTERPRETATION}",
@@ -409,14 +425,14 @@ class LlmFormatterTest {
 
     @Test
     fun `empty dead code list returns empty string`() {
-        assertEquals("", LlmFormatter.formatDead(emptyList()))
+        assertEquals("", DeadCodeFormatter.formatLlm(emptyList()))
     }
 
     @Test
     fun `formats dead code compactly`() {
         val dead = aDeadCodePair()
 
-        val result = LlmFormatter.formatDead(dead)
+        val result = DeadCodeFormatter.formatLlm(dead)
 
         assertEquals(
             "com.example.Orphan CLASS Orphan.kt confidence=HIGH reason=NO_REFERENCES\n" +
@@ -431,14 +447,14 @@ class LlmFormatterTest {
 
     @Test
     fun `empty string constant list returns empty string`() {
-        assertEquals("", LlmFormatter.formatStringConstants(emptyList()))
+        assertEquals("", StringConstantFormatter.formatLlm(emptyList()))
     }
 
     @Test
     fun `formats string constants compactly`() {
         val matches = aStringConstantPair()
 
-        val result = LlmFormatter.formatStringConstants(matches)
+        val result = StringConstantFormatter.formatLlm(matches)
 
         assertEquals(
             "com.example.Routes.getUsers: \"/api/v1/users\" Routes.kt\ncom.example.Config.setup: \"application/json\" Config.kt",
@@ -450,14 +466,14 @@ class LlmFormatterTest {
 
     @Test
     fun `empty complexity list returns empty string`() {
-        assertEquals("", LlmFormatter.formatComplexity(emptyList()))
+        assertEquals("", ComplexityFormatter.formatLlm(emptyList()))
     }
 
     @Test
     fun `formats complexity compactly`() {
         val results = aClassComplexity()
 
-        val result = LlmFormatter.formatComplexity(results)
+        val result = ComplexityFormatter.formatLlm(results)
 
         assertEquals(
             "com.example.Service out=5/2 in=3/1\n" +
@@ -485,7 +501,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.formatComplexity(results)
+        val result = ComplexityFormatter.formatLlm(results)
 
         assertEquals(
             "com.example.Orphan out=0/0 in=0/0\n" +
@@ -520,7 +536,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.formatComplexity(results)
+        val result = ComplexityFormatter.formatLlm(results)
 
         assertTrue(result.contains("com.example.A out=1/1 in=0/0"))
         assertTrue(result.contains("com.example.B out=0/0 in=1/1"))
@@ -545,7 +561,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.formatMetrics(metrics)
+        val result = MetricsFormatter.formatLlm(metrics)
 
         assertEquals(
             "classes=42 packages=5 avg-fan-in=8.5 avg-fan-out=3.2 cycles=2 dead-classes=3 dead-methods=7\n" +
@@ -569,7 +585,7 @@ class LlmFormatterTest {
             topHotspots = emptyList(),
         )
 
-        val result = LlmFormatter.formatMetrics(metrics)
+        val result = MetricsFormatter.formatLlm(metrics)
 
         assertEquals(
             "classes=10 packages=2 avg-fan-in=0.0 avg-fan-out=0.0 cycles=0 dead-classes=0 dead-methods=0",
@@ -581,7 +597,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formatCycles returns no cycles message for empty list`() {
-        val result = LlmFormatter.formatCycles(emptyList())
+        val result = CyclesFormatter.formatLlm(emptyList())
 
         assertEquals("(no cycles)", result)
     }
@@ -590,7 +606,7 @@ class LlmFormatterTest {
     fun `formatCycles formats cycle with class edges`() {
         val details = aSingleCycle()
 
-        val result = LlmFormatter.formatCycles(details)
+        val result = CyclesFormatter.formatLlm(details)
 
         assertTrue(result.contains("CYCLE api,service"))
         assertTrue(result.contains("api->service(1): api.Controller->service.Service"))
@@ -602,7 +618,7 @@ class LlmFormatterTest {
     fun `formatCycles separates multiple cycles with newlines`() {
         val details = aMultiCycle()
 
-        val result = LlmFormatter.formatCycles(details)
+        val result = CyclesFormatter.formatLlm(details)
 
         assertTrue(result.contains("CYCLE a,b"))
         assertTrue(result.contains("CYCLE x,y,z"))
@@ -612,7 +628,7 @@ class LlmFormatterTest {
     fun `formatCycles includes prefix line when displayPrefix is non-empty`() {
         val details = aSingleCycle()
 
-        val result = LlmFormatter.formatCycles(details, displayPrefix = PackageName("com.example"))
+        val result = CyclesFormatter.formatLlm(details, displayPrefix = PackageName("com.example"))
 
         assertTrue(result.startsWith("prefix:com.example\n"), "Should start with prefix line, got:\n$result")
         assertTrue(result.contains("CYCLE"), "Should contain cycle info")
@@ -622,7 +638,7 @@ class LlmFormatterTest {
     fun `formatCycles appends test-involvement notice when provided`() {
         val details = aSingleCycle()
 
-        val result = LlmFormatter.formatCycles(details, testInvolvement = TestInvolvement.Counts(testInvolved = 1, total = 2))
+        val result = CyclesFormatter.formatLlm(details, testInvolvement = TestInvolvement.Counts(testInvolved = 1, total = 2))
 
         assertTrue(result.contains("test-involvement: 1 of 2 cycle edges involve test sources"), "Should render the notice, got:\n$result")
     }
@@ -633,7 +649,7 @@ class LlmFormatterTest {
     fun `formats annotation matches compactly`() {
         val matches = listOf(anAnnotationMatch())
 
-        val result = LlmFormatter.formatAnnotations(matches)
+        val result = AnnotationQueryFormatter.formatLlm(matches)
 
         assertEquals("com.example.MyController MyController.kt @RestController", result)
     }
@@ -642,7 +658,7 @@ class LlmFormatterTest {
     fun `formats annotation matches with methods`() {
         val matches = listOf(anAnnotationMatchWithMethods())
 
-        val result = LlmFormatter.formatAnnotations(matches)
+        val result = AnnotationQueryFormatter.formatLlm(matches)
 
         assertEquals("com.example.MyController MyController.kt @RestController\n  method getUsers @GetMapping", result)
     }
@@ -664,14 +680,14 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.formatAnnotations(matches)
+        val result = AnnotationQueryFormatter.formatLlm(matches)
 
         assertEquals("com.example.MyService MyService.kt\n  field repo @Inject", result)
     }
 
     @Test
     fun `formats empty annotation matches`() {
-        assertEquals("(no matches)", LlmFormatter.formatAnnotations(emptyList()))
+        assertEquals("(no matches)", AnnotationQueryFormatter.formatLlm(emptyList()))
     }
 
     // === Call tree annotation tags ===
@@ -695,7 +711,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals(
             "com.example.Service.doWork Service.kt\n  ← com.example.Controller.getOwner Controller.kt:42 [@GetMapping [spring]]",
@@ -715,7 +731,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals(
             "com.example.Controller.getOwner Controller.kt [@GetMapping [spring], @ResponseBody [spring]]\n  (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.",
@@ -734,7 +750,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals("com.example.Service.doWork Service.kt\n  (no callers)", result)
     }
@@ -751,7 +767,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals(
             "com.example.Controller.doWork Controller.kt [@GetMapping [spring], @CustomAnnotation]\n  (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.",
@@ -777,7 +793,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals(
             "com.example.Controller.getUsers Controller.kt [@GetMapping(value=\"/users\") [spring]]\n  (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.",
@@ -805,7 +821,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals(
             "com.example.Service.doWork Service.kt\n  ← com.example.ServiceTest.testDoWork ServiceTest.kt:10 [test]",
@@ -833,7 +849,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals(
             "com.example.Service.doWork Service.kt\n  ← com.example.Controller.handle Controller.kt [prod]",
@@ -859,7 +875,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals(
             "com.example.Service.doWork Service.kt\n  ← com.example.Controller.handle Controller.kt",
@@ -871,7 +887,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats context with class detail`() {
-        val result = LlmFormatter.formatContext(aContextResult())
+        val result = ContextFormatter.formatLlm(aContextResult())
 
         assertTrue(result.contains("com.example.MyService"), "Should contain class name")
         assertTrue(result.contains("MyService.kt"), "Should contain source file")
@@ -892,7 +908,7 @@ class LlmFormatterTest {
                 ),
             ),
         )
-        val result = LlmFormatter.formatContext(aContextResult(callers = listOf(callerRoot)))
+        val result = ContextFormatter.formatLlm(aContextResult(callers = listOf(callerRoot)))
 
         assertTrue(result.contains("callers:"), "Should have callers section")
         assertTrue(result.contains("com.example.Caller.run"), "Should contain caller method")
@@ -913,7 +929,7 @@ class LlmFormatterTest {
                 ),
             ),
         )
-        val result = LlmFormatter.formatContext(aContextResult(callees = listOf(calleeRoot)))
+        val result = ContextFormatter.formatLlm(aContextResult(callees = listOf(calleeRoot)))
 
         assertTrue(result.contains("callees:"), "Should have callees section")
         assertTrue(result.contains("com.example.Repo.save"), "Should contain callee method")
@@ -921,7 +937,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats context with implementors`() {
-        val result = LlmFormatter.formatContext(aContextResult(
+        val result = ContextFormatter.formatLlm(aContextResult(
             implementors = listOf(
                 ImplementorInfo(ClassName("com.example.ImplA"), "ImplA.kt"),
             ),
@@ -933,7 +949,7 @@ class LlmFormatterTest {
 
     @Test
     fun `formats context with implemented interfaces`() {
-        val result = LlmFormatter.formatContext(aContextResult(
+        val result = ContextFormatter.formatLlm(aContextResult(
             implementedInterfaces = listOf(ClassName("com.example.Service")),
         ))
 
@@ -943,7 +959,7 @@ class LlmFormatterTest {
 
     @Test
     fun `omits empty sections from context`() {
-        val result = LlmFormatter.formatContext(aContextResult())
+        val result = ContextFormatter.formatLlm(aContextResult())
 
         assertTrue(!result.contains("callers:"), "Should not have callers when empty")
         assertTrue(!result.contains("callees:"), "Should not have callees when empty")
@@ -957,7 +973,7 @@ class LlmFormatterTest {
     fun `formatDistance with empty result produces empty string`() {
         val result = PackageDistanceResult(emptyList())
 
-        assertEquals("", LlmFormatter.formatDistance(result))
+        assertEquals("", PackageDistanceFormatter.formatLlm(result))
     }
 
     @Test
@@ -969,7 +985,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val output = LlmFormatter.formatDistance(result)
+        val output = PackageDistanceFormatter.formatLlm(result)
 
         assertEquals(
             "com.example.api->org.other.service distance=6 deps=3\ncom.example.api->com.example.model distance=2 deps=5\n\n${PackageDistanceFormatter.DISTANCE_INTERPRETATION}",
@@ -986,7 +1002,7 @@ class LlmFormatterTest {
             displayPrefix = PackageName("com.example"),
         )
 
-        val output = LlmFormatter.formatDistance(result)
+        val output = PackageDistanceFormatter.formatLlm(result)
 
         assertTrue(output.startsWith("prefix:com.example\n"), "Should start with prefix line, got:\n$output")
         assertTrue(output.contains("api->model"), "Should contain entry data")
@@ -1001,7 +1017,7 @@ class LlmFormatterTest {
             displayPrefix = PackageName(""),
         )
 
-        val output = LlmFormatter.formatDistance(result)
+        val output = PackageDistanceFormatter.formatLlm(result)
 
         assertTrue(!output.contains("prefix:"), "Should not contain prefix line when empty")
     }
@@ -1015,7 +1031,7 @@ class LlmFormatterTest {
             displayPrefix = PackageName("com.example"),
         )
 
-        val output = LlmFormatter.formatDsm(matrix)
+        val output = DsmFormatter.formatLlm(matrix)
 
         assertTrue(output.startsWith("prefix:com.example\n"), "Should start with prefix line, got:\n$output")
         assertTrue(output.contains("packages:api,model"), "Should contain package list")
@@ -1036,7 +1052,7 @@ class LlmFormatterTest {
             displayPrefix = PackageName("com.example"),
         )
 
-        val output = LlmFormatter.formatDsmCycles(matrix)
+        val output = DsmFormatter.formatCyclesLlm(matrix)
 
         assertTrue(output.startsWith("prefix:com.example\n"), "Should start with prefix line, got:\n$output")
         assertTrue(output.contains("CYCLE"), "Should contain cycle info")
@@ -1055,7 +1071,7 @@ class LlmFormatterTest {
             displayPrefix = PackageName("com.example"),
         )
 
-        val result = LlmFormatter.formatDsm(matrix)
+        val result = DsmFormatter.formatLlm(matrix)
 
         assertTrue(result.contains("[api.Controller->model.User]"), "Should show stripped class names, got:\n$result")
         assertTrue(!result.contains("com.example.api.Controller"), "Should not show full class name, got:\n$result")
@@ -1076,7 +1092,7 @@ class LlmFormatterTest {
             displayPrefix = PackageName("com.example"),
         )
 
-        val result = LlmFormatter.formatDsmCycles(matrix)
+        val result = DsmFormatter.formatCyclesLlm(matrix)
 
         assertTrue(result.contains("api.Controller->service.Service"), "Should show stripped class names, got:\n$result")
         assertTrue(!result.contains("com.example.api.Controller"), "Should not show full class name, got:\n$result")
@@ -1094,7 +1110,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.formatCycles(details, displayPrefix = PackageName("com.example"))
+        val result = CyclesFormatter.formatLlm(details, displayPrefix = PackageName("com.example"))
 
         assertTrue(result.contains("api.Controller->service.Service"), "Should show stripped class names, got:\n$result")
         assertTrue(!result.contains("com.example.api.Controller"), "Should not show full class name, got:\n$result")
@@ -1114,7 +1130,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals(
             "com.example.Controller.getUsers Controller.kt [@GetMapping [spring]]\n  (no callers) — @GetMapping is a spring entry point; invoked by the framework at runtime.",
@@ -1134,7 +1150,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals(
             "com.example.Service.doWork Service.kt [@CustomAnnotation]\n  (no callers)",
@@ -1154,7 +1170,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLEES)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLEES)
 
         assertEquals(
             "com.example.Controller.getUsers Controller.kt [@GetMapping [spring]]\n  (no callees)",
@@ -1181,7 +1197,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatLlm(trees, CallDirection.CALLERS)
 
         assertEquals(
             "com.example.Controller.getUsers Controller.kt [@GetMapping [spring]]\n  ← com.example.Test.testGetUsers Test.kt:10",
@@ -1195,14 +1211,14 @@ class LlmFormatterTest {
     fun `formatStrength with empty result produces empty string`() {
         val result = StrengthResult(emptyList())
 
-        assertEquals("", LlmFormatter.formatStrength(result))
+        assertEquals("", StrengthFormatter.formatLlm(result))
     }
 
     @Test
     fun `formatStrength produces compact LLM lines`() {
         val result = aStrengthResultPair()
 
-        val output = LlmFormatter.formatStrength(result)
+        val output = StrengthFormatter.formatLlm(result)
 
         assertEquals(
             "com.example.api->com.example.model strength=MODEL contract=1 model=2 functional=0\ncom.example.api->org.other.service strength=FUNCTIONAL contract=0 model=0 functional=4\n\n${StrengthFormatter.STRENGTH_INTERPRETATION}",
@@ -1221,7 +1237,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val output = LlmFormatter.formatStrength(result)
+        val output = StrengthFormatter.formatLlm(result)
 
         assertEquals(
             "com.example.api->org.external.lib strength=CONTRACT contract=1 model=0 functional=0 unknown=3\n\n${StrengthFormatter.STRENGTH_INTERPRETATION}",
@@ -1238,7 +1254,7 @@ class LlmFormatterTest {
             FileSizeEntry("domain/Domain.kt", 22),
         )
 
-        val result = LlmFormatter.formatSize(entries)
+        val result = FileSizeFormatter.formatLlm(entries)
 
         assertEquals("services/UserService.kt lines=61\ndomain/Domain.kt lines=22", result)
     }
@@ -1259,7 +1275,7 @@ class LlmFormatterTest {
             dit = 3,
         )
 
-        val result = LlmFormatter.formatClassMetrics(listOf(entry))
+        val result = ClassMetricsFormatter.formatLlm(listOf(entry))
 
         assertEquals(
             "com.example.OrderService methods=5 tcc=0.12 lcc=0.30 verdict=MONOLITH wmc=34 cbo=12 dit=3\n\n${ClassMetricsFormatter.CLASS_METRICS_INTERPRETATION}",
@@ -1286,7 +1302,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.formatTypeHierarchy(results)
+        val result = TypeHierarchyFormatter.formatLlm(results)
 
         assertEquals(
             "com.example.Child Child.kt\n" +
@@ -1303,7 +1319,7 @@ class LlmFormatterTest {
             TypeHierarchyResult(className = ClassName("com.example.Plain"), sourceFile = "Plain.kt", supertypes = emptyList(), implementors = emptyList()),
         )
 
-        val result = LlmFormatter.formatTypeHierarchy(results)
+        val result = TypeHierarchyFormatter.formatLlm(results)
 
         assertEquals("com.example.Plain Plain.kt", result)
     }
@@ -1316,7 +1332,7 @@ class LlmFormatterTest {
             DuplicateGroup(tokenCount = 25, locations = listOf(DuplicateLocation("A.kt", 10, 15), DuplicateLocation("B.kt", 20, 25))),
         )
 
-        val result = LlmFormatter.formatDuplicates(groups)
+        val result = DuplicateFormatter.formatLlm(groups)
 
         assertEquals("tokens=25\n  A.kt:10-15\n  B.kt:20-25", result)
     }
@@ -1327,7 +1343,7 @@ class LlmFormatterTest {
     fun `formats file ages with interpretation footer`() {
         val ages = listOf(FileAge("src/Old.kt", 12, LocalDate.of(2023, 1, 1)))
 
-        val result = LlmFormatter.formatAge(ages)
+        val result = CodeAgeFormatter.formatLlm(ages)
 
         assertEquals("src/Old.kt age=12months last=2023-01-01\n\n${CodeAgeFormatter.AGE_INTERPRETATION}", result)
     }
@@ -1344,7 +1360,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val result = LlmFormatter.formatChangedSince(impacts, unresolved = listOf("missing.kt"))
+        val result = ChangedSinceFormatter.formatLlm(impacts, unresolved = listOf("missing.kt"))
 
         assertEquals(
             "com.example.Service Service.kt\n  <- com.example.Controller.handle\nUNRESOLVED: missing.kt",
@@ -1358,7 +1374,7 @@ class LlmFormatterTest {
             ChangedClassImpact(className = ClassName("com.example.Orphan"), sourceFile = "Orphan.kt", callers = emptySet()),
         )
 
-        val result = LlmFormatter.formatChangedSince(impacts, unresolved = emptyList())
+        val result = ChangedSinceFormatter.formatLlm(impacts, unresolved = emptyList())
 
         assertEquals("com.example.Orphan Orphan.kt (no callers)", result)
     }
@@ -1382,7 +1398,7 @@ class LlmFormatterTest {
             ),
         )
 
-        val llm = LlmFormatter.formatBalance(result)
+        val llm = BalanceFormatter.formatLlm(result)
 
         assertEquals(
             "com.example.web->com.example.persistence verdict=DANGER strength=FUNCTIONAL distance=4 volatility=50/40 | Consider co-locating.\n\n${BalanceFormatter.BALANCE_INTERPRETATION}",

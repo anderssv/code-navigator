@@ -3,8 +3,6 @@ package no.f12.codenavigator.gradle
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.registry.BuildTool
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.types.Scope
@@ -97,8 +95,8 @@ abstract class FindSymbolTask : CodeNavigatorTask() {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> SymbolTableFormatter.format(matches)
-        OutputFormat.JSON -> JsonFormatter.formatSymbols(matches)
-        OutputFormat.LLM -> LlmFormatter.formatSymbols(matches)
+        OutputFormat.JSON -> SymbolTableFormatter.formatJson(matches)
+        OutputFormat.LLM -> SymbolTableFormatter.formatLlm(matches)
     }
 })
     }

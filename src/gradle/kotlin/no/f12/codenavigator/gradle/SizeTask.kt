@@ -5,8 +5,6 @@ import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.analysis.FileSizeConfig
 import no.f12.codenavigator.analysis.FileSizeFormatter
 import no.f12.codenavigator.analysis.FileSizeScanner
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 
@@ -48,8 +46,8 @@ abstract class SizeTask : CodeNavigatorTask() {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> FileSizeFormatter.format(entries)
-        OutputFormat.JSON -> JsonFormatter.formatSize(entries)
-        OutputFormat.LLM -> LlmFormatter.formatSize(entries)
+        OutputFormat.JSON -> FileSizeFormatter.formatJson(entries)
+        OutputFormat.LLM -> FileSizeFormatter.formatLlm(entries)
     }
 })
     }

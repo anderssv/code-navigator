@@ -2,8 +2,6 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.CyclesConfig
@@ -80,8 +78,8 @@ class CyclesMojo : AbstractMojo() {
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
-        OutputFormat.JSON -> JsonFormatter.formatCycles(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
-        OutputFormat.LLM -> LlmFormatter.formatCycles(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
+        OutputFormat.JSON -> CyclesFormatter.formatJson(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
+        OutputFormat.LLM -> CyclesFormatter.formatLlm(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
     }
 })
 

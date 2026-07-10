@@ -1,6 +1,5 @@
 package no.f12.codenavigator.formatting
 
-import no.f12.codenavigator.formatting.JsonFormatter
 import no.f12.codenavigator.analysis.FileSizeEntry
 import no.f12.codenavigator.analysis.Hotspot
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
@@ -81,6 +80,39 @@ import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import no.f12.codenavigator.navigation.annotation.AnnotationQueryFormatter
+import no.f12.codenavigator.analysis.AuthorAnalysisFormatter
+import no.f12.codenavigator.navigation.dsm.BalanceFormatter
+import no.f12.codenavigator.navigation.relations.callgraph.CallTreeFormatter
+import no.f12.codenavigator.analysis.ChangeCouplingFormatter
+import no.f12.codenavigator.navigation.changedsince.ChangedSinceFormatter
+import no.f12.codenavigator.analysis.ChurnFormatter
+import no.f12.codenavigator.navigation.classinfo.ClassDetailFormatter
+import no.f12.codenavigator.navigation.classinfo.ClassInfoFormatter
+import no.f12.codenavigator.navigation.classmetrics.ClassMetricsFormatter
+import no.f12.codenavigator.analysis.CodeAgeFormatter
+import no.f12.codenavigator.navigation.dsm.CohesionFormatter
+import no.f12.codenavigator.navigation.complexity.ComplexityFormatter
+import no.f12.codenavigator.navigation.context.ContextFormatter
+import no.f12.codenavigator.navigation.dsm.CyclesFormatter
+import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
+import no.f12.codenavigator.navigation.dsm.DsmFormatter
+import no.f12.codenavigator.analysis.DuplicateFormatter
+import no.f12.codenavigator.navigation.dsm.EmergentRingFormatter
+import no.f12.codenavigator.analysis.FileSizeFormatter
+import no.f12.codenavigator.analysis.HotspotFormatter
+import no.f12.codenavigator.navigation.relations.implementors.InterfaceFormatter
+import no.f12.codenavigator.navigation.metrics.MetricsFormatter
+import no.f12.codenavigator.navigation.dsm.MoveSuggestFormatter
+import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
+import no.f12.codenavigator.navigation.dsm.PackageDistanceFormatter
+import no.f12.codenavigator.analysis.PackageVolatilityFormatter
+import no.f12.codenavigator.navigation.rank.RankFormatter
+import no.f12.codenavigator.navigation.dsm.RingFormatter
+import no.f12.codenavigator.navigation.dsm.StrengthFormatter
+import no.f12.codenavigator.navigation.stringconstant.StringConstantFormatter
+import no.f12.codenavigator.navigation.symbol.SymbolTableFormatter
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyFormatter
 
 class JsonFormatterTest {
 
@@ -88,7 +120,7 @@ class JsonFormatterTest {
 
     @Test
     fun `empty class list produces empty JSON array`() {
-        val result = JsonFormatter.formatClasses(emptyList())
+        val result = ClassInfoFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -98,7 +130,7 @@ class JsonFormatterTest {
             ClassInfo(ClassName("com.example.Foo"), "Foo.kt", "com/example/Foo.kt", isUserDefinedClass = true),
         )
 
-        val result = JsonFormatter.formatClasses(classes)
+        val result = ClassInfoFormatter.formatJson(classes)
 
         assertEquals(
             """[{"className":"com.example.Foo","sourceFile":"Foo.kt","sourcePath":"com/example/Foo.kt"}]""",
@@ -112,7 +144,7 @@ class JsonFormatterTest {
             ClassInfo(ClassName("com.example.Alpha"), "Alpha.kt", "com/example/Alpha.kt", isUserDefinedClass = true),
         )
 
-        val result = JsonFormatter.formatClasses(classes)
+        val result = ClassInfoFormatter.formatJson(classes)
 
         assertEquals(
             """[{"className":"com.example.Alpha","sourceFile":"Alpha.kt","sourcePath":"com/example/Alpha.kt"},""" +
@@ -127,7 +159,7 @@ class JsonFormatterTest {
             ClassInfo(ClassName("com.example.Foo\"Bar"), "Foo\"Bar.kt", "com/example/Foo\"Bar.kt", isUserDefinedClass = true),
         )
 
-        val result = JsonFormatter.formatClasses(classes)
+        val result = ClassInfoFormatter.formatJson(classes)
 
         assertEquals(
             """[{"className":"com.example.Foo\"Bar","sourceFile":"Foo\"Bar.kt","sourcePath":"com/example/Foo\"Bar.kt"}]""",
@@ -139,7 +171,7 @@ class JsonFormatterTest {
 
     @Test
     fun `empty symbol list produces empty JSON array`() {
-        val result = JsonFormatter.formatSymbols(emptyList())
+        val result = SymbolTableFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -150,7 +182,7 @@ class JsonFormatterTest {
             SymbolInfo(PackageName("com.example"), ClassName("com.example.Service"), "doWork", SymbolKind.METHOD, "Service.kt"),
         )
 
-        val result = JsonFormatter.formatSymbols(symbols)
+        val result = SymbolTableFormatter.formatJson(symbols)
 
         assertEquals(
             """[{"package":"com.example","class":"Service","symbol":"doWork","kind":"method","sourceFile":"Service.kt"}]""",
@@ -164,7 +196,7 @@ class JsonFormatterTest {
             SymbolInfo(PackageName("com.example"), ClassName("com.example.Entity"), "name", SymbolKind.FIELD, "Entity.kt"),
         )
 
-        val result = JsonFormatter.formatSymbols(symbols)
+        val result = SymbolTableFormatter.formatJson(symbols)
 
         assertEquals(
             """[{"package":"com.example","class":"Entity","symbol":"name","kind":"field","sourceFile":"Entity.kt"}]""",
@@ -176,7 +208,7 @@ class JsonFormatterTest {
 
     @Test
     fun `empty class detail list produces empty JSON array`() {
-        val result = JsonFormatter.formatClassDetails(emptyList())
+        val result = ClassDetailFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -195,7 +227,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatClassDetails(details)
+        val result = ClassDetailFormatter.formatJson(details)
 
         assertEquals(
             """[{"className":"com.example.Order","sourceFile":"Order.kt","superClass":"com.example.BaseEntity",""" +
@@ -220,7 +252,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatClassDetails(details)
+        val result = ClassDetailFormatter.formatJson(details)
 
         assertEquals(
             """[{"className":"com.example.Simple","sourceFile":"Simple.kt","interfaces":[],"fields":[],"methods":[]}]""",
@@ -244,7 +276,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatClassDetails(details)
+        val result = ClassDetailFormatter.formatJson(details)
 
         assertEquals(
             """[{"className":"com.example.Annotated","sourceFile":"Annotated.kt",""" +
@@ -264,7 +296,7 @@ class JsonFormatterTest {
         val method = MethodRef(ClassName("com.example.Service"), "doWork")
 
         val trees = CallTreeBuilder.build(graph, listOf(method), maxDepth = 3, CallDirection.CALLEES)
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertEquals(
             """[{"method":"com.example.Service.doWork","sourceFile":"<unknown>","children":[]}]""",
@@ -285,7 +317,7 @@ class JsonFormatterTest {
         )
 
         val trees = CallTreeBuilder.build(graph, listOf(caller), maxDepth = 3, CallDirection.CALLEES)
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertEquals(
             """[{"method":"com.example.Controller.handle","sourceFile":"Controller.kt","children":[""" +
@@ -309,7 +341,7 @@ class JsonFormatterTest {
         )
 
         val trees = CallTreeBuilder.build(graph, listOf(a), maxDepth = 3, CallDirection.CALLEES)
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertEquals(
             """[{"method":"com.example.A.start","sourceFile":"A.kt","children":[""" +
@@ -334,7 +366,7 @@ class JsonFormatterTest {
         )
 
         val trees = CallTreeBuilder.build(graph, listOf(a), maxDepth = 1, CallDirection.CALLEES)
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertEquals(
             """[{"method":"com.example.A.start","sourceFile":"A.kt","children":[""" +
@@ -353,7 +385,7 @@ class JsonFormatterTest {
         )
 
         val trees = CallTreeBuilder.build(graph, listOf(a), maxDepth = 10, CallDirection.CALLEES)
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertEquals(
             """[{"method":"com.example.A.callB","sourceFile":"A.kt","children":[""" +
@@ -377,7 +409,7 @@ class JsonFormatterTest {
         )
 
         val trees = CallTreeBuilder.build(graph, listOf(caller), maxDepth = 3, CallDirection.CALLEES)
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertEquals(
             """[{"method":"com.example.Controller.handle","sourceFile":"Controller.kt","lineNumber":10,"children":[""" +
@@ -392,7 +424,7 @@ class JsonFormatterTest {
         val method = MethodRef(ClassName("com.example.Service"), "doWork")
 
         val trees = CallTreeBuilder.build(graph, listOf(method), maxDepth = 3, CallDirection.CALLEES)
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertEquals(
             """[{"method":"com.example.Service.doWork","sourceFile":"<unknown>","children":[]}]""",
@@ -416,7 +448,7 @@ class JsonFormatterTest {
             children = listOf(interfaceNode),
         )
 
-        val result = JsonFormatter.renderCallTrees(listOf(root))
+        val result = CallTreeFormatter.formatJson(listOf(root))
 
         assertTrue(result.contains(""""collapsedImplementorCount":5"""), "Should include collapsedImplementorCount, got: $result")
     }
@@ -427,7 +459,7 @@ class JsonFormatterTest {
         val method = MethodRef(ClassName("com.example.Service"), "doWork")
 
         val trees = CallTreeBuilder.build(graph, listOf(method), maxDepth = 3, CallDirection.CALLEES)
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertTrue(!result.contains("collapsedImplementorCount"), "Should omit collapsedImplementorCount when zero, got: $result")
     }
@@ -438,7 +470,7 @@ class JsonFormatterTest {
     fun `empty interface list produces empty JSON array`() {
         val registry = InterfaceRegistry(emptyMap())
 
-        val result = JsonFormatter.formatInterfaces(registry, emptyList())
+        val result = InterfaceFormatter.formatJson(registry, emptyList())
 
         assertEquals("[]", result)
     }
@@ -454,7 +486,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatInterfaces(registry, listOf(ClassName("com.example.Repository")))
+        val result = InterfaceFormatter.formatJson(registry, listOf(ClassName("com.example.Repository")))
 
         assertEquals(
             """[{"interface":"com.example.Repository","implementors":[""" +
@@ -470,7 +502,7 @@ class JsonFormatterTest {
     fun `empty package list produces empty JSON array`() {
         val deps = PackageDependencies(emptyMap())
 
-        val result = JsonFormatter.formatPackageDeps(deps, emptyList())
+        val result = PackageDependencyFormatter.formatJson(deps, emptyList())
 
         assertEquals("[]", result)
     }
@@ -481,7 +513,7 @@ class JsonFormatterTest {
             mapOf(PackageName("com.example.services") to listOf(PackageName("com.example.domain"), PackageName("com.example.repo"))),
         )
 
-        val result = JsonFormatter.formatPackageDeps(deps, listOf(PackageName("com.example.services")))
+        val result = PackageDependencyFormatter.formatJson(deps, listOf(PackageName("com.example.services")))
 
         assertEquals(
             """[{"package":"com.example.services","dependencies":["com.example.domain","com.example.repo"]}]""",
@@ -498,7 +530,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatPackageDeps(
+        val result = PackageDependencyFormatter.formatJson(
             deps,
             listOf(PackageName("com.example.domain")),
             reverse = true,
@@ -514,7 +546,7 @@ class JsonFormatterTest {
 
     @Test
     fun `empty hotspots produce empty JSON array`() {
-        val result = JsonFormatter.formatHotspots(emptyList())
+        val result = HotspotFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -523,7 +555,7 @@ class JsonFormatterTest {
     fun `hotspots produce JSON array with file, revisions, totalChurn`() {
         val hotspots = aHotspotPair()
 
-        val result = JsonFormatter.formatHotspots(hotspots)
+        val result = HotspotFormatter.formatJson(hotspots)
 
         assertEquals(
             """[{"file":"src/Foo.kt","revisions":10,"totalChurn":150},{"file":"src/Bar.kt","revisions":5,"totalChurn":30}]""",
@@ -535,7 +567,7 @@ class JsonFormatterTest {
 
     @Test
     fun `empty coupling produces empty JSON array`() {
-        val result = JsonFormatter.formatCoupling(emptyList())
+        val result = ChangeCouplingFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -544,7 +576,7 @@ class JsonFormatterTest {
     fun `coupling produces JSON with entity, coupled, degree, sharedRevs, avgRevs`() {
         val pairs = aCoupledPair()
 
-        val result = JsonFormatter.formatCoupling(pairs)
+        val result = ChangeCouplingFormatter.formatJson(pairs)
 
         assertEquals(
             """[{"entity":"src/Foo.kt","coupled":"src/Bar.kt","degree":85,"sharedRevs":10,"avgRevs":12}]""",
@@ -556,7 +588,7 @@ class JsonFormatterTest {
 
     @Test
     fun `empty churn produces empty JSON array`() {
-        val result = JsonFormatter.formatChurn(emptyList())
+        val result = ChurnFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -565,7 +597,7 @@ class JsonFormatterTest {
     fun `churn produces JSON with file, added, deleted, commits`() {
         val churn = aChurnPair()
 
-        val result = JsonFormatter.formatChurn(churn)
+        val result = ChurnFormatter.formatJson(churn)
 
         assertEquals(
             """[{"file":"src/Foo.kt","added":100,"deleted":50,"commits":10},{"file":"src/Bar.kt","added":30,"deleted":10,"commits":5}]""",
@@ -579,7 +611,7 @@ class JsonFormatterTest {
     fun `empty dsm produces JSON with empty packages and cells`() {
         val matrix = DsmMatrix(emptyList(), emptyMap(), emptyMap())
 
-        val result = JsonFormatter.formatDsm(matrix)
+        val result = DsmFormatter.formatJson(matrix)
 
         assertEquals("""{"packages":[],"cells":[],"cycles":[]}""", result)
     }
@@ -594,7 +626,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatDsm(matrix)
+        val result = DsmFormatter.formatJson(matrix)
 
         assertTrue(result.contains("\"packages\":[\"api\",\"model\"]"))
         assertTrue(result.contains("\"from\":\"api\""))
@@ -615,7 +647,7 @@ class JsonFormatterTest {
             classDependencies = emptyMap(),
         )
 
-        val result = JsonFormatter.formatDsm(matrix)
+        val result = DsmFormatter.formatJson(matrix)
 
         assertTrue(result.contains("\"cycles\""))
         assertTrue(result.contains("\"api\""))
@@ -630,7 +662,7 @@ class JsonFormatterTest {
             classDependencies = emptyMap(),
         )
 
-        val result = JsonFormatter.formatDsm(matrix, emptyMap())
+        val result = DsmFormatter.formatJson(matrix, emptyMap())
 
         assertTrue(!result.contains("packageModules"), "Should omit packageModules key entirely when empty, got: $result")
     }
@@ -644,7 +676,7 @@ class JsonFormatterTest {
         )
         val moduleLabels = mapOf(PackageName("api") to setOf(":service"), PackageName("model") to setOf(":shared", ":service"))
 
-        val result = JsonFormatter.formatDsm(matrix, moduleLabels)
+        val result = DsmFormatter.formatJson(matrix, moduleLabels)
 
         assertTrue(
             result.contains("""{"package":"api","modules":[":service"]}"""),
@@ -662,7 +694,7 @@ class JsonFormatterTest {
     fun `dsm cycles-only with no cycles produces object with empty cycles`() {
         val matrix = DsmMatrix(emptyList(), emptyMap(), emptyMap())
 
-        val result = JsonFormatter.formatDsmCycles(matrix)
+        val result = DsmFormatter.formatCyclesJson(matrix)
 
         assertEquals("""{"cycles":[]}""", result)
     }
@@ -681,7 +713,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatDsmCycles(matrix)
+        val result = DsmFormatter.formatCyclesJson(matrix)
 
         assertTrue(result.contains("\"packageA\":\"api\""))
         assertTrue(result.contains("\"packageB\":\"service\""))
@@ -697,7 +729,7 @@ class JsonFormatterTest {
 
     @Test
     fun `empty rank list produces empty JSON array`() {
-        val result = JsonFormatter.formatRank(emptyList())
+        val result = RankFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -706,7 +738,7 @@ class JsonFormatterTest {
     fun `formats ranked types as JSON array`() {
         val ranked = aRankedTypePair()
 
-        val result = JsonFormatter.formatRank(ranked)
+        val result = RankFormatter.formatJson(ranked)
 
         assertTrue(result.contains("\"className\":\"com.example.Core\""))
         assertTrue(result.contains("\"rank\":0.42"))
@@ -720,7 +752,7 @@ class JsonFormatterTest {
 
     @Test
     fun `empty dead code list produces empty JSON array`() {
-        val result = JsonFormatter.formatDead(emptyList())
+        val result = DeadCodeFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -729,7 +761,7 @@ class JsonFormatterTest {
     fun `formats dead code as JSON array with all fields`() {
         val dead = aDeadCodePair()
 
-        val result = JsonFormatter.formatDead(dead)
+        val result = DeadCodeFormatter.formatJson(dead)
 
         assertTrue(result.contains("\"className\":\"com.example.Orphan\""))
         assertTrue(result.contains("\"kind\":\"class\""))
@@ -747,7 +779,7 @@ class JsonFormatterTest {
 
     @Test
     fun `empty string constant list produces empty JSON array`() {
-        val result = JsonFormatter.formatStringConstants(emptyList())
+        val result = StringConstantFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -756,7 +788,7 @@ class JsonFormatterTest {
     fun `formats string constants as JSON array with all fields`() {
         val matches = aStringConstantPair()
 
-        val result = JsonFormatter.formatStringConstants(matches)
+        val result = StringConstantFormatter.formatJson(matches)
 
         assertTrue(result.contains("\"className\":\"com.example.Routes\""))
         assertTrue(result.contains("\"methodName\":\"getUsers\""))
@@ -771,7 +803,7 @@ class JsonFormatterTest {
 
     @Test
     fun `empty complexity list produces empty JSON array`() {
-        val result = JsonFormatter.formatComplexity(emptyList())
+        val result = ComplexityFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -780,7 +812,7 @@ class JsonFormatterTest {
     fun `formats complexity as JSON with all fields`() {
         val complexity = aClassComplexity()
 
-        val result = JsonFormatter.formatComplexity(complexity)
+        val result = ComplexityFormatter.formatJson(complexity)
 
         assertTrue(result.contains("\"className\":\"com.example.Service\""))
         assertTrue(result.contains("\"sourceFile\":\"Service.kt\""))
@@ -798,7 +830,7 @@ class JsonFormatterTest {
     fun `formats metrics as JSON object with all fields`() {
         val metrics = aMetricsResult()
 
-        val result = JsonFormatter.formatMetrics(metrics)
+        val result = MetricsFormatter.formatJson(metrics)
 
         assertTrue(result.contains("\"totalClasses\":42"))
         assertTrue(result.contains("\"packageCount\":5"))
@@ -824,7 +856,7 @@ class JsonFormatterTest {
             topHotspots = emptyList(),
         )
 
-        val result = JsonFormatter.formatMetrics(metrics)
+        val result = MetricsFormatter.formatJson(metrics)
 
         assertTrue(result.contains("\"topHotspots\":[]"))
     }
@@ -833,7 +865,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formatCycles returns object with empty cycles for no cycles`() {
-        val result = JsonFormatter.formatCycles(emptyList())
+        val result = CyclesFormatter.formatJson(emptyList())
 
         assertEquals("""{"cycles":[]}""", result)
     }
@@ -842,7 +874,7 @@ class JsonFormatterTest {
     fun `formatCycles includes cycle packages and edges in object`() {
         val details = aSingleCycle()
 
-        val result = JsonFormatter.formatCycles(details)
+        val result = CyclesFormatter.formatJson(details)
 
         assertTrue(result.startsWith("{"), "Should start with object, got: $result")
         assertTrue(result.contains("\"cycles\":["), "Should contain cycles key")
@@ -857,7 +889,7 @@ class JsonFormatterTest {
     fun `formatCycles includes testInvolvement field when provided`() {
         val details = aSingleCycle()
 
-        val result = JsonFormatter.formatCycles(details, testInvolvement = TestInvolvement.Counts(testInvolved = 1, total = 2))
+        val result = CyclesFormatter.formatJson(details, testInvolvement = TestInvolvement.Counts(testInvolved = 1, total = 2))
 
         assertTrue(result.contains("\"testInvolvement\":{\"testInvolved\":1,\"total\":2}"), "Should include structured testInvolvement, got: $result")
     }
@@ -866,7 +898,7 @@ class JsonFormatterTest {
     fun `formatCycles omits testInvolvement field when null`() {
         val details = aSingleCycle()
 
-        val result = JsonFormatter.formatCycles(details, testInvolvement = null)
+        val result = CyclesFormatter.formatJson(details, testInvolvement = null)
 
         assertTrue(!result.contains("testInvolvement"), "Should omit testInvolvement key entirely when null, got: $result")
     }
@@ -875,7 +907,7 @@ class JsonFormatterTest {
     fun `formatCycles handles multiple cycles in object`() {
         val details = aMultiCycle()
 
-        val result = JsonFormatter.formatCycles(details)
+        val result = CyclesFormatter.formatJson(details)
 
         assertTrue(result.startsWith("{"), "Should start with object, got: $result")
         assertTrue(result.endsWith("}"), "Should end with object close")
@@ -890,7 +922,7 @@ class JsonFormatterTest {
     fun `formats annotation matches as JSON array`() {
         val matches = listOf(anAnnotationMatch())
 
-        val result = JsonFormatter.formatAnnotations(matches)
+        val result = AnnotationQueryFormatter.formatJson(matches)
 
         assertTrue(result.contains("\"className\":\"com.example.MyController\""))
         assertTrue(result.contains("\"sourceFile\":\"MyController.kt\""))
@@ -902,7 +934,7 @@ class JsonFormatterTest {
     fun `formats annotation matches with methods as JSON`() {
         val matches = listOf(anAnnotationMatchWithMethods())
 
-        val result = JsonFormatter.formatAnnotations(matches)
+        val result = AnnotationQueryFormatter.formatJson(matches)
 
         assertTrue(result.contains("\"method\":\"getUsers\""))
         assertTrue(result.contains("\"annotations\":[\"GetMapping\"]"))
@@ -925,7 +957,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatAnnotations(matches)
+        val result = AnnotationQueryFormatter.formatJson(matches)
 
         assertTrue(result.contains("\"field\":\"repo\""))
         assertTrue(result.contains("\"fields\":[{\"field\":\"repo\",\"annotations\":[\"Inject\"]}]"))
@@ -933,7 +965,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formats empty annotation matches as empty JSON array`() {
-        assertEquals("[]", JsonFormatter.formatAnnotations(emptyList()))
+        assertEquals("[]", AnnotationQueryFormatter.formatJson(emptyList()))
     }
 
     // === Call tree annotation tags ===
@@ -950,7 +982,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertTrue(result.contains("""{"name":"GetMapping","framework":"spring"}"""))
         assertTrue(result.contains("""{"name":"ResponseBody","framework":"spring"}"""))
@@ -971,7 +1003,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertTrue(result.contains("""{"name":"GetMapping","framework":"spring"}"""))
         assertTrue(result.contains("""{"name":"CustomAnnotation"}"""))
@@ -989,7 +1021,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertEquals(
             """[{"method":"com.example.Service.doWork","sourceFile":"Service.kt","children":[]}]""",
@@ -1015,7 +1047,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertTrue(result.contains("""{"name":"GetMapping","framework":"spring"}"""))
         // Root node should NOT have annotations key (empty list = omitted)
@@ -1041,7 +1073,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertTrue(result.contains(""""name":"GetMapping""""))
         assertTrue(result.contains(""""framework":"spring""""))
@@ -1062,7 +1094,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertTrue(!result.contains(""""parameters""""), "Annotation without parameters should not have parameters key")
     }
@@ -1087,7 +1119,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertTrue(result.contains(""""sourceSet":"prod""""), "Root node should have sourceSet:prod")
         assertTrue(result.contains(""""sourceSet":"test""""), "Child node should have sourceSet:test")
@@ -1104,7 +1136,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertTrue(!result.contains(""""sourceSet""""), "Should not have sourceSet key when null")
     }
@@ -1113,7 +1145,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formats context as JSON with class detail`() {
-        val result = JsonFormatter.formatContext(aContextResult())
+        val result = ContextFormatter.formatJson(aContextResult())
 
         assertTrue(result.contains(""""classDetail""""), "Should have classDetail key")
         assertTrue(result.contains(""""com.example.MyService""""), "Should contain class name")
@@ -1134,7 +1166,7 @@ class JsonFormatterTest {
                 ),
             ),
         )
-        val result = JsonFormatter.formatContext(aContextResult(callers = listOf(callerRoot)))
+        val result = ContextFormatter.formatJson(aContextResult(callers = listOf(callerRoot)))
 
         assertTrue(result.contains(""""callers""""), "Should have callers key")
         assertTrue(result.contains(""""com.example.Caller.run""""), "Should contain caller method")
@@ -1142,14 +1174,14 @@ class JsonFormatterTest {
 
     @Test
     fun `formats context JSON with empty callers as empty array`() {
-        val result = JsonFormatter.formatContext(aContextResult())
+        val result = ContextFormatter.formatJson(aContextResult())
 
         assertTrue(result.contains(""""callers":[]"""), "Should have empty callers array")
     }
 
     @Test
     fun `formats context JSON with implementors`() {
-        val result = JsonFormatter.formatContext(aContextResult(
+        val result = ContextFormatter.formatJson(aContextResult(
             implementors = listOf(ImplementorInfo(ClassName("com.example.Impl"), "Impl.kt")),
         ))
 
@@ -1159,7 +1191,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formats context JSON with implemented interfaces`() {
-        val result = JsonFormatter.formatContext(aContextResult(
+        val result = ContextFormatter.formatJson(aContextResult(
             implementedInterfaces = listOf(ClassName("com.example.Iface")),
         ))
 
@@ -1173,7 +1205,7 @@ class JsonFormatterTest {
     fun `formatDistance with empty result produces object with empty entries`() {
         val result = PackageDistanceResult(emptyList())
 
-        assertEquals("""{"entries":[]}""", JsonFormatter.formatDistance(result))
+        assertEquals("""{"entries":[]}""", PackageDistanceFormatter.formatJson(result))
     }
 
     @Test
@@ -1185,7 +1217,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val json = JsonFormatter.formatDistance(result)
+        val json = PackageDistanceFormatter.formatJson(result)
 
         assertTrue(json.contains("\"source\":\"com.example.api\""))
         assertTrue(json.contains("\"target\":\"org.other.service\""))
@@ -1204,7 +1236,7 @@ class JsonFormatterTest {
             displayPrefix = PackageName("com.example"),
         )
 
-        val json = JsonFormatter.formatDistance(result)
+        val json = PackageDistanceFormatter.formatJson(result)
 
         assertTrue(json.contains("\"displayPrefix\":\"com.example\""), "Should contain displayPrefix, got:\n$json")
         assertTrue(json.contains("\"source\":\"api\""), "Should contain entry data")
@@ -1219,7 +1251,7 @@ class JsonFormatterTest {
             displayPrefix = PackageName(""),
         )
 
-        val json = JsonFormatter.formatDistance(result)
+        val json = PackageDistanceFormatter.formatJson(result)
 
         assertTrue(!json.contains("displayPrefix"), "Should not contain displayPrefix when empty")
     }
@@ -1238,7 +1270,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatJson(trees, CallDirection.CALLERS)
 
         assertTrue(result.contains(""""frameworkEntryPointHint":"@GetMapping is a spring entry point; invoked by the framework at runtime.""""), "Should contain hint, got:\n$result")
     }
@@ -1255,7 +1287,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatJson(trees, CallDirection.CALLERS)
 
         assertTrue(!result.contains("frameworkEntryPointHint"), "Should not contain hint for non-framework annotation, got:\n$result")
     }
@@ -1272,7 +1304,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees, CallDirection.CALLEES)
+        val result = CallTreeFormatter.formatJson(trees, CallDirection.CALLEES)
 
         assertTrue(!result.contains("frameworkEntryPointHint"), "Should not contain hint for CALLEES direction, got:\n$result")
     }
@@ -1296,7 +1328,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees, CallDirection.CALLERS)
+        val result = CallTreeFormatter.formatJson(trees, CallDirection.CALLERS)
 
         assertTrue(!result.contains("frameworkEntryPointHint"), "Should not contain hint when method has callers, got:\n$result")
     }
@@ -1313,7 +1345,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.renderCallTrees(trees)
+        val result = CallTreeFormatter.formatJson(trees)
 
         assertTrue(!result.contains("frameworkEntryPointHint"), "Should not contain hint without direction, got:\n$result")
     }
@@ -1324,14 +1356,14 @@ class JsonFormatterTest {
     fun `formatStrength with empty result produces empty array`() {
         val result = StrengthResult(emptyList())
 
-        assertEquals("[]", JsonFormatter.formatStrength(result))
+        assertEquals("[]", StrengthFormatter.formatJson(result))
     }
 
     @Test
     fun `formatStrength produces JSON with source target strength and counts`() {
         val result = aStrengthResultPair()
 
-        val json = JsonFormatter.formatStrength(result)
+        val json = StrengthFormatter.formatJson(result)
 
         assertTrue(json.contains("\"source\":\"com.example.api\""))
         assertTrue(json.contains("\"target\":\"com.example.model\""))
@@ -1355,7 +1387,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val json = JsonFormatter.formatStrength(result)
+        val json = StrengthFormatter.formatJson(result)
 
         assertTrue(json.contains("\"unknown\":5"))
         assertTrue(json.contains("\"totalDeps\":6"))
@@ -1374,7 +1406,7 @@ class JsonFormatterTest {
             displayPrefix = PackageName("com.example"),
         )
 
-        val json = JsonFormatter.formatDsm(matrix)
+        val json = DsmFormatter.formatJson(matrix)
 
         assertTrue(json.contains("\"source\":\"api.Controller\""), "Should show stripped source class, got:\n$json")
         assertTrue(json.contains("\"target\":\"model.User\""), "Should show stripped target class, got:\n$json")
@@ -1396,7 +1428,7 @@ class JsonFormatterTest {
             displayPrefix = PackageName("com.example"),
         )
 
-        val json = JsonFormatter.formatDsmCycles(matrix)
+        val json = DsmFormatter.formatCyclesJson(matrix)
 
         assertTrue(json.contains("\"source\":\"api.Controller\""), "Should show stripped source class, got:\n$json")
         assertTrue(json.contains("\"target\":\"service.Service\""), "Should show stripped target class, got:\n$json")
@@ -1415,7 +1447,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val json = JsonFormatter.formatCycles(details, displayPrefix = PackageName("com.example"))
+        val json = CyclesFormatter.formatJson(details, displayPrefix = PackageName("com.example"))
 
         assertTrue(json.contains("\"source\":\"api.Controller\""), "Should show stripped source class, got:\n$json")
         assertTrue(json.contains("\"target\":\"service.Service\""), "Should show stripped target class, got:\n$json")
@@ -1426,7 +1458,7 @@ class JsonFormatterTest {
 
     @Test
     fun `empty size entries produce empty JSON array`() {
-        val result = JsonFormatter.formatSize(emptyList())
+        val result = FileSizeFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -1438,7 +1470,7 @@ class JsonFormatterTest {
             FileSizeEntry("domain/Domain.kt", 22),
         )
 
-        val result = JsonFormatter.formatSize(entries)
+        val result = FileSizeFormatter.formatJson(entries)
 
         assertEquals(
             """[{"file":"services/UserService.kt","lines":61},{"file":"domain/Domain.kt","lines":22}]""",
@@ -1456,7 +1488,7 @@ class JsonFormatterTest {
             violations = emptyList(),
         )
 
-        val result = JsonFormatter.formatRings(assignment, ringNames = mapOf(0 to "domain", 1 to "adapter"))
+        val result = RingFormatter.formatJson(assignment, ringNames = mapOf(0 to "domain", 1 to "adapter"))
 
         assertTrue(result.contains("\"package\":\"com.app.domain\",\"ring\":0,\"ringName\":\"domain\",\"isCompositionRoot\":false"))
         assertTrue(result.contains("\"package\":\"com.app.web\",\"ring\":1,\"ringName\":\"adapter\",\"isCompositionRoot\":true"))
@@ -1473,7 +1505,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatRings(assignment)
+        val result = RingFormatter.formatJson(assignment)
 
         assertTrue(result.contains("\"sourcePackage\":\"a\",\"targetPackage\":\"b\""), "Should keep non-composition-root violation, got: $result")
         assertTrue(!result.contains("\"sourcePackage\":\"c\""), "Should drop violation touching a composition root, got: $result")
@@ -1483,8 +1515,8 @@ class JsonFormatterTest {
     fun `formatRings includes configNotice when provided and omits it when null`() {
         val assignment = RingAssignment(rings = emptyMap(), compositionRoots = emptySet(), violations = emptyList())
 
-        val withNotice = JsonFormatter.formatRings(assignment, configNotice = "package mode notice")
-        val withoutNotice = JsonFormatter.formatRings(assignment)
+        val withNotice = RingFormatter.formatJson(assignment, configNotice = "package mode notice")
+        val withoutNotice = RingFormatter.formatJson(assignment)
 
         assertTrue(withNotice.contains("\"configNotice\":\"package mode notice\""))
         assertTrue(!withoutNotice.contains("configNotice"))
@@ -1500,7 +1532,7 @@ class JsonFormatterTest {
             violations = emptyList(),
         )
 
-        val json = JsonFormatter.formatEmergentRings(result, ringNames = mapOf(0 to "domain", 1 to "adapter"))
+        val json = EmergentRingFormatter.formatJson(result, ringNames = mapOf(0 to "domain", 1 to "adapter"))
 
         assertTrue(json.contains("\"className\":\"com.app.domain.Order\",\"ring\":0,\"ringName\":\"domain\""))
         assertTrue(json.contains("\"className\":\"com.app.web.Controller\",\"ring\":1,\"ringName\":\"adapter\""))
@@ -1519,7 +1551,7 @@ class JsonFormatterTest {
             violations = emptyList(),
         )
 
-        val json = JsonFormatter.formatEmergentRings(result)
+        val json = EmergentRingFormatter.formatJson(result)
 
         assertTrue(json.contains("\"package\":\"com.app.feature\""), "Should include mixed-ring package, got: $json")
         assertTrue(!json.contains("\"package\":\"com.app.pure\""), "Should exclude single-ring package, got: $json")
@@ -1535,7 +1567,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val json = JsonFormatter.formatEmergentRings(result, hasHints = true)
+        val json = EmergentRingFormatter.formatJson(result, hasHints = true)
 
         assertTrue(json.contains("\"sourceClass\":\"com.app.web.Controller\",\"targetClass\":\"com.app.domain.Order\",\"sourceRing\":1,\"targetRing\":0"))
         assertTrue(json.contains("\"hintsApplied\":true"))
@@ -1545,8 +1577,8 @@ class JsonFormatterTest {
     fun `formatEmergentRings includes testInvolvement when provided and omits when null`() {
         val result = ClassRingAssignment(classRings = emptyMap(), packageSummary = emptyMap(), violations = emptyList())
 
-        val withCounts = JsonFormatter.formatEmergentRings(result, testInvolvement = TestInvolvement.Counts(testInvolved = 2, total = 5))
-        val withoutCounts = JsonFormatter.formatEmergentRings(result)
+        val withCounts = EmergentRingFormatter.formatJson(result, testInvolvement = TestInvolvement.Counts(testInvolved = 2, total = 5))
+        val withoutCounts = EmergentRingFormatter.formatJson(result)
 
         assertTrue(withCounts.contains("\"testInvolvement\":{\"testInvolved\":2,\"total\":5}"))
         assertTrue(!withoutCounts.contains("testInvolvement"))
@@ -1556,7 +1588,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formatClassMetrics returns empty array for no results`() {
-        val result = JsonFormatter.formatClassMetrics(emptyList())
+        val result = ClassMetricsFormatter.formatJson(emptyList())
 
         assertEquals("[]", result)
     }
@@ -1575,7 +1607,7 @@ class JsonFormatterTest {
             dit = 3,
         )
 
-        val result = JsonFormatter.formatClassMetrics(listOf(entry))
+        val result = ClassMetricsFormatter.formatJson(listOf(entry))
 
         assertEquals(
             """[{"className":"com.example.OrderService","package":"com.example","totalMethods":5,"tcc":0.12,"lcc":0.3,"verdict":"MONOLITH","wmc":34,"cbo":12,"dit":3}]""",
@@ -1596,7 +1628,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatTypeHierarchy(results)
+        val result = TypeHierarchyFormatter.formatJson(results)
 
         assertTrue(result.contains("\"className\":\"com.example.Child\""))
         assertTrue(result.contains("\"kind\":\"class\""))
@@ -1605,7 +1637,7 @@ class JsonFormatterTest {
 
     @Test
     fun `formats empty type hierarchy list as empty array`() {
-        assertEquals("[]", JsonFormatter.formatTypeHierarchy(emptyList()))
+        assertEquals("[]", TypeHierarchyFormatter.formatJson(emptyList()))
     }
 
     // === Duplicates formatting ===
@@ -1616,7 +1648,7 @@ class JsonFormatterTest {
             DuplicateGroup(tokenCount = 25, locations = listOf(DuplicateLocation("A.kt", 10, 15), DuplicateLocation("B.kt", 20, 25))),
         )
 
-        val result = JsonFormatter.formatDuplicates(groups)
+        val result = DuplicateFormatter.formatJson(groups)
 
         assertEquals(
             """[{"tokenCount":25,"locations":[{"file":"A.kt","startLine":10,"endLine":15},{"file":"B.kt","startLine":20,"endLine":25}]}]""",
@@ -1632,7 +1664,7 @@ class JsonFormatterTest {
             listOf(PackageVolatility("com.example.foo", revisions = 10, totalChurn = 200, fileCount = 3, avgRevisionsPerFile = 3.3)),
         )
 
-        val json = JsonFormatter.formatVolatility(result)
+        val json = PackageVolatilityFormatter.formatJson(result)
 
         assertEquals(
             """[{"package":"com.example.foo","revisions":10,"totalChurn":200,"fileCount":3,"avgRevisionsPerFile":3.3}]""",
@@ -1646,7 +1678,7 @@ class JsonFormatterTest {
     fun `formats file ages`() {
         val ages = listOf(FileAge("src/Old.kt", 12, LocalDate.of(2023, 1, 1)))
 
-        val result = JsonFormatter.formatAge(ages)
+        val result = CodeAgeFormatter.formatJson(ages)
 
         assertEquals("""[{"file":"src/Old.kt","ageMonths":12,"lastChangeDate":"2023-01-01"}]""", result)
     }
@@ -1657,7 +1689,7 @@ class JsonFormatterTest {
     fun `formats module authors`() {
         val modules = listOf(ModuleAuthors("src/Team.kt", authors = 5, revisions = 20))
 
-        val result = JsonFormatter.formatAuthors(modules)
+        val result = AuthorAnalysisFormatter.formatJson(modules)
 
         assertEquals("""[{"file":"src/Team.kt","authors":5,"revisions":20}]""", result)
     }
@@ -1674,7 +1706,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val result = JsonFormatter.formatChangedSince(impacts, unresolved = listOf("missing.kt"))
+        val result = ChangedSinceFormatter.formatJson(impacts, unresolved = listOf("missing.kt"))
 
         assertTrue(result.contains("\"className\":\"com.example.Service\""))
         assertTrue(result.contains("\"className\":\"com.example.Controller\",\"method\":\"handle\""))
@@ -1687,7 +1719,7 @@ class JsonFormatterTest {
             ChangedClassImpact(className = ClassName("com.example.Orphan"), sourceFile = "Orphan.kt", callers = emptySet()),
         )
 
-        val result = JsonFormatter.formatChangedSince(impacts, unresolved = emptyList())
+        val result = ChangedSinceFormatter.formatJson(impacts, unresolved = emptyList())
 
         assertTrue(result.contains("\"callers\":[]"))
         assertTrue(result.contains("\"unresolvedFiles\":[]"))
@@ -1712,7 +1744,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val json = JsonFormatter.formatBalance(result)
+        val json = BalanceFormatter.formatJson(result)
 
         assertTrue(json.contains("\"source\":\"com.example.web\""))
         assertTrue(json.contains("\"verdict\":\"DANGER\""))
@@ -1736,7 +1768,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val json = JsonFormatter.formatCohesion(result)
+        val json = CohesionFormatter.formatJson(result)
 
         assertTrue(json.contains("\"package\":\"com.example.model\""))
         assertTrue(json.contains("\"cohesion\":0.75"))
@@ -1760,7 +1792,7 @@ class JsonFormatterTest {
             ),
         )
 
-        val json = JsonFormatter.formatMoveSuggestions(result)
+        val json = MoveSuggestFormatter.formatJson(result)
 
         assertTrue(json.contains("\"class\":\"com.example.Helper\""))
         assertTrue(json.contains("\"suggestedPackage\":\"com.example.service\""))

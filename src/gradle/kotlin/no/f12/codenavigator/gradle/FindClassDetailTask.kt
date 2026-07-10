@@ -3,8 +3,6 @@ package no.f12.codenavigator.gradle
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.registry.BuildTool
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.types.Scope
@@ -92,8 +90,8 @@ abstract class FindClassDetailTask : CodeNavigatorTask() {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> ClassDetailFormatter.format(matchingDetails)
-        OutputFormat.JSON -> JsonFormatter.formatClassDetails(matchingDetails)
-        OutputFormat.LLM -> LlmFormatter.formatClassDetails(matchingDetails)
+        OutputFormat.JSON -> ClassDetailFormatter.formatJson(matchingDetails)
+        OutputFormat.LLM -> ClassDetailFormatter.formatLlm(matchingDetails)
     }
 })
     }

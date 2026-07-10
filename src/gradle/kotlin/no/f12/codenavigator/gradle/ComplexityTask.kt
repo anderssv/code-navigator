@@ -2,8 +2,6 @@ package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.types.Scope
@@ -87,8 +85,8 @@ abstract class ComplexityTask : CodeNavigatorTask() {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> ComplexityFormatter.format(truncated)
-        OutputFormat.JSON -> JsonFormatter.formatComplexity(truncated)
-        OutputFormat.LLM -> LlmFormatter.formatComplexity(truncated)
+        OutputFormat.JSON -> ComplexityFormatter.formatJson(truncated)
+        OutputFormat.LLM -> ComplexityFormatter.formatLlm(truncated)
     }
 })
     }

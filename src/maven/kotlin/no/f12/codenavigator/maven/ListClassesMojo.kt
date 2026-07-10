@@ -2,8 +2,6 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.formatting.TableFormatter
 import no.f12.codenavigator.registry.TaskRegistry
@@ -22,6 +20,7 @@ import org.apache.maven.plugins.annotations.Parameter
 import org.apache.maven.plugins.annotations.ResolutionScope
 import org.apache.maven.project.MavenProject
 import java.io.File
+import no.f12.codenavigator.navigation.classinfo.ClassInfoFormatter
 
 @Mojo(name = "list-classes", requiresDependencyResolution = ResolutionScope.RUNTIME)
 @Execute(phase = LifecyclePhase.COMPILE)
@@ -87,8 +86,8 @@ class ListClassesMojo : AbstractMojo() {
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> TableFormatter.format(filtered)
-        OutputFormat.JSON -> JsonFormatter.formatClasses(filtered)
-        OutputFormat.LLM -> LlmFormatter.formatClasses(filtered)
+        OutputFormat.JSON -> ClassInfoFormatter.formatJson(filtered)
+        OutputFormat.LLM -> ClassInfoFormatter.formatLlm(filtered)
     }
 })
     }

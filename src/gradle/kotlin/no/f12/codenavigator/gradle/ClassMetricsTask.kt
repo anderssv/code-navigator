@@ -1,8 +1,6 @@
 package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.config.OutputFormat
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.classmetrics.ClassMetricsConfig
 import no.f12.codenavigator.navigation.classmetrics.ClassMetricsFormatter
@@ -67,8 +65,8 @@ abstract class ClassMetricsTask : CodeNavigatorTask() {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> ClassMetricsFormatter.format(output.results)
-        OutputFormat.JSON -> JsonFormatter.formatClassMetrics(output.results)
-        OutputFormat.LLM -> LlmFormatter.formatClassMetrics(output.results)
+        OutputFormat.JSON -> ClassMetricsFormatter.formatJson(output.results)
+        OutputFormat.LLM -> ClassMetricsFormatter.formatLlm(output.results)
     }
 })
     }

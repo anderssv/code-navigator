@@ -2,8 +2,6 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.analysis.GitLogRunner
@@ -51,8 +49,8 @@ class HotspotsMojo : AbstractMojo() {
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> HotspotFormatter.format(hotspots)
-        OutputFormat.JSON -> JsonFormatter.formatHotspots(hotspots)
-        OutputFormat.LLM -> LlmFormatter.formatHotspots(hotspots)
+        OutputFormat.JSON -> HotspotFormatter.formatJson(hotspots)
+        OutputFormat.LLM -> HotspotFormatter.formatLlm(hotspots)
     }
 })
     }

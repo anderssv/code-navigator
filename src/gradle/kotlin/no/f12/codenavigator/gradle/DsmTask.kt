@@ -2,8 +2,6 @@ package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
@@ -116,8 +114,8 @@ abstract class DsmTask : CodeNavigatorTask(), MultiModuleCapable {
         logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCycles(matrix, config.cycleFilter) else DsmFormatter.format(matrix, output.moduleLabels)
-        OutputFormat.JSON -> if (config.cyclesOnly || config.cycleFilter != null) JsonFormatter.formatDsmCycles(matrix, config.cycleFilter) else JsonFormatter.formatDsm(matrix, output.moduleLabels)
-        OutputFormat.LLM -> if (config.cyclesOnly || config.cycleFilter != null) LlmFormatter.formatDsmCycles(matrix, config.cycleFilter) else LlmFormatter.formatDsm(matrix, output.moduleLabels)
+        OutputFormat.JSON -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCyclesJson(matrix, config.cycleFilter) else DsmFormatter.formatJson(matrix, output.moduleLabels)
+        OutputFormat.LLM -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCyclesLlm(matrix, config.cycleFilter) else DsmFormatter.formatLlm(matrix, output.moduleLabels)
     }
 })
 

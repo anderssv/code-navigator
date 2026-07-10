@@ -2,8 +2,6 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 
-import no.f12.codenavigator.formatting.JsonFormatter
-import no.f12.codenavigator.formatting.LlmFormatter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
@@ -70,8 +68,8 @@ class AnnotationsMojo : AbstractMojo() {
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> AnnotationQueryFormatter.format(matches)
-        OutputFormat.JSON -> JsonFormatter.formatAnnotations(matches)
-        OutputFormat.LLM -> LlmFormatter.formatAnnotations(matches)
+        OutputFormat.JSON -> AnnotationQueryFormatter.formatJson(matches)
+        OutputFormat.LLM -> AnnotationQueryFormatter.formatLlm(matches)
     }
 })
     }
