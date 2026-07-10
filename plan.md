@@ -1,7 +1,7 @@
 # Plan
 
 Items grouped by functional area. Each item has:
-- **Status**: ACTIVE (next up) / FUTURE (someday) / PARKED (low priority, revisit if demand) / REJECTED
+- **Status**: ACTIVE (next up) / FUTURE (someday) / LOW (deprioritized but still on the backlog, ahead of PARKED) / PARKED (low priority, revisit if demand) / REJECTED
 - **Source**: internal / field-test(project) / user-feedback(version)
 
 ---
@@ -428,7 +428,7 @@ For each declared dependency JAR, extract package list. Scan project bytecode fo
 Scan interfaces matching a pattern (`*Repository`, `*Client`), check each has at least one implementation in test source set. InterfaceRegistry + test source filter — infrastructure exists.
 
 ### `cnavTestCoupling` — remaining improvements
-**PARKED** | **Value: medium** | **Effort: low** | Source: field-test(greitt+terms-and-conditions)
+**LOW** | **Value: medium** | **Effort: low** | Source: field-test(greitt+terms-and-conditions)
 
 - **DAO test threshold**: adapter tests where port calls are <50% due to assertion noise. Consider counting only non-framework calls in denominator.
 
@@ -574,12 +574,12 @@ Expand from single-hop blast radius into multi-signal impact predictor: direct c
 ## Internal code quality
 
 ### `cnavReport` has no real JSON output format
-**PARKED** | **Value: low** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
+**LOW** | **Value: low** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
 
 `ReportTask`/`ReportMojo` also echo the same rendered string across all three `when (format) { TEXT,DIFF -> output; JSON -> output; LLM -> output }` branches — the same shape as the `cnavRings` JSON gap above. Likely lower priority: `cnavReport` is a composite markdown aggregator of other tasks' output (which themselves may or may not have real JSON), so "real JSON for the composite report" is a bigger design question (aggregate the sub-results structurally, not their rendered text) rather than a quick formatter fix. Parked until `cnavRings`' JSON gap is addressed first, since Report includes Rings' output.
 
 ### Migrate MoveClassRewriter from OpenRewrite to PSI
-**PARKED** | **Value: medium** | **Effort: high** | Source: internal
+**LOW** | **Value: medium** | **Effort: high** | Source: internal
 
 `MoveClassRewriter` is the only refactor-package rewriter still on OpenRewrite's `ChangeType` recipe rather than the `kotlin-compiler-embeddable`/`KtPsiFactory` approach the Rename/ChangeSignature/SafeDelete rewriters use (see [[shared lookup extraction]]). Reason: `ChangeType` needs real semantic type resolution (type-inferred references with no literal token in the file at all, e.g. `val x = SomeFactory.create()` where `create()` returns the moved type) — the other rewriters get away with bytecode-derived heuristics + textual FQN/import matching because they never needed that. PSI-based migration is blocked on wiring up `BindingContext` in the embedded compiler frontend, which the "Embedded Kotlin Compiler Frontend" work explicitly left undone (`plan-completed.md`: "Remaining: BindingContext not yet used").
 
@@ -591,7 +591,7 @@ Known OpenRewrite-specific cost: `KotlinIsoVisitor` doesn't traverse 3+ levels o
 Likely resolved as a side effect of the item above — production code in the root `no.f12.codenavigator` package is now only 3 help-text generators (`HelpText`, `AgentHelpText`, `ConfigHelpText`), none of which `import` any `callgraph`/`implementor` type (only prose mentions in help strings). Not confirmed by actually re-running `cnavBalance` against this repo — do that before fully closing this out, since the original finding was root package → concrete callgraph/implementor **type coupling**, not just file placement.
 
 ### Evaluate other JVM languages to support
-**PARKED** | **Value: medium** | **Effort: low (research)** | Source: internal
+**LOW** | **Value: medium** | **Effort: low (research)** | Source: internal
 
 Groovy and Scala support via `LanguageRenameRewriter`. Is PSI available? Is the language common enough?
 
@@ -600,7 +600,7 @@ Groovy and Scala support via `LanguageRenameRewriter`. Is PSI available? Is the 
 ## Infrastructure
 
 ### Structured cache format
-**PARKED** | **Value: medium** | **Effort: medium** | Source: internal
+**LOW** | **Value: medium** | **Effort: medium** | Source: internal
 
 Replace tab-separated positional fields with self-describing format. Consider removing cache entirely — zero measurable difference on ~20k LOC projects.
 
