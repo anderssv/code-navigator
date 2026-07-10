@@ -27,9 +27,9 @@ abstract class ConvergeTask : CodeNavigatorTask() {
     @get:Internal
     var packageFilter: String? = null
 
-    @Option(option = "exclude-packages", description = "Drop packages/classes matching this regex from analysis entirely (e.g. a DI composition root or test infrastructure)")
+    @Option(option = "exclude", description = "Drop packages/classes whose name contains a match for this regex from analysis entirely (e.g. a DI composition root or test infrastructure)")
     @get:Internal
-    var excludePackages: String? = null
+    var exclude: String? = null
 
     @Option(option = "after", description = "Only consider commits after this date")
     @get:Internal
@@ -62,7 +62,7 @@ abstract class ConvergeTask : CodeNavigatorTask() {
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         mode?.let { put("mode", it) }
         packageFilter?.let { put("package-filter", it) }
-        excludePackages?.let { put("exclude-packages", it) }
+        exclude?.let { put("exclude", it) }
         after?.let { put("after", it) }
         minSharedRevs?.let { put("min-shared-revs", it) }
         minCoupling?.let { put("min-coupling", it) }

@@ -24,7 +24,7 @@ data class ConvergeConfig(
         fun parse(properties: Map<String, String?>): ConvergeConfig = ConvergeConfig(
             mode = ConvergeMode.parse(TaskRegistry.CONVERGE_MODE.parseFrom(properties)),
             packageFilter = TaskRegistry.PACKAGE_FILTER.parseFrom(properties)?.let { PackageName(it) },
-            exclude = TaskRegistry.CONVERGE_EXCLUDE.parseFrom(properties)?.let { Regex(it, RegexOption.IGNORE_CASE) },
+            exclude = TaskRegistry.EXCLUDE.parseFrom(properties)?.let { Regex(it, RegexOption.IGNORE_CASE) },
             after = TaskRegistry.AFTER.parseFrom(properties),
             minSharedRevs = TaskRegistry.MIN_SHARED_REVS.parseFrom(properties),
             minCoupling = TaskRegistry.MIN_COUPLING.parseFrom(properties),
@@ -34,7 +34,7 @@ data class ConvergeConfig(
             // Defaults to 'all' like every other scoped task. Test-only wiring (e.g. a shared test context)
             // can inflate the result with cycles/coupling that don't exist in production, but rather than
             // silently pre-filtering to prod, the orchestrator surfaces a constructive advisory pointing at
-            // --scope=prod / --exclude-packages when the result is large — see ConvergeOrchestrator.advisoryFor.
+            // --scope=prod / --exclude when the result is large — see ConvergeOrchestrator.advisoryFor.
             scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
             format = ParamDef.parseFormat(properties),
         )

@@ -13,7 +13,7 @@ class ConvergeConfigTest {
         val props = mapOf(
             "mode" to "risk",
             "package-filter" to "com.example",
-            "exclude-packages" to "\\.di\\.",
+            "exclude" to "\\.di\\.",
             "after" to "2024-06-01",
             "min-shared-revs" to "10",
             "min-coupling" to "50",

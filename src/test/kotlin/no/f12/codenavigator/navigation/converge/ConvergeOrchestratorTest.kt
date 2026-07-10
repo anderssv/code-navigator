@@ -258,7 +258,7 @@ class ConvergeOrchestratorTest {
 
         assertTrue(advisory != null)
         assertTrue(advisory!!.contains("--scope=prod"))
-        assertTrue(advisory.contains("--exclude-packages"))
+        assertTrue(advisory.contains("--exclude="))
         assertTrue(advisory.contains("cnav-config.json"))
     }
 
@@ -268,7 +268,7 @@ class ConvergeOrchestratorTest {
 
         assertTrue(advisory != null)
         assertTrue(!advisory!!.contains("--scope=prod"))
-        assertTrue(advisory.contains("--exclude-packages"))
+        assertTrue(advisory.contains("--exclude="))
     }
 
     @Test

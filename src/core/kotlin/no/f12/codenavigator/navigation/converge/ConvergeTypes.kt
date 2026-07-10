@@ -42,7 +42,7 @@ data class ConvergeIntersectOutput(
     /** Coupled file pairs that couldn't be resolved to a project package (e.g. non-source files) — reported for transparency, not shown per-pair. */
     val unresolvedCouplingPairs: Int,
     val skippedFileWarning: String?,
-    /** Constructive advisory shown when the result set is large enough to likely reflect DI/test-wiring noise — points the user at --scope=prod / --exclude-packages. Null when the result is small or already narrowed. */
+    /** Constructive advisory shown when the result set is large enough to likely reflect DI/test-wiring noise — points the user at --scope=prod / --exclude. Null when the result is small or already narrowed. */
     val advisory: String? = null,
 )
 

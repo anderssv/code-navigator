@@ -54,18 +54,18 @@ object ConvergeOrchestrator {
      * Constructive advisory for a large intersect result — most such explosions come from manually-wired
      * DI or shared test infrastructure creating structural cycles that don't exist in production. Adapts to
      * what the user hasn't already tried: suggests `--scope=prod` only if still including test sources, and
-     * `--exclude-packages` only if no exclusion is set yet. Null when the result is small, or when both levers
+     * `--exclude` only if no exclusion is set yet. Null when the result is small, or when both levers
      * are already pulled (the count is then genuinely high, not obviously noise).
      */
     internal fun advisoryFor(edgeCount: Int, config: ConvergeConfig): String? {
         if (edgeCount < NOISE_ADVISORY_THRESHOLD) return null
         val suggestions = buildList {
             if (config.scope == Scope.ALL) add("--scope=prod (drops test sources)")
-            if (config.exclude == null) add("--exclude-packages=<regex> (drops noisy hubs like a DI composition root or shared test context)")
+            if (config.exclude == null) add("--exclude=<regex> (drops packages/classes matching a substring — e.g. a DI composition root or shared test context)")
         }
         if (suggestions.isEmpty()) return null
         // Persistence example uses whichever lever is the primary suggestion so it never contradicts the current run.
-        val configExample = if (config.scope == Scope.ALL) "{\"defaults\":{\"scope\":\"prod\"}}" else "{\"defaults\":{\"exclude-packages\":\"\\\\.di\\\\.\"}}"
+        val configExample = if (config.scope == Scope.ALL) "{\"defaults\":{\"scope\":\"prod\"}}" else "{\"defaults\":{\"exclude\":\"\\\\.di\\\\.\"}}"
         return "$edgeCount findings — a large result set that often reflects manually-wired DI or test infrastructure " +
             "creating structural cycles/coupling that don't exist in production, rather than real problems. " +
             "To narrow to production architecture, add ${suggestions.joinToString(" and/or ")}. " +

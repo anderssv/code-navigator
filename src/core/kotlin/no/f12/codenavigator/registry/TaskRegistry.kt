@@ -294,7 +294,6 @@ object TaskRegistry {
     val RING_MODE = ParamDef("mode", "emergent|package", "Analysis mode: emergent (default, assigns rings per class based on import shape — best for package-by-feature) or package (assigns rings per package by topological depth)", flag = false, defaultValue = "emergent", enhancePattern = false, type = ParamType.STRING)
     val BOOTSTRAP_CONFIG = ParamDef("bootstrap-config", "true", "Generate a starting cnav-config.json based on emergent ring analysis — best-effort suggestions meant to be reviewed and tweaked before use", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val CONVERGE_MODE = ParamDef("mode", "intersect|risk", "Analysis mode: intersect (default, cross-references cycles/rings/change-coupling for a ranked ACT NOW/LATENT/MISSING ABSTRACTION list) or risk (change-frequency x complexity x coupling ranking)", flag = false, defaultValue = "intersect", enhancePattern = false, type = ParamType.STRING)
-    val CONVERGE_EXCLUDE = ParamDef("exclude-packages", "<regex>", "Drop packages/classes matching this regex from analysis entirely (e.g. a DI composition root or test infrastructure) — from the dependency graph itself, not just from the results. Deliberately a distinct name from the shared 'exclude' param (used by cnavDead/cnavTestCoupling with different match semantics — full-string vs. substring) so a cnav-config.json default doesn't silently cross-apply between tasks.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
 
     val FORMAT_PARAMS = listOf(FORMAT)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
@@ -1037,15 +1036,15 @@ object TaskRegistry {
 
     val CONVERGE = TaskDef(
         goal = "converge",
-        description = "Composite architectural signal: intersect mode cross-references cycles/rings/change-coupling into a ranked ACT NOW/LATENT/MISSING ABSTRACTION list; risk mode ranks classes by change-frequency x complexity x coupling. Includes test sources by default (--scope=all); when the result is large it emits an advisory pointing at --scope=prod / --exclude-packages, since manually-wired DI and shared test infrastructure often inflate it with cycles that don't exist in production.",
-        params = FORMAT_PARAMS + listOf(CONVERGE_MODE, PACKAGE_FILTER, CONVERGE_EXCLUDE, AFTER, MIN_SHARED_REVS, MIN_COUPLING, MAX_CHANGESET_SIZE, NO_FOLLOW, TOP) + SOURCE_SET_PARAMS,
+        description = "Composite architectural signal: intersect mode cross-references cycles/rings/change-coupling into a ranked ACT NOW/LATENT/MISSING ABSTRACTION list; risk mode ranks classes by change-frequency x complexity x coupling. Includes test sources by default (--scope=all); when the result is large it emits an advisory pointing at --scope=prod / --exclude, since manually-wired DI and shared test infrastructure often inflate it with cycles that don't exist in production.",
+        params = FORMAT_PARAMS + listOf(CONVERGE_MODE, PACKAGE_FILTER, EXCLUDE, AFTER, MIN_SHARED_REVS, MIN_COUPLING, MAX_CHANGESET_SIZE, NO_FOLLOW, TOP) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.COMPOSITE,
         examples = listOf(
             UsageExample(emptyList()),
             UsageExample(listOf(CONVERGE_MODE to "risk")),
             UsageExample(listOf(SCOPE to "prod")),
-            UsageExample(listOf(CONVERGE_EXCLUDE to "\"\\\\.di\\\\.|testutil|e2e\"")),
+            UsageExample(listOf(EXCLUDE to "\"\\\\.di\\\\.|testutil|e2e\"")),
         ),
     )
 
