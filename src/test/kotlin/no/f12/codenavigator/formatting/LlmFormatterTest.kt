@@ -46,9 +46,11 @@ import no.f12.codenavigator.navigation.fixtures.aSingleCycle
 import no.f12.codenavigator.navigation.fixtures.aMultiCycle
 import no.f12.codenavigator.navigation.fixtures.aStrengthResultPair
 import no.f12.codenavigator.navigation.dsm.PackageDistanceEntry
+import no.f12.codenavigator.navigation.dsm.PackageDistanceFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.IntegrationStrength
 import no.f12.codenavigator.navigation.dsm.PackageStrengthEntry
+import no.f12.codenavigator.navigation.dsm.StrengthFormatter
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 import no.f12.codenavigator.navigation.classmetrics.ClassCohesionVerdict
 import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
@@ -60,6 +62,7 @@ import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeKind
 import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyResult
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.dsm.BalanceEntry
+import no.f12.codenavigator.navigation.dsm.BalanceFormatter
 import no.f12.codenavigator.navigation.dsm.BalanceResult
 import no.f12.codenavigator.navigation.dsm.BalanceVerdict
 import java.time.LocalDate
@@ -962,7 +965,7 @@ class LlmFormatterTest {
         val output = LlmFormatter.formatDistance(result)
 
         assertEquals(
-            "com.example.api->org.other.service distance=6 deps=3\ncom.example.api->com.example.model distance=2 deps=5\n\n${LlmFormatter.DISTANCE_INTERPRETATION}",
+            "com.example.api->org.other.service distance=6 deps=3\ncom.example.api->com.example.model distance=2 deps=5\n\n${PackageDistanceFormatter.DISTANCE_INTERPRETATION}",
             output,
         )
     }
@@ -1195,7 +1198,7 @@ class LlmFormatterTest {
         val output = LlmFormatter.formatStrength(result)
 
         assertEquals(
-            "com.example.api->com.example.model strength=MODEL contract=1 model=2 functional=0\ncom.example.api->org.other.service strength=FUNCTIONAL contract=0 model=0 functional=4\n\n${LlmFormatter.STRENGTH_INTERPRETATION}",
+            "com.example.api->com.example.model strength=MODEL contract=1 model=2 functional=0\ncom.example.api->org.other.service strength=FUNCTIONAL contract=0 model=0 functional=4\n\n${StrengthFormatter.STRENGTH_INTERPRETATION}",
             output,
         )
     }
@@ -1214,7 +1217,7 @@ class LlmFormatterTest {
         val output = LlmFormatter.formatStrength(result)
 
         assertEquals(
-            "com.example.api->org.external.lib strength=CONTRACT contract=1 model=0 functional=0 unknown=3\n\n${LlmFormatter.STRENGTH_INTERPRETATION}",
+            "com.example.api->org.external.lib strength=CONTRACT contract=1 model=0 functional=0 unknown=3\n\n${StrengthFormatter.STRENGTH_INTERPRETATION}",
             output,
         )
     }
@@ -1375,7 +1378,7 @@ class LlmFormatterTest {
         val llm = LlmFormatter.formatBalance(result)
 
         assertEquals(
-            "com.example.web->com.example.persistence verdict=DANGER strength=FUNCTIONAL distance=4 volatility=50/40 | Consider co-locating.\n\n${LlmFormatter.BALANCE_INTERPRETATION}",
+            "com.example.web->com.example.persistence verdict=DANGER strength=FUNCTIONAL distance=4 volatility=50/40 | Consider co-locating.\n\n${BalanceFormatter.BALANCE_INTERPRETATION}",
             llm,
         )
     }

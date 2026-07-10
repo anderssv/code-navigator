@@ -49,10 +49,16 @@ import no.f12.codenavigator.navigation.relations.callgraph.UsageSite
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.context.ContextResult
+import no.f12.codenavigator.navigation.dsm.BalanceFormatter
+import no.f12.codenavigator.navigation.dsm.CohesionFormatter
+import no.f12.codenavigator.navigation.dsm.MoveSuggestFormatter
+import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
+import no.f12.codenavigator.navigation.dsm.PackageDistanceFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.BalanceResult
 import no.f12.codenavigator.navigation.dsm.CohesionResult
 import no.f12.codenavigator.navigation.dsm.MoveSuggestionResult
+import no.f12.codenavigator.navigation.dsm.StrengthFormatter
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
 
@@ -76,15 +82,7 @@ object JsonFormatter {
         deps: PackageDependencies,
         packageNames: List<PackageName>,
         reverse: Boolean = false,
-    ): String =
-        jsonArray(packageNames) { pkg ->
-            val related = if (reverse) deps.dependentsOf(pkg) else deps.dependenciesOf(pkg)
-            val key = if (reverse) "dependents" else "dependencies"
-            jsonObject(
-                "package" to pkg.toString(),
-                key to JsonRaw(jsonStringArray(related.map { it.toString() })),
-            )
-        }
+    ): String = PackageDependencyFormatter.formatJson(deps, packageNames, reverse)
 
     fun formatHotspots(hotspots: List<Hotspot>): String =
         jsonArray(hotspots) { h ->
@@ -319,46 +317,11 @@ object JsonFormatter {
             "implementedInterfaces" to JsonRaw(jsonStringArray(result.implementedInterfaces.map { it.toString() })),
         )
 
-    fun formatDistance(result: PackageDistanceResult): String {
-        val entriesJson = jsonArray(result.entries) { entry ->
-            jsonObject(
-                "source" to entry.source.toString(),
-                "target" to entry.target.toString(),
-                "distance" to entry.distance,
-                "deps" to entry.dependencyCount,
-            )
-        }
-        val prefix = if (result.displayPrefix.isNotEmpty()) result.displayPrefix.toString() else null
-        return jsonObject("displayPrefix" to prefix, "entries" to JsonRaw(entriesJson))
-    }
+    fun formatDistance(result: PackageDistanceResult): String = PackageDistanceFormatter.formatJson(result)
 
-    fun formatStrength(result: StrengthResult): String =
-        jsonArray(result.entries) { entry ->
-            jsonObject(
-                "source" to entry.source.toString(),
-                "target" to entry.target.toString(),
-                "strength" to entry.strength.name,
-                "contract" to entry.contractCount,
-                "model" to entry.modelCount,
-                "functional" to entry.functionalCount,
-                "unknown" to entry.unknownCount,
-                "totalDeps" to entry.totalDeps,
-            )
-        }
+    fun formatStrength(result: StrengthResult): String = StrengthFormatter.formatJson(result)
 
-    fun formatBalance(result: BalanceResult): String =
-        jsonArray(result.entries) { entry ->
-            jsonObject(
-                "source" to entry.source.toString(),
-                "target" to entry.target.toString(),
-                "strength" to entry.strength.name,
-                "distance" to entry.distance,
-                "sourceVolatility" to entry.sourceVolatility,
-                "targetVolatility" to entry.targetVolatility,
-                "verdict" to entry.verdict.name,
-                "suggestion" to entry.suggestion,
-            )
-        }
+    fun formatBalance(result: BalanceResult): String = BalanceFormatter.formatJson(result)
 
     private fun renderCallNode(node: CallTreeNode, direction: CallDirection? = null, isRoot: Boolean = false): String {
         val children = jsonArray(node.children) { child -> renderCallNode(child) }
@@ -393,17 +356,7 @@ object JsonFormatter {
             )
         }
 
-    fun formatCohesion(result: CohesionResult): String =
-        jsonArray(result.entries) { entry ->
-            jsonObject(
-                "package" to entry.packageName.toString(),
-                "classes" to entry.classCount,
-                "internalEdges" to entry.internalEdges,
-                "externalEdges" to entry.externalEdges,
-                "cohesion" to entry.cohesion,
-                "verdict" to entry.verdict.name,
-            )
-        }
+    fun formatCohesion(result: CohesionResult): String = CohesionFormatter.formatJson(result)
 
     fun formatClassMetrics(results: List<ClassMetricsResult>): String =
         jsonArray(results) { r ->
@@ -420,15 +373,5 @@ object JsonFormatter {
             )
         }
 
-    fun formatMoveSuggestions(result: MoveSuggestionResult): String =
-        jsonArray(result.suggestions) { s ->
-            jsonObject(
-                "class" to s.className.value,
-                "currentPackage" to s.currentPackage.toString(),
-                "suggestedPackage" to s.suggestedPackage.toString(),
-                "edgesToCurrent" to s.edgesToCurrent,
-                "edgesToSuggested" to s.edgesToSuggested,
-                "confidence" to s.confidence,
-            )
-        }
+    fun formatMoveSuggestions(result: MoveSuggestionResult): String = MoveSuggestFormatter.formatJson(result)
 }

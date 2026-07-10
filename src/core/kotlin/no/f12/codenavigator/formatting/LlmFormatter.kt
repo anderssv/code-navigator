@@ -12,7 +12,6 @@ import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
 import no.f12.codenavigator.navigation.relations.callgraph.CallTreeFormatter
 import no.f12.codenavigator.navigation.relations.callgraph.CallTreeNode
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
-import no.f12.codenavigator.navigation.dsm.CycleBreakAnalyzer
 import no.f12.codenavigator.navigation.dsm.CycleDetail
 import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.types.ClassName
@@ -49,10 +48,16 @@ import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.relations.callgraph.AnnotationTag
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
 import no.f12.codenavigator.navigation.context.ContextResult
+import no.f12.codenavigator.navigation.dsm.BalanceFormatter
 import no.f12.codenavigator.navigation.dsm.BalanceResult
+import no.f12.codenavigator.navigation.dsm.CohesionFormatter
+import no.f12.codenavigator.navigation.dsm.MoveSuggestFormatter
+import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
+import no.f12.codenavigator.navigation.dsm.PackageDistanceFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.CohesionResult
 import no.f12.codenavigator.navigation.dsm.MoveSuggestionResult
+import no.f12.codenavigator.navigation.dsm.StrengthFormatter
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
 
@@ -85,13 +90,8 @@ object LlmFormatter {
         }
     }.trimEnd()
 
-    fun formatPackageDeps(deps: PackageDependencies, packageNames: List<PackageName>, reverse: Boolean): String {
-        val arrow = if (reverse) "<-" else "->"
-        return packageNames.sorted().joinToString("\n") { pkg ->
-            val related = if (reverse) deps.dependentsOf(pkg) else deps.dependenciesOf(pkg)
-            "$pkg $arrow ${related.joinToString(",")}"
-        }
-    }
+    fun formatPackageDeps(deps: PackageDependencies, packageNames: List<PackageName>, reverse: Boolean): String =
+        PackageDependencyFormatter.formatLlm(deps, packageNames, reverse)
 
     fun formatHotspots(hotspots: List<Hotspot>): String =
         hotspots.joinToString("\n") { "${it.file} revisions=${it.revisions} churn=${it.totalChurn}" }
@@ -254,37 +254,11 @@ object LlmFormatter {
         }
     }.trimEnd()
 
-    fun formatDistance(result: PackageDistanceResult): String {
-        if (result.entries.isEmpty()) return ""
-        return buildString {
-            if (result.displayPrefix.isNotEmpty()) {
-                appendLine("prefix:${result.displayPrefix}")
-            }
-            append(result.entries.joinToString("\n") { entry ->
-                "${entry.source}->${entry.target} distance=${entry.distance} deps=${entry.dependencyCount}"
-            })
-        }.withInterpretation(DISTANCE_INTERPRETATION)
-    }
+    fun formatDistance(result: PackageDistanceResult): String = PackageDistanceFormatter.formatLlm(result)
 
-    fun formatStrength(result: StrengthResult): String =
-        result.entries.joinToString("\n") { entry ->
-            buildString {
-                append("${entry.source}->${entry.target} strength=${entry.strength} contract=${entry.contractCount} model=${entry.modelCount} functional=${entry.functionalCount}")
-                if (entry.unknownCount > 0) {
-                    append(" unknown=${entry.unknownCount}")
-                }
-            }
-        }.withInterpretation(STRENGTH_INTERPRETATION)
+    fun formatStrength(result: StrengthResult): String = StrengthFormatter.formatLlm(result)
 
-    fun formatBalance(result: BalanceResult): String =
-        result.entries.joinToString("\n") { entry ->
-            buildString {
-                append("${entry.source}->${entry.target} verdict=${entry.verdict} strength=${entry.strength} distance=${entry.distance} volatility=${entry.sourceVolatility}/${entry.targetVolatility}")
-                if (entry.suggestion.isNotEmpty()) {
-                    append(" | ${entry.suggestion}")
-                }
-            }
-        }.withInterpretation(BALANCE_INTERPRETATION)
+    fun formatBalance(result: BalanceResult): String = BalanceFormatter.formatLlm(result)
 
     fun formatDsm(matrix: DsmMatrix, moduleLabels: Map<PackageName, Set<String>> = emptyMap()): String =
         DsmFormatter.formatLlm(matrix, moduleLabels)
@@ -307,16 +281,6 @@ object LlmFormatter {
     internal const val RANK_INTERPRETATION = "Interpretation: PageRank identifies structurally central classes. High-rank classes are depended on transitively by many others — changes to them have wide impact. Low-rank classes are peripheral and safer to modify."
 
     internal const val COMPLEXITY_INTERPRETATION = "Interpretation: fan-out = total outgoing references (distinct classes). High fan-out means the class knows too much. fan-in = total incoming references. High fan-in means many classes depend on it — changes are risky. Classes with both high fan-in and high fan-out are prime refactoring targets."
-
-    internal const val DISTANCE_INTERPRETATION = "Interpretation: Distance measures package name segment separation (e.g., com.a.b → com.x.y = distance 4). High distance + high dependency count suggests coupling between unrelated parts of the codebase that may benefit from an intermediate abstraction."
-
-    internal const val STRENGTH_INTERPRETATION = "Interpretation: Integration strength levels — MODEL: only data classes cross the boundary (loosest). CONTRACT: interfaces/abstractions cross. FUNCTIONAL: concrete implementations cross (tightest). Higher strength at greater distance is a modularity concern."
-
-    internal const val BALANCE_INTERPRETATION = "Interpretation: distance = number of architectural rings the edge crosses (not package-name nesting). BALANCED = coupling strength matches ring separation. TOLERABLE = suboptimal but low volatility reduces risk. DANGER = tight coupling across rings in volatile code — highest priority for refactoring. Composition roots (DI/wiring) are never DANGER. Focus on DANGER entries first."
-
-    internal const val COHESION_INTERPRETATION = "Interpretation: Cohesion ratio = internal edges / total edges. COHESIVE (>0.5) = classes collaborate more with each other than with outsiders. REVIEW (<0.5) = package may contain unrelated classes. THIN_LAYER (0.0) = no internal collaboration, consider merging into a neighbor."
-
-    internal const val MOVE_SUGGEST_INTERPRETATION = "Interpretation: Classes with more edges to another package than their own are potentially misplaced. High confidence + low own-edges = strong signal. Verify intent before moving — composition roots, drivers, and thin adapters are expected to have outward edges."
 
     internal const val CLASS_METRICS_INTERPRETATION = "Interpretation: TCC/LCC measure cohesion (fraction of method pairs sharing field access). HIGH (TCC>=0.7) = cohesive. MEDIUM (0.4-0.7) = acceptable. LOW (TCC<0.4, LCC>=0.7) = weakly cohesive but methods still chain-connect via shared fields. MONOLITH (TCC<0.4, LCC<0.7) = disjoint method groups — candidate for splitting into separate classes. WMC = summed cyclomatic complexity (higher = harder to test). CBO = distinct non-JDK/stdlib types referenced in signatures (higher = more context needed to understand the class). DIT = superclass chain depth (deeper = more inherited behavior to reason about)."
 
@@ -346,15 +310,9 @@ object LlmFormatter {
             "@${tag.name.simpleName()}$params$suffix"
         }}]"
 
-    fun formatCohesion(result: CohesionResult): String =
-        result.entries.joinToString("\n") { entry ->
-            "${entry.packageName} classes=${entry.classCount} internal=${entry.internalEdges} external=${entry.externalEdges} cohesion=${"%.2f".format(entry.cohesion)} verdict=${entry.verdict}"
-        }.withInterpretation(COHESION_INTERPRETATION)
+    fun formatCohesion(result: CohesionResult): String = CohesionFormatter.formatLlm(result)
 
-    fun formatMoveSuggestions(result: MoveSuggestionResult): String =
-        result.suggestions.joinToString("\n") { s ->
-            "${s.className.value} current=${s.currentPackage} suggested=${s.suggestedPackage} own=${s.edgesToCurrent} target=${s.edgesToSuggested} confidence=${"%.2f".format(s.confidence)}"
-        }.withInterpretation(MOVE_SUGGEST_INTERPRETATION)
+    fun formatMoveSuggestions(result: MoveSuggestionResult): String = MoveSuggestFormatter.formatLlm(result)
 
     fun formatClassMetrics(results: List<ClassMetricsResult>): String =
         results.joinToString("\n") { r ->
