@@ -1,6 +1,12 @@
 package no.f12.codenavigator.analysis
 
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
+import no.f12.codenavigator.formatting.withInterpretation
+
 object HotspotFormatter {
+
+    internal const val HOTSPOT_INTERPRETATION = "Interpretation: Files with high revision counts change frequently and are likely complexity hotspots. Prioritize refactoring files that are both hot (many revisions) and large (high churn). Cross-reference with coupling to find risky change clusters."
 
     fun format(hotspots: List<Hotspot>): String {
         if (hotspots.isEmpty()) return "No hotspots found."
@@ -29,4 +35,17 @@ object HotspotFormatter {
         val threshold = median * 2
         return if (threshold > median) threshold else null
     }
+
+    fun formatJson(hotspots: List<Hotspot>): String =
+        jsonArray(hotspots) { h ->
+            jsonObject(
+                "file" to h.file,
+                "revisions" to h.revisions,
+                "totalChurn" to h.totalChurn,
+            )
+        }
+
+    fun formatLlm(hotspots: List<Hotspot>): String =
+        hotspots.joinToString("\n") { "${it.file} revisions=${it.revisions} churn=${it.totalChurn}" }
+            .withInterpretation(HOTSPOT_INTERPRETATION)
 }

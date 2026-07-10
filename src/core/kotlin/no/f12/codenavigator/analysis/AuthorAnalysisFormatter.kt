@@ -1,5 +1,8 @@
 package no.f12.codenavigator.analysis
 
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
+
 object AuthorAnalysisFormatter {
 
     fun format(modules: List<ModuleAuthors>): String {
@@ -17,4 +20,16 @@ object AuthorAnalysisFormatter {
             }
         }
     }
+
+    fun formatJson(modules: List<ModuleAuthors>): String =
+        jsonArray(modules) { m ->
+            jsonObject(
+                "file" to m.file,
+                "authors" to m.authors,
+                "revisions" to m.revisions,
+            )
+        }
+
+    fun formatLlm(modules: List<ModuleAuthors>): String =
+        modules.joinToString("\n") { "${it.file} authors=${it.authors} revisions=${it.revisions}" }
 }

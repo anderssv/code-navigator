@@ -1,5 +1,8 @@
 package no.f12.codenavigator.analysis
 
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
+
 object FileSizeFormatter {
 
     fun format(entries: List<FileSizeEntry>): String {
@@ -28,4 +31,15 @@ object FileSizeFormatter {
         val threshold = median * 3
         return if (threshold > median && entries.any { it.lines >= threshold }) threshold else null
     }
+
+    fun formatJson(entries: List<FileSizeEntry>): String =
+        jsonArray(entries) { e ->
+            jsonObject(
+                "file" to e.file,
+                "lines" to e.lines,
+            )
+        }
+
+    fun formatLlm(entries: List<FileSizeEntry>): String =
+        entries.joinToString("\n") { "${it.file} lines=${it.lines}" }
 }

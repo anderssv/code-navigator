@@ -1,5 +1,9 @@
 package no.f12.codenavigator.analysis
 
+import no.f12.codenavigator.formatting.JsonRaw
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
+
 object DuplicateFormatter {
 
     fun format(groups: List<DuplicateGroup>): String {
@@ -17,4 +21,23 @@ object DuplicateFormatter {
             }
         }.trimEnd()
     }
+
+    fun formatJson(groups: List<DuplicateGroup>): String =
+        jsonArray(groups) { g ->
+            jsonObject(
+                "tokenCount" to g.tokenCount,
+                "locations" to JsonRaw(jsonArray(g.locations) { loc ->
+                    jsonObject(
+                        "file" to loc.file,
+                        "startLine" to loc.startLine,
+                        "endLine" to loc.endLine,
+                    )
+                }),
+            )
+        }
+
+    fun formatLlm(groups: List<DuplicateGroup>): String =
+        groups.joinToString("\n\n") { group ->
+            "tokens=${group.tokenCount}\n" + group.locations.joinToString("\n") { "  ${it.file}:${it.startLine}-${it.endLine}" }
+        }
 }

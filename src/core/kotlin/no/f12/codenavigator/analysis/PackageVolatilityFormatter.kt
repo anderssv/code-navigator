@@ -1,6 +1,12 @@
 package no.f12.codenavigator.analysis
 
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
+import no.f12.codenavigator.formatting.withInterpretation
+
 object PackageVolatilityFormatter {
+
+    internal const val VOLATILITY_INTERPRETATION = "Interpretation: Package-level volatility aggregates file changes. High-volatility packages with many outgoing dependencies are the riskiest — changes ripple outward. Stable packages (low volatility) with high fan-in are good dependency targets."
 
     fun noResultsHints(): List<String> = buildList {
         add("No source files with git history matched known source roots (src/main/kotlin/, src/main/java/, etc.).")
@@ -33,4 +39,19 @@ object PackageVolatilityFormatter {
             }
         }
     }
+
+    fun formatJson(result: PackageVolatilityResult): String =
+        jsonArray(result.entries) { entry ->
+            jsonObject(
+                "package" to entry.packageName,
+                "revisions" to entry.revisions,
+                "totalChurn" to entry.totalChurn,
+                "fileCount" to entry.fileCount,
+                "avgRevisionsPerFile" to "%.1f".format(entry.avgRevisionsPerFile).toDouble(),
+            )
+        }
+
+    fun formatLlm(result: PackageVolatilityResult): String =
+        result.entries.joinToString("\n") { "${it.packageName} revisions=${it.revisions} churn=${it.totalChurn} files=${it.fileCount} avgRev=${"%.1f".format(it.avgRevisionsPerFile)}" }
+            .withInterpretation(VOLATILITY_INTERPRETATION)
 }

@@ -1,12 +1,20 @@
 package no.f12.codenavigator.formatting
 
+import no.f12.codenavigator.analysis.AuthorAnalysisFormatter
+import no.f12.codenavigator.analysis.ChangeCouplingFormatter
+import no.f12.codenavigator.analysis.ChurnFormatter
+import no.f12.codenavigator.analysis.CodeAgeFormatter
 import no.f12.codenavigator.analysis.CoupledPair
+import no.f12.codenavigator.analysis.DuplicateFormatter
 import no.f12.codenavigator.analysis.DuplicateGroup
 import no.f12.codenavigator.analysis.FileAge
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.FileSizeEntry
+import no.f12.codenavigator.analysis.FileSizeFormatter
 import no.f12.codenavigator.analysis.Hotspot
+import no.f12.codenavigator.analysis.HotspotFormatter
 import no.f12.codenavigator.analysis.ModuleAuthors
+import no.f12.codenavigator.analysis.PackageVolatilityFormatter
 import no.f12.codenavigator.analysis.PackageVolatilityResult
 import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
 import no.f12.codenavigator.navigation.relations.callgraph.CallTreeFormatter
@@ -93,36 +101,21 @@ object LlmFormatter {
     fun formatPackageDeps(deps: PackageDependencies, packageNames: List<PackageName>, reverse: Boolean): String =
         PackageDependencyFormatter.formatLlm(deps, packageNames, reverse)
 
-    fun formatHotspots(hotspots: List<Hotspot>): String =
-        hotspots.joinToString("\n") { "${it.file} revisions=${it.revisions} churn=${it.totalChurn}" }
-            .withInterpretation(HOTSPOT_INTERPRETATION)
+    fun formatHotspots(hotspots: List<Hotspot>): String = HotspotFormatter.formatLlm(hotspots)
 
-    fun formatSize(entries: List<FileSizeEntry>): String =
-        entries.joinToString("\n") { "${it.file} lines=${it.lines}" }
+    fun formatSize(entries: List<FileSizeEntry>): String = FileSizeFormatter.formatLlm(entries)
 
-    fun formatDuplicates(groups: List<DuplicateGroup>): String =
-        groups.joinToString("\n\n") { group ->
-            "tokens=${group.tokenCount}\n" + group.locations.joinToString("\n") { "  ${it.file}:${it.startLine}-${it.endLine}" }
-        }
+    fun formatDuplicates(groups: List<DuplicateGroup>): String = DuplicateFormatter.formatLlm(groups)
 
-    fun formatVolatility(result: PackageVolatilityResult): String =
-        result.entries.joinToString("\n") { "${it.packageName} revisions=${it.revisions} churn=${it.totalChurn} files=${it.fileCount} avgRev=${"%.1f".format(it.avgRevisionsPerFile)}" }
-            .withInterpretation(VOLATILITY_INTERPRETATION)
+    fun formatVolatility(result: PackageVolatilityResult): String = PackageVolatilityFormatter.formatLlm(result)
 
-    fun formatCoupling(pairs: List<CoupledPair>): String =
-        pairs.joinToString("\n") { "${it.entity} -- ${it.coupled} degree=${it.degree}% shared=${it.sharedRevs} avg=${it.avgRevs}${if (it.stale) " [stale]" else ""}" }
-            .withInterpretation(COUPLING_INTERPRETATION)
+    fun formatCoupling(pairs: List<CoupledPair>): String = ChangeCouplingFormatter.formatLlm(pairs)
 
-    fun formatAge(ages: List<FileAge>): String =
-        ages.joinToString("\n") { "${it.file} age=${it.ageMonths}months last=${it.lastChangeDate}" }
-            .withInterpretation(AGE_INTERPRETATION)
+    fun formatAge(ages: List<FileAge>): String = CodeAgeFormatter.formatLlm(ages)
 
-    fun formatAuthors(modules: List<ModuleAuthors>): String =
-        modules.joinToString("\n") { "${it.file} authors=${it.authors} revisions=${it.revisions}" }
+    fun formatAuthors(modules: List<ModuleAuthors>): String = AuthorAnalysisFormatter.formatLlm(modules)
 
-    fun formatChurn(churn: List<FileChurn>): String =
-        churn.joinToString("\n") { "${it.file} added=${it.added} deleted=${it.deleted} commits=${it.commits}" }
-            .withInterpretation(CHURN_INTERPRETATION)
+    fun formatChurn(churn: List<FileChurn>): String = ChurnFormatter.formatLlm(churn)
 
     fun formatUsages(usages: List<UsageSite>): String = UsageFormatter.formatLlm(usages)
 
@@ -267,16 +260,6 @@ object LlmFormatter {
         DsmFormatter.formatCyclesLlm(matrix, cycleFilter)
 
     // --- Interpretation constants ---
-
-    internal const val HOTSPOT_INTERPRETATION = "Interpretation: Files with high revision counts change frequently and are likely complexity hotspots. Prioritize refactoring files that are both hot (many revisions) and large (high churn). Cross-reference with coupling to find risky change clusters."
-
-    internal const val COUPLING_INTERPRETATION = "Interpretation: High degree (%) means these files almost always change together. Intentional coupling (e.g., interface+implementation) is fine. Unintentional coupling suggests hidden dependencies or shared responsibilities that should be extracted. Pairs marked [stale] reference a file that no longer exists (rename/delete from git history) — ignore them."
-
-    internal const val AGE_INTERPRETATION = "Interpretation: Old files (many months since last change) are either stable infrastructure or forgotten code. Very old files in active packages may indicate dead code or deferred maintenance."
-
-    internal const val CHURN_INTERPRETATION = "Interpretation: High added+deleted lines indicate files undergoing significant rework. Files with high churn but few commits may have large, risky changes. Files with steady churn across many commits are actively maintained."
-
-    internal const val VOLATILITY_INTERPRETATION = "Interpretation: Package-level volatility aggregates file changes. High-volatility packages with many outgoing dependencies are the riskiest — changes ripple outward. Stable packages (low volatility) with high fan-in are good dependency targets."
 
     internal const val RANK_INTERPRETATION = "Interpretation: PageRank identifies structurally central classes. High-rank classes are depended on transitively by many others — changes to them have wide impact. Low-rank classes are peripheral and safer to modify."
 

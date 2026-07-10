@@ -1,8 +1,12 @@
 package no.f12.codenavigator.formatting
 
 import no.f12.codenavigator.formatting.LlmFormatter
+import no.f12.codenavigator.analysis.ChangeCouplingFormatter
+import no.f12.codenavigator.analysis.ChurnFormatter
+import no.f12.codenavigator.analysis.CodeAgeFormatter
 import no.f12.codenavigator.analysis.FileSizeEntry
 import no.f12.codenavigator.analysis.Hotspot
+import no.f12.codenavigator.analysis.HotspotFormatter
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
 import no.f12.codenavigator.navigation.types.AnnotationName
 import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
@@ -265,7 +269,7 @@ class LlmFormatterTest {
 
         val result = LlmFormatter.formatHotspots(hotspots)
 
-        assertEquals("src/Foo.kt revisions=10 churn=150\nsrc/Bar.kt revisions=5 churn=30\n\n${LlmFormatter.HOTSPOT_INTERPRETATION}", result)
+        assertEquals("src/Foo.kt revisions=10 churn=150\nsrc/Bar.kt revisions=5 churn=30\n\n${HotspotFormatter.HOTSPOT_INTERPRETATION}", result)
     }
 
     // === Coupling formatting ===
@@ -276,7 +280,7 @@ class LlmFormatterTest {
 
         val result = LlmFormatter.formatCoupling(pairs)
 
-        assertEquals("src/Foo.kt -- src/Bar.kt degree=85% shared=10 avg=12\n\n${LlmFormatter.COUPLING_INTERPRETATION}", result)
+        assertEquals("src/Foo.kt -- src/Bar.kt degree=85% shared=10 avg=12\n\n${ChangeCouplingFormatter.COUPLING_INTERPRETATION}", result)
     }
 
     // === Churn formatting ===
@@ -287,7 +291,7 @@ class LlmFormatterTest {
 
         val result = LlmFormatter.formatChurn(churn)
 
-        assertEquals("src/Foo.kt added=100 deleted=50 commits=10\nsrc/Bar.kt added=30 deleted=10 commits=5\n\n${LlmFormatter.CHURN_INTERPRETATION}", result)
+        assertEquals("src/Foo.kt added=100 deleted=50 commits=10\nsrc/Bar.kt added=30 deleted=10 commits=5\n\n${ChurnFormatter.CHURN_INTERPRETATION}", result)
     }
 
     // === DSM formatting ===
@@ -1322,7 +1326,7 @@ class LlmFormatterTest {
 
         val result = LlmFormatter.formatAge(ages)
 
-        assertEquals("src/Old.kt age=12months last=2023-01-01\n\n${LlmFormatter.AGE_INTERPRETATION}", result)
+        assertEquals("src/Old.kt age=12months last=2023-01-01\n\n${CodeAgeFormatter.AGE_INTERPRETATION}", result)
     }
 
     // === ChangedSince formatting ===

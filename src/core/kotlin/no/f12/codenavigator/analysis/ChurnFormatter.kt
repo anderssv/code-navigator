@@ -1,6 +1,12 @@
 package no.f12.codenavigator.analysis
 
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
+import no.f12.codenavigator.formatting.withInterpretation
+
 object ChurnFormatter {
+
+    internal const val CHURN_INTERPRETATION = "Interpretation: High added+deleted lines indicate files undergoing significant rework. Files with high churn but few commits may have large, risky changes. Files with steady churn across many commits are actively maintained."
 
     fun format(churn: List<FileChurn>): String {
         if (churn.isEmpty()) return "No churn data found."
@@ -27,4 +33,18 @@ object ChurnFormatter {
             }
         }
     }
+
+    fun formatJson(churn: List<FileChurn>): String =
+        jsonArray(churn) { c ->
+            jsonObject(
+                "file" to c.file,
+                "added" to c.added,
+                "deleted" to c.deleted,
+                "commits" to c.commits,
+            )
+        }
+
+    fun formatLlm(churn: List<FileChurn>): String =
+        churn.joinToString("\n") { "${it.file} added=${it.added} deleted=${it.deleted} commits=${it.commits}" }
+            .withInterpretation(CHURN_INTERPRETATION)
 }

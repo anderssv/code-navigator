@@ -1,12 +1,20 @@
 package no.f12.codenavigator.formatting
 
+import no.f12.codenavigator.analysis.AuthorAnalysisFormatter
+import no.f12.codenavigator.analysis.ChangeCouplingFormatter
+import no.f12.codenavigator.analysis.ChurnFormatter
+import no.f12.codenavigator.analysis.CodeAgeFormatter
 import no.f12.codenavigator.analysis.CoupledPair
+import no.f12.codenavigator.analysis.DuplicateFormatter
 import no.f12.codenavigator.analysis.DuplicateGroup
 import no.f12.codenavigator.analysis.FileAge
 import no.f12.codenavigator.analysis.FileChurn
 import no.f12.codenavigator.analysis.FileSizeEntry
+import no.f12.codenavigator.analysis.FileSizeFormatter
 import no.f12.codenavigator.analysis.Hotspot
+import no.f12.codenavigator.analysis.HotspotFormatter
 import no.f12.codenavigator.analysis.ModuleAuthors
+import no.f12.codenavigator.analysis.PackageVolatilityFormatter
 import no.f12.codenavigator.analysis.PackageVolatilityResult
 import no.f12.codenavigator.navigation.relations.callgraph.AnnotationTag
 import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
@@ -84,87 +92,21 @@ object JsonFormatter {
         reverse: Boolean = false,
     ): String = PackageDependencyFormatter.formatJson(deps, packageNames, reverse)
 
-    fun formatHotspots(hotspots: List<Hotspot>): String =
-        jsonArray(hotspots) { h ->
-            jsonObject(
-                "file" to h.file,
-                "revisions" to h.revisions,
-                "totalChurn" to h.totalChurn,
-            )
-        }
+    fun formatHotspots(hotspots: List<Hotspot>): String = HotspotFormatter.formatJson(hotspots)
 
-    fun formatSize(entries: List<FileSizeEntry>): String =
-        jsonArray(entries) { e ->
-            jsonObject(
-                "file" to e.file,
-                "lines" to e.lines,
-            )
-        }
+    fun formatSize(entries: List<FileSizeEntry>): String = FileSizeFormatter.formatJson(entries)
 
-    fun formatDuplicates(groups: List<DuplicateGroup>): String =
-        jsonArray(groups) { g ->
-            jsonObject(
-                "tokenCount" to g.tokenCount,
-                "locations" to JsonRaw(jsonArray(g.locations) { loc ->
-                    jsonObject(
-                        "file" to loc.file,
-                        "startLine" to loc.startLine,
-                        "endLine" to loc.endLine,
-                    )
-                }),
-            )
-        }
+    fun formatDuplicates(groups: List<DuplicateGroup>): String = DuplicateFormatter.formatJson(groups)
 
-    fun formatVolatility(result: PackageVolatilityResult): String =
-        jsonArray(result.entries) { entry ->
-            jsonObject(
-                "package" to entry.packageName,
-                "revisions" to entry.revisions,
-                "totalChurn" to entry.totalChurn,
-                "fileCount" to entry.fileCount,
-                "avgRevisionsPerFile" to "%.1f".format(entry.avgRevisionsPerFile).toDouble(),
-            )
-        }
+    fun formatVolatility(result: PackageVolatilityResult): String = PackageVolatilityFormatter.formatJson(result)
 
-    fun formatCoupling(pairs: List<CoupledPair>): String =
-        jsonArray(pairs) { p ->
-            jsonObject(
-                "entity" to p.entity,
-                "coupled" to p.coupled,
-                "degree" to p.degree,
-                "sharedRevs" to p.sharedRevs,
-                "avgRevs" to p.avgRevs,
-                "stale" to (if (p.stale) true else null),
-            )
-        }
+    fun formatCoupling(pairs: List<CoupledPair>): String = ChangeCouplingFormatter.formatJson(pairs)
 
-    fun formatAge(ages: List<FileAge>): String =
-        jsonArray(ages) { a ->
-            jsonObject(
-                "file" to a.file,
-                "ageMonths" to a.ageMonths,
-                "lastChangeDate" to a.lastChangeDate.toString(),
-            )
-        }
+    fun formatAge(ages: List<FileAge>): String = CodeAgeFormatter.formatJson(ages)
 
-    fun formatAuthors(modules: List<ModuleAuthors>): String =
-        jsonArray(modules) { m ->
-            jsonObject(
-                "file" to m.file,
-                "authors" to m.authors,
-                "revisions" to m.revisions,
-            )
-        }
+    fun formatAuthors(modules: List<ModuleAuthors>): String = AuthorAnalysisFormatter.formatJson(modules)
 
-    fun formatChurn(churn: List<FileChurn>): String =
-        jsonArray(churn) { c ->
-            jsonObject(
-                "file" to c.file,
-                "added" to c.added,
-                "deleted" to c.deleted,
-                "commits" to c.commits,
-            )
-        }
+    fun formatChurn(churn: List<FileChurn>): String = ChurnFormatter.formatJson(churn)
 
     fun formatDsm(matrix: DsmMatrix, moduleLabels: Map<PackageName, Set<String>> = emptyMap()): String =
         DsmFormatter.formatJson(matrix, moduleLabels)

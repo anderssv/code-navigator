@@ -1,6 +1,12 @@
 package no.f12.codenavigator.analysis
 
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
+import no.f12.codenavigator.formatting.withInterpretation
+
 object ChangeCouplingFormatter {
+
+    internal const val COUPLING_INTERPRETATION = "Interpretation: High degree (%) means these files almost always change together. Intentional coupling (e.g., interface+implementation) is fine. Unintentional coupling suggests hidden dependencies or shared responsibilities that should be extracted. Pairs marked [stale] reference a file that no longer exists (rename/delete from git history) — ignore them."
 
     private const val HIGH_COUPLING_THRESHOLD = 70
 
@@ -39,4 +45,20 @@ object ChangeCouplingFormatter {
             }
         }
     }
+
+    fun formatJson(pairs: List<CoupledPair>): String =
+        jsonArray(pairs) { p ->
+            jsonObject(
+                "entity" to p.entity,
+                "coupled" to p.coupled,
+                "degree" to p.degree,
+                "sharedRevs" to p.sharedRevs,
+                "avgRevs" to p.avgRevs,
+                "stale" to (if (p.stale) true else null),
+            )
+        }
+
+    fun formatLlm(pairs: List<CoupledPair>): String =
+        pairs.joinToString("\n") { "${it.entity} -- ${it.coupled} degree=${it.degree}% shared=${it.sharedRevs} avg=${it.avgRevs}${if (it.stale) " [stale]" else ""}" }
+            .withInterpretation(COUPLING_INTERPRETATION)
 }
