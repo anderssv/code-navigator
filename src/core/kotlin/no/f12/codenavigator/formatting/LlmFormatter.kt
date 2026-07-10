@@ -18,13 +18,17 @@ import no.f12.codenavigator.navigation.dsm.TestInvolvement
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
 import no.f12.codenavigator.navigation.classinfo.ClassDetail
+import no.f12.codenavigator.navigation.classinfo.ClassDetailFormatter
 import no.f12.codenavigator.navigation.classinfo.ClassInfo
+import no.f12.codenavigator.navigation.classinfo.ClassInfoFormatter
 import no.f12.codenavigator.navigation.classinfo.FieldDetail
+import no.f12.codenavigator.navigation.relations.implementors.InterfaceFormatter
 import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistry
 import no.f12.codenavigator.navigation.classinfo.MethodDetail
 import no.f12.codenavigator.navigation.dsm.PackageDependencies
 import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.symbol.SymbolInfo
+import no.f12.codenavigator.navigation.symbol.SymbolTableFormatter
 import no.f12.codenavigator.navigation.dsm.CyclesFormatter
 import no.f12.codenavigator.navigation.dsm.DsmFormatter
 import no.f12.codenavigator.navigation.dsm.DsmMatrix
@@ -35,6 +39,7 @@ import no.f12.codenavigator.navigation.stringconstant.StringConstantMatch
 import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeInfo
 import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeKind
 import no.f12.codenavigator.navigation.metrics.MetricsResult
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyFormatter
 import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyResult
 import no.f12.codenavigator.navigation.relations.callgraph.CollapsedUsage
 import no.f12.codenavigator.navigation.relations.callgraph.SmartUsageResult
@@ -53,44 +58,16 @@ import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
 
 object LlmFormatter {
 
-    fun formatClasses(classes: List<ClassInfo>): String =
-        classes.sortedBy { it.className }.joinToString("\n") { "${it.className.displayName()} ${it.sourceFileName}" }
+    fun formatClasses(classes: List<ClassInfo>): String = ClassInfoFormatter.formatLlm(classes)
 
-    fun formatSymbols(symbols: List<SymbolInfo>): String =
-        symbols.sortedWith(compareBy({ it.packageName.toString() }, { it.className.toString() }, { it.symbolName }))
-            .joinToString("\n") { "${it.className}.${it.symbolName} ${it.kind.name.lowercase()} ${it.sourceFile}" }
+    fun formatSymbols(symbols: List<SymbolInfo>): String = SymbolTableFormatter.formatLlm(symbols)
 
-    fun formatClassDetails(details: List<ClassDetail>): String =
-        details.sortedBy { it.className }.joinToString("\n") { d ->
-            buildString {
-                append("${d.className} ${d.sourceFile}")
-                if (d.annotations.isNotEmpty()) append(" annotations:${d.annotations.joinToString(",") { formatAnnotation(it) }}")
-                if (d.superClass != null) append(" extends:${d.superClass}")
-                if (d.interfaces.isNotEmpty()) append(" implements:${d.interfaces.joinToString(",")}")
-                if (d.fields.isNotEmpty()) append(" fields:${d.fields.joinToString(",") { formatFieldCompact(it) }}")
-                if (d.methods.isNotEmpty()) append(" methods:${d.methods.joinToString(",") { formatMethodCompact(it) }}")
-            }
-        }
+    fun formatClassDetails(details: List<ClassDetail>): String = ClassDetailFormatter.formatLlm(details)
 
     fun formatInterfaces(registry: InterfaceRegistry, interfaceNames: List<ClassName>): String =
-        interfaceNames.sorted().joinToString("\n") { name ->
-            val impls = registry.implementorsOf(name).sortedBy { it.className }
-            "$name: ${impls.joinToString(",") { "${it.className}(${it.sourceFile})" }}"
-        }
+        InterfaceFormatter.formatLlm(registry, interfaceNames)
 
-    fun formatTypeHierarchy(results: List<TypeHierarchyResult>): String =
-        results.sortedBy { it.className }.joinToString("\n\n") { result ->
-            buildString {
-                append("${result.className} ${result.sourceFile}")
-                if (result.supertypes.isNotEmpty()) {
-                    renderSupertypesLlm(result.supertypes, 1)
-                }
-                if (result.implementors.isNotEmpty()) {
-                    appendLine()
-                    append("  implementors: ${result.implementors.sortedBy { it.className }.joinToString(",") { "${it.className}(${it.sourceFile})" }}")
-                }
-            }
-        }
+    fun formatTypeHierarchy(results: List<TypeHierarchyResult>): String = TypeHierarchyFormatter.formatLlm(results)
 
     fun renderCallTrees(trees: List<CallTreeNode>, direction: CallDirection): String = buildString {
         trees.forEachIndexed { index, tree ->
@@ -368,39 +345,6 @@ object LlmFormatter {
             val suffix = if (tag.framework != null) " [${tag.framework}]" else ""
             "@${tag.name.simpleName()}$params$suffix"
         }}]"
-
-    private fun formatAnnotation(annotation: AnnotationDetail): String = buildString {
-        append("@${annotation.name.simpleName()}")
-        if (annotation.parameters.isNotEmpty()) {
-            val params = annotation.parameters.entries.joinToString(",") { "${it.key}=\"${it.value}\"" }
-            append("($params)")
-        }
-    }
-
-    private fun formatFieldCompact(field: FieldDetail): String {
-        val prefix = field.annotations.joinToString("") { "${formatAnnotation(it)}+" }
-        return "$prefix${field.name}:${field.type}"
-    }
-
-    private fun formatMethodCompact(method: MethodDetail): String {
-        val prefix = method.annotations.joinToString("") { "${formatAnnotation(it)}+" }
-        return "$prefix${method.name}(${method.parameterTypes.joinToString(",")}):${method.returnType}"
-    }
-
-    private fun StringBuilder.renderSupertypesLlm(supertypes: List<SupertypeInfo>, depth: Int) {
-        val indent = "  ".repeat(depth)
-        for (st in supertypes) {
-            val kindLabel = when (st.kind) {
-                SupertypeKind.CLASS -> "extends"
-                SupertypeKind.INTERFACE -> "implements"
-            }
-            appendLine()
-            append("$indent$kindLabel ${st.className}")
-            if (st.supertypes.isNotEmpty()) {
-                renderSupertypesLlm(st.supertypes, depth + 1)
-            }
-        }
-    }
 
     fun formatCohesion(result: CohesionResult): String =
         result.entries.joinToString("\n") { entry ->

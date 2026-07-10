@@ -15,11 +15,16 @@ import no.f12.codenavigator.navigation.relations.callgraph.CallTreeNode
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.classinfo.AnnotationDetail
 import no.f12.codenavigator.navigation.classinfo.ClassDetail
+import no.f12.codenavigator.navigation.classinfo.ClassDetailFormatter
 import no.f12.codenavigator.navigation.classinfo.ClassInfo
+import no.f12.codenavigator.navigation.classinfo.ClassInfoFormatter
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyFormatter
+import no.f12.codenavigator.navigation.relations.implementors.InterfaceFormatter
 import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistry
 import no.f12.codenavigator.navigation.dsm.PackageDependencies
 import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.symbol.SymbolInfo
+import no.f12.codenavigator.navigation.symbol.SymbolTableFormatter
 import no.f12.codenavigator.navigation.dsm.DsmFormatter
 import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType
@@ -53,77 +58,19 @@ import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
 
 object JsonFormatter {
 
-    fun formatClasses(classes: List<ClassInfo>): String =
-        jsonArray(classes.sortedBy { it.className }) { c ->
-            jsonObject(
-                "className" to c.className.displayName(),
-                "sourceFile" to c.sourceFileName,
-                "sourcePath" to c.reconstructedSourcePath,
-            )
-        }
+    fun formatClasses(classes: List<ClassInfo>): String = ClassInfoFormatter.formatJson(classes)
 
-    fun formatSymbols(symbols: List<SymbolInfo>): String =
-        jsonArray(symbols.sortedWith(compareBy({ it.packageName.toString() }, { it.className.toString() }, { it.symbolName }))) { s ->
-            jsonObject(
-                "package" to s.packageName.toString(),
-                "class" to s.className.simpleName(),
-                "symbol" to s.symbolName,
-                "kind" to s.kind.name.lowercase(),
-                "sourceFile" to s.sourceFile,
-            )
-        }
+    fun formatSymbols(symbols: List<SymbolInfo>): String = SymbolTableFormatter.formatJson(symbols)
 
-    fun formatClassDetails(details: List<ClassDetail>): String =
-        jsonArray(details.sortedBy { it.className }) { d ->
-            jsonObject(
-                "className" to d.className.toString(),
-                "sourceFile" to d.sourceFile,
-                "superClass" to d.superClass?.toString(),
-                "annotations" to if (d.annotations.isNotEmpty()) JsonRaw(renderAnnotations(d.annotations)) else null,
-                "interfaces" to JsonRaw(jsonStringArray(d.interfaces.map { it.toString() })),
-                "fields" to JsonRaw(jsonArray(d.fields) { f ->
-                    jsonObject(
-                        "name" to f.name,
-                        "type" to f.type,
-                        "annotations" to if (f.annotations.isNotEmpty()) JsonRaw(renderAnnotations(f.annotations)) else null,
-                    )
-                }),
-                "methods" to JsonRaw(jsonArray(d.methods) { m ->
-                    jsonObject(
-                        "name" to m.name,
-                        "parameters" to JsonRaw(jsonStringArray(m.parameterTypes)),
-                        "returnType" to m.returnType,
-                        "annotations" to if (m.annotations.isNotEmpty()) JsonRaw(renderAnnotations(m.annotations)) else null,
-                    )
-                }),
-            )
-        }
+    fun formatClassDetails(details: List<ClassDetail>): String = ClassDetailFormatter.formatJson(details)
 
     fun renderCallTrees(trees: List<CallTreeNode>, direction: CallDirection? = null): String =
         jsonArray(trees) { node -> renderCallNode(node, direction, isRoot = true) }
 
     fun formatInterfaces(registry: InterfaceRegistry, interfaceNames: List<ClassName>): String =
-        jsonArray(interfaceNames.sorted()) { name ->
-            val implementors = registry.implementorsOf(name)
-            jsonObject(
-                "interface" to name.toString(),
-                "implementors" to JsonRaw(jsonArray(implementors.sortedBy { it.className }) { impl ->
-                    jsonObject("className" to impl.className.toString(), "sourceFile" to impl.sourceFile)
-                }),
-            )
-        }
+        InterfaceFormatter.formatJson(registry, interfaceNames)
 
-    fun formatTypeHierarchy(results: List<TypeHierarchyResult>): String =
-        jsonArray(results.sortedBy { it.className }) { result ->
-            jsonObject(
-                "className" to result.className.toString(),
-                "sourceFile" to result.sourceFile,
-                "supertypes" to JsonRaw(renderSupertypes(result.supertypes)),
-                "implementors" to JsonRaw(jsonArray(result.implementors.sortedBy { it.className }) { impl ->
-                    jsonObject("className" to impl.className.toString(), "sourceFile" to impl.sourceFile)
-                }),
-            )
-        }
+    fun formatTypeHierarchy(results: List<TypeHierarchyResult>): String = TypeHierarchyFormatter.formatJson(results)
 
     fun formatPackageDeps(
         deps: PackageDependencies,
@@ -443,23 +390,6 @@ object JsonFormatter {
                 "name" to tag.name.value,
                 "framework" to tag.framework,
                 "parameters" to params,
-            )
-        }
-
-    private fun renderSupertypes(supertypes: List<SupertypeInfo>): String =
-        jsonArray(supertypes) { st ->
-            jsonObject(
-                "className" to st.className.toString(),
-                "kind" to st.kind.name.lowercase(),
-                "supertypes" to JsonRaw(renderSupertypes(st.supertypes)),
-            )
-        }
-
-    private fun renderAnnotations(annotations: List<AnnotationDetail>): String =
-        jsonArray(annotations) { a ->
-            jsonObject(
-                "name" to a.name.value,
-                "parameters" to JsonRaw(jsonObject(*a.parameters.map { (k, v) -> k to v }.toTypedArray())),
             )
         }
 
