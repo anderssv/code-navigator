@@ -52,6 +52,17 @@ import no.f12.codenavigator.navigation.dsm.PackageStrengthEntry
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 import no.f12.codenavigator.navigation.classmetrics.ClassCohesionVerdict
 import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
+import no.f12.codenavigator.analysis.DuplicateGroup
+import no.f12.codenavigator.analysis.DuplicateLocation
+import no.f12.codenavigator.analysis.FileAge
+import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeInfo
+import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeKind
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyResult
+import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
+import no.f12.codenavigator.navigation.dsm.BalanceEntry
+import no.f12.codenavigator.navigation.dsm.BalanceResult
+import no.f12.codenavigator.navigation.dsm.BalanceVerdict
+import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -1246,4 +1257,126 @@ class LlmFormatterTest {
         )
     }
 
+    // === TypeHierarchy formatting ===
+
+    @Test
+    fun `formats type hierarchy with nested supertypes and implementors`() {
+        val results = listOf(
+            TypeHierarchyResult(
+                className = ClassName("com.example.Child"),
+                sourceFile = "Child.kt",
+                supertypes = listOf(
+                    SupertypeInfo(
+                        ClassName("com.example.Base"),
+                        SupertypeKind.CLASS,
+                        listOf(SupertypeInfo(ClassName("com.example.Marker"), SupertypeKind.INTERFACE, emptyList())),
+                    ),
+                ),
+                implementors = listOf(ImplementorInfo(ClassName("com.example.GrandChild"), "GrandChild.kt")),
+            ),
+        )
+
+        val result = LlmFormatter.formatTypeHierarchy(results)
+
+        assertEquals(
+            "com.example.Child Child.kt\n" +
+                "  extends com.example.Base\n" +
+                "    implements com.example.Marker\n" +
+                "  implementors: com.example.GrandChild(GrandChild.kt)",
+            result,
+        )
+    }
+
+    @Test
+    fun `formats type hierarchy with no supertypes or implementors`() {
+        val results = listOf(
+            TypeHierarchyResult(className = ClassName("com.example.Plain"), sourceFile = "Plain.kt", supertypes = emptyList(), implementors = emptyList()),
+        )
+
+        val result = LlmFormatter.formatTypeHierarchy(results)
+
+        assertEquals("com.example.Plain Plain.kt", result)
+    }
+
+    // === Duplicates formatting ===
+
+    @Test
+    fun `formats duplicate groups with locations`() {
+        val groups = listOf(
+            DuplicateGroup(tokenCount = 25, locations = listOf(DuplicateLocation("A.kt", 10, 15), DuplicateLocation("B.kt", 20, 25))),
+        )
+
+        val result = LlmFormatter.formatDuplicates(groups)
+
+        assertEquals("tokens=25\n  A.kt:10-15\n  B.kt:20-25", result)
+    }
+
+    // === Age formatting ===
+
+    @Test
+    fun `formats file ages with interpretation footer`() {
+        val ages = listOf(FileAge("src/Old.kt", 12, LocalDate.of(2023, 1, 1)))
+
+        val result = LlmFormatter.formatAge(ages)
+
+        assertEquals("src/Old.kt age=12months last=2023-01-01\n\n${LlmFormatter.AGE_INTERPRETATION}", result)
+    }
+
+    // === ChangedSince formatting ===
+
+    @Test
+    fun `formats changed class impacts with callers and unresolved files`() {
+        val impacts = listOf(
+            ChangedClassImpact(
+                className = ClassName("com.example.Service"),
+                sourceFile = "Service.kt",
+                callers = setOf(MethodRef(ClassName("com.example.Controller"), "handle")),
+            ),
+        )
+
+        val result = LlmFormatter.formatChangedSince(impacts, unresolved = listOf("missing.kt"))
+
+        assertEquals(
+            "com.example.Service Service.kt\n  <- com.example.Controller.handle\nUNRESOLVED: missing.kt",
+            result,
+        )
+    }
+
+    @Test
+    fun `formats changed class impact with no callers`() {
+        val impacts = listOf(
+            ChangedClassImpact(className = ClassName("com.example.Orphan"), sourceFile = "Orphan.kt", callers = emptySet()),
+        )
+
+        val result = LlmFormatter.formatChangedSince(impacts, unresolved = emptyList())
+
+        assertEquals("com.example.Orphan Orphan.kt (no callers)", result)
+    }
+
+    // === Balance formatting ===
+
+    @Test
+    fun `formats balance entries with suggestion and interpretation footer`() {
+        val result = BalanceResult(
+            listOf(
+                BalanceEntry(
+                    source = PackageName("com.example.web"),
+                    target = PackageName("com.example.persistence"),
+                    strength = IntegrationStrength.FUNCTIONAL,
+                    distance = 4,
+                    sourceVolatility = 50,
+                    targetVolatility = 40,
+                    verdict = BalanceVerdict.DANGER,
+                    suggestion = "Consider co-locating.",
+                ),
+            ),
+        )
+
+        val llm = LlmFormatter.formatBalance(result)
+
+        assertEquals(
+            "com.example.web->com.example.persistence verdict=DANGER strength=FUNCTIONAL distance=4 volatility=50/40 | Consider co-locating.\n\n${LlmFormatter.BALANCE_INTERPRETATION}",
+            llm,
+        )
+    }
 }

@@ -59,6 +59,25 @@ import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.annotation.FieldAnnotationMatch
 import no.f12.codenavigator.navigation.annotation.FieldRef
+import no.f12.codenavigator.analysis.DuplicateGroup
+import no.f12.codenavigator.analysis.DuplicateLocation
+import no.f12.codenavigator.analysis.PackageVolatility
+import no.f12.codenavigator.analysis.PackageVolatilityResult
+import no.f12.codenavigator.analysis.FileAge
+import no.f12.codenavigator.analysis.ModuleAuthors
+import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeInfo
+import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeKind
+import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyResult
+import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
+import no.f12.codenavigator.navigation.dsm.BalanceEntry
+import no.f12.codenavigator.navigation.dsm.BalanceResult
+import no.f12.codenavigator.navigation.dsm.BalanceVerdict
+import no.f12.codenavigator.navigation.dsm.CohesionEntry
+import no.f12.codenavigator.navigation.dsm.CohesionResult
+import no.f12.codenavigator.navigation.dsm.CohesionVerdict
+import no.f12.codenavigator.navigation.dsm.MoveSuggestion
+import no.f12.codenavigator.navigation.dsm.MoveSuggestionResult
+import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -1564,4 +1583,187 @@ class JsonFormatterTest {
         )
     }
 
+    // === TypeHierarchy formatting ===
+
+    @Test
+    fun `formats type hierarchy with supertypes and implementors`() {
+        val results = listOf(
+            TypeHierarchyResult(
+                className = ClassName("com.example.Child"),
+                sourceFile = "Child.kt",
+                supertypes = listOf(SupertypeInfo(ClassName("com.example.Base"), SupertypeKind.CLASS, emptyList())),
+                implementors = listOf(ImplementorInfo(ClassName("com.example.GrandChild"), "GrandChild.kt")),
+            ),
+        )
+
+        val result = JsonFormatter.formatTypeHierarchy(results)
+
+        assertTrue(result.contains("\"className\":\"com.example.Child\""))
+        assertTrue(result.contains("\"kind\":\"class\""))
+        assertTrue(result.contains("\"className\":\"com.example.GrandChild\",\"sourceFile\":\"GrandChild.kt\""))
+    }
+
+    @Test
+    fun `formats empty type hierarchy list as empty array`() {
+        assertEquals("[]", JsonFormatter.formatTypeHierarchy(emptyList()))
+    }
+
+    // === Duplicates formatting ===
+
+    @Test
+    fun `formats duplicate groups with locations`() {
+        val groups = listOf(
+            DuplicateGroup(tokenCount = 25, locations = listOf(DuplicateLocation("A.kt", 10, 15), DuplicateLocation("B.kt", 20, 25))),
+        )
+
+        val result = JsonFormatter.formatDuplicates(groups)
+
+        assertEquals(
+            """[{"tokenCount":25,"locations":[{"file":"A.kt","startLine":10,"endLine":15},{"file":"B.kt","startLine":20,"endLine":25}]}]""",
+            result,
+        )
+    }
+
+    // === Volatility formatting ===
+
+    @Test
+    fun `formats package volatility entries`() {
+        val result = PackageVolatilityResult(
+            listOf(PackageVolatility("com.example.foo", revisions = 10, totalChurn = 200, fileCount = 3, avgRevisionsPerFile = 3.3)),
+        )
+
+        val json = JsonFormatter.formatVolatility(result)
+
+        assertEquals(
+            """[{"package":"com.example.foo","revisions":10,"totalChurn":200,"fileCount":3,"avgRevisionsPerFile":3.3}]""",
+            json,
+        )
+    }
+
+    // === Age formatting ===
+
+    @Test
+    fun `formats file ages`() {
+        val ages = listOf(FileAge("src/Old.kt", 12, LocalDate.of(2023, 1, 1)))
+
+        val result = JsonFormatter.formatAge(ages)
+
+        assertEquals("""[{"file":"src/Old.kt","ageMonths":12,"lastChangeDate":"2023-01-01"}]""", result)
+    }
+
+    // === Authors formatting ===
+
+    @Test
+    fun `formats module authors`() {
+        val modules = listOf(ModuleAuthors("src/Team.kt", authors = 5, revisions = 20))
+
+        val result = JsonFormatter.formatAuthors(modules)
+
+        assertEquals("""[{"file":"src/Team.kt","authors":5,"revisions":20}]""", result)
+    }
+
+    // === ChangedSince formatting ===
+
+    @Test
+    fun `formats changed class impacts with callers`() {
+        val impacts = listOf(
+            ChangedClassImpact(
+                className = ClassName("com.example.Service"),
+                sourceFile = "Service.kt",
+                callers = setOf(MethodRef(ClassName("com.example.Controller"), "handle")),
+            ),
+        )
+
+        val result = JsonFormatter.formatChangedSince(impacts, unresolved = listOf("missing.kt"))
+
+        assertTrue(result.contains("\"className\":\"com.example.Service\""))
+        assertTrue(result.contains("\"className\":\"com.example.Controller\",\"method\":\"handle\""))
+        assertTrue(result.contains("\"unresolvedFiles\":[\"missing.kt\"]"))
+    }
+
+    @Test
+    fun `formats changed class impacts with no callers`() {
+        val impacts = listOf(
+            ChangedClassImpact(className = ClassName("com.example.Orphan"), sourceFile = "Orphan.kt", callers = emptySet()),
+        )
+
+        val result = JsonFormatter.formatChangedSince(impacts, unresolved = emptyList())
+
+        assertTrue(result.contains("\"callers\":[]"))
+        assertTrue(result.contains("\"unresolvedFiles\":[]"))
+    }
+
+    // === Balance formatting ===
+
+    @Test
+    fun `formats balance entries`() {
+        val result = BalanceResult(
+            listOf(
+                BalanceEntry(
+                    source = PackageName("com.example.web"),
+                    target = PackageName("com.example.persistence"),
+                    strength = IntegrationStrength.FUNCTIONAL,
+                    distance = 4,
+                    sourceVolatility = 50,
+                    targetVolatility = 40,
+                    verdict = BalanceVerdict.DANGER,
+                    suggestion = "Consider co-locating.",
+                ),
+            ),
+        )
+
+        val json = JsonFormatter.formatBalance(result)
+
+        assertTrue(json.contains("\"source\":\"com.example.web\""))
+        assertTrue(json.contains("\"verdict\":\"DANGER\""))
+        assertTrue(json.contains("\"suggestion\":\"Consider co-locating.\""))
+    }
+
+    // === Cohesion formatting ===
+
+    @Test
+    fun `formats cohesion entries`() {
+        val result = CohesionResult(
+            listOf(
+                CohesionEntry(
+                    packageName = PackageName("com.example.model"),
+                    classCount = 3,
+                    internalEdges = 6,
+                    externalEdges = 2,
+                    cohesion = 0.75,
+                    verdict = CohesionVerdict.COHESIVE,
+                ),
+            ),
+        )
+
+        val json = JsonFormatter.formatCohesion(result)
+
+        assertTrue(json.contains("\"package\":\"com.example.model\""))
+        assertTrue(json.contains("\"cohesion\":0.75"))
+        assertTrue(json.contains("\"verdict\":\"COHESIVE\""))
+    }
+
+    // === MoveSuggestions formatting ===
+
+    @Test
+    fun `formats move suggestions`() {
+        val result = MoveSuggestionResult(
+            listOf(
+                MoveSuggestion(
+                    className = ClassName("com.example.Helper"),
+                    currentPackage = PackageName("com.example.util"),
+                    suggestedPackage = PackageName("com.example.service"),
+                    edgesToCurrent = 1,
+                    edgesToSuggested = 5,
+                    confidence = 0.8,
+                ),
+            ),
+        )
+
+        val json = JsonFormatter.formatMoveSuggestions(result)
+
+        assertTrue(json.contains("\"class\":\"com.example.Helper\""))
+        assertTrue(json.contains("\"suggestedPackage\":\"com.example.service\""))
+        assertTrue(json.contains("\"confidence\":0.8"))
+    }
 }
