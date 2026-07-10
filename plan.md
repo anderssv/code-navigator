@@ -295,10 +295,6 @@ One file, three top-level sections, sharing one location (`cnav-config.json` at 
 **`modules`** — **NOT DONE**, blocked on multi-module support (separate ACTIVE item above) not existing yet; no consumer to wire it into.
 
 **Deferred cleanup**: literally merging `RingsHintsConfig` and `CnavConfig` into one parser (instead of two independent readers of the same file) was skipped to avoid risk to the already-tested rings-hints code path. Low priority — revisit only if the two ever need to share more logic than "read the same file."
-### High violation count warning for `cnavRings`
-**PARKED** | **Value: low** | **Effort: low** | Source: internal
-
-When violation count exceeds a threshold (>50), add a note: "High violation count may indicate the project doesn't follow concentric ring architecture. Consider `--scope=prod` or `cnavLayerCheck` with explicit layer config."
 
 ---
 
@@ -435,7 +431,8 @@ Scan interfaces matching a pattern (`*Repository`, `*Client`), check each has at
 **PARKED** | **Value: medium** | **Effort: low** | Source: field-test(greitt+terms-and-conditions)
 
 - **DAO test threshold**: adapter tests where port calls are <50% due to assertion noise. Consider counting only non-framework calls in denominator.
-- **Concise "all clear" output**: When no violations found, one-liner confirmation instead of ~15 lines of guidance.
+
+~~**Concise "all clear" output**~~ — **done.** `TestCouplingFormatter` now returns a one-line "No TTTD violations found..." message instead of ~15 lines of guidance when there are no violations.
 
 ### `cnavContextUsage` — verify consistent test context usage
 **PARKED** | **Value: low** | **Effort: medium** | Source: internal
@@ -581,11 +578,6 @@ Expand from single-hop blast radius into multi-signal impact predictor: direct c
 
 `ReportTask`/`ReportMojo` also echo the same rendered string across all three `when (format) { TEXT,DIFF -> output; JSON -> output; LLM -> output }` branches — the same shape as the `cnavRings` JSON gap above. Likely lower priority: `cnavReport` is a composite markdown aggregator of other tasks' output (which themselves may or may not have real JSON), so "real JSON for the composite report" is a bigger design question (aggregate the sub-results structurally, not their rendered text) rather than a quick formatter fix. Parked until `cnavRings`' JSON gap is addressed first, since Report includes Rings' output.
 
-### Potentially dead code in cnav's own codebase
-**PARKED** | **Value: medium** | **Effort: low** | Source: internal
-
-Self-analysis found: `CallGraphCache.build()`, `ClassIndexCache.build()`, `InterfaceRegistryCache.build()`, `SymbolIndexCache.build()`, `UsageScanner.scan()`, various `FileCache` methods. Investigate if truly dead or called via dispatch.
-
 ### Migrate MoveClassRewriter from OpenRewrite to PSI
 **PARKED** | **Value: medium** | **Effort: high** | Source: internal
 
@@ -616,15 +608,6 @@ Replace tab-separated positional fields with self-describing format. Consider re
 **FUTURE** | **Value: medium** | **Effort: high** | Source: internal
 
 `@InputFiles`/`@OutputFile`/`InputChanges`. Most beneficial for leaf tasks (`cnavListClasses`, `cnavFindSymbol`).
-
----
-
-## Layer check
-
-### Revise peerLimit and testInfrastructure expressiveness
-**PARKED** | **Value: medium** | **Effort: low** | Source: internal
-
-Current model works. Revisit when real-world usage reveals friction.
 
 ---
 
