@@ -1,12 +1,5 @@
 package no.f12.codenavigator.navigation.refactor
 
-import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
-import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
-import org.jetbrains.kotlin.com.intellij.openapi.util.Disposer
-import org.jetbrains.kotlin.config.CommonConfigurationKeys
-import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import java.io.File
@@ -56,18 +49,7 @@ object ChangeSignatureRewriter {
 
         val newParamSpecs = parseParamList(newParams)
 
-        val disposable = Disposer.newDisposable("psi-change-signature")
-        try {
-            val configuration = CompilerConfiguration().apply {
-                put(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,
-                    PrintingMessageCollector(System.err, MessageRenderer.PLAIN_RELATIVE_PATHS, false))
-                put(CommonConfigurationKeys.MODULE_NAME, "change-signature-target")
-            }
-            val environment = KotlinCoreEnvironment.createForProduction(
-                disposable, configuration, EnvironmentConfigFiles.JVM_CONFIG_FILES,
-            )
-            val psiFactory = KtPsiFactory(environment.project)
-
+        return withKotlinPsiFactory("change-signature-target") { psiFactory ->
             var currentParams: List<ParamSpec>? = null
             val changes = mutableListOf<RenameChange>()
 
@@ -183,9 +165,7 @@ object ChangeSignatureRewriter {
                 }
             }
 
-            return ChangeSignatureResult(changes = changes)
-        } finally {
-            Disposer.dispose(disposable)
+            ChangeSignatureResult(changes = changes)
         }
     }
 
@@ -272,11 +252,4 @@ object ChangeSignatureRewriter {
         }
     }
 
-    private fun applyEdits(content: String, edits: List<TextEdit>): String {
-        var result = content
-        for (edit in edits.sortedByDescending { it.offset }) {
-            result = result.substring(0, edit.offset) + edit.replacement + result.substring(edit.offset + edit.length)
-        }
-        return result
-    }
 }

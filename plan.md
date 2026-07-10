@@ -601,14 +601,20 @@ Expand from single-hop blast radius into multi-signal impact predictor: direct c
 `ReportTask`/`ReportMojo` also echo the same rendered string across all three `when (format) { TEXT,DIFF -> output; JSON -> output; LLM -> output }` branches — the same shape as the `cnavRings` JSON gap above. Likely lower priority: `cnavReport` is a composite markdown aggregator of other tasks' output (which themselves may or may not have real JSON), so "real JSON for the composite report" is a bigger design question (aggregate the sub-results structurally, not their rendered text) rather than a quick formatter fix. Parked until `cnavRings`' JSON gap is addressed first, since Report includes Rings' output.
 
 ### Review implementations for spread logic + shared lookup extraction
-**ACTIVE** | **Value: medium** | **Effort: high** | Source: internal
+**ACTIVE (shared lookup done)** | **Value: medium** | **Effort: high** | Source: internal
 
 **Spread logic**: Several tasks span multiple concerns. Principle: orchestrator calls single-purpose tasks.
 - `RenameMethodRewriter`/`RenameMethodEditor`: location finding + PSI editing separation
 - `MoveClassRewriter`: are import updating, content extraction, file writing reusable?
 - Formatter classes: some contain query logic belonging in builders
 
-**Shared lookup**: Class resolution and method finding duplicated across ChangeSignature, RenameMethod, RenameProperty, SafeDelete. Extract shared `DeclarationFinder`. Design: stream-like — general lookup first, then filtered down.
+**Shared lookup: done.** Class resolution and method finding were duplicated across ChangeSignatureRewriter, PsiRenamePropertyRewriter, SafeDeleteRewriter, PsiRenameParamRewriter, KotlinRenameMethodRewriter, RenameMethodEditor. Extracted to two new files in `navigation.refactor`:
+- `PsiRefactorSupport.kt` — `createDisposableKotlinEnvironment`/`withKotlinPsiFactory` (the identical Disposer+CompilerConfiguration+KotlinCoreEnvironment+KtPsiFactory boilerplate, previously copy-pasted verbatim in 6 files) and `applyEdits` (identical text-edit application, previously duplicated in 4 files).
+- `KotlinFqnSupport.kt` — `buildClassFqn`/`matchesFqn`/`fileReferencesClass`, previously duplicated near-identically in `PsiRenamePropertyRewriter` and `KotlinRenameMethodRewriter` (one redundant wrapper — `KotlinRenameMethodRewriter.fileReferencesClass` — was eliminated entirely since it just re-did what `isImportedOrSamePackage` already covered).
+
+`withKotlinPsiFactory` is `inline` so callers keep their existing early-`return` style (non-local return) without restructuring control flow. The two cached-lifecycle rewriters (`KotlinRenameMethodRewriter`, `JavaRenameMethodRewriter`, which persist their environment across a whole batch of files and dispose explicitly) use the raw `createDisposableKotlinEnvironment` instead of the scoped helper. `JavaRenameMethodRewriter`'s own FQN/import-matching logic operates on IntelliJ Java PSI types (`PsiClass`/`PsiJavaFile`), not Kotlin PSI, so it wasn't unified — left as a follow-up if Java PSI support grows. All ~30 pre-existing refactor tests passed unmodified (behavior-preserving); live-verified via `cnavRenameProperty`/`cnavRenameMethod --preview` in a scratch project.
+
+**Spread logic review is still open** — not addressed in this pass.
 
 ### Split JsonFormatter and LlmFormatter per-feature
 **ACTIVE (pilot done)** | **Value: medium** | **Effort: high** | Source: internal(v0.1.83)

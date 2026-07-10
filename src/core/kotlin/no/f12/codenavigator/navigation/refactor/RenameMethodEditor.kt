@@ -95,12 +95,4 @@ object RenameMethodEditor {
                 .filter { it.isFile && it.extension in supportedExtensions }
                 .toList()
         }
-
-    private fun applyEdits(content: String, edits: List<TextEdit>): String {
-        var result = content
-        for (edit in edits.sortedByDescending { it.offset }) {
-            result = result.substring(0, edit.offset) + edit.replacement + result.substring(edit.offset + edit.length)
-        }
-        return result
-    }
 }

@@ -1,12 +1,5 @@
 package no.f12.codenavigator.navigation.refactor
 
-import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
-import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
-import org.jetbrains.kotlin.com.intellij.openapi.util.Disposer
-import org.jetbrains.kotlin.config.CommonConfigurationKeys
-import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import java.io.File
@@ -34,20 +27,8 @@ object PsiRenamePropertyRewriter {
         }
         if (sourceFiles.isEmpty()) return RenamePropertyResult(emptyList())
 
-        val disposable = Disposer.newDisposable("psi-rename-property")
-        try {
-            val configuration = CompilerConfiguration().apply {
-                put(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,
-                    PrintingMessageCollector(System.err, MessageRenderer.PLAIN_RELATIVE_PATHS, false))
-                put(CommonConfigurationKeys.MODULE_NAME, "rename-property-target")
-            }
-            val environment = KotlinCoreEnvironment.createForProduction(
-                disposable, configuration, EnvironmentConfigFiles.JVM_CONFIG_FILES,
-            )
-            val psiFactory = KtPsiFactory(environment.project)
-
+        return withKotlinPsiFactory("rename-property-target") { psiFactory ->
             val targetSimpleName = className.substringAfterLast(".")
-            val targetPackage = className.substringBeforeLast(".", "")
 
             val changes = mutableListOf<RenameChange>()
 
@@ -63,7 +44,7 @@ object PsiRenamePropertyRewriter {
                 // Process target class: rename declaration
                 for (clazz in classDecls) {
                     val classFqn = buildClassFqn(filePackage, clazz)
-                    if (!matchesClass(classFqn, className)) continue
+                    if (!matchesFqn(classFqn, className)) continue
 
                     // Check if property exists as a body declaration
                     val hasBodyProperty = clazz.declarations.any { it is KtProperty && it.name == propertyName }
@@ -98,7 +79,7 @@ object PsiRenamePropertyRewriter {
                 }
 
                 // Rename property access sites and named args across the file
-                if (fileReferencesClass(ktFile, targetSimpleName, targetPackage, filePackage)) {
+                if (fileReferencesClass(ktFile, className)) {
                     // Dot-qualified property access: instance.propertyName
                     val dotExprs = ktFile.collectDescendantsOfType<KtDotQualifiedExpression>()
                     for (dot in dotExprs) {
@@ -146,9 +127,7 @@ object PsiRenamePropertyRewriter {
                 }
             }
 
-            return RenamePropertyResult(changes)
-        } finally {
-            Disposer.dispose(disposable)
+            RenamePropertyResult(changes)
         }
     }
 
@@ -178,7 +157,7 @@ object PsiRenamePropertyRewriter {
             for (clazz in classDecls) {
                 if (clazz.name == name) {
                     val fqn = buildClassFqn(filePackage, clazz)
-                    return matchesClass(fqn, className)
+                    return matchesFqn(fqn, className)
                 }
             }
             // Variable reference — assume yes (heuristic)
@@ -204,48 +183,4 @@ object PsiRenamePropertyRewriter {
         }
     }
 
-    private fun fileReferencesClass(
-        ktFile: KtFile,
-        targetSimpleName: String,
-        targetPackage: String,
-        filePackage: String,
-    ): Boolean {
-        if (filePackage == targetPackage) return true
-        val imports = ktFile.importDirectives
-        val targetFqn = if (targetPackage.isEmpty()) targetSimpleName else "$targetPackage.$targetSimpleName"
-        for (imp in imports) {
-            val importedFqn = imp.importedFqName?.asString() ?: continue
-            if (importedFqn == targetFqn) return true
-            if (imp.isAllUnder && importedFqn == targetPackage) return true
-        }
-        return false
-    }
-
-    private fun buildClassFqn(filePackage: String, clazz: KtClass): String {
-        val names = mutableListOf(clazz.name ?: "")
-        var parent = clazz.parent
-        while (parent != null) {
-            if (parent is KtClass) {
-                names.add(0, parent.name ?: "")
-            }
-            parent = parent.parent
-        }
-        val classPath = names.joinToString(".")
-        return if (filePackage.isEmpty()) classPath else "$filePackage.$classPath"
-    }
-
-    private fun matchesClass(classFqn: String?, targetClassName: String): Boolean {
-        if (classFqn == null) return false
-        if (classFqn == targetClassName) return true
-        if (classFqn == "$targetClassName.Companion") return true
-        return false
-    }
-
-    private fun applyEdits(content: String, edits: List<TextEdit>): String {
-        var result = content
-        for (edit in edits.sortedByDescending { it.offset }) {
-            result = result.substring(0, edit.offset) + edit.replacement + result.substring(edit.offset + edit.length)
-        }
-        return result
-    }
 }

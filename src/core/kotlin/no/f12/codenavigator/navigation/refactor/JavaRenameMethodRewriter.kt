@@ -1,14 +1,8 @@
 package no.f12.codenavigator.navigation.refactor
 
-import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
-import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.com.intellij.openapi.util.Disposer
 import org.jetbrains.kotlin.com.intellij.psi.*
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil
-import org.jetbrains.kotlin.config.CommonConfigurationKeys
-import org.jetbrains.kotlin.config.CompilerConfiguration
 
 /**
  * Java-specific rename method rewriter using IntelliJ Java PSI
@@ -48,17 +42,7 @@ class JavaRenameMethodRewriter : LanguageRenameRewriter {
 
     private fun getOrCreateEnvironment(): Pair<Any, PsiFileFactory> {
         cachedEnvironment?.let { return it }
-        val disposable = Disposer.newDisposable("java-rename")
-        val configuration = CompilerConfiguration().apply {
-            put(
-                CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,
-                PrintingMessageCollector(System.err, MessageRenderer.PLAIN_RELATIVE_PATHS, false),
-            )
-            put(CommonConfigurationKeys.MODULE_NAME, "rename-target")
-        }
-        val environment = KotlinCoreEnvironment.createForProduction(
-            disposable, configuration, EnvironmentConfigFiles.JVM_CONFIG_FILES,
-        )
+        val (disposable, environment) = createDisposableKotlinEnvironment("java-rename")
         val fileFactory = PsiFileFactory.getInstance(environment.project)
         val pair = Pair(disposable as Any, fileFactory)
         cachedEnvironment = pair

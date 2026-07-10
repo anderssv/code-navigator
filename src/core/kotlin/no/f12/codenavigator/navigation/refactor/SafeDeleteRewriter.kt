@@ -2,13 +2,6 @@ package no.f12.codenavigator.navigation.refactor
 
 import no.f12.codenavigator.navigation.relations.callgraph.UsageScanner
 import no.f12.codenavigator.navigation.relations.callgraph.UsageSite
-import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
-import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
-import org.jetbrains.kotlin.com.intellij.openapi.util.Disposer
-import org.jetbrains.kotlin.config.CommonConfigurationKeys
-import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import java.io.File
@@ -89,18 +82,7 @@ object SafeDeleteRewriter {
         val targetSimpleName = className.substringAfterLast(".")
         val targetPackage = className.substringBeforeLast(".", "")
 
-        val disposable = Disposer.newDisposable("psi-safe-delete")
-        try {
-            val configuration = CompilerConfiguration().apply {
-                put(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,
-                    PrintingMessageCollector(System.err, MessageRenderer.PLAIN_RELATIVE_PATHS, false))
-                put(CommonConfigurationKeys.MODULE_NAME, "safe-delete-target")
-            }
-            val environment = KotlinCoreEnvironment.createForProduction(
-                disposable, configuration, EnvironmentConfigFiles.JVM_CONFIG_FILES,
-            )
-            val psiFactory = KtPsiFactory(environment.project)
-
+        return withKotlinPsiFactory("safe-delete-target") { psiFactory ->
             for (file in sourceFiles) {
                 val content = file.readText()
                 val ktFile = psiFactory.createFile(file.name, content)
@@ -116,9 +98,7 @@ object SafeDeleteRewriter {
                 }
             }
 
-            return SafeDeleteResult(deleted = false, reason = "Declaration not found: $className${methodName?.let { ".$it" } ?: ""}")
-        } finally {
-            Disposer.dispose(disposable)
+            SafeDeleteResult(deleted = false, reason = "Declaration not found: $className${methodName?.let { ".$it" } ?: ""}")
         }
     }
 

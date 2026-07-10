@@ -1,12 +1,5 @@
 package no.f12.codenavigator.navigation.refactor
 
-import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
-import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
-import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
-import org.jetbrains.kotlin.com.intellij.openapi.util.Disposer
-import org.jetbrains.kotlin.config.CommonConfigurationKeys
-import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
@@ -56,17 +49,7 @@ object PsiRenameParamRewriter {
             }
         }
 
-        val disposable = Disposer.newDisposable("psi-rename-param")
-        try {
-            val configuration = CompilerConfiguration().apply {
-                put(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY,
-                    PrintingMessageCollector(System.err, MessageRenderer.PLAIN_RELATIVE_PATHS, false))
-                put(CommonConfigurationKeys.MODULE_NAME, "rename-param-target")
-            }
-            val environment = KotlinCoreEnvironment.createForProduction(
-                disposable, configuration, EnvironmentConfigFiles.JVM_CONFIG_FILES,
-            )
-            val psiFactory = KtPsiFactory(environment.project)
+        return withKotlinPsiFactory("rename-param-target") { psiFactory ->
 
             val targetSimpleName = className.substringAfterLast(".")
             val targetPackage = className.substringBeforeLast(".", "")
@@ -144,9 +127,7 @@ object PsiRenameParamRewriter {
                 }
             }
 
-            return RenameResult(changes, cascadeCandidates.toList(), warnings)
-        } finally {
-            Disposer.dispose(disposable)
+            RenameResult(changes, cascadeCandidates.toList(), warnings)
         }
     }
 
@@ -367,11 +348,4 @@ object PsiRenameParamRewriter {
         return classPattern.containsMatchIn(content)
     }
 
-    private fun applyEdits(content: String, edits: List<TextEdit>): String {
-        var result = content
-        for (edit in edits.sortedByDescending { it.offset }) {
-            result = result.substring(0, edit.offset) + edit.replacement + result.substring(edit.offset + edit.length)
-        }
-        return result
-    }
 }
