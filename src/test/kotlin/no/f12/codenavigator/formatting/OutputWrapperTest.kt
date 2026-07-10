@@ -72,21 +72,21 @@ class OutputWrapperTest {
     }
 
     @Test
-    fun `emptyResult returns wrapped JSON object with empty hints for JSON format`() {
+    fun `emptyResult returns wrapped JSON object with message and empty hints for JSON format`() {
         val result = OutputWrapper.emptyResult(OutputFormat.JSON, "No results found.")
 
-        assertEquals("---CNAV_BEGIN---\n{\"results\":[],\"hints\":[]}\n---CNAV_END---", result)
+        assertEquals("---CNAV_BEGIN---\n{\"results\":[],\"message\":\"No results found.\",\"hints\":[]}\n---CNAV_END---", result)
     }
 
     @Test
-    fun `emptyResult returns wrapped JSON object with empty hints for LLM format`() {
+    fun `emptyResult returns wrapped JSON object with message and empty hints for LLM format`() {
         val result = OutputWrapper.emptyResult(OutputFormat.LLM, "No results found.")
 
-        assertEquals("---CNAV_BEGIN---\n{\"results\":[],\"hints\":[]}\n---CNAV_END---", result)
+        assertEquals("---CNAV_BEGIN---\n{\"results\":[],\"message\":\"No results found.\",\"hints\":[]}\n---CNAV_END---", result)
     }
 
     @Test
-    fun `emptyResult with hints returns JSON object with results and hints for JSON format`() {
+    fun `emptyResult with hints returns JSON object with results, message, and hints for JSON format`() {
         val result = OutputWrapper.emptyResult(
             OutputFormat.JSON,
             "No annotations found.",
@@ -94,13 +94,13 @@ class OutputWrapperTest {
         )
 
         assertEquals(
-            "---CNAV_BEGIN---\n{\"results\":[],\"hints\":[\"Use --methods=true to search method-level annotations.\"]}\n---CNAV_END---",
+            "---CNAV_BEGIN---\n{\"results\":[],\"message\":\"No annotations found.\",\"hints\":[\"Use --methods=true to search method-level annotations.\"]}\n---CNAV_END---",
             result,
         )
     }
 
     @Test
-    fun `emptyResult with hints returns JSON object with results and hints for LLM format`() {
+    fun `emptyResult with hints returns JSON object with results, message, and hints for LLM format`() {
         val result = OutputWrapper.emptyResult(
             OutputFormat.LLM,
             "No annotations found.",
@@ -108,7 +108,20 @@ class OutputWrapperTest {
         )
 
         assertEquals(
-            "---CNAV_BEGIN---\n{\"results\":[],\"hints\":[\"Hint one.\",\"Hint two.\"]}\n---CNAV_END---",
+            "---CNAV_BEGIN---\n{\"results\":[],\"message\":\"No annotations found.\",\"hints\":[\"Hint one.\",\"Hint two.\"]}\n---CNAV_END---",
+            result,
+        )
+    }
+
+    @Test
+    fun `emptyResult escapes backslashes and quotes in the message for JSON format`() {
+        val result = OutputWrapper.emptyResult(
+            OutputFormat.JSON,
+            """Cannot delete: pattern "C:\Users\test" not found.""",
+        )
+
+        assertEquals(
+            "---CNAV_BEGIN---\n{\"results\":[],\"message\":\"Cannot delete: pattern \\\"C:\\\\Users\\\\test\\\" not found.\",\"hints\":[]}\n---CNAV_END---",
             result,
         )
     }

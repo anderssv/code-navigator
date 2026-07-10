@@ -13,8 +13,14 @@ object OutputWrapper {
         when (format) {
             OutputFormat.TEXT, OutputFormat.DIFF -> if (hints.isEmpty()) textMessage else textMessage + "\n" + hints.joinToString("\n")
             OutputFormat.JSON, OutputFormat.LLM -> {
-                val hintsJson = hints.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" }
-                wrap("{\"results\":[],\"hints\":[$hintsJson]}", format)
+                // textMessage is often a dynamic, task-specific reason (e.g. SafeDelete's "Cannot
+                // delete: N usage(s) found") — dropping it here (as this used to) leaves a JSON/LLM
+                // consumer with no way to tell WHY there were no results. Escaping with the naive
+                // quote-only replace it used to use (not escapeJson) was also silently producing
+                // invalid JSON whenever textMessage/hints contained a backslash, e.g. a Windows path
+                // or a regex pattern.
+                val messageJson = "\"message\":\"${escapeJson(textMessage)}\""
+                wrap("{\"results\":[],$messageJson,\"hints\":${jsonStringArray(hints)}}", format)
             }
         }
 

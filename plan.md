@@ -8,11 +8,6 @@ Items grouped by functional area. Each item has:
 
 ## Bugs
 
-### cnavSafeDelete crashes with JSON parse error
-**PARKED** | **Value: high** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
-
-Not reproducible in v0.1.102. May have been fixed as a side-effect of other changes. Reopen if it recurs.
-
 ### cnavChangeSignature can't find suspend functions
 **REJECTED** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra, v0.1.97)
 
