@@ -6,15 +6,6 @@ Items grouped by functional area. Each item has:
 
 ---
 
-## Bugs
-
-### cnavChangeSignature can't find suspend functions
-**REJECTED** | **Value: medium** | **Effort: medium** | Source: field-test(bass-ra, v0.1.97)
-
-Already works — test exists and passes. Likely was a field-test environment issue.
-
----
-
 ## Multi-module support
 
 ### Full multi-module analysis — aggregate class dirs from all project modules
@@ -421,11 +412,6 @@ The intersection mode is more robust than weighted averaging on small/nested/pac
 
 Count `@Test`-annotated methods from bytecode, compare against JUnit XML results, flag the delta. Catches silently skipped tests (e.g., non-`Unit` return types).
 
-### `cnavTestCoverage` — per-test-class coverage proximity analysis
-**REJECTED** | **Value: low** | **Effort: high** | Source: internal
-
-Identify production classes only tested "at distance". Requires JaCoCo integration (TestExecutionListener + per-test exec files). High effort for specialized use case. JaCoCo integration scope is too large for the value. Reject — not worth the complexity.
-
 ### `cnavDiff` — structural diff between builds
 **PARKED** | **Value: low** | **Effort: medium** | Source: internal
 
@@ -595,45 +581,10 @@ Expand from single-hop blast radius into multi-signal impact predictor: direct c
 
 `ReportTask`/`ReportMojo` also echo the same rendered string across all three `when (format) { TEXT,DIFF -> output; JSON -> output; LLM -> output }` branches — the same shape as the `cnavRings` JSON gap above. Likely lower priority: `cnavReport` is a composite markdown aggregator of other tasks' output (which themselves may or may not have real JSON), so "real JSON for the composite report" is a bigger design question (aggregate the sub-results structurally, not their rendered text) rather than a quick formatter fix. Parked until `cnavRings`' JSON gap is addressed first, since Report includes Rings' output.
 
-### Review implementations for spread logic + shared lookup extraction
-**DONE** | **Value: medium** | **Effort: high** | Source: internal
-
-**Spread logic**: Several tasks span multiple concerns. Principle: orchestrator calls single-purpose tasks.
-- ~~`RenameMethodRewriter`/`RenameMethodEditor`: location finding + PSI editing separation~~ — **already done, verified by reading the code.** `RenameMethodRewriter.rename()` is a thin orchestrator: calls `RenameLocationFinder` (bytecode-based call-site/implementor finding) then delegates to `RenameMethodEditor` (PSI editing dispatch to Kotlin/Java rewriters). No further split needed.
-- ~~`MoveClassRewriter`: are import updating, content extraction, file writing reusable?~~ — **already done, verified by reading the code.** `MoveFileRewriter.move()` already delegates to `MoveClassRewriter.move(..., allowMultiClass = true)` rather than duplicating its logic — the reuse the bullet was asking about already exists.
-- ~~Formatter classes: some contain query logic belonging in builders~~ — **partially done.** Audited the 50 `*Formatter.kt` files in `src/core/kotlin` for `.filter`/`.sortedBy` combined with actual domain decisions (not presentation ordering). Found and fixed the two clearest cases, both genuine same-predicate duplication across multiple format functions:
-  - **`RingFormatter.format()` and `.formatJson()`** both independently recomputed `violations.filter { sourcePackage !in compositionRoots && targetPackage !in compositionRoots }` (byte-identical). Moved to `RingAssignment.reportableViolations` — a computed property next to the `violations`/`compositionRoots` fields it depends on. Turned out `RingDetector.detect()` already excludes composition-root-touching edges from `violations` at the source (line 91's `if (source in compositionRoots || target in compositionRoots) continue`), so this wasn't a live bug — `reportableViolations` and raw `violations` are always equal today. Still worth consolidating: it documents the invariant in one place instead of two copy-pasted predicates, and protects against a future `RingDetector` change silently breaking it. Also updated `RingsTask`/`RingsMojo`'s `--fail-on-violations` count to use the same property (was already consistent, now explicitly and verifiably so). New regression test proves the property's own filtering logic in isolation (constructs a `RingAssignment` directly with a violation touching a composition root) rather than relying only on `RingDetector`'s current behavior.
-  - **`TestCouplingFormatter`**'s three format functions (`formatText`/`formatDetailText`/`formatLlm`) each independently recomputed `violations.filter { verdictFor(it.testClass) != ADAPTER_TEST }` (byte-identical, 3x). Moved to `TestCouplingResult.actionableViolations`, next to the existing `verdictFor`/`confidenceFor` methods it composes with.
-  - Considered but left as-is (weaker case — selecting an already-precomputed flag for a specific display section, not deriving a new domain judgment): `EmergentRingFormatter`'s `isMixedRing` filter, `CyclesFormatter`'s `breaksycle` filter, `ExecutePlanFormatter`'s empty-step filter.
-
-**Shared lookup: done.** Class resolution and method finding were duplicated across ChangeSignatureRewriter, PsiRenamePropertyRewriter, SafeDeleteRewriter, PsiRenameParamRewriter, KotlinRenameMethodRewriter, RenameMethodEditor. Extracted to two new files in `navigation.refactor`:
-- `PsiRefactorSupport.kt` — `createDisposableKotlinEnvironment`/`withKotlinPsiFactory` (the identical Disposer+CompilerConfiguration+KotlinCoreEnvironment+KtPsiFactory boilerplate, previously copy-pasted verbatim in 6 files) and `applyEdits` (identical text-edit application, previously duplicated in 4 files).
-- `KotlinFqnSupport.kt` — `buildClassFqn`/`matchesFqn`/`fileReferencesClass`, previously duplicated near-identically in `PsiRenamePropertyRewriter` and `KotlinRenameMethodRewriter` (one redundant wrapper — `KotlinRenameMethodRewriter.fileReferencesClass` — was eliminated entirely since it just re-did what `isImportedOrSamePackage` already covered).
-
-`withKotlinPsiFactory` is `inline` so callers keep their existing early-`return` style (non-local return) without restructuring control flow. The two cached-lifecycle rewriters (`KotlinRenameMethodRewriter`, `JavaRenameMethodRewriter`, which persist their environment across a whole batch of files and dispose explicitly) use the raw `createDisposableKotlinEnvironment` instead of the scoped helper. `JavaRenameMethodRewriter`'s own FQN/import-matching logic operates on IntelliJ Java PSI types (`PsiClass`/`PsiJavaFile`), not Kotlin PSI, so it wasn't unified — left as a follow-up if Java PSI support grows. All ~30 pre-existing refactor tests passed unmodified (behavior-preserving); live-verified via `cnavRenameProperty`/`cnavRenameMethod --preview` in a scratch project.
-
-### Split JsonFormatter and LlmFormatter per-feature
-**DONE (split + dispatcher removed)** | **Value: medium** | **Effort: high** | Source: internal(v0.1.83)
-
-`JsonFormatter` (364 outgoing, 77 types, fanIn=261) and `LlmFormatter` were the highest-complexity classes. Split into per-feature `formatJson`/`formatLlm` methods living next to each feature's existing TEXT `format`, across 5 passes (DSM/Cycles/Rings pilot → usages → classinfo/relations → dsm-adjacent → analysis-group → the last 9 functions incl. call-tree rendering). Every pass used the same delegate pattern: signatures on `JsonFormatter`/`LlmFormatter` stayed unchanged and just called the new per-feature method, so none of the ~40 existing Task/Mojo/test call sites needed to change during the split, and every pass was verified behavior-preserving by the full existing test suite passing unmodified. Shared JSON-building primitives (`formatting/JsonBuilder.kt`) and the LLM `withInterpretation` helper (`formatting/LlmFormatting.kt`) let per-feature formatters reuse them without duplicating string-escaping logic. Along the way: deleted a handful of exact-duplicate private helpers found only because the code was being moved anyway (`LlmFormatter`'s own copy of `appendDisambiguationHint`, already in `UsageFormatter`).
-
-Once every function was a one-liner, the dispatcher layer itself was removed: `JsonFormatter.kt`/`LlmFormatter.kt` deleted entirely, and all ~65 call sites (30 Gradle Tasks, 29 Maven Mojos, 2 core files, 5 test files) repointed at the per-feature formatters' `formatJson`/`formatLlm` directly via a mechanical regex-based rewrite script. Verified with `compileKotlin`, `compileTestKotlin`, the full test suite, and `mvnw compile`, all passing unmodified.
-
 ### Potentially dead code in cnav's own codebase
 **PARKED** | **Value: medium** | **Effort: low** | Source: internal
 
 Self-analysis found: `CallGraphCache.build()`, `ClassIndexCache.build()`, `InterfaceRegistryCache.build()`, `SymbolIndexCache.build()`, `UsageScanner.scan()`, various `FileCache` methods. Investigate if truly dead or called via dispatch.
-
-### Test suite health
-**DONE (all 3)** | **Value: medium** | **Effort: medium** | Source: internal
-
-- ~~Cache KotlinParser in rewriter tests~~ — **superseded by a real fix: batch `cnavMovePackage` into one parse.** Caching the built `KotlinParser` object gave zero measured benefit (6.5s → 6.7-6.9s, within noise) — the real cost is inside `.parse()` itself, not parser construction. The actual root cause: `cnavMovePackage`/`cnavExecutePlan` submitted one `MoveClassWorkAction` (and one full-project `parseKotlinSources` re-parse) per class being moved, sequentially, with no explicit disposal between calls — same root shape as the documented metaspace `OutOfMemoryError` on 5+ class batches. Fixed via `MoveClassRewriter.moveBatch()`: parses once, runs the "simple" moves (single class per file, standard filename) through one `CompositeRecipe` instead of N independent `ChangeType` runs. Wired into `cnavMovePackage` (`MovePackageTask`/`MovePackageMojo`, plus a new `MoveBatchWorkAction` on the Gradle side) — one `WorkAction` submission for the whole package move instead of one per class. `cnavExecutePlan` intentionally left unbatched (arbitrary/possibly cross-package moves without the "all independent siblings" guarantee a uniform package move has).
-
-  Two real correctness issues surfaced along the way, both fixed before shipping:
-  - **`CompositeRecipe` corrupts a file's package declaration when two of its constituent `ChangeType` recipes both touch that file** — verified with a standalone prototype (two classes in one file, both renamed: package line came out as `package foo.<error>`) before writing any production code. So genuine multi-class files (2+ *requested* classes declared in one file) are detected and routed through the existing unbatched per-class path instead of the composite recipe; Kt facades too. Only the common case (each class in its own file) goes through `CompositeRecipe`.
-  - **Sibling-import bug, caught live in a scratch project, not by unit tests**: when class A implicitly references co-located classes B and C (same package, no import needed) and A/B/C all move together in one batch, the existing `addMissingImportsForSiblings` logic (unchanged, reused as-is) added `import oldPackage.B` — pointing at a package that no longer contains B once B's own move applied. The unbatched sequential code never hit this because each move re-parsed from disk, so a later step's consumer-import-rewrite pass would "catch" and fix an earlier step's stale import; batching removed that safety net. Fixed by having `moveBatch` check, per sibling, whether it's *also* moving in the same batch — same target package → skip the import entirely (stays implicit); different target package → import from *its own* new package, not the old one. Two regression tests (`MoveClassRewriterBatchTest.kt`) lock this in, plus 9 other batch tests (independent classes, cross-referencing classes, multi-class-file fallback, Kt-facade fallback, not-found handling, disk writes, preview mode). Live-verified end-to-end with a real scratch Gradle project — moved 3 cross-referencing classes via `cnavMovePackage`, confirmed the *destination* project actually compiles afterward, not just that the tool ran without error.
-- ~~Add `FieldExtractor` tests~~ — **done.** 6 tests added (`FieldExtractorTest.kt`) covering field extraction, `INSTANCE` field exclusion, empty classes, multi-class/multi-directory scans, and missing directories. Coverage 0% → 99% instructions (112/113; only an anonymous ASM `ClassVisitor` still shows a jacoco-lambda-attribution artifact at 0%, despite 100% line coverage).
-- ~~Cover `LlmFormatter`/`JsonFormatter` uncovered branches~~ — **done.** jacoco HTML report showed 9 fully-untested functions in `JsonFormatter` (`formatTypeHierarchy`, `formatDuplicates`, `formatVolatility`, `formatAge`, `formatAuthors`, `formatChangedSince`, `formatBalance`, `formatCohesion`, `formatMoveSuggestions`) and the same 5 in `LlmFormatter` minus the analysis-only ones. Added ~17 new tests across both files. `JsonFormatter`: 78%→99% instruction coverage, 100% line coverage. `LlmFormatter`: 78%→91% instruction coverage, 96% line coverage. Remaining 0%-covered entries in the jacoco CSV (`formatInterfaces`, `formatPackageDeps`, `formatAnnotations` nested lambdas) are a known jacoco/Kotlin lambda-attribution quirk — the same lines show 100% line coverage and are exercised by existing tests with real assertion data, so not further pursued.
 
 ### Migrate MoveClassRewriter from OpenRewrite to PSI
 **PARKED** | **Value: medium** | **Effort: high** | Source: internal
