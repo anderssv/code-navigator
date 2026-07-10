@@ -293,6 +293,7 @@ object TaskRegistry {
     val AFFINITY_THRESHOLD = ParamDef("threshold", "<N>", "Max number of consumer domains to still count as single-owner", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
     val RING_MODE = ParamDef("mode", "emergent|package", "Analysis mode: emergent (default, assigns rings per class based on import shape — best for package-by-feature) or package (assigns rings per package by topological depth)", flag = false, defaultValue = "emergent", enhancePattern = false, type = ParamType.STRING)
     val BOOTSTRAP_CONFIG = ParamDef("bootstrap-config", "true", "Generate a starting cnav-config.json based on emergent ring analysis — best-effort suggestions meant to be reviewed and tweaked before use", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
+    val CONVERGE_MODE = ParamDef("mode", "intersect|risk", "Analysis mode: intersect (default, cross-references cycles/rings/change-coupling for a ranked ACT NOW/LATENT/MISSING ABSTRACTION list) or risk (change-frequency x complexity x coupling ranking)", flag = false, defaultValue = "intersect", enhancePattern = false, type = ParamType.STRING)
 
     val FORMAT_PARAMS = listOf(FORMAT)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
@@ -1033,6 +1034,19 @@ object TaskRegistry {
         ),
     )
 
+    val CONVERGE = TaskDef(
+        goal = "converge",
+        description = "Composite architectural signal: intersect mode cross-references cycles/rings/change-coupling into a ranked ACT NOW/LATENT/MISSING ABSTRACTION list; risk mode ranks classes by change-frequency x complexity x coupling",
+        params = FORMAT_PARAMS + listOf(CONVERGE_MODE, PACKAGE_FILTER, AFTER, MIN_SHARED_REVS, MIN_COUPLING, MAX_CHANGESET_SIZE, NO_FOLLOW, TOP) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.COMPOSITE,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(CONVERGE_MODE to "risk")),
+            UsageExample(listOf(PACKAGE_FILTER to "com.example.domain")),
+        ),
+    )
+
     val ALL_TASKS: List<TaskDef> = listOf(
         LIST_CLASSES,
         FIND_CLASS,
@@ -1072,6 +1086,7 @@ object TaskRegistry {
         RINGS,
         TYPE_AFFINITY,
         REPORT,
+        CONVERGE,
         SIZE,
         DUPLICATES,
         TEST_COUPLING,

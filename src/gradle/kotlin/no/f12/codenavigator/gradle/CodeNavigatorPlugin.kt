@@ -169,6 +169,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "rings" to RingsTask::class.java,
             "type-affinity" to TypeAffinityTask::class.java,
             "report" to ReportTask::class.java,
+            "converge" to ConvergeTask::class.java,
             "size" to SizeTask::class.java,
             "duplicates" to DuplicatesTask::class.java,
             "test-coupling" to TestCouplingTask::class.java,

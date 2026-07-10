@@ -392,17 +392,6 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 
 ## Standalone new tasks
 
-### `cnavConverge` — composite architectural signal (intersect + risk scoring)
-**ACTIVE** | **Value: high** | **Effort: high** | Source: field-test(bass-ra)
-
-Two analysis modes producing ranked problem lists:
-
-**Mode 1 — Intersection** (primary): Run cnavCycles (structure), cnavRings (layering), cnavCoupling (git). Report only edges where ≥2 independent views agree. Classify: ACT NOW (cycle ∩ high-coupling), LATENT (cycle ∩ low-coupling), MISSING ABSTRACTION (clean ∩ high-coupling), IGNORE.
-
-**Mode 2 — Risk scoring** (secondary): `risk = change_frequency × complexity × coupling_degree`. Combines Hotspot, Churn, and Complexity builders. Low effort — all inputs exist. Available via `cnavConverge --mode=risk` or standalone when only risk ordering is needed.
-
-The intersection mode is more robust than weighted averaging on small/nested/package-by-feature codebases. Reference: bass-ra `architecture-signal-recipe.md`. Needs scope alignment (coupling is path-based, not source-set-based — see cnavCoupling --scope item).
-
 ### `cnavTestHealth` — verify all test methods actually ran
 **ACTIVE** | **Value: medium** | **Effort: medium** | Source: user-feedback
 

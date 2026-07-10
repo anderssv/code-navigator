@@ -349,9 +349,9 @@ class HelpTextTest {
     fun `strength task section shows top default as all instead of 50`() {
         val text = HelpText.generate(BuildTool.GRADLE)
         val strengthTask = TaskRegistry.STRENGTH.taskName(BuildTool.GRADLE)
-        val agentHelpTask = TaskRegistry.AGENT_HELP.taskName(BuildTool.GRADLE)
+        val cohesionTask = TaskRegistry.COHESION.taskName(BuildTool.GRADLE)
         val strengthSection = text.substringAfter(strengthTask)
-            .substringBefore(agentHelpTask)
+            .substringBefore(cohesionTask)
 
         assertTrue(
             strengthSection.contains("default: all"),
