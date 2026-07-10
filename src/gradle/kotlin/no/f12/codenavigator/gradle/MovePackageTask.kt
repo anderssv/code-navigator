@@ -79,26 +79,25 @@ abstract class MovePackageTask @Inject constructor(
             classpath.from(openRewriteClasspath)
         }
 
-        val stepResults = mutableListOf<ExecutePlanStepResult>()
-
-        for (fqcn in classesInPackage) {
+        val moves = classesInPackage.map { fqcn ->
             val simpleName = ClassName(fqcn).simpleName()
-            val to = "${config.toPackage}.$simpleName"
-            val resultFile = temporaryDir.resolve("move-package-${stepResults.size}.json")
+            fqcn to "${config.toPackage}.$simpleName"
+        }
+        val resultFile = temporaryDir.resolve("move-package-batch.json")
 
-            workQueue.submit(MoveClassWorkAction::class.java) {
-                this.from.set(fqcn)
-                this.to.set(to)
-                this.preview.set(config.preview)
-                this.sourceRoots.set(sourceRootPaths)
-                this.classpathDirs.set(classpathDirs)
-                this.resultFile.set(resultFile)
-            }
+        workQueue.submit(MoveBatchWorkAction::class.java) {
+            this.froms.set(moves.map { it.first })
+            this.tos.set(moves.map { it.second })
+            this.preview.set(config.preview)
+            this.sourceRoots.set(sourceRootPaths)
+            this.classpathDirs.set(classpathDirs)
+            this.resultFile.set(resultFile)
+        }
+        workQueue.await()
 
-            workQueue.await()
-
-            val result = MoveClassResult.fromJson(resultFile.readText())
-            stepResults.add(ExecutePlanStepResult(from = fqcn, to = to, result = result))
+        val results = MoveClassResult.listFromJson(resultFile.readText())
+        val stepResults = moves.zip(results).map { (move, result) ->
+            ExecutePlanStepResult(from = move.first, to = move.second, result = result)
         }
 
         val planResult = ExecutePlanResult(steps = stepResults, preview = config.preview)

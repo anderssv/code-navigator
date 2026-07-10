@@ -3,6 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
+import no.f12.codenavigator.navigation.refactor.BatchMoveRequest
 import no.f12.codenavigator.navigation.refactor.ExecutePlanFormatter
 import no.f12.codenavigator.navigation.refactor.ExecutePlanResult
 import no.f12.codenavigator.navigation.refactor.ExecutePlanStepResult
@@ -63,21 +64,20 @@ open class MovePackageMojo : AbstractMojo() {
 
         val classpath = classesRoots.map { it.toPath() }
 
-        val stepResults = mutableListOf<ExecutePlanStepResult>()
-
-        for (fqcn in classesInPackage) {
+        val moves = classesInPackage.map { fqcn ->
             val simpleName = ClassName(fqcn).simpleName()
-            val to = "${config.toPackage}.$simpleName"
+            BatchMoveRequest(fqcn, "${config.toPackage}.$simpleName")
+        }
 
-            val result = MoveClassRewriter.move(
-                sourceRoots = sourceRoots,
-                className = fqcn,
-                newFqcn = to,
-                classpath = classpath,
-                preview = config.preview,
-            )
+        val results = MoveClassRewriter.moveBatch(
+            sourceRoots = sourceRoots,
+            moves = moves,
+            classpath = classpath,
+            preview = config.preview,
+        )
 
-            stepResults.add(ExecutePlanStepResult(from = fqcn, to = to, result = result))
+        val stepResults = moves.zip(results).map { (move, result) ->
+            ExecutePlanStepResult(from = move.className, to = move.newFqcn, result = result)
         }
 
         val planResult = ExecutePlanResult(steps = stepResults, preview = config.preview)

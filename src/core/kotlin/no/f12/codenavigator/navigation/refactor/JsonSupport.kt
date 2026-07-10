@@ -35,6 +35,12 @@ fun parseJsonObject(json: String): Map<String, Any?> {
     return result as Map<String, Any?>
 }
 
+fun parseJsonObjectArray(json: String): List<Map<String, Any?>> {
+    val (result, _) = parseValue(json.trim(), 0)
+    @Suppress("UNCHECKED_CAST")
+    return (result as List<Any?>).map { it as Map<String, Any?> }
+}
+
 private fun parseValue(json: String, pos: Int): Pair<Any?, Int> {
     val i = skipWs(json, pos)
     return when {

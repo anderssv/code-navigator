@@ -1,11 +1,15 @@
 package no.f12.codenavigator.navigation.refactor
 
+import org.openrewrite.config.CompositeRecipe
 import org.openrewrite.internal.InMemoryLargeSourceSet
 import org.openrewrite.java.ChangeType
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+
+/** One requested class move for [MoveClassRewriter.moveBatch]. */
+data class BatchMoveRequest(val className: String, val newFqcn: String)
 
 data class MoveClassResult(
     val changes: List<RenameChange>,
@@ -25,8 +29,15 @@ data class MoveClassResult(
     }
 
     companion object {
-        fun fromJson(json: String): MoveClassResult {
-            val obj = parseJsonObject(json)
+        fun fromJson(json: String): MoveClassResult = fromJsonObj(parseJsonObject(json))
+
+        fun listToJson(results: List<MoveClassResult>): String =
+            results.joinToString(",", "[", "]") { it.toJson() }
+
+        fun listFromJson(json: String): List<MoveClassResult> =
+            parseJsonObjectArray(json).map { fromJsonObj(it) }
+
+        private fun fromJsonObj(obj: Map<String, Any?>): MoveClassResult {
             @Suppress("UNCHECKED_CAST")
             val warnings = (obj["warnings"] as? List<String>) ?: emptyList()
             return MoveClassResult(
@@ -63,6 +74,189 @@ object MoveClassRewriter {
             moveKtFacade(className, newFqcn, ps, sourceRoots, preview)
         } else {
             moveClass(className, newFqcn, ps, sourceRoots, preview, allowMultiClass)
+        }
+    }
+
+    /**
+     * Moves many classes in one pass: parses [sourceRoots] once and runs the "simple" moves
+     * (single class per file, standard filename) through one [CompositeRecipe] instead of one
+     * `ChangeType` run per class. This is what makes `cnavMovePackage`/`cnavExecutePlan`
+     * O(1) parses instead of O(N) — each parse loads the whole Kotlin compiler frontend, which
+     * dominates the cost of a batch move (see plan.md "Test suite health" for the measurement
+     * that ruled out just caching the parser object).
+     *
+     * `CompositeRecipe` only composes correctly when the constituent recipes touch *different*
+     * files — two `ChangeType` recipes that both rewrite the same file's package declaration in
+     * one composed run corrupt it (verified empirically: produces `package foo.<error>`). So
+     * Kt facades and genuine multi-class files (two+ requested classes declared in the same file)
+     * are routed through the existing single-class path instead, unchanged, using the shared
+     * parse. Everything else — the common case — goes through the batched recipe.
+     */
+    fun moveBatch(
+        sourceRoots: List<File>,
+        moves: List<BatchMoveRequest>,
+        classpath: List<Path> = emptyList(),
+        preview: Boolean = false,
+    ): List<MoveClassResult> {
+        if (moves.isEmpty()) return emptyList()
+
+        val sourceFiles = collectSourceFiles(sourceRoots)
+        if (sourceFiles.isEmpty()) return moves.map { MoveClassResult(emptyList()) }
+        val ps = parseKotlinSources(sourceRoots, classpath)
+        if (ps.sources.isEmpty()) return moves.map { MoveClassResult(emptyList()) }
+
+        val results = arrayOfNulls<MoveClassResult>(moves.size)
+        val batchable = mutableListOf<BatchableMove>()
+
+        for ((index, req) in moves.withIndex()) {
+            if (isKtFacadeName(req.className)) {
+                results[index] = moveKtFacade(req.className, req.newFqcn, ps, sourceRoots, preview)
+                continue
+            }
+
+            val oldPackage = req.className.substringBeforeLast(".")
+            val simpleClassName = req.className.substringAfterLast(".")
+            val newPackage = req.newFqcn.substringBeforeLast(".")
+            val targetName = req.newFqcn.substringAfterLast(".")
+
+            var movedFilePath: String? = null
+            var newFilePath: String? = null
+            for (sourceFile in ps.sources) {
+                val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
+                if (isTargetClassFile(filePath, oldPackage, simpleClassName)) {
+                    movedFilePath = filePath
+                    newFilePath = computeNewFilePath(filePath, oldPackage, simpleClassName, newPackage, targetName, sourceRoots)
+                    break
+                }
+            }
+            if (movedFilePath == null) {
+                for (sourceFile in ps.sources) {
+                    val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
+                    val content = sourceFile.printAll()
+                    if (isInPackage(content, oldPackage) && declaresClass(content, simpleClassName)) {
+                        movedFilePath = filePath
+                        val fileName = File(filePath).nameWithoutExtension
+                        newFilePath = computeNewFilePath(filePath, oldPackage, fileName, newPackage, fileName, sourceRoots)
+                        break
+                    }
+                }
+            }
+
+            if (movedFilePath == null) {
+                results[index] = MoveClassResult(emptyList())
+                continue
+            }
+
+            val movedSource = ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == movedFilePath }?.printAll()
+            val allClasses = movedSource?.let { extractDeclaredClassNames(it) } ?: emptyList()
+            if (allClasses.size > 1) {
+                // Genuine multi-class file: two ChangeType recipes in one CompositeRecipe run would
+                // corrupt this file's package declaration. Fall back to the existing per-class path,
+                // which handles it via independent recipe runs + a manual package-line replace.
+                results[index] = moveClass(req.className, req.newFqcn, ps, sourceRoots, preview, allowMultiClass = false)
+                continue
+            }
+
+            batchable.add(BatchableMove(index, req.className, req.newFqcn, oldPackage, simpleClassName, newPackage, movedFilePath, newFilePath))
+        }
+
+        if (batchable.isNotEmpty()) {
+            runBatchedMoves(ps, batchable, preview, results)
+        }
+
+        return results.map { it ?: MoveClassResult(emptyList()) }
+    }
+
+    private data class BatchableMove(
+        val index: Int,
+        val className: String,
+        val newFqcn: String,
+        val oldPackage: String,
+        val simpleClassName: String,
+        val newPackage: String,
+        val movedFilePath: String,
+        val newFilePath: String?,
+    )
+
+    private fun runBatchedMoves(
+        ps: ParsedSources,
+        batchable: List<BatchableMove>,
+        preview: Boolean,
+        results: Array<MoveClassResult?>,
+    ) {
+        val recipeList = batchable.map { ChangeType(it.className, it.newFqcn, null) }
+        val composite = CompositeRecipe(recipeList)
+        val sourceSet = InMemoryLargeSourceSet(ps.sources)
+        val recipeRun = composite.run(sourceSet, ps.ctx)
+
+        val sharedChanges = mutableMapOf<String, RenameChange>()
+        for (result in recipeRun.changeset.allResults) {
+            val before = result.before?.printAll() ?: continue
+            val after = result.after?.printAll() ?: continue
+            if (before == after) continue
+            val filePath = resolveOriginalPath(result.before!!, ps.sourceRoots)
+            sharedChanges[filePath] = RenameChange(filePath, before, after)
+        }
+
+        for (move in batchable) {
+            val allSiblingNames = findSiblingClassNames(ps, move.oldPackage, move.simpleClassName)
+
+            // A "sibling" might itself be moving elsewhere in this same batch. If it's moving to
+            // the SAME package as this class, it stays same-package — no import needed at all. If
+            // it's moving to a DIFFERENT package, point the import there instead of at oldPackage,
+            // which will no longer contain it once its own move applies.
+            val packageOverrides = mutableMapOf<String, String>()
+            val staysImplicit = mutableSetOf<String>()
+            for (sibling in allSiblingNames) {
+                val coMoving = batchable.firstOrNull { it.oldPackage == move.oldPackage && it.simpleClassName == sibling }
+                if (coMoving != null) {
+                    if (coMoving.newPackage == move.newPackage) staysImplicit.add(sibling) else packageOverrides[sibling] = coMoving.newPackage
+                }
+            }
+            val siblingNames = allSiblingNames - staysImplicit
+
+            val movedContent = sharedChanges[move.movedFilePath]?.after
+                ?: ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == move.movedFilePath }?.printAll()
+            if (movedContent != null) {
+                val updatedContent = addMissingImportsForSiblings(movedContent, move.oldPackage, siblingNames, packageOverrides)
+                if (updatedContent != movedContent) {
+                    val originalContent = sharedChanges[move.movedFilePath]?.before ?: movedContent
+                    sharedChanges[move.movedFilePath] = RenameChange(move.movedFilePath, originalContent, updatedContent)
+                }
+            }
+
+            val movedFileSource = ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == move.movedFilePath }?.printAll()
+            if (movedFileSource != null) {
+                val topLevelNames = extractTopLevelNames(movedFileSource)
+                if (topLevelNames.isNotEmpty()) {
+                    updateTopLevelImportsInConsumersMap(ps, sharedChanges, move.oldPackage, move.newPackage, move.movedFilePath, topLevelNames)
+                }
+            }
+        }
+
+        for (move in batchable) {
+            val relevantPaths = mutableSetOf(move.movedFilePath)
+            val oldImport = "import ${move.oldPackage}.${move.simpleClassName}"
+            for ((filePath, change) in sharedChanges) {
+                if (filePath == move.movedFilePath) continue
+                if (change.before.contains(oldImport)) relevantPaths.add(filePath)
+            }
+            val changesForThisMove = sharedChanges.filterKeys { it in relevantPaths }.values.toList()
+            val warnings = targetFileWarnings(move.newFilePath, move.movedFilePath)
+            results[move.index] = MoveClassResult(changesForThisMove, move.movedFilePath, move.newFilePath, warnings)
+        }
+
+        if (!preview) {
+            for (change in sharedChanges.values) {
+                File(change.filePath).writeText(change.after)
+            }
+            for (move in batchable) {
+                if (move.newFilePath != null && move.movedFilePath != move.newFilePath) {
+                    val newFile = File(move.newFilePath)
+                    newFile.parentFile.mkdirs()
+                    Files.move(File(move.movedFilePath).toPath(), newFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                }
+            }
         }
     }
 
@@ -522,7 +716,18 @@ object MoveClassRewriter {
         return siblings
     }
 
-    internal fun addMissingImportsForSiblings(content: String, oldPackage: String, siblingNames: Set<String>): String {
+    /**
+     * [packageOverrides] lets a caller redirect specific sibling names to a package other than
+     * [oldPackage] — needed by [runBatchedMoves], where a "sibling" may itself be moving
+     * elsewhere in the same batch, so importing it from [oldPackage] would point at a package
+     * that no longer contains it.
+     */
+    internal fun addMissingImportsForSiblings(
+        content: String,
+        oldPackage: String,
+        siblingNames: Set<String>,
+        packageOverrides: Map<String, String> = emptyMap(),
+    ): String {
         if (siblingNames.isEmpty()) return content
 
         // Find which sibling names are referenced in the file (as word boundaries, not in imports/package lines)
@@ -532,7 +737,8 @@ object MoveClassRewriter {
             .toSet()
 
         val referencedSiblings = siblingNames.filter { name ->
-            val alreadyImported = existingImports.contains("$oldPackage.$name")
+            val targetPackage = packageOverrides[name] ?: oldPackage
+            val alreadyImported = existingImports.contains("$targetPackage.$name")
             if (alreadyImported) return@filter false
             // Check if the name appears as a word boundary (type reference) in non-import, non-package lines
             val pattern = Regex("""\b${Regex.escape(name)}\b""")
@@ -544,7 +750,7 @@ object MoveClassRewriter {
 
         if (referencedSiblings.isEmpty()) return content
 
-        val newImports = referencedSiblings.map { "import $oldPackage.$it" }
+        val newImports = referencedSiblings.map { "import ${packageOverrides[it] ?: oldPackage}.$it" }
 
         // Insert imports after the package declaration (and existing imports)
         val lines = content.lines().toMutableList()
@@ -602,6 +808,43 @@ object MoveClassRewriter {
                 } else {
                     changes.add(RenameChange(filePath, originalContent, updatedContent))
                 }
+            }
+        }
+    }
+
+    /** Map-keyed twin of [updateTopLevelImportsInConsumers], for [runBatchedMoves]'s shared changes map. */
+    private fun updateTopLevelImportsInConsumersMap(
+        ps: ParsedSources,
+        changes: MutableMap<String, RenameChange>,
+        oldPackage: String,
+        newPackage: String,
+        movedFilePath: String,
+        topLevelNames: Set<String>,
+    ) {
+        val oldImportPrefix = "import $oldPackage."
+        for (sourceFile in ps.sources) {
+            val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
+            if (filePath == movedFilePath) continue
+
+            val currentContent = changes[filePath]?.after ?: sourceFile.printAll()
+            if (!currentContent.contains(oldImportPrefix)) continue
+
+            val updatedContent = currentContent.lines().joinToString("\n") { line ->
+                if (line.startsWith(oldImportPrefix)) {
+                    val importedName = line.removePrefix(oldImportPrefix).trimEnd()
+                    if (importedName in topLevelNames) {
+                        line.replace(oldImportPrefix, "import $newPackage.")
+                    } else {
+                        line
+                    }
+                } else {
+                    line
+                }
+            }
+
+            if (updatedContent != currentContent) {
+                val originalContent = changes[filePath]?.before ?: sourceFile.printAll()
+                changes[filePath] = RenameChange(filePath, originalContent, updatedContent)
             }
         }
     }
