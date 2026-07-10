@@ -535,4 +535,50 @@ class UsageFormatterTest {
         assertTrue(json.contains("\"interfaceTypes\""), "Should include interfaceTypes")
         assertTrue(json.contains("com.example.Target"), "Should include interface type")
     }
+
+    // --- Direct calls to UsageFormatter's JSON/LLM methods (moved here from JsonFormatter/LlmFormatter) ---
+
+    @Test
+    fun `UsageFormatter formatJson matches JsonFormatter formatUsages`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+        )
+
+        assertEquals(JsonFormatter.formatUsages(usages), UsageFormatter.formatJson(usages))
+    }
+
+    @Test
+    fun `UsageFormatter formatLlm matches LlmFormatter formatUsages`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+        )
+
+        assertEquals(LlmFormatter.formatUsages(usages), UsageFormatter.formatLlm(usages))
+    }
+
+    @Test
+    fun `UsageFormatter formatCollapsedJson matches JsonFormatter formatCollapsedUsages`() {
+        val collapsed = listOf(
+            CollapsedUsage(ClassName("com.example.Caller"), "doWork", "Caller.kt", ClassName("com.example.Target"), setOf("instantiation"), SourceSet.MAIN),
+        )
+
+        assertEquals(JsonFormatter.formatCollapsedUsages(collapsed), UsageFormatter.formatCollapsedJson(collapsed))
+    }
+
+    @Test
+    fun `UsageFormatter formatSummaryLlm matches LlmFormatter formatUsagesSummary`() {
+        val usages = listOf(
+            UsageSite(ClassName("com.example.A"), "a", "A.kt", ClassName("com.example.Target"), "process", "()V", UsageKind.METHOD_CALL, null),
+        )
+
+        assertEquals(LlmFormatter.formatUsagesSummary(usages), UsageFormatter.formatSummaryLlm(usages))
+    }
+
+    @Test
+    fun `UsageFormatter formatSmartUsagesJson matches JsonFormatter formatSmartUsages`() {
+        assertEquals(
+            JsonFormatter.formatSmartUsages(smartResult(), smartCollapsed()),
+            UsageFormatter.formatSmartUsagesJson(smartResult(), smartCollapsed()),
+        )
+    }
 }

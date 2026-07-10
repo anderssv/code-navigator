@@ -38,6 +38,7 @@ import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyResult
 import no.f12.codenavigator.navigation.relations.callgraph.CollapsedUsage
 import no.f12.codenavigator.navigation.relations.callgraph.SmartUsageResult
+import no.f12.codenavigator.navigation.relations.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.relations.callgraph.UsageSite
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.relations.callgraph.AnnotationTag
@@ -146,51 +147,14 @@ object LlmFormatter {
         churn.joinToString("\n") { "${it.file} added=${it.added} deleted=${it.deleted} commits=${it.commits}" }
             .withInterpretation(CHURN_INTERPRETATION)
 
-    fun formatUsages(usages: List<UsageSite>): String =
-        usages.sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))
-            .joinToString("\n") {
-                val sourceSetTag = it.sourceSet?.let { ss -> " [${ss.label}]" } ?: ""
-                "${it.callerClass}.${it.callerMethod} -> ${it.targetOwner}.${it.targetName}${it.targetDescriptor} ${it.kind.name.lowercase()} ${it.sourceFile}$sourceSetTag"
-            }
+    fun formatUsages(usages: List<UsageSite>): String = UsageFormatter.formatLlm(usages)
 
-    fun formatUsagesSummary(usages: List<UsageSite>): String =
-        usages.groupBy { it.sourceFile }
-            .toSortedMap()
-            .entries
-            .joinToString("\n") { (sourceFile, sites) -> "$sourceFile ${sites.size}" }
+    fun formatUsagesSummary(usages: List<UsageSite>): String = UsageFormatter.formatSummaryLlm(usages)
 
-    fun formatCollapsedUsages(usages: List<CollapsedUsage>): String =
-        usages.joinToString("\n") { u ->
-            val sourceSetTag = u.sourceSet?.let { " [${it.label}]" } ?: ""
-            "${u.callerClass}.${u.callerMethod} -> ${u.targetOwner} ${u.kinds.sorted().joinToString(",")} ${u.sourceFile}$sourceSetTag"
-        }
+    fun formatCollapsedUsages(usages: List<CollapsedUsage>): String = UsageFormatter.formatCollapsedLlm(usages)
 
-    fun formatSmartUsages(result: SmartUsageResult, collapsedUsages: List<CollapsedUsage>): String = buildString {
-        appendDisambiguationHint(result)
-        if (result.implementations.isNotEmpty()) {
-            result.implementations.forEach { impl ->
-                appendLine("[impl] ${impl.className} ${impl.sourceFile}")
-            }
-        }
-        collapsedUsages.forEach { u ->
-            val sourceSetTag = u.sourceSet?.let { " [${it.label}]" } ?: ""
-            appendLine("[ref] ${u.callerClass}.${u.callerMethod} -> ${u.targetOwner} ${u.kinds.sorted().joinToString(",")} ${u.sourceFile}$sourceSetTag")
-        }
-    }.trimEnd()
-
-    private fun StringBuilder.appendDisambiguationHint(result: SmartUsageResult) {
-        if (result.matchedTypes.size > 1) {
-            val typeLabels = result.matchedTypes.sorted().joinToString(", ") { type ->
-                val label = type.toString()
-                if (type in result.interfaceTypes) "$label (interface)" else label
-            }
-            appendLine("[matched] $typeLabels")
-            val firstInterface = result.matchedTypes.filter { it in result.interfaceTypes }.minOrNull()
-            if (firstInterface != null) {
-                appendLine("[hint] For exact match, use FQN: --type=$firstInterface / -Dtype=$firstInterface")
-            }
-        }
-    }
+    fun formatSmartUsages(result: SmartUsageResult, collapsedUsages: List<CollapsedUsage>): String =
+        UsageFormatter.formatSmartUsagesLlm(result, collapsedUsages)
 
     fun formatRank(ranked: List<RankedType>): String =
         ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }

@@ -39,6 +39,7 @@ import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeInfo
 import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyResult
 import no.f12.codenavigator.navigation.relations.callgraph.CollapsedUsage
 import no.f12.codenavigator.navigation.relations.callgraph.SmartUsageResult
+import no.f12.codenavigator.navigation.relations.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.relations.callgraph.UsageSite
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
@@ -226,54 +227,14 @@ object JsonFormatter {
     fun formatDsmCycles(matrix: DsmMatrix, cycleFilter: Pair<PackageName, PackageName>? = null): String =
         DsmFormatter.formatCyclesJson(matrix, cycleFilter)
 
-    fun formatUsages(usages: List<UsageSite>): String =
-        jsonArray(usages.sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))) { u ->
-            jsonObject(
-                "callerClass" to u.callerClass.toString(),
-                "callerMethod" to u.callerMethod,
-                "sourceFile" to u.sourceFile,
-                "targetOwner" to u.targetOwner.toString(),
-                "targetMethod" to u.targetName,
-                "targetDescriptor" to u.targetDescriptor,
-                "kind" to u.kind.name.lowercase(),
-                "sourceSet" to u.sourceSet?.label,
-            )
-        }
+    fun formatUsages(usages: List<UsageSite>): String = UsageFormatter.formatJson(usages)
 
-    fun formatUsagesSummary(usages: List<UsageSite>): String {
-        val sorted = usages.groupBy { it.sourceFile }.toSortedMap().entries.toList()
-        return jsonArray(sorted) { (sourceFile, sites) ->
-            jsonObject(
-                "sourceFile" to sourceFile,
-                "referenceCount" to sites.size,
-            )
-        }
-    }
+    fun formatUsagesSummary(usages: List<UsageSite>): String = UsageFormatter.formatSummaryJson(usages)
 
-    fun formatCollapsedUsages(usages: List<CollapsedUsage>): String =
-        jsonArray(usages) { u ->
-            jsonObject(
-                "callerClass" to u.callerClass.toString(),
-                "callerMethod" to u.callerMethod,
-                "sourceFile" to u.sourceFile,
-                "targetOwner" to u.targetOwner.toString(),
-                "kinds" to JsonRaw(jsonStringArray(u.kinds.sorted())),
-                "sourceSet" to u.sourceSet?.label,
-            )
-        }
+    fun formatCollapsedUsages(usages: List<CollapsedUsage>): String = UsageFormatter.formatCollapsedJson(usages)
 
     fun formatSmartUsages(result: SmartUsageResult, collapsedUsages: List<CollapsedUsage>): String =
-        jsonObject(
-            "matchedTypes" to JsonRaw(jsonArray(result.matchedTypes) { it.toString() }),
-            "interfaceTypes" to JsonRaw(jsonArray(result.interfaceTypes.sorted()) { it.toString() }),
-            "implementations" to JsonRaw(jsonArray(result.implementations) { impl ->
-                jsonObject(
-                    "className" to impl.className.toString(),
-                    "sourceFile" to impl.sourceFile,
-                )
-            }),
-            "usages" to JsonRaw(formatCollapsedUsages(collapsedUsages)),
-        )
+        UsageFormatter.formatSmartUsagesJson(result, collapsedUsages)
 
     fun formatRank(ranked: List<RankedType>): String =
         jsonArray(ranked) { r ->
