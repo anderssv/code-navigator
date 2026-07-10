@@ -585,10 +585,10 @@ Expand from single-hop blast radius into multi-signal impact predictor: direct c
 
 Known OpenRewrite-specific cost: `KotlinIsoVisitor` doesn't traverse 3+ levels of nested lambdas (real limitation hit in production, documented in `plan-completed.md`'s companion-matching notes) — plain PSI tree traversal (`collectDescendantsOfType`) doesn't have that limitation, so this specific bug would very likely disappear with a PSI migration, independent of the BindingContext question. The metaspace `OutOfMemoryError` on large batches, by contrast, was **not** OpenRewrite-specific — it turned out to be the "one full re-parse per class, no batching" call pattern (fixed above, see [[Test suite health]]); a naive PSI swap that kept that same per-class invocation loop would have hit the identical metaspace growth, since both approaches load the same `kotlin-compiler-embeddable` frontend.
 
-### Fix DANGER balance: root package → callgraph/implementors
-**LIKELY DONE (unverified)** | **Value: medium** | **Effort: low** | Source: internal(v0.1.83)
+### New DANGER balance finding: root package → navigation.types
+**PARKED** | **Value: low** | **Effort: low** | Source: internal
 
-Likely resolved as a side effect of the item above — production code in the root `no.f12.codenavigator` package is now only 3 help-text generators (`HelpText`, `AgentHelpText`, `ConfigHelpText`), none of which `import` any `callgraph`/`implementor` type (only prose mentions in help strings). Not confirmed by actually re-running `cnavBalance` against this repo — do that before fully closing this out, since the original finding was root package → concrete callgraph/implementor **type coupling**, not just file placement.
+Confirmed via a live `cnavBalance` self-check (see [[Fix DANGER balance: root package → callgraph/implementors]] in `plan-completed.md`) that a *different* DANGER edge exists today: `no.f12.codenavigator → no.f12.codenavigator.navigation.types` (FUNCTIONAL, distance=2, volatility=74/0). Cause: `AgentHelpText.kt` imports `navigation.types.FrameworkPresets` to list framework presets in help output. Lower severity than the original finding (`navigation.types` is a shared low-level types package, not a concrete feature type like callgraph/implementors), so parked rather than acted on immediately — but worth a look if the root package picks up more such imports.
 
 ### Document that read-only analysis already supports any JVM language
 **LOW** | **Value: medium** | **Effort: low** | Source: internal

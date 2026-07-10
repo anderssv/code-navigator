@@ -345,7 +345,6 @@ object AgentHelpText {
         appendLine("    → ${u("rings")}")
         appendLine("    # Auto-detects hexagonal architecture rings and reports violations")
         appendLine("    # Kt and Test suffixes are stripped automatically — write *Route, not *RouteKt")
-        appendLine("    # testInfrastructure: true on a layer allows test classes to depend on it freely")
         appendLine("    # Use ${p("init", "true")} to generate a starter config from detected patterns")
         appendLine()
         appendLine("--- Task Reference ---")
