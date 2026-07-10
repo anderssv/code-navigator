@@ -65,6 +65,45 @@ class RingDetectorTest {
     }
 
     @Test
+    fun `reportableViolations matches violations, since composition-root edges never become violations`() {
+        // main is a composition root (depends on 3+ rings); web->service->domain forms a normal chain.
+        val deps = listOf(
+            PackageDependency(PackageName("com.app.service"), PackageName("com.app.domain"), ClassName("com.app.service.Svc"), ClassName("com.app.domain.D")),
+            PackageDependency(PackageName("com.app.web"), PackageName("com.app.service"), ClassName("com.app.web.W"), ClassName("com.app.service.Svc")),
+            PackageDependency(PackageName("com.app.web"), PackageName("com.app.domain"), ClassName("com.app.web.W"), ClassName("com.app.domain.D")),
+            PackageDependency(PackageName("com.app.main"), PackageName("com.app.domain"), ClassName("com.app.main.App"), ClassName("com.app.domain.D")),
+            PackageDependency(PackageName("com.app.main"), PackageName("com.app.service"), ClassName("com.app.main.App"), ClassName("com.app.service.Svc")),
+            PackageDependency(PackageName("com.app.main"), PackageName("com.app.web"), ClassName("com.app.main.App"), ClassName("com.app.web.W")),
+        )
+
+        val result = RingDetector.detect(deps)
+
+        assertTrue(PackageName("com.app.main") in result.compositionRoots)
+        assertTrue(
+            result.violations.none { it.sourcePackage in result.compositionRoots || it.targetPackage in result.compositionRoots },
+            "RingDetector should never report a violation touching a composition root. Got: ${result.violations}",
+        )
+        assertEquals(result.violations, result.reportableViolations, "reportableViolations should match violations exactly, given the invariant above")
+    }
+
+    @Test
+    fun `reportableViolations filters out any violation touching a composition root, independent of RingDetector`() {
+        // Construct RingAssignment directly, decoupled from RingDetector's ring-assignment
+        // algorithm, to test the filtering logic in isolation.
+        val cleanViolation = RingViolation(PackageName("com.app.web"), PackageName("com.app.domain"), 2, 0, RingViolationType.OUTWARD)
+        val rootSourceViolation = RingViolation(PackageName("com.app.main"), PackageName("com.app.domain"), 3, 0, RingViolationType.OUTWARD)
+        val rootTargetViolation = RingViolation(PackageName("com.app.domain"), PackageName("com.app.main"), 0, 3, RingViolationType.OUTWARD)
+
+        val assignment = RingAssignment(
+            rings = mapOf(PackageName("com.app.web") to 2, PackageName("com.app.domain") to 0, PackageName("com.app.main") to 3),
+            compositionRoots = setOf(PackageName("com.app.main")),
+            violations = listOf(cleanViolation, rootSourceViolation, rootTargetViolation),
+        )
+
+        assertEquals(listOf(cleanViolation), assignment.reportableViolations)
+    }
+
+    @Test
     fun `cycle between domain and infra reports peer violations`() {
         // domain↔infra is a cycle — both collapse to same ring
         // service depends on domain, web depends on service

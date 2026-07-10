@@ -25,6 +25,10 @@ data class TestCouplingResult(
     val portInterfaces: Set<ClassName> = emptySet(),
     val testClassCallTargets: Map<ClassName, Map<ClassName, Int>> = emptyMap(),
 ) {
+    /** [violations] excluding ones from adapter tests — adapter tests are expected to call ports directly, so their "violations" aren't real TTTD problems. This is what every formatter (text/detail/LLM) reports. */
+    val actionableViolations: List<TestCouplingViolation>
+        get() = violations.filter { verdictFor(it.testClass) != TestCouplingVerdict.ADAPTER_TEST }
+
     fun verdictFor(testClass: ClassName): TestCouplingVerdict {
         if (isAdapterTest(testClass)) return TestCouplingVerdict.ADAPTER_TEST
 

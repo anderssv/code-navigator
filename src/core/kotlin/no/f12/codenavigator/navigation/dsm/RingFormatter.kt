@@ -63,9 +63,7 @@ object RingFormatter {
             sb.appendLine()
         }
 
-        val filteredViolations = result.violations.filter { v ->
-            v.sourcePackage !in result.compositionRoots && v.targetPackage !in result.compositionRoots
-        }
+        val filteredViolations = result.reportableViolations
 
         renderHints(sb, computeHints(byRing.mapValues { it.value.size }), format)
 
@@ -102,10 +100,7 @@ object RingFormatter {
             )
         }
 
-        val filteredViolations = result.violations.filter { v ->
-            v.sourcePackage !in result.compositionRoots && v.targetPackage !in result.compositionRoots
-        }
-        val violationsJson = jsonArray(filteredViolations) { v ->
+        val violationsJson = jsonArray(result.reportableViolations) { v ->
             jsonObject(
                 "type" to v.type.name,
                 "sourcePackage" to v.sourcePackage.toString(),

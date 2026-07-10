@@ -90,7 +90,7 @@ class RingsMojo : AbstractMojo() {
             OutputFormat.JSON -> JsonFormatter.formatRings(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE)
             else -> RingFormatter.format(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE, format = format)
         }
-        return rings to output.assignment.violations.size
+        return rings to output.assignment.reportableViolations.size
     }
 
     private fun renderEmergent(output: EmergentRingsOutput, format: OutputFormat): Pair<String, Int> {

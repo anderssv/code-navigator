@@ -5,8 +5,7 @@ import no.f12.codenavigator.navigation.types.ClassName
 object TestCouplingFormatter {
 
     fun formatText(result: TestCouplingResult): String {
-        val actionableViolations = result.violations
-            .filter { result.verdictFor(it.testClass) != TestCouplingVerdict.ADAPTER_TEST }
+        val actionableViolations = result.actionableViolations
         if (actionableViolations.isEmpty()) return "No TTTD violations found. All test classes use domain-oriented setup."
 
         val classSummaries = actionableViolations
@@ -22,8 +21,7 @@ object TestCouplingFormatter {
     }
 
     fun formatDetailText(result: TestCouplingResult): String {
-        val actionableViolations = result.violations
-            .filter { result.verdictFor(it.testClass) != TestCouplingVerdict.ADAPTER_TEST }
+        val actionableViolations = result.actionableViolations
         if (actionableViolations.isEmpty()) return "No TTTD violations found. All test classes use domain-oriented setup."
 
         return actionableViolations
@@ -43,8 +41,7 @@ object TestCouplingFormatter {
     }
 
     fun formatLlm(result: TestCouplingResult): String {
-        val actionableViolations = result.violations
-            .filter { result.verdictFor(it.testClass) != TestCouplingVerdict.ADAPTER_TEST }
+        val actionableViolations = result.actionableViolations
         if (actionableViolations.isEmpty()) return "No TTTD violations found. All test classes use domain-oriented setup."
 
         return actionableViolations.joinToString("\n") { v ->

@@ -6,7 +6,16 @@ data class RingAssignment(
     val rings: Map<PackageName, Int>,
     val compositionRoots: Set<PackageName>,
     val violations: List<RingViolation>,
-)
+) {
+    /**
+     * [violations] excluding ones where either side is a composition root — composition roots are
+     * expected to reach across rings to wire dependencies together, so a violation touching one
+     * isn't a real layering problem. This is what gets displayed and what `--fail-on-violations`
+     * gates on; both must agree, or a build can fail over violations the report never shows.
+     */
+    val reportableViolations: List<RingViolation>
+        get() = violations.filter { it.sourcePackage !in compositionRoots && it.targetPackage !in compositionRoots }
+}
 
 data class RingViolation(
     val sourcePackage: PackageName,
