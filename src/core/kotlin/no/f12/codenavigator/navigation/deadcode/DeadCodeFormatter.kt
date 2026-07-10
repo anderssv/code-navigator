@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation.deadcode
 
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
 import no.f12.codenavigator.navigation.types.Scope
 
 object DeadCodeFormatter {
@@ -37,5 +39,26 @@ object DeadCodeFormatter {
             }
             append(NOTE)
         }
+    }
+
+    fun formatJson(dead: List<DeadCode>, @Suppress("UNUSED_PARAMETER") scope: Scope = Scope.ALL): String =
+        jsonArray(dead) { d ->
+            jsonObject(
+                "className" to d.className.toString(),
+                "memberName" to d.memberName,
+                "kind" to d.kind.name.lowercase(),
+                "sourceFile" to d.sourceFile,
+                "confidence" to d.confidence.name.lowercase(),
+                "reason" to d.reason.name.lowercase(),
+            )
+        }
+
+    fun formatLlm(dead: List<DeadCode>, scope: Scope = Scope.ALL): String {
+        if (dead.isEmpty()) return ""
+        val scopeNotice = if (scope == Scope.PROD) "Test classes excluded. Use scope=all to include test classes.\n" else ""
+        return dead.joinToString("\n") { d ->
+            val name = if (d.memberName != null) "${d.className}.${d.memberName}" else d.className.toString()
+            "$name ${d.kind.name} ${d.sourceFile} confidence=${d.confidence.name} reason=${d.reason.name}"
+        } + "\n\n" + scopeNotice + NOTE
     }
 }

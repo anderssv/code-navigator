@@ -1,5 +1,8 @@
 package no.f12.codenavigator.navigation.stringconstant
 
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
+
 object StringConstantFormatter {
 
     fun format(matches: List<StringConstantMatch>): String {
@@ -26,4 +29,19 @@ object StringConstantFormatter {
             }
         }
     }
+
+    fun formatJson(matches: List<StringConstantMatch>): String =
+        jsonArray(matches) { m ->
+            jsonObject(
+                "className" to m.className.toString(),
+                "methodName" to m.methodName,
+                "value" to m.value,
+                "sourceFile" to m.sourceFile,
+            )
+        }
+
+    fun formatLlm(matches: List<StringConstantMatch>): String =
+        matches.joinToString("\n") { m ->
+            "${m.className}.${m.methodName}: \"${m.value}\" ${m.sourceFile}"
+        }
 }

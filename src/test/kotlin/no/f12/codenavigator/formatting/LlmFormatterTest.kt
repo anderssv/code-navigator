@@ -26,7 +26,9 @@ import no.f12.codenavigator.navigation.symbol.SymbolInfo
 import no.f12.codenavigator.navigation.symbol.SymbolKind
 import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType
+import no.f12.codenavigator.navigation.rank.RankFormatter
 import no.f12.codenavigator.navigation.complexity.ClassComplexity
+import no.f12.codenavigator.navigation.complexity.ComplexityFormatter
 import no.f12.codenavigator.navigation.dsm.CycleDetail
 import no.f12.codenavigator.navigation.dsm.CycleEdge
 import no.f12.codenavigator.navigation.dsm.TestInvolvement
@@ -57,6 +59,7 @@ import no.f12.codenavigator.navigation.dsm.PackageStrengthEntry
 import no.f12.codenavigator.navigation.dsm.StrengthFormatter
 import no.f12.codenavigator.navigation.dsm.StrengthResult
 import no.f12.codenavigator.navigation.classmetrics.ClassCohesionVerdict
+import no.f12.codenavigator.navigation.classmetrics.ClassMetricsFormatter
 import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
 import no.f12.codenavigator.analysis.DuplicateGroup
 import no.f12.codenavigator.analysis.DuplicateLocation
@@ -397,7 +400,7 @@ class LlmFormatterTest {
         val result = LlmFormatter.formatRank(ranked)
 
         assertEquals(
-            "com.example.Core rank=0.4200 in=5 out=2\ncom.example.Service rank=0.1500 in=2 out=3\n\n${LlmFormatter.RANK_INTERPRETATION}",
+            "com.example.Core rank=0.4200 in=5 out=2\ncom.example.Service rank=0.1500 in=2 out=3\n\n${RankFormatter.RANK_INTERPRETATION}",
             result,
         )
     }
@@ -462,7 +465,7 @@ class LlmFormatterTest {
                 "    com.example.Repo(3)\n" +
                 "    com.example.Cache(2)\n" +
                 "  incoming:\n" +
-                "    com.example.Controller(3)\n\n${LlmFormatter.COMPLEXITY_INTERPRETATION}",
+                "    com.example.Controller(3)\n\n${ComplexityFormatter.COMPLEXITY_INTERPRETATION}",
             result,
         )
     }
@@ -487,7 +490,7 @@ class LlmFormatterTest {
         assertEquals(
             "com.example.Orphan out=0/0 in=0/0\n" +
                 "  outgoing: none\n" +
-                "  incoming: none\n\n${LlmFormatter.COMPLEXITY_INTERPRETATION}",
+                "  incoming: none\n\n${ComplexityFormatter.COMPLEXITY_INTERPRETATION}",
             result,
         )
     }
@@ -1259,7 +1262,7 @@ class LlmFormatterTest {
         val result = LlmFormatter.formatClassMetrics(listOf(entry))
 
         assertEquals(
-            "com.example.OrderService methods=5 tcc=0.12 lcc=0.30 verdict=MONOLITH wmc=34 cbo=12 dit=3\n\n${LlmFormatter.CLASS_METRICS_INTERPRETATION}",
+            "com.example.OrderService methods=5 tcc=0.12 lcc=0.30 verdict=MONOLITH wmc=34 cbo=12 dit=3\n\n${ClassMetricsFormatter.CLASS_METRICS_INTERPRETATION}",
             result,
         )
     }

@@ -1,5 +1,8 @@
 package no.f12.codenavigator.navigation.relations.callgraph
 
+import no.f12.codenavigator.formatting.JsonRaw
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
 import no.f12.codenavigator.navigation.types.ClassName
 
 enum class CallDirection(
@@ -105,4 +108,82 @@ object CallTreeFormatter {
         return "Hint: Pattern '$pattern' matched all methods in $className. " +
             "If you want type-level references instead, use: cnavFindUsages --type=$classSimpleName"
     }
+
+    fun formatJson(trees: List<CallTreeNode>, direction: CallDirection? = null): String =
+        jsonArray(trees) { node -> renderCallNodeJson(node, direction, isRoot = true) }
+
+    private fun renderCallNodeJson(node: CallTreeNode, direction: CallDirection? = null, isRoot: Boolean = false): String {
+        val children = jsonArray(node.children) { child -> renderCallNodeJson(child) }
+        val hint = if (isRoot && direction != null && node.children.isEmpty()) {
+            frameworkEntryPointHint(node, direction)
+        } else {
+            null
+        }
+        return jsonObject(
+            "method" to node.method.qualifiedName,
+            "sourceFile" to node.sourceFile,
+            "lineNumber" to node.lineNumber,
+            "sourceSet" to node.sourceSet?.label,
+            "annotations" to if (node.annotations.isNotEmpty()) JsonRaw(renderAnnotationTagsJson(node.annotations)) else null,
+            "children" to JsonRaw(children),
+            "frameworkEntryPointHint" to hint,
+            "collapsedImplementorCount" to if (node.collapsedImplementorCount > 0) node.collapsedImplementorCount else null,
+        )
+    }
+
+    private fun renderAnnotationTagsJson(tags: List<AnnotationTag>): String =
+        tags.joinToString(",", "[", "]") { tag ->
+            val params = if (tag.parameters.isNotEmpty()) {
+                JsonRaw(jsonObject(*tag.parameters.map { (k, v) -> k to v }.toTypedArray()))
+            } else {
+                null
+            }
+            jsonObject(
+                "name" to tag.name.value,
+                "framework" to tag.framework,
+                "parameters" to params,
+            )
+        }
+
+    fun formatLlm(trees: List<CallTreeNode>, direction: CallDirection): String = buildString {
+        trees.forEachIndexed { index, tree ->
+            if (index > 0) appendLine()
+            val lineRef = tree.lineNumber?.let { ":$it" } ?: ""
+            append("${tree.method.qualifiedName} ${tree.sourceFile ?: "<unknown>"}$lineRef${formatAnnotationTagsLlm(tree.annotations)}")
+            if (tree.children.isNotEmpty()) {
+                renderChildrenLlm(tree.children, direction, 1)
+            } else {
+                appendLine()
+                append("  ${direction.emptyMessage}")
+                val hint = frameworkEntryPointHint(tree, direction)
+                if (hint != null) append(" — $hint")
+            }
+        }
+    }.trimEnd()
+
+    private fun StringBuilder.renderChildrenLlm(children: List<CallTreeNode>, direction: CallDirection, depth: Int) {
+        val indent = "  ".repeat(depth)
+        for (node in children) {
+            val lineRef = node.lineNumber?.let { ":$it" } ?: ""
+            val sourceSetTag = node.sourceSet?.let { " [${it.label}]" } ?: ""
+            val collapsedTag = collapsedImplementorsTag(node)
+            appendLine()
+            append("$indent${direction.arrow} ${node.method.qualifiedName} ${node.sourceFile ?: "<unknown>"}$lineRef${formatAnnotationTagsLlm(node.annotations)}$sourceSetTag$collapsedTag")
+            if (node.children.isNotEmpty()) {
+                renderChildrenLlm(node.children, direction, depth + 1)
+            }
+        }
+    }
+
+    private fun formatAnnotationTagsLlm(annotations: List<AnnotationTag>): String =
+        if (annotations.isEmpty()) "" else " [${annotations.joinToString(", ") { tag ->
+            val params = if (tag.parameters.isNotEmpty()) {
+                val paramStr = tag.parameters.entries.joinToString(",") { "${it.key}=\"${it.value}\"" }
+                "($paramStr)"
+            } else {
+                ""
+            }
+            val suffix = if (tag.framework != null) " [${tag.framework}]" else ""
+            "@${tag.name.simpleName()}$params$suffix"
+        }}]"
 }

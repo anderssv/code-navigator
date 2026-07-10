@@ -42,9 +42,12 @@ import no.f12.codenavigator.navigation.dsm.DsmMatrix
 import no.f12.codenavigator.navigation.rank.RankedType
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.navigation.deadcode.DeadCode
+import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
+import no.f12.codenavigator.navigation.stringconstant.StringConstantFormatter
 import no.f12.codenavigator.navigation.stringconstant.StringConstantMatch
 import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeInfo
 import no.f12.codenavigator.navigation.relations.hierarchy.SupertypeKind
+import no.f12.codenavigator.navigation.metrics.MetricsFormatter
 import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyFormatter
 import no.f12.codenavigator.navigation.relations.hierarchy.TypeHierarchyResult
@@ -53,8 +56,11 @@ import no.f12.codenavigator.navigation.relations.callgraph.SmartUsageResult
 import no.f12.codenavigator.navigation.relations.callgraph.UsageFormatter
 import no.f12.codenavigator.navigation.relations.callgraph.UsageSite
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
+import no.f12.codenavigator.navigation.annotation.AnnotationQueryFormatter
 import no.f12.codenavigator.navigation.relations.callgraph.AnnotationTag
 import no.f12.codenavigator.navigation.changedsince.ChangedClassImpact
+import no.f12.codenavigator.navigation.changedsince.ChangedSinceFormatter
+import no.f12.codenavigator.navigation.context.ContextFormatter
 import no.f12.codenavigator.navigation.context.ContextResult
 import no.f12.codenavigator.navigation.dsm.BalanceFormatter
 import no.f12.codenavigator.navigation.dsm.BalanceResult
@@ -63,6 +69,9 @@ import no.f12.codenavigator.navigation.dsm.MoveSuggestFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDistanceFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
+import no.f12.codenavigator.navigation.rank.RankFormatter
+import no.f12.codenavigator.navigation.complexity.ComplexityFormatter
+import no.f12.codenavigator.navigation.classmetrics.ClassMetricsFormatter
 import no.f12.codenavigator.navigation.dsm.CohesionResult
 import no.f12.codenavigator.navigation.dsm.MoveSuggestionResult
 import no.f12.codenavigator.navigation.dsm.StrengthFormatter
@@ -82,21 +91,8 @@ object LlmFormatter {
 
     fun formatTypeHierarchy(results: List<TypeHierarchyResult>): String = TypeHierarchyFormatter.formatLlm(results)
 
-    fun renderCallTrees(trees: List<CallTreeNode>, direction: CallDirection): String = buildString {
-        trees.forEachIndexed { index, tree ->
-            if (index > 0) appendLine()
-            val lineRef = tree.lineNumber?.let { ":$it" } ?: ""
-            append("${tree.method.qualifiedName} ${tree.sourceFile ?: "<unknown>"}$lineRef${formatAnnotationTags(tree.annotations)}")
-            if (tree.children.isNotEmpty()) {
-                renderChildren(tree.children, direction, 1)
-            } else {
-                appendLine()
-                append("  ${direction.emptyMessage}")
-                val hint = CallTreeFormatter.frameworkEntryPointHint(tree, direction)
-                if (hint != null) append(" — $hint")
-            }
-        }
-    }.trimEnd()
+    fun renderCallTrees(trees: List<CallTreeNode>, direction: CallDirection): String =
+        CallTreeFormatter.formatLlm(trees, direction)
 
     fun formatPackageDeps(deps: PackageDependencies, packageNames: List<PackageName>, reverse: Boolean): String =
         PackageDependencyFormatter.formatLlm(deps, packageNames, reverse)
@@ -126,83 +122,18 @@ object LlmFormatter {
     fun formatSmartUsages(result: SmartUsageResult, collapsedUsages: List<CollapsedUsage>): String =
         UsageFormatter.formatSmartUsagesLlm(result, collapsedUsages)
 
-    fun formatRank(ranked: List<RankedType>): String =
-        ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }
-            .withInterpretation(RANK_INTERPRETATION)
+    fun formatRank(ranked: List<RankedType>): String = RankFormatter.formatLlm(ranked)
 
-    private val DEAD_CODE_NOTE = "Note: Dead code detection is a hard problem with many edge cases (reflection, serialization, generated code). Use exclude=<regex> to filter out packages or classes you know are not dead."
+    fun formatDead(dead: List<DeadCode>, scope: Scope = Scope.ALL): String = DeadCodeFormatter.formatLlm(dead, scope)
 
-    fun formatDead(dead: List<DeadCode>, scope: Scope = Scope.ALL): String {
-        if (dead.isEmpty()) return ""
-        val scopeNotice = if (scope == Scope.PROD) "Test classes excluded. Use scope=all to include test classes.\n" else ""
-        return dead.joinToString("\n") { d ->
-            val name = if (d.memberName != null) "${d.className}.${d.memberName}" else d.className.toString()
-            "$name ${d.kind.name} ${d.sourceFile} confidence=${d.confidence.name} reason=${d.reason.name}"
-        } + "\n\n" + scopeNotice + DEAD_CODE_NOTE
-    }
+    fun formatStringConstants(matches: List<StringConstantMatch>): String = StringConstantFormatter.formatLlm(matches)
 
-    fun formatStringConstants(matches: List<StringConstantMatch>): String =
-        matches.joinToString("\n") { m ->
-            "${m.className}.${m.methodName}: \"${m.value}\" ${m.sourceFile}"
-        }
+    fun formatChangedSince(impacts: List<ChangedClassImpact>, unresolved: List<String>): String =
+        ChangedSinceFormatter.formatLlm(impacts, unresolved)
 
-    fun formatChangedSince(impacts: List<ChangedClassImpact>, unresolved: List<String>): String = buildString {
-        impacts.forEachIndexed { index, impact ->
-            if (index > 0) appendLine()
-            append("${impact.className} ${impact.sourceFile}")
-            if (impact.callers.isEmpty()) {
-                append(" (no callers)")
-            } else {
-                for (caller in impact.callers.sortedBy { "${it.className}.${it.methodName}" }) {
-                    appendLine()
-                    append("  <- ${caller.className}.${caller.methodName}")
-                }
-            }
-        }
-        if (unresolved.isNotEmpty()) {
-            if (impacts.isNotEmpty()) appendLine()
-            append("UNRESOLVED: ${unresolved.joinToString(",")}")
-        }
-    }
+    fun formatAnnotations(matches: List<AnnotationMatch>): String = AnnotationQueryFormatter.formatLlm(matches)
 
-    fun formatAnnotations(matches: List<AnnotationMatch>): String {
-        if (matches.isEmpty()) return "(no matches)"
-        return matches.joinToString("\n") { match ->
-            buildString {
-                append("${match.className.value} ${match.sourceFile ?: "<unknown>"}")
-                if (match.classAnnotations.isNotEmpty()) {
-                    append(" ${match.classAnnotations.sorted().joinToString(",") { "@${it.simpleName()}" }}")
-                }
-                for (method in match.matchedMethods) {
-                    appendLine()
-                    append("  method ${method.method.methodName} ${method.annotations.sorted().joinToString(",") { "@${it.simpleName()}" }}")
-                }
-                for (field in match.matchedFields) {
-                    appendLine()
-                    append("  field ${field.field.fieldName} ${field.annotations.sorted().joinToString(",") { "@${it.simpleName()}" }}")
-                }
-            }
-        }
-    }
-
-    fun formatComplexity(results: List<ClassComplexity>): String =
-        results.joinToString("\n\n") { c ->
-            buildString {
-                append("${c.className} out=${c.fanOut}/${c.distinctOutgoingClasses} in=${c.fanIn}/${c.distinctIncomingClasses}")
-                if (c.outgoingByClass.isEmpty()) {
-                    append("\n  outgoing: none")
-                } else {
-                    append("\n  outgoing:")
-                    c.outgoingByClass.forEach { append("\n    ${it.first}(${it.second})") }
-                }
-                if (c.incomingByClass.isEmpty()) {
-                    append("\n  incoming: none")
-                } else {
-                    append("\n  incoming:")
-                    c.incomingByClass.forEach { append("\n    ${it.first}(${it.second})") }
-                }
-            }
-        }.withInterpretation(COMPLEXITY_INTERPRETATION)
+    fun formatComplexity(results: List<ClassComplexity>): String = ComplexityFormatter.formatLlm(results)
 
     fun formatCycles(
         details: List<CycleDetail>,
@@ -210,42 +141,9 @@ object LlmFormatter {
         testInvolvement: TestInvolvement.Counts? = null,
     ): String = CyclesFormatter.formatLlm(details, displayPrefix, testInvolvement)
 
-    fun formatMetrics(metrics: MetricsResult): String = buildString {
-        append("classes=${metrics.totalClasses}")
-        append(" packages=${metrics.packageCount}")
-        append(" avg-fan-in=${"%.1f".format(java.util.Locale.US, metrics.averageFanIn)}")
-        append(" avg-fan-out=${"%.1f".format(java.util.Locale.US, metrics.averageFanOut)}")
-        append(" cycles=${metrics.cycleCount}")
-        append(" dead-classes=${metrics.deadClassCount}")
-        append(" dead-methods=${metrics.deadMethodCount}")
-        if (metrics.topHotspots.isNotEmpty()) {
-            appendLine()
-            appendLine("hotspots:")
-            append(metrics.topHotspots.joinToString("\n") { "${it.file} revisions=${it.revisions} churn=${it.totalChurn}" })
-        }
-    }
+    fun formatMetrics(metrics: MetricsResult): String = MetricsFormatter.formatLlm(metrics)
 
-    fun formatContext(result: ContextResult): String = buildString {
-        append(formatClassDetails(listOf(result.classDetail)))
-        if (result.callers.isNotEmpty()) {
-            appendLine()
-            appendLine("callers:")
-            append(renderCallTrees(result.callers, CallDirection.CALLERS))
-        }
-        if (result.callees.isNotEmpty()) {
-            appendLine()
-            appendLine("callees:")
-            append(renderCallTrees(result.callees, CallDirection.CALLEES))
-        }
-        if (result.implementors.isNotEmpty()) {
-            appendLine()
-            append("implementors:${result.implementors.joinToString(",") { "${it.className}(${it.sourceFile})" }}")
-        }
-        if (result.implementedInterfaces.isNotEmpty()) {
-            appendLine()
-            append("implements:${result.implementedInterfaces.joinToString(",")}")
-        }
-    }.trimEnd()
+    fun formatContext(result: ContextResult): String = ContextFormatter.formatLlm(result)
 
     fun formatDistance(result: PackageDistanceResult): String = PackageDistanceFormatter.formatLlm(result)
 
@@ -259,46 +157,9 @@ object LlmFormatter {
     fun formatDsmCycles(matrix: DsmMatrix, cycleFilter: Pair<PackageName, PackageName>? = null): String =
         DsmFormatter.formatCyclesLlm(matrix, cycleFilter)
 
-    // --- Interpretation constants ---
-
-    internal const val RANK_INTERPRETATION = "Interpretation: PageRank identifies structurally central classes. High-rank classes are depended on transitively by many others — changes to them have wide impact. Low-rank classes are peripheral and safer to modify."
-
-    internal const val COMPLEXITY_INTERPRETATION = "Interpretation: fan-out = total outgoing references (distinct classes). High fan-out means the class knows too much. fan-in = total incoming references. High fan-in means many classes depend on it — changes are risky. Classes with both high fan-in and high fan-out are prime refactoring targets."
-
-    internal const val CLASS_METRICS_INTERPRETATION = "Interpretation: TCC/LCC measure cohesion (fraction of method pairs sharing field access). HIGH (TCC>=0.7) = cohesive. MEDIUM (0.4-0.7) = acceptable. LOW (TCC<0.4, LCC>=0.7) = weakly cohesive but methods still chain-connect via shared fields. MONOLITH (TCC<0.4, LCC<0.7) = disjoint method groups — candidate for splitting into separate classes. WMC = summed cyclomatic complexity (higher = harder to test). CBO = distinct non-JDK/stdlib types referenced in signatures (higher = more context needed to understand the class). DIT = superclass chain depth (deeper = more inherited behavior to reason about)."
-
-    private fun StringBuilder.renderChildren(children: List<CallTreeNode>, direction: CallDirection, depth: Int) {
-        val indent = "  ".repeat(depth)
-        for (node in children) {
-            val lineRef = node.lineNumber?.let { ":$it" } ?: ""
-            val sourceSetTag = node.sourceSet?.let { " [${it.label}]" } ?: ""
-            val collapsedTag = CallTreeFormatter.collapsedImplementorsTag(node)
-            appendLine()
-            append("$indent${direction.arrow} ${node.method.qualifiedName} ${node.sourceFile ?: "<unknown>"}$lineRef${formatAnnotationTags(node.annotations)}$sourceSetTag$collapsedTag")
-            if (node.children.isNotEmpty()) {
-                renderChildren(node.children, direction, depth + 1)
-            }
-        }
-    }
-
-    private fun formatAnnotationTags(annotations: List<AnnotationTag>): String =
-        if (annotations.isEmpty()) "" else " [${annotations.joinToString(", ") { tag ->
-            val params = if (tag.parameters.isNotEmpty()) {
-                val paramStr = tag.parameters.entries.joinToString(",") { "${it.key}=\"${it.value}\"" }
-                "($paramStr)"
-            } else {
-                ""
-            }
-            val suffix = if (tag.framework != null) " [${tag.framework}]" else ""
-            "@${tag.name.simpleName()}$params$suffix"
-        }}]"
-
     fun formatCohesion(result: CohesionResult): String = CohesionFormatter.formatLlm(result)
 
     fun formatMoveSuggestions(result: MoveSuggestionResult): String = MoveSuggestFormatter.formatLlm(result)
 
-    fun formatClassMetrics(results: List<ClassMetricsResult>): String =
-        results.joinToString("\n") { r ->
-            "${r.className} methods=${r.totalMethods} tcc=${"%.2f".format(r.tcc)} lcc=${"%.2f".format(r.lcc)} verdict=${r.verdict} wmc=${r.wmc} cbo=${r.cbo} dit=${r.dit}"
-        }.withInterpretation(CLASS_METRICS_INTERPRETATION)
+    fun formatClassMetrics(results: List<ClassMetricsResult>): String = ClassMetricsFormatter.formatLlm(results)
 }

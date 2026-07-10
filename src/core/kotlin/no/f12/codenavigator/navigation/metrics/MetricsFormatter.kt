@@ -1,5 +1,8 @@
 package no.f12.codenavigator.navigation.metrics
 
+import no.f12.codenavigator.formatting.JsonRaw
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
 import java.util.Locale
 
 object MetricsFormatter {
@@ -31,4 +34,37 @@ object MetricsFormatter {
 
     private fun formatDecimal(value: Double): String =
         String.format(Locale.US, "%.1f", value)
+
+    fun formatJson(metrics: MetricsResult): String =
+        jsonObject(
+            "totalClasses" to metrics.totalClasses,
+            "packageCount" to metrics.packageCount,
+            "averageFanIn" to metrics.averageFanIn,
+            "averageFanOut" to metrics.averageFanOut,
+            "cycleCount" to metrics.cycleCount,
+            "deadClassCount" to metrics.deadClassCount,
+            "deadMethodCount" to metrics.deadMethodCount,
+            "topHotspots" to JsonRaw(jsonArray(metrics.topHotspots) { h ->
+                jsonObject(
+                    "file" to h.file,
+                    "revisions" to h.revisions,
+                    "totalChurn" to h.totalChurn,
+                )
+            }),
+        )
+
+    fun formatLlm(metrics: MetricsResult): String = buildString {
+        append("classes=${metrics.totalClasses}")
+        append(" packages=${metrics.packageCount}")
+        append(" avg-fan-in=${"%.1f".format(Locale.US, metrics.averageFanIn)}")
+        append(" avg-fan-out=${"%.1f".format(Locale.US, metrics.averageFanOut)}")
+        append(" cycles=${metrics.cycleCount}")
+        append(" dead-classes=${metrics.deadClassCount}")
+        append(" dead-methods=${metrics.deadMethodCount}")
+        if (metrics.topHotspots.isNotEmpty()) {
+            appendLine()
+            appendLine("hotspots:")
+            append(metrics.topHotspots.joinToString("\n") { "${it.file} revisions=${it.revisions} churn=${it.totalChurn}" })
+        }
+    }
 }

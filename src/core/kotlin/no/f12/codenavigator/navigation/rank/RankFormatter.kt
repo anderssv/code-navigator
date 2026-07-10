@@ -1,6 +1,12 @@
 package no.f12.codenavigator.navigation.rank
 
+import no.f12.codenavigator.formatting.jsonArray
+import no.f12.codenavigator.formatting.jsonObject
+import no.f12.codenavigator.formatting.withInterpretation
+
 object RankFormatter {
+
+    internal const val RANK_INTERPRETATION = "Interpretation: PageRank identifies structurally central classes. High-rank classes are depended on transitively by many others — changes to them have wide impact. Low-rank classes are peripheral and safer to modify."
 
     fun format(ranked: List<RankedType>): String {
         if (ranked.isEmpty()) return "No ranked types found."
@@ -20,4 +26,18 @@ object RankFormatter {
             }
         }
     }
+
+    fun formatJson(ranked: List<RankedType>): String =
+        jsonArray(ranked) { r ->
+            jsonObject(
+                "className" to r.className.toString(),
+                "rank" to r.rank,
+                "inDegree" to r.inDegree,
+                "outDegree" to r.outDegree,
+            )
+        }
+
+    fun formatLlm(ranked: List<RankedType>): String =
+        ranked.joinToString("\n") { "%.4f".format(it.rank).let { rank -> "${it.className} rank=$rank in=${it.inDegree} out=${it.outDegree}" } }
+            .withInterpretation(RANK_INTERPRETATION)
 }
