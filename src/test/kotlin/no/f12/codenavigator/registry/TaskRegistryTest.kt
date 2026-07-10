@@ -1035,6 +1035,7 @@ class TaskRegistryTest {
             "outside-package" to ParamType.STRING,
             "filter" to ParamType.STRING,
             "exclude" to ParamType.STRING,
+            "exclude-packages" to ParamType.STRING,
             "classes-only" to ParamType.BOOLEAN,
             "exclude-annotated" to ParamType.LIST_STRING,
             "scope" to ParamType.STRING,            "detail" to ParamType.BOOLEAN,

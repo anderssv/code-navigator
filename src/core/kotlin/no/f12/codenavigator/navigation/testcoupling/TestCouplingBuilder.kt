@@ -75,6 +75,28 @@ enum class TestCouplingVerdict {
 
 object TestCouplingBuilder {
 
+    /**
+     * Package/class prefixes for assertion libraries — excluded from [TestCouplingResult]'s call-target
+     * tracking so they don't dilute the adapter-test detection ratio. A DAO/adapter test that chains
+     * several `assertThat(...).isEqualTo(...)` calls per test method can otherwise have port calls fall
+     * below the majority threshold purely from assertion-library noise, misclassifying a real adapter
+     * test as MIXED or DOMAIN_ORIENTED.
+     */
+    private val ASSERTION_LIBRARY_PREFIXES = listOf(
+        "kotlin.test.",
+        "org.junit.jupiter.api.Assertions",
+        "org.junit.Assert",
+        "org.assertj.core.api.",
+        "org.hamcrest.",
+        "io.kotest.matchers.",
+        "io.kotest.assertions.",
+        "strikt.api.",
+        "strikt.assertions.",
+    )
+
+    private fun isAssertionLibraryCall(className: ClassName): Boolean =
+        ASSERTION_LIBRARY_PREFIXES.any { className.value.startsWith(it) }
+
     fun analyze(
         callGraph: CallGraph,
         interfaceRegistry: InterfaceRegistry,
@@ -97,6 +119,7 @@ object TestCouplingBuilder {
             val effectiveTestClass = outerClassName(caller.className)
             if (!callGraph.hasTestAnnotations(effectiveTestClass)) return@forEachEdge
             if (config.exclude != null && config.exclude.containsMatchIn(effectiveTestClass.value)) return@forEachEdge
+            if (isAssertionLibraryCall(callee.className)) return@forEachEdge
 
             // Track all call targets per (outer) test class
             testClassCallTargets

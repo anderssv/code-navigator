@@ -55,7 +55,15 @@ object ConvergeOrchestrator {
 
         val extractResult = DsmDependencyExtractor.extract(classDirectories, projectClasses, config.packageFilter, includeExternal = false, filterTargets = true)
         val skippedFileWarning = SkippedFileReporter.report(extractResult.skippedFiles, reportFile)
-        val deps = extractResult.data
+        // Excluded packages (e.g. a DI composition root or shared test infrastructure) are dropped from
+        // the dependency graph before cycle/ring detection, not just hidden from the final edge list —
+        // RingDetector already auto-excludes packages it detects as composition roots (3+ rings touched),
+        // but --exclude lets a user manually back that up for a hub the heuristic doesn't catch, or for
+        // test-only wiring (e.g. a shared test context) that isn't a composition root at all.
+        val deps = extractResult.data.filter { dep ->
+            config.exclude == null ||
+                (!config.exclude.containsMatchIn(dep.sourcePackage.value) && !config.exclude.containsMatchIn(dep.targetPackage.value))
+        }
 
         // Full depth (no truncation) so package granularity matches RingDetector's, which is also untruncated.
         val matrix = DsmMatrixBuilder.build(deps, PackageName(""), Int.MAX_VALUE)
@@ -83,6 +91,7 @@ object ConvergeOrchestrator {
             }
             if (pkgA == pkgB) continue
             if (!matchesFilter(pkgA, pkgB, config.packageFilter)) continue
+            if (config.exclude?.containsMatchIn(pkgA.value) == true || config.exclude?.containsMatchIn(pkgB.value) == true) continue
             val key = normalize(pkgA, pkgB)
             couplingByPair[key] = maxOf(couplingByPair[key] ?: 0, pair.degree)
         }
@@ -124,6 +133,7 @@ object ConvergeOrchestrator {
         val callGraphResult = CallGraphCache.getOrBuildTagged(cacheFile, taggedDirs)
         val skippedFileWarning = SkippedFileReporter.report(callGraphResult.skippedFiles, reportFile)
         val complexities = ClassComplexityAnalyzer.analyze(callGraphResult.data, classPattern = ".*", projectOnly = true)
+            .filter { config.exclude == null || !config.exclude.containsMatchIn(it.className.value) }
 
         val hotspotByPath = HotspotBuilder.build(commits, minRevs = 1, top = Int.MAX_VALUE, projectDir = projectDir)
             .associateBy { it.file }

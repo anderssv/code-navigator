@@ -13,6 +13,7 @@ class ConvergeConfigTest {
         val props = mapOf(
             "mode" to "risk",
             "package-filter" to "com.example",
+            "exclude-packages" to "\\.di\\.",
             "after" to "2024-06-01",
             "min-shared-revs" to "10",
             "min-coupling" to "50",
@@ -27,6 +28,7 @@ class ConvergeConfigTest {
 
         assertEquals(ConvergeMode.RISK, config.mode)
         assertEquals(PackageName("com.example"), config.packageFilter)
+        assertEquals("\\.di\\.", config.exclude?.pattern)
         assertEquals(10, config.minSharedRevs)
         assertEquals(50, config.minCoupling)
         assertEquals(20, config.maxChangesetSize)
@@ -58,8 +60,22 @@ class ConvergeConfigTest {
     }
 
     @Test
-    fun `defaults scope to all when absent`() {
+    fun `defaults exclude to null when absent`() {
         val config = ConvergeConfig.parse(emptyMap())
+
+        assertEquals(null, config.exclude)
+    }
+
+    @Test
+    fun `defaults scope to prod when absent`() {
+        val config = ConvergeConfig.parse(emptyMap())
+
+        assertEquals(Scope.PROD, config.scope)
+    }
+
+    @Test
+    fun `respects explicit scope=all override`() {
+        val config = ConvergeConfig.parse(mapOf("scope" to "all"))
 
         assertEquals(Scope.ALL, config.scope)
     }

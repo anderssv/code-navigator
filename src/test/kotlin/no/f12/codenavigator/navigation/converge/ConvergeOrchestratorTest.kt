@@ -32,9 +32,11 @@ class ConvergeOrchestratorTest {
         minSharedRevs: Int = 5,
         minCoupling: Int = 30,
         top: Int = 50,
+        exclude: Regex? = null,
     ) = ConvergeConfig(
         mode = mode,
         packageFilter = null,
+        exclude = exclude,
         after = LocalDate.of(2000, 1, 1),
         minSharedRevs = minSharedRevs,
         minCoupling = minCoupling,
@@ -178,5 +180,54 @@ class ConvergeOrchestratorTest {
         val output = ConvergeOrchestrator.run(config(mode = ConvergeMode.RISK), taggedDirs, emptyList(), projectDir, cacheFile, reportFile)
 
         assertTrue((output as ConvergeOutput.Risk).output.entries.isEmpty())
+    }
+
+    @Test
+    fun `exclude drops edges touching the excluded package from intersect mode entirely`() {
+        // di depends on (and is depended on by) two otherwise-unrelated feature packages — a
+        // composition-root shape that would otherwise show up as noisy structural+coupling signal.
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/di/Wiring", "Wiring.kt",
+            "configure",
+            listOf(
+                Call("com/example/featureA/ServiceA", "start", "()V"),
+                Call("com/example/featureB/ServiceB", "start", "()V"),
+            ),
+        )
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/featureA/ServiceA", "ServiceA.kt",
+            "start", listOf(Call("com/example/di/Wiring", "register", "()V")),
+        )
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/featureB/ServiceB", "ServiceB.kt",
+            "start", listOf(Call("com/example/di/Wiring", "register", "()V")),
+        )
+        val commits = coupledCommits(
+            "src/main/kotlin/com/example/di/Wiring.kt",
+            "src/main/kotlin/com/example/featureA/ServiceA.kt",
+        )
+
+        val output = ConvergeOrchestrator.run(
+            config(exclude = Regex("\\.di(\\.|$)")), taggedDirs, commits, projectDir, cacheFile, reportFile,
+        )
+
+        val edges = (output as ConvergeOutput.Intersect).output.edges
+        assertTrue(edges.none { it.source.value.contains(".di") || it.target.value.contains(".di") })
+    }
+
+    @Test
+    fun `exclude drops matching classes from risk mode entirely`() {
+        TestClassWriter.writeClassFile(classesDir, "com/example/di/Wiring", "Wiring.kt")
+        val wiringPath = "src/main/kotlin/com/example/di/Wiring.kt"
+        File(projectDir, wiringPath).apply { parentFile.mkdirs(); writeText("class Wiring") }
+        val commits = (1..6).map { i ->
+            GitCommit("c$i", LocalDate.of(2024, 1, 1).plusDays(i.toLong()), "Author", listOf(FileChange(1, 0, wiringPath)))
+        }
+
+        val output = ConvergeOrchestrator.run(
+            config(mode = ConvergeMode.RISK, exclude = Regex("\\.di\\.")), taggedDirs, commits, projectDir, cacheFile, reportFile,
+        )
+
+        assertTrue((output as ConvergeOutput.Risk).output.entries.none { it.className.value.contains(".di.") })
     }
 }

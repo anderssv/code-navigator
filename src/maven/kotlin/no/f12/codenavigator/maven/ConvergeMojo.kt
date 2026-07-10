@@ -33,6 +33,9 @@ class ConvergeMojo : AbstractMojo() {
     @Parameter(property = "package-filter")
     private var packageFilter: String? = null
 
+    @Parameter(property = "exclude-packages")
+    private var excludePackages: String? = null
+
     @Parameter(property = "after")
     private var after: String? = null
 
@@ -100,6 +103,7 @@ class ConvergeMojo : AbstractMojo() {
         format?.let { put("format", it) }
         mode?.let { put("mode", it) }
         packageFilter?.let { put("package-filter", it) }
+        excludePackages?.let { put("exclude-packages", it) }
         after?.let { put("after", it) }
         minSharedRevs?.let { put("min-shared-revs", it) }
         minCoupling?.let { put("min-coupling", it) }

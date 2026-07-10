@@ -194,6 +194,36 @@ class TestCouplingBuilderTest {
         assertEquals(TestCouplingVerdict.ADAPTER_TEST, verdict)
     }
 
+    // [TEST] Adapter test stays ADAPTER_TEST despite heavy assertion-library call noise
+    @Test
+    fun adapterTestWithHeavyAssertionChainsStillGetsAdapterTestVerdict() {
+        // Same shape as testClassTestingPortImplementorGetsAdapterTestVerdict, but each test method
+        // also chains several assertion-library calls — without filtering these out, primary-target
+        // calls (2) wouldn't clear the majority-of-totalCalls threshold once diluted by the noise.
+        val graph = callGraphWithSourceSets(
+            edges = listOf(
+                method("com.example.infra.SomeAdapterTest", "testSearch") to method("com.example.infra.RAClient", "search"),
+                method("com.example.infra.SomeAdapterTest", "testFindById") to method("com.example.infra.RAClient", "findById"),
+                method("com.example.infra.SomeAdapterTest", "testSearch") to method("kotlin.test.AssertionsKt", "assertEquals"),
+                method("com.example.infra.SomeAdapterTest", "testSearch") to method("kotlin.test.AssertionsKt", "assertTrue"),
+                method("com.example.infra.SomeAdapterTest", "testFindById") to method("org.assertj.core.api.Assertions", "assertThat"),
+            ),
+            testClasses = setOf("com.example.infra.SomeAdapterTest"),
+            declaredMethods = mapOf(
+                ClassName("com.example.RARepository") to setOf("search", "findById"),
+            ),
+        )
+        val interfaceRegistry = interfaceRegistryWith(
+            "com.example.RARepository" to listOf("com.example.infra.RAClient"),
+        )
+        val config = TestCouplingConfig(ports = Regex(".*Repository"))
+
+        val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, config)
+
+        val verdict = result.verdictFor(ClassName("com.example.infra.SomeAdapterTest"))
+        assertEquals(TestCouplingVerdict.ADAPTER_TEST, verdict)
+    }
+
     // [TEST] Test class in service package calling port methods is NOT an adapter test
     @Test
     fun serviceTestCallingPortIsNotAdapterTest() {

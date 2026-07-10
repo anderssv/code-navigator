@@ -416,13 +416,6 @@ For each declared dependency JAR, extract package list. Scan project bytecode fo
 
 Scan interfaces matching a pattern (`*Repository`, `*Client`), check each has at least one implementation in test source set. InterfaceRegistry + test source filter — infrastructure exists.
 
-### `cnavTestCoupling` — remaining improvements
-**LOW** | **Value: medium** | **Effort: low** | Source: field-test(greitt+terms-and-conditions)
-
-- **DAO test threshold**: adapter tests where port calls are <50% due to assertion noise. Consider counting only non-framework calls in denominator.
-
-~~**Concise "all clear" output**~~ — **done.** `TestCouplingFormatter` now returns a one-line "No TTTD violations found..." message instead of ~15 lines of guidance when there are no violations.
-
 ### `cnavContextUsage` — verify consistent test context usage
 **PARKED** | **Value: low** | **Effort: medium** | Source: internal
 
