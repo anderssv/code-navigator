@@ -558,6 +558,13 @@ Cross-reference interfaces with volatility. If port interface changes as frequen
 
 Expand from single-hop blast radius into multi-signal impact predictor: direct callers → transitive callers → interface implementor callers → historically co-changed → same-package peers. Each with confidence tier.
 
+### `cnavConverge`: unify intersect and risk mode output
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: field-test(kotlin-htmx)
+
+Field-tested on kotlin-htmx: both modes work and produce correct, actionable results independently (intersect found real LATENT/MISSING ABSTRACTION package pairs; risk correctly surfaced a high-churn, high-complexity, high-coupling class as the top hit). But the two modes are completely separate pipelines with no shared output — no combined view like "this class is high-risk AND it's in a cyclically-coupled package pair." An agent wanting the full picture currently has to run both and correlate manually.
+
+Would need `ConvergeOrchestrator`'s risk-mode entries (per-class) to cross-reference intersect-mode's package-pair edges (`ConvergedEdge.source`/`.target` via `ClassComplexity.className.packageName()`) — e.g. a risk entry whose class's package is on both sides of an ACT_NOW edge could be flagged/boosted. Not attempted yet; the two modes' underlying `SourcePathIndex`-based path resolution already gives both a shared way to key off the same file, so the plumbing exists — just the correlation logic and a combined output shape don't yet.
+
 ---
 
 ## Internal code quality
