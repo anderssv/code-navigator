@@ -53,6 +53,43 @@ class ConvergeFormatterTest {
     }
 
     @Test
+    fun `TEXT appends advisory when present`() {
+        val output = ConvergeOutput.Intersect(ConvergeIntersectOutput(listOf(actNowEdge), 0, null, advisory = "40 findings — a large result set"))
+
+        val text = ConvergeFormatter.format(output)
+
+        assertTrue(text.contains("⚠ 40 findings — a large result set"))
+    }
+
+    @Test
+    fun `TEXT has no advisory line when advisory is null`() {
+        val output = ConvergeOutput.Intersect(ConvergeIntersectOutput(listOf(actNowEdge), 0, null))
+
+        assertTrue(!ConvergeFormatter.format(output).contains("⚠"))
+    }
+
+    @Test
+    fun `JSON includes advisory field when present`() {
+        val output = ConvergeOutput.Intersect(ConvergeIntersectOutput(listOf(actNowEdge), 0, null, advisory = "narrow with --scope=prod"))
+
+        assertTrue(ConvergeFormatter.formatJson(output).contains("\"advisory\":\"narrow with --scope=prod\""))
+    }
+
+    @Test
+    fun `JSON omits advisory field when null`() {
+        val output = ConvergeOutput.Intersect(ConvergeIntersectOutput(listOf(actNowEdge), 0, null))
+
+        assertTrue(!ConvergeFormatter.formatJson(output).contains("advisory"))
+    }
+
+    @Test
+    fun `LLM includes advisory when present`() {
+        val output = ConvergeOutput.Intersect(ConvergeIntersectOutput(listOf(actNowEdge), 0, null, advisory = "narrow with --scope=prod"))
+
+        assertTrue(ConvergeFormatter.formatLlm(output).contains("advisory: narrow with --scope=prod"))
+    }
+
+    @Test
     fun `JSON intersect output includes mode, edges, and verdict labels`() {
         val output = ConvergeOutput.Intersect(ConvergeIntersectOutput(listOf(actNowEdge), 0, null))
 

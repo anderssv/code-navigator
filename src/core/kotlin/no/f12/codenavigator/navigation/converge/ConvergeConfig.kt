@@ -31,9 +31,11 @@ data class ConvergeConfig(
             maxChangesetSize = TaskRegistry.MAX_CHANGESET_SIZE.parseFrom(properties),
             followRenames = !TaskRegistry.NO_FOLLOW.parseFrom(properties),
             top = TaskRegistry.TOP.parseFrom(properties),
-            // Defaults to prod: test-only wiring (e.g. a shared test context reaching into every feature
-            // package) routinely creates cycles/coupling that don't reflect real production architecture.
-            scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties) ?: "prod"),
+            // Defaults to 'all' like every other scoped task. Test-only wiring (e.g. a shared test context)
+            // can inflate the result with cycles/coupling that don't exist in production, but rather than
+            // silently pre-filtering to prod, the orchestrator surfaces a constructive advisory pointing at
+            // --scope=prod / --exclude-packages when the result is large — see ConvergeOrchestrator.advisoryFor.
+            scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
             format = ParamDef.parseFormat(properties),
         )
     }

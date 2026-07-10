@@ -1037,17 +1037,15 @@ object TaskRegistry {
 
     val CONVERGE = TaskDef(
         goal = "converge",
-        description = "Composite architectural signal: intersect mode cross-references cycles/rings/change-coupling into a ranked ACT NOW/LATENT/MISSING ABSTRACTION list; risk mode ranks classes by change-frequency x complexity x coupling. Defaults to --scope=prod since test-only wiring (e.g. a shared test context) routinely creates cycles that don't reflect real production coupling.",
+        description = "Composite architectural signal: intersect mode cross-references cycles/rings/change-coupling into a ranked ACT NOW/LATENT/MISSING ABSTRACTION list; risk mode ranks classes by change-frequency x complexity x coupling. Includes test sources by default (--scope=all); when the result is large it emits an advisory pointing at --scope=prod / --exclude-packages, since manually-wired DI and shared test infrastructure often inflate it with cycles that don't exist in production.",
         params = FORMAT_PARAMS + listOf(CONVERGE_MODE, PACKAGE_FILTER, CONVERGE_EXCLUDE, AFTER, MIN_SHARED_REVS, MIN_COUPLING, MAX_CHANGESET_SIZE, NO_FOLLOW, TOP) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.COMPOSITE,
-        paramDefaultOverrides = mapOf("scope" to "prod"),
         examples = listOf(
             UsageExample(emptyList()),
             UsageExample(listOf(CONVERGE_MODE to "risk")),
-            UsageExample(listOf(PACKAGE_FILTER to "com.example.domain")),
-            UsageExample(listOf(SCOPE to "all")),
-            UsageExample(listOf(SCOPE to "all", CONVERGE_EXCLUDE to "\"\\\\.di\\\\.|testutil|e2e\"")),
+            UsageExample(listOf(SCOPE to "prod")),
+            UsageExample(listOf(CONVERGE_EXCLUDE to "\"\\\\.di\\\\.|testutil|e2e\"")),
         ),
     )
 

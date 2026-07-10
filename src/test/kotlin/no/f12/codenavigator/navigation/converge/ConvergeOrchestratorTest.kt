@@ -230,4 +230,51 @@ class ConvergeOrchestratorTest {
 
         assertTrue((output as ConvergeOutput.Risk).output.entries.none { it.className.value.contains(".di.") })
     }
+
+    @Test
+    fun `small intersect result carries no advisory`() {
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/api/Controller", "Controller.kt",
+            "handle", listOf(Call("com/example/service/Service", "process", "()V")),
+        )
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/service/Service", "Service.kt",
+            "process", listOf(Call("com/example/api/Controller", "handle", "()V")),
+        )
+
+        val output = ConvergeOrchestrator.run(config(), taggedDirs, emptyList(), projectDir, cacheFile, reportFile)
+
+        assertEquals(null, (output as ConvergeOutput.Intersect).output.advisory)
+    }
+
+    @Test
+    fun `advisory below threshold is null`() {
+        assertEquals(null, ConvergeOrchestrator.advisoryFor(19, config()))
+    }
+
+    @Test
+    fun `advisory for large all-scope result suggests both scope and exclude`() {
+        val advisory = ConvergeOrchestrator.advisoryFor(40, config(exclude = null).copy(scope = Scope.ALL))
+
+        assertTrue(advisory != null)
+        assertTrue(advisory!!.contains("--scope=prod"))
+        assertTrue(advisory.contains("--exclude-packages"))
+        assertTrue(advisory.contains("cnav-config.json"))
+    }
+
+    @Test
+    fun `advisory for large prod-scope result suggests only exclude`() {
+        val advisory = ConvergeOrchestrator.advisoryFor(40, config().copy(scope = Scope.PROD, exclude = null))
+
+        assertTrue(advisory != null)
+        assertTrue(!advisory!!.contains("--scope=prod"))
+        assertTrue(advisory.contains("--exclude-packages"))
+    }
+
+    @Test
+    fun `advisory is null when both levers already pulled`() {
+        val advisory = ConvergeOrchestrator.advisoryFor(40, config(exclude = Regex("testutil")).copy(scope = Scope.PROD))
+
+        assertEquals(null, advisory)
+    }
 }

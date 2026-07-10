@@ -44,6 +44,10 @@ object ConvergeFormatter {
             if (output.unresolvedCouplingPairs > 0) {
                 appendLine("(${output.unresolvedCouplingPairs} coupled file pair(s) could not be resolved to a project package and were skipped)")
             }
+            output.advisory?.let {
+                appendLine()
+                appendLine("⚠ $it")
+            }
         }.trimEnd()
     }
 
@@ -75,6 +79,7 @@ object ConvergeFormatter {
             "mode" to "intersect",
             "edges" to JsonRaw(edgesJson),
             "unresolvedCouplingPairs" to output.unresolvedCouplingPairs,
+            "advisory" to output.advisory,
         )
     }
 
@@ -100,9 +105,11 @@ object ConvergeFormatter {
     private fun formatIntersectLlm(output: ConvergeIntersectOutput): String {
         if (output.edges.isEmpty()) return "(no converging signals)"
 
-        return output.edges.joinToString("\n") { edge ->
+        val body = output.edges.joinToString("\n") { edge ->
             "${verdictLabel(edge.verdict)} ${edge.source}<->${edge.target} ${signals(edge)}"
-        }.withInterpretation(INTERSECT_INTERPRETATION)
+        }
+        val withAdvisory = output.advisory?.let { "$body\n\nadvisory: $it" } ?: body
+        return withAdvisory.withInterpretation(INTERSECT_INTERPRETATION)
     }
 
     private fun formatRiskLlm(output: ConvergeRiskOutput): String {

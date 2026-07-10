@@ -13,6 +13,7 @@ import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
 import no.f12.codenavigator.navigation.dsm.RingDetector
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.types.PackageName
+import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.navigation.types.SourceSet
 import java.io.File
 
@@ -38,8 +39,38 @@ object ConvergeOrchestrator {
         }
     }
 
+    /**
+     * Result count above which intersect output is likely inflated by DI/test-wiring noise rather than
+     * real production coupling. Chosen so a clean production run (e.g. this repo, ra-backend `--scope=prod`
+     * ~12 findings) stays quiet while a test-included run (ra-backend `--scope=all` ~55) trips the advisory.
+     * A hint threshold, not a hard limit — the full result is always returned.
+     */
+    private const val NOISE_ADVISORY_THRESHOLD = 20
+
     private fun normalize(a: PackageName, b: PackageName): Pair<PackageName, PackageName> =
         if (a.value <= b.value) a to b else b to a
+
+    /**
+     * Constructive advisory for a large intersect result — most such explosions come from manually-wired
+     * DI or shared test infrastructure creating structural cycles that don't exist in production. Adapts to
+     * what the user hasn't already tried: suggests `--scope=prod` only if still including test sources, and
+     * `--exclude-packages` only if no exclusion is set yet. Null when the result is small, or when both levers
+     * are already pulled (the count is then genuinely high, not obviously noise).
+     */
+    internal fun advisoryFor(edgeCount: Int, config: ConvergeConfig): String? {
+        if (edgeCount < NOISE_ADVISORY_THRESHOLD) return null
+        val suggestions = buildList {
+            if (config.scope == Scope.ALL) add("--scope=prod (drops test sources)")
+            if (config.exclude == null) add("--exclude-packages=<regex> (drops noisy hubs like a DI composition root or shared test context)")
+        }
+        if (suggestions.isEmpty()) return null
+        // Persistence example uses whichever lever is the primary suggestion so it never contradicts the current run.
+        val configExample = if (config.scope == Scope.ALL) "{\"defaults\":{\"scope\":\"prod\"}}" else "{\"defaults\":{\"exclude-packages\":\"\\\\.di\\\\.\"}}"
+        return "$edgeCount findings — a large result set that often reflects manually-wired DI or test infrastructure " +
+            "creating structural cycles/coupling that don't exist in production, rather than real problems. " +
+            "To narrow to production architecture, add ${suggestions.joinToString(" and/or ")}. " +
+            "Persist your choice in cnav-config.json under \"defaults\" (e.g. $configExample) so every run is narrowed."
+    }
 
     private fun matchesFilter(a: PackageName, b: PackageName, packageFilter: PackageName?): Boolean =
         packageFilter == null || a.startsWith(packageFilter) || b.startsWith(packageFilter)
@@ -97,6 +128,7 @@ object ConvergeOrchestrator {
         }
 
         val allPairs = structuralPairs + couplingByPair.keys
+        val totalFindings = allPairs.size
         val edges = allPairs.map { (source, target) ->
             val hasCycle = (source to target) in cyclePairs
             val hasRingViolation = (source to target) in ringPairs
@@ -115,7 +147,7 @@ object ConvergeOrchestrator {
                 .thenBy { it.target },
         ).take(config.top)
 
-        return ConvergeIntersectOutput(edges, unresolved, skippedFileWarning)
+        return ConvergeIntersectOutput(edges, unresolved, skippedFileWarning, advisoryFor(totalFindings, config))
     }
 
     private fun runRisk(

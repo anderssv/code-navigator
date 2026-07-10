@@ -67,17 +67,17 @@ class ConvergeConfigTest {
     }
 
     @Test
-    fun `defaults scope to prod when absent`() {
+    fun `defaults scope to all when absent`() {
         val config = ConvergeConfig.parse(emptyMap())
 
-        assertEquals(Scope.PROD, config.scope)
+        assertEquals(Scope.ALL, config.scope)
     }
 
     @Test
-    fun `respects explicit scope=all override`() {
-        val config = ConvergeConfig.parse(mapOf("scope" to "all"))
+    fun `respects explicit scope=prod`() {
+        val config = ConvergeConfig.parse(mapOf("scope" to "prod"))
 
-        assertEquals(Scope.ALL, config.scope)
+        assertEquals(Scope.PROD, config.scope)
     }
 
     @Test
