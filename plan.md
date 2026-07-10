@@ -590,10 +590,17 @@ Known OpenRewrite-specific cost: `KotlinIsoVisitor` doesn't traverse 3+ levels o
 
 Likely resolved as a side effect of the item above — production code in the root `no.f12.codenavigator` package is now only 3 help-text generators (`HelpText`, `AgentHelpText`, `ConfigHelpText`), none of which `import` any `callgraph`/`implementor` type (only prose mentions in help strings). Not confirmed by actually re-running `cnavBalance` against this repo — do that before fully closing this out, since the original finding was root package → concrete callgraph/implementor **type coupling**, not just file placement.
 
-### Evaluate other JVM languages to support
-**LOW** | **Value: medium** | **Effort: low (research)** | Source: internal
+### Document that read-only analysis already supports any JVM language
+**LOW** | **Value: medium** | **Effort: low** | Source: internal
 
-Groovy and Scala support via `LanguageRenameRewriter`. Is PSI available? Is the language common enough?
+Re-scoped from "Evaluate other JVM languages to support" after checking the actual code: the read-only analysis layer (`navigation/bytecode/`, 9 files — DSM, cycles, rings, hotspots, dead code, complexity, usages, call trees, etc.) is entirely ASM bytecode-based with zero source-language assumptions. It already works on Groovy/Scala/Java projects today, same as Kotlin, with no new code — the README already claims this (line 3: "Works with any JVM language... since it analyzes compiled bytecode"). What's missing is making the *write* side's limitation equally explicit (see next item) rather than letting the blanket "any JVM language" claim imply refactor operations too. Low effort: verify the claim still holds (re-run a couple of read-only tasks against a non-Kotlin/Java fixture if one's easy to construct) and tighten the docs.
+
+### Refactor/write operations are Kotlin-PSI-only, no real path to other languages
+**PARKED** | **Value: low** | **Effort: high** | Source: internal
+
+Checked the actual refactor-package code (prompted by a user question doubting the old item's "low effort" label): of the 5 refactor operations, only `RenameMethod` has a real per-language dispatch (`LanguageRenameRewriter` interface, `KotlinRenameMethodRewriter`/`JavaRenameMethodRewriter` — ~170/193 lines each, i.e. building the Java parallel cost a full second implementation). The other four — `ChangeSignature`, `SafeDelete`, `RenameParam`, `RenameProperty` — call straight into `KtPsiFactory`/`withKotlinPsiFactory` (kotlin-compiler-embeddable) with **no file-extension guard**: given a `.java` file (or any other JVM language source), they'll attempt to parse it with the Kotlin parser rather than rejecting it or routing elsewhere. `MoveClassRewriter` sits on OpenRewrite's `ChangeType`, nominally language-neutral, but its own file-path matching is hardcoded to `.kt` suffixes and the plan already documents real Kotlin-visitor traversal limits (`KotlinIsoVisitor` doesn't traverse 3+ levels of nested lambdas).
+
+Real Groovy/Scala write support means sourcing a usable embeddable frontend per language and then building a second PSI-editing pipeline per operation (comparable cost to the one existing `RenameMethod` Java rewriter, × 4 more operations) — high effort, not the "low (research)" this used to be labeled. Parked rather than promoted; the immediate actionable follow-up is documenting the current failure mode (see item above), not building the support.
 
 ---
 

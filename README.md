@@ -1,6 +1,6 @@
 # Code Navigator
 
-A Gradle and Maven plugin for **code navigation**, **coupling analysis**, and **git activity analysis** in JVM projects. Works with any JVM language (Kotlin, Java, Scala, etc.) since it analyzes compiled bytecode and git history rather than source text.
+A Gradle and Maven plugin for **code navigation**, **coupling analysis**, and **git activity analysis** in JVM projects. Read-only analysis (navigation, coupling, dependency, and git-history tasks) works with any JVM language (Kotlin, Java, Scala, etc.) since it analyzes compiled bytecode and git history rather than source text. Refactoring/write operations (rename, move, change signature, safe delete) are Kotlin- and Java-aware but edit source text via a Kotlin PSI parser — running them against other JVM languages (Groovy, Scala, ...) is untested and may fail or produce incorrect edits rather than being rejected outright.
 
 Built primarily for **coding agents** (AI assistants that write and refactor code), though equally useful for human developers. The git history analysis is inspired by [Code Maat](https://github.com/adamtornhill/code-maat) and Adam Tornhill's *Your Code as a Crime Scene*.
 
