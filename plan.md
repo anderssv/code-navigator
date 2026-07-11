@@ -6,6 +6,32 @@ Items grouped by functional area. Each item has:
 
 ---
 
+## Bugs
+
+### `cnavRenameMethod` misses interface declaration when targeting an `Impl` class
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113)
+
+Renaming `RAClientImpl.getInfo → fetchUserInfo` updated the impl, all callers, and tests — but left `RAClient` (interface) and `RAClientFake` (other implementor) with the original `getInfo` name. `fetchUserInfo` on the impl then `overrides nothing`, causing a compile error.
+
+Root cause: the rename locates the declaration in the target class and rewrites callers via bytecode call-site scanning, but does not walk up to the interface declaration or sideways to sibling implementors.
+
+**Fix**: After renaming the method in the target class, check whether it is an `override`. If it is, resolve the interface method it overrides (via PSI `overriddenFunctions`) and rename that declaration too, then find all other implementors (`InterfaceRegistry`) and rename their declarations as well. The caller rewrite already handles call sites; only declarations need the extra pass.
+
+**Reproducer**: `cnavRenameMethod --target-class=no.bankid.selvbetjening.ra.RAClientImpl --method=getInfo --new-name=fetchUserInfo` — compiles if targeting the interface directly, fails if targeting the impl.
+
+### `cnavMovePackage` leaves source file in original package when it can't be physically moved
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113)
+
+Moving `no.bankid.selvbetjening.cache → no.bankid.selvbetjening.infra.cache` reported four moves including `RedisCache → infra.cache.RedisCache (0 files)`. The `(0 files)` means the move plan computed a destination for `RedisCache` but made zero file edits — the file stayed in `cache/` with its original `package` declaration, while all other files that referenced `Cache` and `RedisConfig` were rewritten to import from `infra.cache`. This left `RedisCache.kt` importing names that no longer exist in its package.
+
+Root cause: `RedisCache` is a large file that shares its file with other declarations, or the rewriter determined the file was already handled as a side-effect of another move step and skipped it. The `(0 files)` silent skip is the core problem — when the rewriter decides not to edit a file it listed as part of the plan, it should either error or produce a warning, not silently succeed.
+
+**Fix**: Any class listed in the move plan that ends with `(0 files)` should either: (a) produce an explicit warning in output (`WARNING: RedisCache.kt was not rewritten — verify manually`), or (b) be treated as a hard failure rather than a silent no-op. Additionally investigate why `RedisCache.kt` was skipped — if it's a multi-class file issue, the move plan should detect that upfront.
+
+**Reproducer**: `cnavMovePackage --from-package=no.bankid.selvbetjening.cache --to-package=no.bankid.selvbetjening.infra.cache` on ra-backend — compile fails after the move.
+
+---
+
 ## Multi-module support
 
 ### Full multi-module analysis — aggregate class dirs from all project modules
