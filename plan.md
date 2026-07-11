@@ -575,7 +575,7 @@ Known OpenRewrite-specific cost: `KotlinIsoVisitor` doesn't traverse 3+ levels o
 Confirmed via a live `cnavBalance` self-check (see [[Fix DANGER balance: root package → callgraph/implementors]] in `plan-completed.md`) that a *different* DANGER edge exists today: `no.f12.codenavigator → no.f12.codenavigator.navigation.types` (FUNCTIONAL, distance=2, volatility=74/0). Cause: `AgentHelpText.kt` imports `navigation.types.FrameworkPresets` to list framework presets in help output. Lower severity than the original finding (`navigation.types` is a shared low-level types package, not a concrete feature type like callgraph/implementors), so parked rather than acted on immediately — but worth a look if the root package picks up more such imports.
 
 ### Document that read-only analysis already supports any JVM language
-**LOW** | **Value: medium** | **Effort: low** | Source: internal
+**PARKED** | **Value: medium** | **Effort: low** | Source: internal
 
 Re-scoped from "Evaluate other JVM languages to support" after checking the actual code: the read-only analysis layer (`navigation/bytecode/`, 9 files — DSM, cycles, rings, hotspots, dead code, complexity, usages, call trees, etc.) is entirely ASM bytecode-based with zero source-language assumptions. It already works on Groovy/Scala/Java projects today, same as Kotlin, with no new code — the README already claims this (line 3: "Works with any JVM language... since it analyzes compiled bytecode"). What's missing is making the *write* side's limitation equally explicit (see next item) rather than letting the blanket "any JVM language" claim imply refactor operations too. Low effort: verify the claim still holds (re-run a couple of read-only tasks against a non-Kotlin/Java fixture if one's easy to construct) and tighten the docs.
 
@@ -591,7 +591,7 @@ Real Groovy/Scala write support means sourcing a usable embeddable frontend per 
 ## Infrastructure
 
 ### Structured cache format
-**LOW** | **Value: medium** | **Effort: medium** | Source: internal
+**PARKED** | **Value: medium** | **Effort: medium** | Source: internal
 
 Replace tab-separated positional fields with self-describing format. Consider removing cache entirely — zero measurable difference on ~20k LOC projects.
 
