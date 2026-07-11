@@ -1,5 +1,9 @@
 # Plan — Completed
 
+## ~~cnavMoveClass destination-collision: silent overwrite + orphaned source~~ — DONE (field-test greitt, v0.1.113)
+
+Moving a class into a package that already held a *different* file of the same name silently overwrote the existing declaration (data loss) — `targetFileWarnings` detected the collision but warned-and-continued. Replaced that with `destinationCollisionError`: when the computed destination file already exists and isn't the source, the move is a hard stop — an error result with **no writes** (destination preserved, source not deleted), telling the agent to merge manually or pick a different name/package. Wired into all four write paths: single `moveClass`, `moveKtFacade`, `moveMultiClassFile`, and the batch `moveBatch` (colliding moves are excluded before their consumer edits are computed, so consumers aren't repointed at a move that won't happen). This supersedes the earlier warn-only "merge detection" behavior. Live-verified: destination class untouched, source preserved, clear error. Unit test + full suite green, Maven compiles.
+
 ## ~~cnavChangeSignature~~ — DONE (v0.1.96)
 
 PSI-based method signature refactoring: add, remove, or reorder parameters. Rewrites declaration and all call sites. Positional args reordered; named args preserved. New params require defaults for existing call sites (inserted as arguments, not Kotlin default values). Preview mode supported. 8 tests.

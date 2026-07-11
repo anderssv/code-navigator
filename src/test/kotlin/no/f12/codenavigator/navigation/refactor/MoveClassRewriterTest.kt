@@ -600,4 +600,31 @@ class MoveClassRewriterTest {
         )
     }
 
+    @Test
+    fun `move errors and writes nothing when destination file already holds a different class`() {
+        val tempDir = Files.createTempDirectory("cnav-test-moveclass-collide").toFile()
+        val sourceFile = File(tempDir, "com/app/polls/UserPollsService.kt").apply {
+            parentFile.mkdirs()
+            writeText("package com.app.polls\n\nclass UserPollsService { fun a() = \"moving-me\" }\n")
+        }
+        val destFile = File(tempDir, "com/app/polls/model/UserPollsService.kt").apply {
+            parentFile.mkdirs()
+            writeText("package com.app.polls.model\n\nclass UserPollsService { fun b() = \"already-here\" }\n")
+        }
+
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(tempDir),
+            className = "com.app.polls.UserPollsService",
+            newFqcn = "com.app.polls.model.UserPollsService",
+            preview = false,
+        )
+
+        assertTrue(result.error != null, "Should return an error. Got: $result")
+        assertTrue(result.error!!.contains("already exists"), "Error should explain the collision. Error: ${result.error}")
+        assertTrue(result.changes.isEmpty(), "Should have no changes on collision")
+        // No writes: destination keeps its original class, source is not deleted.
+        assertTrue(destFile.readText().contains("already-here"), "Destination must not be overwritten. Content:\n${destFile.readText()}")
+        assertTrue(sourceFile.exists(), "Source must not be deleted when the move is refused")
+    }
+
 }

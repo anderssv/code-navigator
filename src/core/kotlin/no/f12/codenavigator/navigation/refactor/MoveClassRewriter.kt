@@ -155,6 +155,13 @@ object MoveClassRewriter {
                 continue
             }
 
+            destinationCollisionError(newFilePath, movedFilePath)?.let {
+                // Exclude the colliding move from the batch entirely so its consumer edits are never
+                // computed (repointing consumers at a move that won't happen would break them).
+                results[index] = MoveClassResult(emptyList(), movedFilePath, newFilePath, error = it)
+                continue
+            }
+
             batchable.add(BatchableMove(index, req.className, req.newFqcn, oldPackage, simpleClassName, newPackage, movedFilePath, newFilePath))
         }
 
@@ -250,8 +257,7 @@ object MoveClassRewriter {
                 if (change.before.contains(oldImport)) relevantPaths.add(filePath)
             }
             val changesForThisMove = sharedChanges.filterKeys { it in relevantPaths }.values.toList()
-            val warnings = targetFileWarnings(move.newFilePath, move.movedFilePath)
-            results[move.index] = MoveClassResult(changesForThisMove, move.movedFilePath, move.newFilePath, warnings)
+            results[move.index] = MoveClassResult(changesForThisMove, move.movedFilePath, move.newFilePath)
         }
 
         if (!preview) {
@@ -448,12 +454,15 @@ object MoveClassRewriter {
             }
         }
 
+        destinationCollisionError(newFilePath, movedFilePath)?.let {
+            return MoveClassResult(emptyList(), movedFilePath, newFilePath, error = it)
+        }
+
         if (!preview) {
             applyChanges(changes, movedFilePath, newFilePath)
         }
 
-        val warnings = targetFileWarnings(newFilePath, movedFilePath)
-        return MoveClassResult(changes, movedFilePath, newFilePath, warnings)
+        return MoveClassResult(changes, movedFilePath, newFilePath)
     }
 
     private fun moveKtFacade(
@@ -508,11 +517,15 @@ object MoveClassRewriter {
             changes, ps, oldPackage, newPackage, movedFilePath, sourceContent, movedNames,
         )
 
+        destinationCollisionError(newFilePath, movedFilePath)?.let {
+            return MoveClassResult(emptyList(), movedFilePath, newFilePath, error = it)
+        }
+
         if (!preview) {
             applyChanges(allChanges, movedFilePath, newFilePath)
         }
 
-        return MoveClassResult(allChanges, movedFilePath, newFilePath, targetFileWarnings(newFilePath, movedFilePath))
+        return MoveClassResult(allChanges, movedFilePath, newFilePath)
     }
 
     private fun moveMultiClassFile(
@@ -548,11 +561,15 @@ object MoveClassRewriter {
             changes, ps, oldPackage, newPackage, movedFilePath, movedSource, movedNames,
         )
 
+        destinationCollisionError(newFilePath, movedFilePath)?.let {
+            return MoveClassResult(emptyList(), movedFilePath, newFilePath, error = it)
+        }
+
         if (!preview) {
             applyChanges(allChanges, movedFilePath, newFilePath)
         }
 
-        return MoveClassResult(allChanges, movedFilePath, newFilePath, targetFileWarnings(newFilePath, movedFilePath))
+        return MoveClassResult(allChanges, movedFilePath, newFilePath)
     }
 
     /**
@@ -749,14 +766,17 @@ object MoveClassRewriter {
         return filePath.endsWith(expectedSuffix)
     }
 
-    private fun targetFileWarnings(newFilePath: String?, movedFilePath: String?): List<String> {
-        if (newFilePath == null || movedFilePath == null || newFilePath == movedFilePath) return emptyList()
-        val targetFile = File(newFilePath)
-        if (!targetFile.exists()) return emptyList()
-        return listOf(
-            "WARNING: Target file already exists at '$newFilePath'. " +
-                "The move will overwrite it. Consider manually merging the class into the existing file instead.",
-        )
+    /**
+     * A move whose destination file already exists (and isn't the source) would silently overwrite a
+     * *different* declaration living there — data loss. This is a hard stop, not a warning: the caller
+     * returns an error result and applies no writes. Merge manually, or move to a different name/package.
+     */
+    private fun destinationCollisionError(newFilePath: String?, movedFilePath: String?): String? {
+        if (newFilePath == null || movedFilePath == null || newFilePath == movedFilePath) return null
+        if (!File(newFilePath).exists()) return null
+        return "Cannot move: the target file '$newFilePath' already exists and would be overwritten " +
+            "(a different declaration already lives there). No changes were made. Merge the class into that " +
+            "file manually, or move it to a different name/package."
     }
 
     private fun isInPackage(source: String, packageName: String): Boolean =

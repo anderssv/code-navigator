@@ -8,15 +8,6 @@ Items grouped by functional area. Each item has:
 
 ## Bugs
 
-### `cnavMoveClass` destination-collision handling: silent overwrite + orphaned source
-**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(greitt, v0.1.113)
-
-Moving `UserPollsService` to `polls.model`, where a *different* `UserPollsService.kt` already existed there, produced two data-loss symptoms in one run (likely the same root cause — the pre-existing-destination path):
-1. **Silent overwrite**: printed `WARNING: Target file already exists … will overwrite` and then overwrote the existing (different) class. `targetFileWarnings` already detects the collision, but it warns-and-continues — a warning an agent can't act on programmatically. It should be a hard stop (error result, no writes), or force `--preview` when the destination exists so the agent must confirm.
-2. **Orphaned source**: after the move, `UserPollsService.kt` existed in *both* the original package dir and the new one — the destination was written but the source not deleted, leaving a duplicate declaration (compile error). Normally `Files.move(REPLACE_EXISTING)` deletes the source; investigate the write path taken when the destination pre-exists (the physical move may have been skipped in favor of a plain write).
-
-**Fix**: when the computed destination file already exists and is not the source file, stop with an error (or force preview) rather than overwrite; ensure the source is always removed once the destination is written. **Reproducer**: move a class into a package that already contains a *different* file of the same name; check both dirs and the overwritten file afterward.
-
 ### `cnavRenameMethod` "no changes needed" is indistinguishable from "method not found"
 **ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(ra-backend, v0.1.113)
 
