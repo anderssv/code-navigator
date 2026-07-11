@@ -8,17 +8,6 @@ Items grouped by functional area. Each item has:
 
 ## Bugs
 
-### `cnavRenameMethod` misses interface declaration when targeting an `Impl` class
-**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113)
-
-Renaming `RAClientImpl.getInfo → fetchUserInfo` updated the impl, all callers, and tests — but left `RAClient` (interface) and `RAClientFake` (other implementor) with the original `getInfo` name. `fetchUserInfo` on the impl then `overrides nothing`, causing a compile error.
-
-Root cause: the rename locates the declaration in the target class and rewrites callers via bytecode call-site scanning, but does not walk up to the interface declaration or sideways to sibling implementors.
-
-**Fix**: After renaming the method in the target class, check whether it is an `override`. If it is, resolve the interface method it overrides (via PSI `overriddenFunctions`) and rename that declaration too, then find all other implementors (`InterfaceRegistry`) and rename their declarations as well. The caller rewrite already handles call sites; only declarations need the extra pass.
-
-**Reproducer**: `cnavRenameMethod --target-class=no.bankid.selvbetjening.ra.RAClientImpl --method=getInfo --new-name=fetchUserInfo` — compiles if targeting the interface directly, fails if targeting the impl.
-
 ### `cnavMovePackage` leaves source file in original package when it can't be physically moved
 **ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113)
 

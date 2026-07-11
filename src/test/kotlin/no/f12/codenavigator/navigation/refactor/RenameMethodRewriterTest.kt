@@ -342,4 +342,23 @@ class RenameMethodRewriterTest {
         // At minimum, .kt files should be found
         assertTrue("kt" in allExtensions, "Should process .kt files")
     }
+
+    @Test
+    fun `renaming a method on an Impl also renames the interface and sibling implementors`() {
+        val result = RenameMethodRewriter.rename(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.overridefamily.RaClientImpl",
+            methodName = "getInfo",
+            newName = "fetchInfo",
+            preview = true,
+            classesRoots = listOf(testProjectClasses),
+        )
+
+        val change = result.changes.firstOrNull { it.filePath.endsWith("overridefamily/RaClient.kt") }
+        assertTrue(change != null, "Should change RaClient.kt. Changes: ${result.changes.map { it.filePath }}")
+        // Impl, interface, AND sibling fake declarations must all be renamed so the override still resolves.
+        assertTrue(!change.after.contains("fun getInfo("), "No old name should remain. Content:\n${change.after}")
+        assertEquals(3, Regex("fun fetchInfo\\(").findAll(change.after).count(),
+            "Interface + impl + fake declarations should all be renamed (3 occurrences). Content:\n${change.after}")
+    }
 }

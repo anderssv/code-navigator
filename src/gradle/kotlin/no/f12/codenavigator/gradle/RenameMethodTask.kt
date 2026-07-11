@@ -72,7 +72,11 @@ abstract class RenameMethodTask @Inject constructor(
 
         // Phase 1: Bytecode analysis (runs in main classpath where ASM is available)
         val callSiteFiles = RenameLocationFinder.findCallSiteFiles(classesRoots, config.className, config.methodName)
-        val implementorFqns = RenameLocationFinder.findImplementors(classesRoots, config.className)
+        // The whole override family must rename together: implementors of the target, plus — when the
+        // target is itself an override (e.g. an Impl) — the interface it overrides and that interface's
+        // sibling implementors, else the impl ends up overriding nothing.
+        val implementorFqns = RenameLocationFinder.findImplementors(classesRoots, config.className) +
+            RenameLocationFinder.findOverrideFamily(classesRoots, config.className, config.methodName)
 
         val resultFileLocation = temporaryDir.resolve("rename-result.json")
 

@@ -1608,3 +1608,17 @@ Two dedicated tests lock in the value: one proves resolution correctly leaves a 
 **Non-Kotlin warning:** since the rewriter only edits `.kt` files, a `.java`/`.groovy`/`.scala` consumer of a moved Kotlin class is left with a stale reference. `MoveClassResult` now carries a warning naming those files ("N non-Kotlin source file(s) may reference 'X' but were NOT updated … review manually"), so an agent knows to fix them independently instead of silently shipping broken cross-language code.
 
 **Verification:** full suite (2,744) green, `mvnw compile` green, and live end-to-end against a mixed Kotlin+Java scratch project — a rename correctly renamed the type + constructor, left the same-named enum entry (declaration *and* reference) untouched, the destination Kotlin **compiled**, and the Java consumer triggered the non-Kotlin warning.
+
+---
+
+## ~~`cnavRenameMethod` misses interface declaration when targeting an `Impl` class~~ — DONE
+
+**Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113)
+
+Renaming a method on an `Impl` (e.g. `RAClientImpl.getInfo`) renamed the impl + call sites but left the interface (`RAClient`) and sibling implementors (`RAClientFake`) with the old name, so the impl then `overrides nothing` — a compile error. `findImplementors(className)` only walks *down* (classes implementing the target), which finds nothing for a leaf impl.
+
+Fixed with a bytecode `RenameLocationFinder.findOverrideFamily(classesRoots, className, methodName)`: scans all class files once to build supertype/subtype maps + which classes declare the method, walks *up* from the target to the declaring interface(s)/superclass(es), then *down* from those roots to every implementor/subclass that declares it — the complete override family. Those FQNs are added to `implementorFqns`, and the editor already renames declarations for any class in that set. Chose bytecode (consistent with the existing `findImplementors`/call-site scanning) over the plan's suggested PSI `overriddenFunctions`, since the finder is already a bytecode pass.
+
+**Gradle/Maven duplication caught by live e2e:** the fix in `RenameMethodRewriter.rename` made the unit test pass, but the live run still failed — the Gradle `RenameMethodTask` computes `implementorFqns` itself (bytecode scan runs main-side, PSI edit in the worker) and bypasses `RenameMethodRewriter.rename`. Had to add `findOverrideFamily` to the task's computation too. Maven's mojo calls `RenameMethodRewriter.rename` directly, so it was already covered.
+
+New test (`renaming a method on an Impl also renames the interface and sibling implementors`, over a new interface+impl+fake fixture) plus live e2e: renaming via the impl renamed the interface, impl, sibling fake, and caller, and the destination project **compiled** (no "overrides nothing"). Full suite green.

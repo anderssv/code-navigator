@@ -25,12 +25,16 @@ object RenameMethodRewriter {
         preview: Boolean = false,
         classesRoots: List<File> = emptyList(),
     ): RenameMethodResult {
-        // Phase B: Use bytecode to find call sites and implementors when classes are available
+        // Phase B: Use bytecode to find call sites and the full declaration set when classes are available.
         val callSiteFiles: Set<String>
         val implementorFqns: Set<String>
         if (classesRoots.isNotEmpty()) {
             callSiteFiles = RenameLocationFinder.findCallSiteFiles(classesRoots, className, methodName)
-            implementorFqns = RenameLocationFinder.findImplementors(classesRoots, className)
+            // The whole override family must be renamed together: direct implementors of the target PLUS,
+            // when the target is itself an override (e.g. an Impl), the interface it overrides and that
+            // interface's sibling implementors — otherwise the impl ends up overriding nothing.
+            implementorFqns = RenameLocationFinder.findImplementors(classesRoots, className) +
+                RenameLocationFinder.findOverrideFamily(classesRoots, className, methodName)
         } else {
             callSiteFiles = emptySet()
             implementorFqns = emptySet()
