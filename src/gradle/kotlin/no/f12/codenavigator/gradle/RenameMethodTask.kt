@@ -6,6 +6,7 @@ import no.f12.codenavigator.navigation.refactor.RenameLocationFinder
 import no.f12.codenavigator.navigation.refactor.RenameMethodConfig
 import no.f12.codenavigator.navigation.refactor.RenameMethodFormatter
 import no.f12.codenavigator.navigation.refactor.RenameMethodResult
+import no.f12.codenavigator.navigation.refactor.RenameMethodRewriter
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
@@ -101,7 +102,8 @@ abstract class RenameMethodTask @Inject constructor(
         val result = RenameMethodResult.fromJson(resultFileLocation.readText())
 
         if (result.changes.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
+            val diagnosis = RenameMethodRewriter.diagnoseNoChanges(classesRoots, config.className, config.methodName)
+            logger.lifecycle(OutputWrapper.emptyResult(config.format, diagnosis.message, diagnosis.hints))
             return
         }
 
@@ -114,10 +116,4 @@ abstract class RenameMethodTask @Inject constructor(
 })
     }
 
-    private fun noResultsHints(config: RenameMethodConfig): List<String> = buildList {
-        add("Ensure the class name is fully qualified (e.g., com.example.MyClass).")
-        add("Use cnavClassDetail --pattern=${config.className.substringAfterLast('.')} to find the FQN if unsure.")
-        add("Check that the method '${config.methodName}' exists in '${config.className}' (use cnavClassDetail to verify).")
-        add("Only Kotlin source files (.kt) are searched.")
-    }
 }

@@ -8,11 +8,6 @@ Items grouped by functional area. Each item has:
 
 ## Bugs
 
-### `cnavRenameMethod` "no changes needed" is indistinguishable from "method not found"
-**ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(ra-backend, v0.1.113)
-
-Renaming `RAClientImpl.search` returned "no changes needed" because `search` is a JAXB-generated method (not a PSI-declared Kotlin method) — correct behavior, but the output was identical to a genuine typo / not-found. An agent can't tell whether it mistyped the method name or hit a generation boundary. Distinguish the two: "method `search` exists on `RAClientImpl` but is generated / not PSI-renameable (skipped)" vs "no method `search` found on `RAClientImpl`" (with a did-you-mean over the class's declared methods).
-
 ---
 
 ## Multi-module support

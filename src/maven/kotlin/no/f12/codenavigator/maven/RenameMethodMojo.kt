@@ -49,16 +49,23 @@ class RenameMethodMojo : AbstractMojo() {
             .map { root -> File(root as String) }
             .filter { it.exists() }
 
+        val classesRoots = listOfNotNull(
+            File(project.build.outputDirectory).takeIf { it.exists() },
+            File(project.build.testOutputDirectory).takeIf { it.exists() },
+        )
+
         val result = RenameMethodRewriter.rename(
             sourceRoots = sourceRoots,
             className = config.className,
             methodName = config.methodName,
             newName = config.newName,
             preview = config.preview,
+            classesRoots = classesRoots,
         )
 
         if (result.changes.isEmpty()) {
-            println(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
+            val diagnosis = RenameMethodRewriter.diagnoseNoChanges(classesRoots, config.className, config.methodName)
+            println(OutputWrapper.emptyResult(config.format, diagnosis.message, diagnosis.hints))
             return
         }
 
@@ -69,13 +76,6 @@ class RenameMethodMojo : AbstractMojo() {
         OutputFormat.LLM -> RenameMethodFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.LLM))
     }
 })
-    }
-
-    private fun noResultsHints(config: RenameMethodConfig): List<String> = buildList {
-        add("Ensure the class name is fully qualified (e.g., com.example.MyClass).")
-        add("Use cnav:class-detail -Dpattern=${config.className.substringAfterLast('.')} to find the FQN if unsure.")
-        add("Check that the method '${config.methodName}' exists in '${config.className}' (use cnav:class-detail to verify).")
-        add("Only Kotlin source files (.kt) are searched.")
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {

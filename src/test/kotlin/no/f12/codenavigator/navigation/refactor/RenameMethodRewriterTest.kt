@@ -361,4 +361,43 @@ class RenameMethodRewriterTest {
         assertEquals(3, Regex("fun fetchInfo\\(").findAll(change.after).count(),
             "Interface + impl + fake declarations should all be renamed (3 occurrences). Content:\n${change.after}")
     }
+
+    @Test
+    fun `diagnoseNoChanges reports an unknown class`() {
+        val d = RenameMethodRewriter.diagnoseNoChanges(
+            listOf(testProjectClasses),
+            "com.example.does.not.Exist",
+            "whatever",
+        )
+        assertTrue(d.message.contains("was not found"), "Should say class not found. Got: ${d.message}")
+    }
+
+    @Test
+    fun `diagnoseNoChanges flags a declared method as generated or non-Kotlin`() {
+        // getInfo IS declared on RaClientImpl in bytecode; diagnoseNoChanges is only reached when the
+        // rename produced no .kt edits, which for a real declared method means it's generated/non-Kotlin.
+        val d = RenameMethodRewriter.diagnoseNoChanges(
+            listOf(testProjectClasses),
+            "com.example.variants.overridefamily.RaClientImpl",
+            "getInfo",
+        )
+        assertTrue(d.message.contains("has no Kotlin declaration"), "Should flag as generated/non-Kotlin. Got: ${d.message}")
+    }
+
+    @Test
+    fun `diagnoseNoChanges offers a did-you-mean for a misspelled method`() {
+        val d = RenameMethodRewriter.diagnoseNoChanges(
+            listOf(testProjectClasses),
+            "com.example.variants.overridefamily.RaClientImpl",
+            "getInfx",
+        )
+        assertTrue(d.message.contains("No method 'getInfx' found"), "Should say method not found. Got: ${d.message}")
+        assertTrue(d.message.contains("Did you mean 'getInfo'?"), "Should suggest getInfo. Got: ${d.message}")
+    }
+
+    @Test
+    fun `diagnoseNoChanges without compiled classes admits it cannot verify`() {
+        val d = RenameMethodRewriter.diagnoseNoChanges(emptyList(), "com.example.Foo", "bar")
+        assertTrue(d.message.contains("Compiled classes were unavailable"), "Should note classes missing. Got: ${d.message}")
+    }
 }

@@ -210,6 +210,62 @@ object RenameLocationFinder {
         return family.map { ClassName.fromInternal(it).toString() }.toSet()
     }
 
+    /** What bytecode knows about a target method — used to explain an empty rename result. */
+    data class MethodPresence(
+        val classFound: Boolean,
+        val methodDeclared: Boolean,
+        /** Real (non-synthetic) method names declared on the class, for did-you-mean. */
+        val declaredMethodNames: Set<String>,
+    )
+
+    /**
+     * Inspect the target class in bytecode: was it found, does it declare [methodName], and what
+     * methods does it declare? Lets the caller tell "generated / not-renameable method" apart from
+     * "no such method" when a rename produces zero source edits.
+     */
+    fun inspectMethod(
+        classesRoots: List<File>,
+        className: String,
+        methodName: String,
+    ): MethodPresence {
+        val targetInternal = className.replace('.', '/')
+        var classFound = false
+        var methodDeclared = false
+        val declaredMethodNames = mutableSetOf<String>()
+
+        forEachClassFile(classesRoots) { classFile ->
+            val reader = ClassReader(classFile.readBytes())
+            reader.accept(
+                object : ClassVisitor(Opcodes.ASM9) {
+                    var isTarget = false
+                    override fun visit(
+                        version: Int, access: Int, name: String,
+                        signature: String?, superName: String?, interfaces: Array<out String>?,
+                    ) {
+                        isTarget = name == targetInternal
+                        if (isTarget) classFound = true
+                    }
+
+                    override fun visitMethod(
+                        access: Int, name: String, descriptor: String?,
+                        signature: String?, exceptions: Array<out String>?,
+                    ): MethodVisitor? {
+                        if (isTarget) {
+                            if (name == methodName) methodDeclared = true
+                            if (name != "<init>" && name != "<clinit>" && !name.contains('$')) {
+                                declaredMethodNames.add(name)
+                            }
+                        }
+                        return null
+                    }
+                },
+                ClassReader.SKIP_CODE or ClassReader.SKIP_FRAMES or ClassReader.SKIP_DEBUG,
+            )
+        }
+
+        return MethodPresence(classFound, methodDeclared, declaredMethodNames)
+    }
+
     private fun forEachClassFile(classesRoots: List<File>, action: (File) -> Unit) {
         for (root in classesRoots) {
             if (!root.exists()) continue
