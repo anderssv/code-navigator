@@ -393,7 +393,7 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 ## Standalone new tasks
 
 ### `cnavTestHealth` — verify all test methods actually ran
-**ACTIVE** | **Value: medium** | **Effort: medium** | Source: user-feedback
+**PARKED** | **Value: medium** | **Effort: medium** | Source: user-feedback
 
 Count `@Test`-annotated methods from bytecode, compare against JUnit XML results, flag the delta. Catches silently skipped tests (e.g., non-`Unit` return types).
 
@@ -561,11 +561,6 @@ Would need `ConvergeOrchestrator`'s risk-mode entries (per-class) to cross-refer
 ---
 
 ## Internal code quality
-
-### `cnavReport` has no real JSON output format
-**LOW** | **Value: low** | **Effort: medium** | Source: internal (pattern audit after the formatting-layer boundary fix)
-
-`ReportTask`/`ReportMojo` also echo the same rendered string across all three `when (format) { TEXT,DIFF -> output; JSON -> output; LLM -> output }` branches — the same shape as the `cnavRings` JSON gap above. Likely lower priority: `cnavReport` is a composite markdown aggregator of other tasks' output (which themselves may or may not have real JSON), so "real JSON for the composite report" is a bigger design question (aggregate the sub-results structurally, not their rendered text) rather than a quick formatter fix. Parked until `cnavRings`' JSON gap is addressed first, since Report includes Rings' output.
 
 ### Migrate MoveClassRewriter from OpenRewrite to PSI
 **LOW** | **Value: medium** | **Effort: high** | Source: internal
