@@ -461,6 +461,32 @@ class MoveClassRewriterTest {
     }
 
     @Test
+    fun `extractDeclaredClassNames finds classes with visibility modifiers and annotations`() {
+        // Regression: visibility modifiers were previously unmatched, so `internal class` in a file not
+        // named after the class was undetectable -> the move silently produced (0 files) and left a stale package.
+        val source = """
+            package com.example
+
+            internal class RedisCache
+            public class PublicThing
+            private object PrivateObj
+
+            @Component
+            internal class Annotated
+
+            @Named("x") class SameLineAnnotated
+        """.trimIndent()
+
+        val names = MoveClassRewriter.extractDeclaredClassNames(source)
+
+        assertTrue(names.contains("RedisCache"), "Should find internal class. Found: $names")
+        assertTrue(names.contains("PublicThing"), "Should find public class. Found: $names")
+        assertTrue(names.contains("PrivateObj"), "Should find private object. Found: $names")
+        assertTrue(names.contains("Annotated"), "Should find annotated internal class. Found: $names")
+        assertTrue(names.contains("SameLineAnnotated"), "Should find same-line-annotated class. Found: $names")
+    }
+
+    @Test
     fun `move Kt facade does not modify files that dont reference the moved file`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),

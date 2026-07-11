@@ -1622,3 +1622,17 @@ Fixed with a bytecode `RenameLocationFinder.findOverrideFamily(classesRoots, cla
 **Gradle/Maven duplication caught by live e2e:** the fix in `RenameMethodRewriter.rename` made the unit test pass, but the live run still failed — the Gradle `RenameMethodTask` computes `implementorFqns` itself (bytecode scan runs main-side, PSI edit in the worker) and bypasses `RenameMethodRewriter.rename`. Had to add `findOverrideFamily` to the task's computation too. Maven's mojo calls `RenameMethodRewriter.rename` directly, so it was already covered.
 
 New test (`renaming a method on an Impl also renames the interface and sibling implementors`, over a new interface+impl+fake fixture) plus live e2e: renaming via the impl renamed the interface, impl, sibling fake, and caller, and the destination project **compiled** (no "overrides nothing"). Full suite green.
+
+---
+
+## ~~`cnavMovePackage` leaves source file in original package (`(0 files)` silent skip)~~ — DONE
+
+**Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113)
+
+Moving a package reported a step like `RedisCache → infra.cache.RedisCache (0 files)` — a computed destination but zero file edits: the source stayed in the old package with its original `package` declaration while consumers were repointed at the new package, breaking compilation.
+
+**Root cause found:** `MoveClassRewriter.CLASS_DECLARATION_PATTERN` (used by `extractDeclaredClassNames`/`declaresClass` for the content-based file lookup) matched `data`/`sealed`/`enum`/`abstract`/… modifiers but **not visibility modifiers** (`internal`/`public`/`private`/`protected`) or same-line annotations. So `internal class RedisCache` declared in a file *not* named after the class (filename lookup misses, content fallback needed) was undetectable → `movedFilePath == null` → an empty result rendered as the silent `(0 files)`. Fixed the pattern to accept optional same-line annotations plus visibility/`final` modifiers in any order.
+
+**Safety net:** added `withZeroChangeWarning` — any requested batch move that yields zero changes and no error now carries a warning ("'X' was requested for move but produced no changes — its source file was not located or rewritten … verify manually"), so a future undetected declaration form surfaces instead of silently succeeding. (A genuine move always changes at least the moved file's own package line.)
+
+New unit test covers the modifier/annotation forms (`internal class`, `public class`, `private object`, annotated, same-line-annotated). Full suite + Maven green. Live-verified: a package containing an `internal class` in a mis-named file now moves correctly (file relocated, package rewritten, consumers updated) and the destination **compiles**.

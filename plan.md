@@ -8,17 +8,6 @@ Items grouped by functional area. Each item has:
 
 ## Bugs
 
-### `cnavMovePackage` leaves source file in original package when it can't be physically moved
-**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113)
-
-Moving `no.bankid.selvbetjening.cache → no.bankid.selvbetjening.infra.cache` reported four moves including `RedisCache → infra.cache.RedisCache (0 files)`. The `(0 files)` means the move plan computed a destination for `RedisCache` but made zero file edits — the file stayed in `cache/` with its original `package` declaration, while all other files that referenced `Cache` and `RedisConfig` were rewritten to import from `infra.cache`. This left `RedisCache.kt` importing names that no longer exist in its package.
-
-Root cause: `RedisCache` is a large file that shares its file with other declarations, or the rewriter determined the file was already handled as a side-effect of another move step and skipped it. The `(0 files)` silent skip is the core problem — when the rewriter decides not to edit a file it listed as part of the plan, it should either error or produce a warning, not silently succeed.
-
-**Fix**: Any class listed in the move plan that ends with `(0 files)` should either: (a) produce an explicit warning in output (`WARNING: RedisCache.kt was not rewritten — verify manually`), or (b) be treated as a hard failure rather than a silent no-op. Additionally investigate why `RedisCache.kt` was skipped — if it's a multi-class file issue, the move plan should detect that upfront.
-
-**Reproducer**: `cnavMovePackage --from-package=no.bankid.selvbetjening.cache --to-package=no.bankid.selvbetjening.infra.cache` on ra-backend — compile fails after the move.
-
 ### `cnavMoveClass` destination-collision handling: silent overwrite + orphaned source
 **ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(greitt, v0.1.113)
 

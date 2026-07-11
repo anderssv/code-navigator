@@ -163,7 +163,9 @@ object MoveClassRewriter {
         }
 
         return moves.mapIndexed { index, req ->
-            (results[index] ?: MoveClassResult(emptyList())).withNonKotlinReferenceWarnings(sourceRoots, req.className)
+            (results[index] ?: MoveClassResult(emptyList()))
+                .withZeroChangeWarning(req.className)
+                .withNonKotlinReferenceWarnings(sourceRoots, req.className)
         }
     }
 
@@ -578,6 +580,20 @@ object MoveClassRewriter {
      * Kotlin class is left with a stale reference — surfacing it lets an agent fix those independently
      * instead of silently shipping broken cross-language code.
      */
+    /**
+     * A requested move that produced zero changes and no error means the class's source file was never
+     * located/rewritten — its `package` declaration is left stale while consumers get repointed at the new
+     * package, breaking compilation. Surface it instead of the silent `(0 files)` success. (A genuine move
+     * always changes at least the moved file's own package line.)
+     */
+    private fun MoveClassResult.withZeroChangeWarning(className: String): MoveClassResult {
+        if (changes.isNotEmpty() || error != null) return this
+        return copy(
+            warnings = warnings + "'$className' was requested for move but produced no changes — its source " +
+                "file was not located or rewritten (its package declaration may be left stale). Verify manually.",
+        )
+    }
+
     private fun MoveClassResult.withNonKotlinReferenceWarnings(sourceRoots: List<File>, className: String): MoveClassResult {
         if (movedFilePath == null) return this
         val extra = nonKotlinReferenceWarnings(sourceRoots, className)
@@ -750,7 +766,10 @@ object MoveClassRewriter {
         extractDeclaredClassNames(source).contains(className)
 
     private val CLASS_DECLARATION_PATTERN = Regex(
-        """^\s*(?:(?:data|sealed|enum|abstract|open|inner|value|annotation)\s+)*(?:class|interface|object)\s+(\w+)""",
+        // Optional same-line annotations, then any order of visibility + class modifiers. Visibility
+        // modifiers (internal/private/…) were previously missing, so `internal class RedisCache` was
+        // undetected — the file couldn't be located and its move silently produced zero changes.
+        """^\s*(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|private|internal|protected|data|sealed|enum|abstract|open|inner|value|annotation|final)\s+)*(?:class|interface|object)\s+(\w+)""",
         RegexOption.MULTILINE,
     )
 
