@@ -30,7 +30,7 @@ abstract class ExecutePlanTask @Inject constructor(
 ) : CodeNavigatorTask() {
 
     @get:Classpath
-    abstract val openRewriteClasspath: ConfigurableFileCollection
+    abstract val psiClasspath: ConfigurableFileCollection
 
     @Option(option = "preview", description = "Preview changes without writing to source files")
     @get:Internal
@@ -80,7 +80,7 @@ abstract class ExecutePlanTask @Inject constructor(
                     val resultFile = temporaryDir.resolve("plan-step-${stepResults.size}.json")
 
                     val workQueue = workerExecutor.classLoaderIsolation {
-                        classpath.from(openRewriteClasspath)
+                        classpath.from(psiClasspath)
                     }
 
                     workQueue.submit(MoveClassWorkAction::class.java) {

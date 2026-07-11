@@ -27,7 +27,7 @@ abstract class MovePackageTask @Inject constructor(
 ) : CodeNavigatorTask() {
 
     @get:Classpath
-    abstract val openRewriteClasspath: ConfigurableFileCollection
+    abstract val psiClasspath: ConfigurableFileCollection
 
     @Option(option = "from-package", description = "Source package (dot-separated)")
     @get:Internal
@@ -76,7 +76,7 @@ abstract class MovePackageTask @Inject constructor(
         val classpathDirs = classesRoots.map { it.absolutePath }
 
         val workQueue = workerExecutor.classLoaderIsolation {
-            classpath.from(openRewriteClasspath)
+            classpath.from(psiClasspath)
         }
 
         val moves = classesInPackage.map { fqcn ->

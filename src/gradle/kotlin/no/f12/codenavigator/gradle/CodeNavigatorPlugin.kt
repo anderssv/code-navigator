@@ -16,14 +16,8 @@ class CodeNavigatorPlugin : Plugin<Project> {
 
         project.extensions.create("codeNavigator", CodeNavigatorExtension::class.java)
 
-        val openRewriteDeps = listOf(
-            project.dependencies.create("org.openrewrite:rewrite-core:$OPENREWRITE_VERSION"),
-            project.dependencies.create("org.openrewrite:rewrite-java:$OPENREWRITE_VERSION"),
-            project.dependencies.create("org.openrewrite:rewrite-java-21:$OPENREWRITE_VERSION"),
-            project.dependencies.create("org.openrewrite:rewrite-kotlin:$OPENREWRITE_VERSION"),
-        )
-        val openRewriteConfig = project.configurations.detachedConfiguration(*openRewriteDeps.toTypedArray())
-
+        // The PSI-based refactor rewriters (move, rename, safe-delete, change-signature) run in an
+        // isolated worker classloader that needs the Kotlin compiler frontend on its classpath.
         val psiDeps = listOf(
             project.dependencies.create("org.jetbrains.kotlin:kotlin-compiler-embeddable:$KOTLIN_COMPILER_VERSION"),
         )
@@ -32,9 +26,9 @@ class CodeNavigatorPlugin : Plugin<Project> {
         for (taskDef in TaskRegistry.ALL_TASKS) {
             val taskClass = TASK_CLASSES[taskDef.goal]
                 ?: error("No Gradle task class registered for goal '${taskDef.goal}'")
-            registerTask(project, taskDef.gradleTaskName, taskClass, taskDef, openRewriteConfig, psiConfig)
+            registerTask(project, taskDef.gradleTaskName, taskClass, taskDef, psiConfig)
             for (aliasGradleName in taskDef.aliasGradleTaskNames) {
-                registerTask(project, aliasGradleName, taskClass, taskDef, openRewriteConfig, psiConfig)
+                registerTask(project, aliasGradleName, taskClass, taskDef, psiConfig)
             }
         }
 
@@ -60,7 +54,6 @@ class CodeNavigatorPlugin : Plugin<Project> {
     }
 
     companion object {
-        private const val OPENREWRITE_VERSION = "8.78.6"
         private const val KOTLIN_COMPILER_VERSION = "2.0.21"
 
         private fun registerTask(
@@ -68,7 +61,6 @@ class CodeNavigatorPlugin : Plugin<Project> {
             taskName: String,
             taskClass: Class<out DefaultTask>,
             taskDef: TaskDef,
-            openRewriteConfig: Configuration,
             psiConfig: Configuration,
         ) {
             project.tasks.register(taskName, taskClass) {
@@ -100,25 +92,25 @@ class CodeNavigatorPlugin : Plugin<Project> {
                     }
                 }
                 if (this is RenameParamTask) {
-                    openRewriteClasspath.from(openRewriteConfig)
+                    psiClasspath.from(psiConfig)
                 }
                 if (this is RenameMethodTask) {
                     psiClasspath.from(psiConfig)
                 }
                 if (this is MoveClassTask) {
-                    openRewriteClasspath.from(openRewriteConfig)
+                    psiClasspath.from(psiConfig)
                 }
                 if (this is MovePackageTask) {
-                    openRewriteClasspath.from(openRewriteConfig)
+                    psiClasspath.from(psiConfig)
                 }
                 if (this is MoveFileTask) {
-                    openRewriteClasspath.from(openRewriteConfig)
+                    psiClasspath.from(psiConfig)
                 }
                 if (this is ExecutePlanTask) {
-                    openRewriteClasspath.from(openRewriteConfig)
+                    psiClasspath.from(psiConfig)
                 }
                 if (this is RenamePropertyTask) {
-                    openRewriteClasspath.from(openRewriteConfig)
+                    psiClasspath.from(psiConfig)
                 }
                 if (this is SafeDeleteTask) {
                     psiClasspath.from(psiConfig)

@@ -27,11 +27,7 @@ object MoveFileRewriter {
             val normalizedFilePath = filePath.replace("\\", "/")
             normalizedFilePath == normalizedFrom ||
                 normalizedFilePath.endsWith("/$normalizedFrom") ||
-                normalizedFilePath.endsWith(normalizedFrom) ||
-                sourceFile.sourcePath.toString().let { sp ->
-                    val normalizedSp = sp.replace("\\", "/")
-                    normalizedSp == normalizedFrom || normalizedSp.endsWith("/$normalizedFrom") || normalizedSp.endsWith(normalizedFrom)
-                }
+                normalizedFilePath.endsWith(normalizedFrom)
         } ?: return MoveClassResult(emptyList())
 
         val filePath = resolveOriginalPath(resolvedFile, ps.sourceRoots)

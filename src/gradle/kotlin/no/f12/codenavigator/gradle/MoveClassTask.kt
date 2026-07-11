@@ -27,7 +27,7 @@ abstract class MoveClassTask @Inject constructor(
 ) : CodeNavigatorTask() {
 
     @get:Classpath
-    abstract val openRewriteClasspath: ConfigurableFileCollection
+    abstract val psiClasspath: ConfigurableFileCollection
 
     @Option(option = "from", description = "Fully qualified class name to move/rename")
     @get:Internal
@@ -76,7 +76,7 @@ abstract class MoveClassTask @Inject constructor(
         val resultFileLocation = temporaryDir.resolve("move-result.json")
 
         val workQueue = workerExecutor.classLoaderIsolation {
-            classpath.from(openRewriteClasspath)
+            classpath.from(psiClasspath)
         }
 
         workQueue.submit(MoveClassWorkAction::class.java) {
@@ -126,7 +126,7 @@ abstract class MoveClassTask @Inject constructor(
         val resultFileLocation = temporaryDir.resolve("move-result.json")
 
         val workQueue = workerExecutor.classLoaderIsolation {
-            classpath.from(openRewriteClasspath)
+            classpath.from(psiClasspath)
         }
 
         workQueue.submit(MoveFileWorkAction::class.java) {

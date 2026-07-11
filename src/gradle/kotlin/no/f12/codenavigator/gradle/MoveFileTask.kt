@@ -25,7 +25,7 @@ abstract class MoveFileTask @Inject constructor(
 ) : CodeNavigatorTask() {
 
     @get:Classpath
-    abstract val openRewriteClasspath: ConfigurableFileCollection
+    abstract val psiClasspath: ConfigurableFileCollection
 
     @Option(option = "from-file", description = "Relative path to the source file to move (e.g. src/main/kotlin/com/example/Foo.kt)")
     @get:Internal
@@ -63,7 +63,7 @@ abstract class MoveFileTask @Inject constructor(
         val resultFileLocation = temporaryDir.resolve("move-result.json")
 
         val workQueue = workerExecutor.classLoaderIsolation {
-            classpath.from(openRewriteClasspath)
+            classpath.from(psiClasspath)
         }
 
         workQueue.submit(MoveFileWorkAction::class.java) {

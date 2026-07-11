@@ -1,8 +1,5 @@
 package no.f12.codenavigator.navigation.refactor
 
-import org.openrewrite.config.CompositeRecipe
-import org.openrewrite.internal.InMemoryLargeSourceSet
-import org.openrewrite.java.ChangeType
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -184,18 +181,24 @@ object MoveClassRewriter {
         preview: Boolean,
         results: Array<MoveClassResult?>,
     ) {
-        val recipeList = batchable.map { ChangeType(it.className, it.newFqcn, null) }
-        val composite = CompositeRecipe(recipeList)
-        val sourceSet = InMemoryLargeSourceSet(ps.sources)
-        val recipeRun = composite.run(sourceSet, ps.ctx)
+        // The old CompositeRecipe applied every move's ChangeType in one pass, so a file touched by two
+        // moves saw both. Replicate that by threading a mutable working copy of each source's text
+        // through the moves in order — each move's retarget (and its package-line rewrite) layers on the
+        // previous moves' edits.
+        val originals = ps.sources.associate { it.path to it.content }
+        val working = originals.toMutableMap()
+        for (move in batchable) {
+            val workingSources = working.map { (path, content) -> SourceFileContent(path, content) }
+            for ((path, after) in KotlinTypeReferenceRewriter.retargetAcrossSources(workingSources, move.className, move.newFqcn)) {
+                working[path] = after
+            }
+            working[move.movedFilePath]?.let { working[move.movedFilePath] = rewritePackageDecl(it, move.oldPackage, move.newPackage) }
+        }
 
         val sharedChanges = mutableMapOf<String, RenameChange>()
-        for (result in recipeRun.changeset.allResults) {
-            val before = result.before?.printAll() ?: continue
-            val after = result.after?.printAll() ?: continue
-            if (before == after) continue
-            val filePath = resolveOriginalPath(result.before!!, ps.sourceRoots)
-            sharedChanges[filePath] = RenameChange(filePath, before, after)
+        for ((path, finalContent) in working) {
+            val original = originals[path] ?: continue
+            if (finalContent != original) sharedChanges[path] = RenameChange(path, original, finalContent)
         }
 
         for (move in batchable) {
@@ -336,21 +339,7 @@ object MoveClassRewriter {
             }
         }
 
-        val recipe = ChangeType(className, newFqcn, null)
-        val sourceSet = InMemoryLargeSourceSet(ps.sources)
-        val recipeRun = recipe.run(sourceSet, ps.ctx)
-        val results = recipeRun.changeset.allResults
-
-        val changes = mutableListOf<RenameChange>()
-
-        for (result in results) {
-            val before = result.before?.printAll() ?: continue
-            val after = result.after?.printAll() ?: continue
-            if (before == after) continue
-
-            val filePath = resolveOriginalPath(result.before!!, ps.sourceRoots)
-            changes.add(RenameChange(filePath, before, after))
-        }
+        val changes = retargetChanges(ps, className, newFqcn).toMutableList()
 
         // Check if standard-named file also has sibling classes
         if (movedFilePath != null && !foundByContent) {
@@ -386,7 +375,7 @@ object MoveClassRewriter {
             }
         }
 
-        // If file contains sibling classes, also run ChangeType for them
+        // If file contains sibling classes, also retarget references to them
         if (movedFilePath != null) {
             val movedSource = ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == movedFilePath }?.printAll()
             if (movedSource != null) {
@@ -394,24 +383,35 @@ object MoveClassRewriter {
                 for (sibling in siblingClasses) {
                     val oldSiblingFqcn = "$oldPackage.$sibling"
                     val newSiblingFqcn = "$newPackage.$sibling"
-                    val recipe = ChangeType(oldSiblingFqcn, newSiblingFqcn, null)
-                    val sourceSet = InMemoryLargeSourceSet(ps.sources)
-                    val recipeRun = recipe.run(sourceSet, ps.ctx)
-                    for (result in recipeRun.changeset.allResults) {
-                        val before = result.before?.printAll() ?: continue
-                        val after = result.after?.printAll() ?: continue
-                        if (before == after) continue
-                        val filePath = resolveOriginalPath(result.before!!, ps.sourceRoots)
-                        val existingIdx = changes.indexOfFirst { it.filePath == filePath }
+                    for (change in retargetChanges(ps, oldSiblingFqcn, newSiblingFqcn)) {
+                        val existingIdx = changes.indexOfFirst { it.filePath == change.filePath }
                         if (existingIdx >= 0) {
-                            changes[existingIdx] = RenameChange(filePath, changes[existingIdx].before, after)
+                            changes[existingIdx] = RenameChange(change.filePath, changes[existingIdx].before, change.after)
                         } else {
-                            changes.add(RenameChange(filePath, before, after))
+                            changes.add(change)
                         }
                     }
                 }
             }
         }
+
+        // ChangeType used to rewrite the declaring file's own package line; retargetChanges does not,
+        // so apply it to the moved file textually (same as the multi-class/facade paths' replacePackageImports).
+        if (movedFilePath != null) {
+            val movedIdx = changes.indexOfFirst { it.filePath == movedFilePath }
+            val current = if (movedIdx >= 0) changes[movedIdx].after
+            else ps.sources.firstOrNull { it.path == movedFilePath }?.content
+            if (current != null) {
+                val updated = rewritePackageDecl(current, oldPackage, newPackage)
+                if (updated != current) {
+                    val original = if (movedIdx >= 0) changes[movedIdx].before else current
+                    if (movedIdx >= 0) changes[movedIdx] = RenameChange(movedFilePath, original, updated)
+                    else changes.add(RenameChange(movedFilePath, original, updated))
+                }
+            }
+        }
+
+        importMovedTypeInFormerSamePackage(ps, changes, oldPackage, newPackage, targetName, movedFilePath)
 
         // Add imports for former same-package classes referenced by the moved file
         if (movedFilePath != null) {
@@ -485,19 +485,12 @@ object MoveClassRewriter {
         for (declaredClass in declaredClasses) {
             val oldFqcn = "$oldPackage.$declaredClass"
             val newClassFqcn = "$newPackage.$declaredClass"
-            val recipe = ChangeType(oldFqcn, newClassFqcn, null)
-            val sourceSet = InMemoryLargeSourceSet(ps.sources)
-            val recipeRun = recipe.run(sourceSet, ps.ctx)
-            for (result in recipeRun.changeset.allResults) {
-                val before = result.before?.printAll() ?: continue
-                val after = result.after?.printAll() ?: continue
-                if (before == after) continue
-                val filePath = resolveOriginalPath(result.before!!, ps.sourceRoots)
-                val existing = changes[filePath]
-                if (existing != null) {
-                    changes[filePath] = RenameChange(filePath, existing.before, after)
+            for (change in retargetChanges(ps, oldFqcn, newClassFqcn)) {
+                val existing = changes[change.filePath]
+                changes[change.filePath] = if (existing != null) {
+                    RenameChange(change.filePath, existing.before, change.after)
                 } else {
-                    changes[filePath] = RenameChange(filePath, before, after)
+                    change
                 }
             }
         }
@@ -531,19 +524,12 @@ object MoveClassRewriter {
         for (declaredClass in allClasses) {
             val oldFqcn = "$oldPackage.$declaredClass"
             val newFqcn = "$newPackage.$declaredClass"
-            val recipe = ChangeType(oldFqcn, newFqcn, null)
-            val sourceSet = InMemoryLargeSourceSet(ps.sources)
-            val recipeRun = recipe.run(sourceSet, ps.ctx)
-            for (result in recipeRun.changeset.allResults) {
-                val before = result.before?.printAll() ?: continue
-                val after = result.after?.printAll() ?: continue
-                if (before == after) continue
-                val filePath = resolveOriginalPath(result.before!!, ps.sourceRoots)
-                val existing = changes[filePath]
-                if (existing != null) {
-                    changes[filePath] = RenameChange(filePath, existing.before, after)
+            for (change in retargetChanges(ps, oldFqcn, newFqcn)) {
+                val existing = changes[change.filePath]
+                changes[change.filePath] = if (existing != null) {
+                    RenameChange(change.filePath, existing.before, change.after)
                 } else {
-                    changes[filePath] = RenameChange(filePath, before, after)
+                    change
                 }
             }
         }
@@ -559,6 +545,48 @@ object MoveClassRewriter {
         }
 
         return MoveClassResult(allChanges, movedFilePath, newFilePath, targetFileWarnings(newFilePath, movedFilePath))
+    }
+
+    /**
+     * PSI-based replacement for a single `ChangeType(oldFqcn, newFqcn)` run: retargets every reference
+     * to the moved type across [ps]'s sources, returned as [RenameChange]s keyed by path. Does not touch
+     * the declaring file's package declaration — callers apply that textually (see [rewritePackageDecl]).
+     */
+    private fun retargetChanges(ps: ParsedSources, oldFqcn: String, newFqcn: String): List<RenameChange> =
+        KotlinTypeReferenceRewriter.retargetAcrossSources(ps.sources, oldFqcn, newFqcn).map { (path, after) ->
+            RenameChange(path, ps.sources.first { it.path == path }.content, after)
+        }
+
+    private fun rewritePackageDecl(content: String, oldPackage: String, newPackage: String): String =
+        content.replace("package $oldPackage", "package $newPackage")
+
+    /**
+     * When a type moves out of [oldPackage], files that *stayed* in [oldPackage] and referenced it
+     * unqualified now reference a type that lives elsewhere — they need an explicit import of its new
+     * location added. (OpenRewrite's `ChangeType` did this implicitly; the PSI retarget only rewrites
+     * existing references, it doesn't manage imports.) Reuses [addMissingImportsForSiblings] by treating
+     * the moved type as a "sibling" now living in [newPackage].
+     */
+    private fun importMovedTypeInFormerSamePackage(
+        ps: ParsedSources,
+        changes: MutableList<RenameChange>,
+        oldPackage: String,
+        newPackage: String,
+        newSimpleName: String,
+        movedFilePath: String?,
+    ) {
+        if (oldPackage == newPackage) return
+        for (sourceFile in ps.sources) {
+            val path = sourceFile.path
+            if (path == movedFilePath) continue
+            if (!isInPackage(sourceFile.content, oldPackage)) continue
+            val idx = changes.indexOfFirst { it.filePath == path }
+            val current = if (idx >= 0) changes[idx].after else sourceFile.content
+            val updated = addMissingImportsForSiblings(current, newPackage, setOf(newSimpleName))
+            if (updated == current) continue
+            val original = if (idx >= 0) changes[idx].before else sourceFile.content
+            if (idx >= 0) changes[idx] = RenameChange(path, original, updated) else changes.add(RenameChange(path, original, updated))
+        }
     }
 
     private fun replacePackageImports(

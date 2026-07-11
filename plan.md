@@ -562,13 +562,6 @@ Would need `ConvergeOrchestrator`'s risk-mode entries (per-class) to cross-refer
 
 ## Internal code quality
 
-### Migrate MoveClassRewriter from OpenRewrite to PSI
-**LOW** | **Value: medium** | **Effort: high** | Source: internal
-
-`MoveClassRewriter` is the only refactor-package rewriter still on OpenRewrite's `ChangeType` recipe rather than the `kotlin-compiler-embeddable`/`KtPsiFactory` approach the Rename/ChangeSignature/SafeDelete rewriters use (see [[shared lookup extraction]]). Reason: `ChangeType` needs real semantic type resolution (type-inferred references with no literal token in the file at all, e.g. `val x = SomeFactory.create()` where `create()` returns the moved type) — the other rewriters get away with bytecode-derived heuristics + textual FQN/import matching because they never needed that. PSI-based migration is blocked on wiring up `BindingContext` in the embedded compiler frontend, which the "Embedded Kotlin Compiler Frontend" work explicitly left undone (`plan-completed.md`: "Remaining: BindingContext not yet used").
-
-Known OpenRewrite-specific cost: `KotlinIsoVisitor` doesn't traverse 3+ levels of nested lambdas (real limitation hit in production, documented in `plan-completed.md`'s companion-matching notes) — plain PSI tree traversal (`collectDescendantsOfType`) doesn't have that limitation, so this specific bug would very likely disappear with a PSI migration, independent of the BindingContext question. The metaspace `OutOfMemoryError` on large batches, by contrast, was **not** OpenRewrite-specific — it turned out to be the "one full re-parse per class, no batching" call pattern (fixed above, see [[Test suite health]]); a naive PSI swap that kept that same per-class invocation loop would have hit the identical metaspace growth, since both approaches load the same `kotlin-compiler-embeddable` frontend.
-
 ### New DANGER balance finding: root package → navigation.types
 **PARKED** | **Value: low** | **Effort: low** | Source: internal
 

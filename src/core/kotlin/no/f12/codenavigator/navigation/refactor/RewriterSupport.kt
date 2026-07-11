@@ -1,35 +1,37 @@
 package no.f12.codenavigator.navigation.refactor
 
-import org.openrewrite.ExecutionContext
-import org.openrewrite.InMemoryExecutionContext
-import org.openrewrite.SourceFile
-import org.openrewrite.kotlin.KotlinParser
 import java.io.File
 import java.nio.file.Path
 
+/**
+ * A source file's on-disk path and text, read directly rather than through a compiler frontend.
+ * The move rewriters operate on file *text* (package/import lines, FQN references), so they don't
+ * need a parsed AST for the file as a whole — only the targeted PSI reference rewrite ([retargetTypeReferences])
+ * parses on demand, per file, from this text.
+ *
+ * [printAll] and [path] mirror the shapes the rewriters used when this wrapped OpenRewrite's `SourceFile`,
+ * so the surrounding textual logic didn't have to change when OpenRewrite was removed.
+ */
+data class SourceFileContent(val path: String, val content: String) {
+    fun printAll(): String = content
+}
+
 data class ParsedSources(
-    val sources: List<SourceFile>,
+    val sources: List<SourceFileContent>,
     val sourceRoots: List<File>,
-    val ctx: ExecutionContext,
 )
 
+/**
+ * Reads every `.kt` file under [sourceRoots] into memory. [classpath] is accepted for signature
+ * compatibility with the previous OpenRewrite-backed parser (callers still thread a classpath
+ * through) but is unused — the textual/PSI rewrites don't need type attribution.
+ */
 fun parseKotlinSources(
     sourceRoots: List<File>,
-    classpath: List<Path> = emptyList(),
+    @Suppress("UNUSED_PARAMETER") classpath: List<Path> = emptyList(),
 ): ParsedSources {
-    val sourceFiles = collectSourceFiles(sourceRoots)
-    val parserBuilder = KotlinParser.builder()
-    if (classpath.isNotEmpty()) {
-        parserBuilder.classpath(classpath)
-    }
-    val parser = parserBuilder.build()
-    val ctx = InMemoryExecutionContext { it.printStackTrace() }
-    val parsed = parser.parse(
-        sourceFiles.map { it.toPath() },
-        null,
-        ctx,
-    ).toList()
-    return ParsedSources(parsed, sourceRoots, ctx)
+    val sources = collectSourceFiles(sourceRoots).map { SourceFileContent(it.absolutePath, it.readText()) }
+    return ParsedSources(sources, sourceRoots)
 }
 
 fun collectSourceFiles(sourceRoots: List<File>): List<File> =
@@ -39,19 +41,14 @@ fun collectSourceFiles(sourceRoots: List<File>): List<File> =
             .toList()
     }
 
-fun resolveOriginalPath(sourceFile: SourceFile, sourceRoots: List<File>): String {
-    val relativePath = sourceFile.sourcePath.toString()
-    for (root in sourceRoots) {
-        val candidate = File(root, relativePath)
-        if (candidate.exists()) return candidate.absolutePath
-    }
-    return relativePath
-}
+/** The absolute path a source file was read from. Kept as a function (rather than a field access) so the many call sites that read `resolveOriginalPath(sf, roots)` compiled unchanged through the OpenRewrite removal. */
+fun resolveOriginalPath(sourceFile: SourceFileContent, @Suppress("UNUSED_PARAMETER") sourceRoots: List<File>): String =
+    sourceFile.path
 
 /**
  * Checks if [fqn] matches [targetClassName] or its companion object.
- * OpenRewrite represents companion objects as "Outer.Companion" (dot-separated).
- * Bytecode uses "Outer$Companion" (dollar sign). We check both forms.
+ * Companion objects appear as "Outer.Companion" (dot-separated) in Kotlin source and
+ * "Outer$Companion" (dollar sign) in bytecode. We check both forms.
  */
 fun matchesClassOrCompanion(fqn: String?, targetClassName: String): Boolean {
     if (fqn == null) return false

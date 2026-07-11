@@ -25,7 +25,7 @@ abstract class RenameParamTask @Inject constructor(
 ) : CodeNavigatorTask() {
 
     @get:Classpath
-    abstract val openRewriteClasspath: ConfigurableFileCollection
+    abstract val psiClasspath: ConfigurableFileCollection
 
     @Option(option = "target-class", description = "Fully qualified class name")
     @get:Internal
@@ -72,7 +72,7 @@ abstract class RenameParamTask @Inject constructor(
         val resultFileLocation = temporaryDir.resolve("rename-result.json")
 
         val workQueue = workerExecutor.classLoaderIsolation {
-            classpath.from(openRewriteClasspath)
+            classpath.from(psiClasspath)
         }
 
         workQueue.submit(RenameParamWorkAction::class.java) {
