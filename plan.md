@@ -30,6 +30,20 @@ Root cause: `RedisCache` is a large file that shares its file with other declara
 
 **Reproducer**: `cnavMovePackage --from-package=no.bankid.selvbetjening.cache --to-package=no.bankid.selvbetjening.infra.cache` on ra-backend — compile fails after the move.
 
+### `cnavMoveClass` destination-collision handling: silent overwrite + orphaned source
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(greitt, v0.1.113)
+
+Moving `UserPollsService` to `polls.model`, where a *different* `UserPollsService.kt` already existed there, produced two data-loss symptoms in one run (likely the same root cause — the pre-existing-destination path):
+1. **Silent overwrite**: printed `WARNING: Target file already exists … will overwrite` and then overwrote the existing (different) class. `targetFileWarnings` already detects the collision, but it warns-and-continues — a warning an agent can't act on programmatically. It should be a hard stop (error result, no writes), or force `--preview` when the destination exists so the agent must confirm.
+2. **Orphaned source**: after the move, `UserPollsService.kt` existed in *both* the original package dir and the new one — the destination was written but the source not deleted, leaving a duplicate declaration (compile error). Normally `Files.move(REPLACE_EXISTING)` deletes the source; investigate the write path taken when the destination pre-exists (the physical move may have been skipped in favor of a plain write).
+
+**Fix**: when the computed destination file already exists and is not the source file, stop with an error (or force preview) rather than overwrite; ensure the source is always removed once the destination is written. **Reproducer**: move a class into a package that already contains a *different* file of the same name; check both dirs and the overwritten file afterward.
+
+### `cnavRenameMethod` "no changes needed" is indistinguishable from "method not found"
+**ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(ra-backend, v0.1.113)
+
+Renaming `RAClientImpl.search` returned "no changes needed" because `search` is a JAXB-generated method (not a PSI-declared Kotlin method) — correct behavior, but the output was identical to a genuine typo / not-found. An agent can't tell whether it mistyped the method name or hit a generation boundary. Distinguish the two: "method `search` exists on `RAClientImpl` but is generated / not PSI-renameable (skipped)" vs "no method `search` found on `RAClientImpl`" (with a did-you-mean over the class's declared methods).
+
 ---
 
 ## Multi-module support
@@ -509,9 +523,11 @@ Suggestions like "move `MenuItemTest` to `web.components`" are confusing. Defaul
 External protocol Java classes placed in Ring 0. Fix: filter classes in packages not matching project root package.
 
 ### `cnavBalance` volatility values lack context
-**PARKED** | **Value: low** | **Effort: low** | Source: internal(v0.1.83)
+**LOW** | **Value: medium** | **Effort: low** | Source: internal(v0.1.83) + field-test(greitt, v0.1.113)
 
 Raw volatility numbers meaningless without scale. Show percentile rank or relative to project mean.
+
+Field-test reinforcement: greitt showed a `DANGER` verdict on `web → polls.model` — a legitimate cross-ring edge that's technically high-distance + volatile, but in a small clean hexagonal project *everything* is volatile, so `DANGER` on a web→domain edge is alarming when it shouldn't be. This is the concrete cost of the missing context — verdicts need to be relative to project scale (percentile / project-mean), not absolute thresholds. Bumped to LOW/medium given a second field report.
 
 ### Suppress root-package deprecation warning when auto-detection matches
 **PARKED** | **Value: low** | **Effort: low** | Source: internal
@@ -543,6 +559,36 @@ When `scope=prod` filtering has no effect, explain why.
 
 `--treat-as-dead=junit` has no observable effect since test classes are considered live.
 
+### Refactoring "compile to verify" warning is unconditional
+**LOW** | **Value: low** | **Effort: low** | Source: field-test(v0.1.113)
+
+Every refactor op — even a clean rename with full call-site coverage — ends its output with "Automated refactoring is not always fully accurate … compile to verify." Good advice, but unconditional noise. Make it conditional: warn only when the rewriter actually hit an ambiguous case — a heuristic fallback / unresolved reference, dynamic dispatch, reflection, or the new non-Kotlin-reference warning. Now tractable because the K1 resolution work makes "did we resolve everything?" a known quantity: a fully-resolved rename could instead report "all N call sites updated" (see [[Make the move/rename rewriter type-safe (semantic resolution)]]).
+
+### `cnavRings` warns about ringNames coverage even when none are configured
+**LOW** | **Value: low** | **Effort: low** | Source: field-test(ra-backend, v0.1.113)
+
+With 10 rings detected and no `cnav-config.json` present, output printed `Warning: ringNames covers 4 rings but rings up to 8 were detected — rings 4–8 will use default names`. When the user has supplied no `ringNames` at all, default names (`Ring 4`, …) are the expected behavior — nothing to warn about. Fire the warning only when a *user-supplied* `ringNames` list is shorter than the detected ring count, not for the built-in defaults.
+
+### `cnavConverge --mode=risk` includes complexity=0 classes
+**LOW** | **Value: low** | **Effort: low** | Source: field-test(ra-backend, v0.1.113)
+
+Risk entries with `complexity=0` (no fan-in/out) feed the formula as `max(0,1)=1` (the neutral multiplier) and look odd in output. A class with zero structural complexity probably shouldn't rank at all — filter `complexity < 1` out of the risk list to tighten it.
+
+### `cnavDuplicates` is dominated by generated files
+**FUTURE** | **Value: medium** | **Effort: low** | Source: field-test(ra-backend, v0.1.113)
+
+On ra-backend the top duplicate blocks were all JAXB-generated `.java` under `no/bankid/ra/*` — intentional/structural duplication in generated artifacts, drowning hand-written duplication. Add an exclusion: a `--exclude=<regex>` (matching the shared `EXCLUDE` param) and/or auto-skip files that are `@Generated`-annotated or under a `generated/` path.
+
+### `cnavSize` rejects `--scope`
+**LOW** | **Value: low** | **Effort: low** | Source: field-test(v0.1.113)
+
+`cnavSize` is grouped with structural tasks that all carry `--scope`, so agents routinely pass it, but it errors "Unknown command-line option '--scope'". Either add scope support (filter by source set) or accept it as a documented no-op. Concrete instance of [[Consistent `--project-only` support across all tasks]].
+
+### `cnavMoveSuggest --plan-file` missing from agent help
+**LOW** | **Value: low** | **Effort: low** | Source: field-test(v0.1.113)
+
+`cnavMoveSuggest` supports `--plan-file` but the `cnavAgentHelp` task-reference line for it and the global `--plan-file` param description don't list it among the plan-file-aware tasks. Add it to both. (Repeat finding — bears fixing.)
+
 ---
 
 ## Find-usages output quality
@@ -562,6 +608,11 @@ A single logical call site produces 3-4 lines (`.new` + `.<init>` + `.checkcast`
 ---
 
 ## CI & enforcement
+
+### `--fail-on-violation` / `--max-violations` are invisible in agent help
+**ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(v0.1.113)
+
+The CI-gate flags on `cnavCycles`/`cnavRings` (`--fail-on-violation` plus `--max-cycles`/`--max-violations`) are not shown on those tasks' `cnavAgentHelp` reference lines, and `--fail-on-violation` is missing from the global param list entirely. An agent reading the task table has no way to discover the CI-gate feature exists — a real discoverability gap for CI users. Add these params to the per-task help lines and the global param reference. Since `cnavAgentHelp` is data-driven from `TaskRegistry` (see [[help-text-architecture]]), confirm whether the params are actually in the `TaskDef.params` lists (they exist as `@Option`s on the tasks) and, if so, why the help generator omits them.
 
 ---
 
