@@ -67,11 +67,12 @@ object MoveClassRewriter {
         if (ps.sources.isEmpty()) return MoveClassResult(emptyList())
 
         val isKtFacade = isKtFacadeName(className)
-        return if (isKtFacade) {
-            moveKtFacade(className, newFqcn, ps, sourceRoots, preview)
+        val result = if (isKtFacade) {
+            moveKtFacade(className, newFqcn, ps, sourceRoots, preview, classpath)
         } else {
-            moveClass(className, newFqcn, ps, sourceRoots, preview, allowMultiClass)
+            moveClass(className, newFqcn, ps, sourceRoots, preview, allowMultiClass, classpath)
         }
+        return result.withNonKotlinReferenceWarnings(sourceRoots, className)
     }
 
     /**
@@ -161,7 +162,9 @@ object MoveClassRewriter {
             runBatchedMoves(ps, batchable, preview, results)
         }
 
-        return results.map { it ?: MoveClassResult(emptyList()) }
+        return moves.mapIndexed { index, req ->
+            (results[index] ?: MoveClassResult(emptyList())).withNonKotlinReferenceWarnings(sourceRoots, req.className)
+        }
     }
 
     private data class BatchableMove(
@@ -270,6 +273,7 @@ object MoveClassRewriter {
         sourceRoots: List<File>,
         preview: Boolean,
         allowMultiClass: Boolean = false,
+        classpath: List<Path> = emptyList(),
     ): MoveClassResult {
         val oldPackage = className.substringBeforeLast(".")
         val simpleClassName = className.substringAfterLast(".")
@@ -334,12 +338,12 @@ object MoveClassRewriter {
             if (movedSource != null) {
                 val allClasses = extractDeclaredClassNames(movedSource)
                 if (allClasses.size > 1) {
-                    return moveMultiClassFile(oldPackage, newPackage, movedFilePath, movedSource, allClasses, ps, sourceRoots, preview, newFilePath)
+                    return moveMultiClassFile(oldPackage, newPackage, movedFilePath, movedSource, allClasses, ps, sourceRoots, preview, newFilePath, classpath)
                 }
             }
         }
 
-        val changes = retargetChanges(ps, className, newFqcn).toMutableList()
+        val changes = retargetChanges(ps, className, newFqcn, classpath).toMutableList()
 
         // Check if standard-named file also has sibling classes
         if (movedFilePath != null && !foundByContent) {
@@ -347,7 +351,7 @@ object MoveClassRewriter {
             if (movedSource != null) {
                 val allClasses = extractDeclaredClassNames(movedSource)
                 if (allClasses.size > 1) {
-                    return moveMultiClassFile(oldPackage, newPackage, movedFilePath, movedSource, allClasses, ps, sourceRoots, preview, newFilePath)
+                    return moveMultiClassFile(oldPackage, newPackage, movedFilePath, movedSource, allClasses, ps, sourceRoots, preview, newFilePath, classpath)
                 }
             }
         }
@@ -383,7 +387,7 @@ object MoveClassRewriter {
                 for (sibling in siblingClasses) {
                     val oldSiblingFqcn = "$oldPackage.$sibling"
                     val newSiblingFqcn = "$newPackage.$sibling"
-                    for (change in retargetChanges(ps, oldSiblingFqcn, newSiblingFqcn)) {
+                    for (change in retargetChanges(ps, oldSiblingFqcn, newSiblingFqcn, classpath)) {
                         val existingIdx = changes.indexOfFirst { it.filePath == change.filePath }
                         if (existingIdx >= 0) {
                             changes[existingIdx] = RenameChange(change.filePath, changes[existingIdx].before, change.after)
@@ -456,6 +460,7 @@ object MoveClassRewriter {
         ps: ParsedSources,
         sourceRoots: List<File>,
         preview: Boolean,
+        classpath: List<Path> = emptyList(),
     ): MoveClassResult {
         val oldPackage = className.substringBeforeLast(".")
         val newPackage = newFqcn.substringBeforeLast(".")
@@ -485,7 +490,7 @@ object MoveClassRewriter {
         for (declaredClass in declaredClasses) {
             val oldFqcn = "$oldPackage.$declaredClass"
             val newClassFqcn = "$newPackage.$declaredClass"
-            for (change in retargetChanges(ps, oldFqcn, newClassFqcn)) {
+            for (change in retargetChanges(ps, oldFqcn, newClassFqcn, classpath)) {
                 val existing = changes[change.filePath]
                 changes[change.filePath] = if (existing != null) {
                     RenameChange(change.filePath, existing.before, change.after)
@@ -518,13 +523,14 @@ object MoveClassRewriter {
         sourceRoots: List<File>,
         preview: Boolean,
         newFilePath: String?,
+        classpath: List<Path> = emptyList(),
     ): MoveClassResult {
         val changes = mutableMapOf<String, RenameChange>()
 
         for (declaredClass in allClasses) {
             val oldFqcn = "$oldPackage.$declaredClass"
             val newFqcn = "$newPackage.$declaredClass"
-            for (change in retargetChanges(ps, oldFqcn, newFqcn)) {
+            for (change in retargetChanges(ps, oldFqcn, newFqcn, classpath)) {
                 val existing = changes[change.filePath]
                 changes[change.filePath] = if (existing != null) {
                     RenameChange(change.filePath, existing.before, change.after)
@@ -551,14 +557,55 @@ object MoveClassRewriter {
      * PSI-based replacement for a single `ChangeType(oldFqcn, newFqcn)` run: retargets every reference
      * to the moved type across [ps]'s sources, returned as [RenameChange]s keyed by path. Does not touch
      * the declaring file's package declaration — callers apply that textually (see [rewritePackageDecl]).
+     *
+     * [classpath] enables K1 semantic resolution for the rename pass (confirms simple-name references
+     * actually resolve to the moved type); the single-move paths pass it since their sources still match
+     * disk. The in-memory batch path passes none and stays on the heuristic.
      */
-    private fun retargetChanges(ps: ParsedSources, oldFqcn: String, newFqcn: String): List<RenameChange> =
-        KotlinTypeReferenceRewriter.retargetAcrossSources(ps.sources, oldFqcn, newFqcn).map { (path, after) ->
+    private fun retargetChanges(ps: ParsedSources, oldFqcn: String, newFqcn: String, classpath: List<Path> = emptyList()): List<RenameChange> =
+        KotlinTypeReferenceRewriter.retargetAcrossSources(ps.sources, oldFqcn, newFqcn, ps.sourceRoots, classpath).map { (path, after) ->
             RenameChange(path, ps.sources.first { it.path == path }.content, after)
         }
 
     private fun rewritePackageDecl(content: String, oldPackage: String, newPackage: String): String =
         content.replace("package $oldPackage", "package $newPackage")
+
+    private val NON_KOTLIN_SOURCE_EXTENSIONS = setOf("java", "groovy", "scala")
+
+    /**
+     * Appends a warning naming non-Kotlin source files (`.java`/`.groovy`/`.scala`) that appear to
+     * reference the moved type. The rewriter only edits `.kt` files, so a Java consumer of a moved
+     * Kotlin class is left with a stale reference — surfacing it lets an agent fix those independently
+     * instead of silently shipping broken cross-language code.
+     */
+    private fun MoveClassResult.withNonKotlinReferenceWarnings(sourceRoots: List<File>, className: String): MoveClassResult {
+        if (movedFilePath == null) return this
+        val extra = nonKotlinReferenceWarnings(sourceRoots, className)
+        return if (extra.isEmpty()) this else copy(warnings = warnings + extra)
+    }
+
+    private fun nonKotlinReferenceWarnings(sourceRoots: List<File>, className: String): List<String> {
+        val simpleName = className.substringAfterLast(".")
+        val oldPackage = className.substringBeforeLast(".")
+        val wordBoundary = Regex("""\b${Regex.escape(simpleName)}\b""")
+        val hits = sourceRoots.flatMap { root ->
+            if (!root.exists()) return@flatMap emptyList()
+            root.walkTopDown()
+                .filter { it.isFile && it.extension.lowercase() in NON_KOTLIN_SOURCE_EXTENSIONS }
+                .filter { file ->
+                    val text = file.readText()
+                    text.contains("$oldPackage.$simpleName") || // FQN or `import old.pkg.Name`
+                        (text.contains("package $oldPackage") && wordBoundary.containsMatchIn(text)) // same-package unqualified use
+                }
+                .map { it.absolutePath }
+                .toList()
+        }
+        if (hits.isEmpty()) return emptyList()
+        return listOf(
+            "${hits.size} non-Kotlin source file(s) may reference '$simpleName' but were NOT updated — " +
+                "this tool only rewrites Kotlin (.kt) files. Review and fix these manually: ${hits.sorted().joinToString(", ")}",
+        )
+    }
 
     /**
      * When a type moves out of [oldPackage], files that *stayed* in [oldPackage] and referenced it
