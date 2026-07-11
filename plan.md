@@ -571,15 +571,6 @@ A single logical call site produces 3-4 lines (`.new` + `.<init>` + `.checkcast`
 
 ---
 
-## CI & enforcement
-
-### `--fail-on-violation` / `--max-violations` are invisible in agent help
-**ACTIVE** | **Value: medium** | **Effort: low** | Source: field-test(v0.1.113)
-
-The CI-gate flags on `cnavCycles`/`cnavRings` (`--fail-on-violation` plus `--max-cycles`/`--max-violations`) are not shown on those tasks' `cnavAgentHelp` reference lines, and `--fail-on-violation` is missing from the global param list entirely. An agent reading the task table has no way to discover the CI-gate feature exists — a real discoverability gap for CI users. Add these params to the per-task help lines and the global param reference. Since `cnavAgentHelp` is data-driven from `TaskRegistry` (see [[help-text-architecture]]), confirm whether the params are actually in the `TaskDef.params` lists (they exist as `@Option`s on the tasks) and, if so, why the help generator omits them.
-
----
-
 ## Behavioral + structural fusion
 
 ### Port volatility lockstep detector

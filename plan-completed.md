@@ -1,5 +1,9 @@
 # Plan — Completed
 
+## ~~--fail-on-violation / --max-violations invisible in agent help~~ — ALREADY DONE (verified 0.1.113-SNAPSHOT)
+
+Field feedback (v0.1.113) reported the CI-gate flags on `cnavCycles`/`cnavRings` weren't discoverable in help. On inspection they already are: the params are in the `TaskDef.params` lists, and both help surfaces render them without any special-casing — `cnavAgentHelp` shows them on the per-task reference lines, in the global parameter list (with tasks + defaults), and in a dedicated "CI Enforcement" section with runnable examples; `cnavHelp` shows them as per-task option lines with descriptions/defaults plus usage examples. The CI-gate feature and its help wiring both landed 2026-07-05 (commits c410bd4 + d566e65), before the feedback was triaged — the tester's build predated them. No code change; verified live in a scratch project against the published snapshot.
+
 ## ~~cnavRenameMethod: "no changes needed" indistinguishable from "not found"~~ — DONE (field-test ra-backend, v0.1.113)
 
 An empty rename result printed a generic "No changes needed", hiding three very different situations. Added `RenameMethodRewriter.diagnoseNoChanges(classesRoots, className, methodName)` backed by `RenameLocationFinder.inspectMethod` (bytecode): it tells apart (1) class not in bytecode → "not found, check the FQN / build", (2) method declared in bytecode but no `.kt` declaration to edit → "generated (JAXB/protobuf/data-class) or in a .java source; rename at origin", (3) method genuinely absent → "no method X found" plus a Levenshtein did-you-mean over the class's real declared methods and the full method list. Wired into both the Gradle task and the Maven mojo (the mojo now also passes `classesRoots` to the rewriter, which it previously omitted — so Maven rename gets bytecode-backed call-site/override-family analysis too). 4 unit tests + live-verified all three branches. Full suite green, Maven compiles.
