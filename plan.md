@@ -8,6 +8,42 @@ Items grouped by functional area. Each item has:
 
 ## Bugs
 
+### `-q`/`--quiet` Gradle flag silently suppresses ALL cnav output
+**ACTIVE** | **Value: high** | **Effort: low** | Source: field-test(ra-backend, v0.1.112)
+
+Every cnav result is emitted via `logger.lifecycle(...)`, which Gradle's `-q`/`--quiet` flag mutes (quiet only shows `QUIET`/`ERROR`). Confirmed empirically: `cnavListClasses --format=llm` returns 392 classes normally, 0 with `-q` appended — regardless of `--format`. Since agents (and humans) routinely add `-q` to strip build noise, this produces a **silent false-negative**: "no callers/usages/results" reads identically to "output suppressed." Worst possible failure mode for an analysis tool. Bites the project's own AGENTS.md files, which show cnav examples with `-q`.
+
+**Fix options** (pick one):
+- Emit result payloads via `logger.quiet(...)` instead of `logger.lifecycle(...)` so `-q` still shows them.
+- Detect `-q` (via `project.gradle.startParameter.logLevel`) and warn on stderr that output is suppressed.
+- Document explicitly that cnav is incompatible with `-q`, and that `--format=llm`'s `CNAV_BEGIN`/`CNAV_END` markers already solve the noise problem `-q` is usually reached for.
+
+**Reproducer**: `./gradlew cnavListClasses --format=llm` vs `./gradlew cnavListClasses --format=llm -q` on any project.
+
+### Calls to top-level Kotlin functions (`*Kt` facade static methods) missing from `cnavFindCallers`/`cnavFindUsages`
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.112)
+
+`cnavFindCallers --pattern=<topLevelFunctionName>` reports `(no callers)` for a real, single, cross-file caller of a top-level Kotlin function — confirmed via `javap` that the `invokestatic` instruction exists in the caller's compiled class. `cnavFindUsages --type=<FileKt>` (querying the synthetic file-facade class directly) also returns empty, even though `cnavListClasses`/`cnavFindClass` correctly list the `*Kt` class as existing.
+
+**Verified reproduction** (ra-backend, `no.bankid.selvbetjening.http.CorrelationIdInterceptorKt.requireCorrelationId`, called once from `no.bankid.selvbetjening.ktor.routes.v1.SetupKt.registerV1Routes`):
+- `javap -c -p SetupKt.class` shows `invokestatic … CorrelationIdInterceptorKt.requireCorrelationId:(...)` at the call site — the edge exists in bytecode.
+- `cnavFindCallers --pattern=requireCorrelationId` lists only cnav's own generated lambda/plugin machinery (`requireCorrelationId$plugin$1$1.invoke`, `.invokeSuspend`) but the top-level function itself shows `(no callers)` — the real `SetupKt` → `requireCorrelationId` edge is dropped.
+- `cnavFindUsages --type=...CorrelationIdInterceptorKt` returns empty.
+- **Controls, all correct**: `cnavFindUsages --type=<regular class>` works; `cnavFindCallers --pattern=<member method>` works with full cross-file tree; `cnavFindUsages --type=<non-Kt class in the same file>` resolves correctly. So the gap is specific to static methods on Kotlin file-facade classes, not a general scanning problem.
+
+Initial code read of `CallGraphBuilder.visitMethodInsn`/`UsageScanner.visitMethodInsn` shows no explicit `*Kt`/facade filtering — both unconditionally record `MethodRef(owner, name)` regardless of class name, and an existing test (`UsageScannerTest` — type-parameter-finds-facade-owned-calls) exercises a similar-looking case successfully. The actual gap is therefore likely in how `cnavFindCallers`' `--pattern` resolves a bare method name to its declaring `MethodRef` when multiple compilation units contribute methods with that name via inlining (`route`/`measure` in the caller chain here are both `inline` functions — the call site is compiled directly into `SetupKt.registerV1Routes` rather than a separate lambda class), not in the raw ASM visitor. Needs a focused unit test with an inline-function call chain to isolate the exact lookup path (`findCallers`/`callersOf` in `CallGraphBuilder.kt` or wherever `--pattern` bridges to `MethodRef` lookup).
+
+**Impact**: top-level extension functions are idiomatic and common in Kotlin (route DSLs, builders, helpers) — their callers being invisible to cnav silently breaks impact analysis and refactoring-safety guarantees (`cnavMoveFile`/`cnavRenameMethod` on such functions can miss real call sites).
+
+**Minimal repro** (any Kotlin project):
+```kotlin
+// A.kt
+fun greet() = println("hi")
+// B.kt
+fun main() { greet() }
+```
+Expected: `cnavFindCallers --pattern=greet` reports `BKt.main`; `cnavFindUsages --type=AKt` reports `BKt`. Confirm whether this minimal case reproduces or if it's specific to the inline-function call chain (route/measure) present in the ra-backend repro.
+
 ---
 
 ## Multi-module support
