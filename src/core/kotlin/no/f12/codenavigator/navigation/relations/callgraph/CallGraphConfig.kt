@@ -16,10 +16,15 @@ data class CallGraphConfig(
     /** Only meaningful for CALLEES: max polymorphic implementors expanded per interface call site. */
     val maxImplementors: Int = CallTreeBuilder.DEFAULT_MAX_IMPLEMENTORS,
 ) {
-    fun buildFilter(graph: CallGraph): ((MethodRef) -> Boolean)? {
+    fun buildFilter(graph: CallGraph, direction: CallDirection = CallDirection.CALLERS): ((MethodRef) -> Boolean)? {
         val filters = buildList {
             if (projectOnly) add(graph.projectClassFilter())
-            if (filterSynthetic) add { ref: MethodRef -> !ref.isGenerated() }
+            if (filterSynthetic) {
+                // Callers of a lambda-DSL body (route/builder blocks) are real call sites, not noise —
+                // only treat $lambda$-named methods as generated when resolving CALLEES.
+                val treatLambdaBodyAsGenerated = direction == CallDirection.CALLEES
+                add { ref: MethodRef -> !ref.isGenerated(treatLambdaBodyAsGenerated) }
+            }
             if (scope != Scope.ALL) add { ref: MethodRef -> scope.matchesSourceSet(graph.sourceSetOf(ref.className) ?: SourceSet.MAIN) }
         }
         return if (filters.isEmpty()) null else { ref -> filters.all { it(ref) } }

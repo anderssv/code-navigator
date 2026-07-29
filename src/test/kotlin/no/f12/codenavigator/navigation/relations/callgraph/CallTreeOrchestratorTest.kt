@@ -78,4 +78,43 @@ class CallTreeOrchestratorTest {
 
         assertNull(output.skippedFileWarning)
     }
+
+    @Test
+    fun `finds a lambda-body caller even with filterSynthetic enabled`() {
+        // A DSL-block body (e.g. route("/x") { target() }) compiles to a $lambda$-named method —
+        // it is a real call site, not synthetic noise, and must survive filterSynthetic=true
+        // when resolving CALLERS.
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/SetupKt", "Setup.kt",
+            "registerRoutes\$lambda\$0\$0", listOf(Call("com/example/Service", "process", "()V")),
+        )
+        val filteredConfig = config("Service.process").copy(filterSynthetic = true)
+
+        val output = CallTreeOrchestrator.run(filteredConfig, taggedDirs, cacheDir, CallDirection.CALLERS)
+
+        assertEquals(1, output.trees.size)
+        assertTrue(
+            output.trees[0].children.any { it.method.qualifiedName == "com.example.SetupKt.registerRoutes\$lambda\$0\$0" },
+            "expected the lambda-body caller to survive filterSynthetic, got children: ${output.trees[0].children.map { it.method.qualifiedName }}",
+        )
+    }
+
+    @Test
+    fun `still filters a lambda-named method as noise when resolving CALLEES`() {
+        // The orchestrator must pass the actual traversal direction into buildFilter — CALLEES
+        // resolution should keep the existing lambda-as-noise behavior (opposite of the CALLERS case above).
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/Controller2", "Controller2.kt",
+            "handle", listOf(Call("com/example/Service", "process\$lambda\$0", "()V")),
+        )
+        val filteredConfig = config("Controller2.handle").copy(filterSynthetic = true)
+
+        val output = CallTreeOrchestrator.run(filteredConfig, taggedDirs, cacheDir, CallDirection.CALLEES)
+
+        assertEquals(1, output.trees.size)
+        assertTrue(
+            output.trees[0].children.none { it.method.qualifiedName == "com.example.Service.process\$lambda\$0" },
+            "expected the lambda-named callee to still be filtered as noise, got children: ${output.trees[0].children.map { it.method.qualifiedName }}",
+        )
+    }
 }

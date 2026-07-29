@@ -370,6 +370,22 @@ class FindUsagesConfigTest {
     }
 
     @Test
+    fun `filterSyntheticCallers keeps lambda-body callers — they are real call sites, not noise`() {
+        // A DSL block body (e.g. route("/x") { target() }) compiles to a $lambda$-named method.
+        // A usage's callerMethod is always in the caller role, so lambda-body methods must survive.
+        val usages = listOf(
+            usageSite("com.example.SetupKt", SourceSet.MAIN, callerMethod = "registerV1Routes\$lambda\$0\$0"),
+            usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "access\$doWork"),
+        )
+
+        val cfg = config(scope = Scope.ALL)
+        val filtered = cfg.filterSyntheticCallers(usages)
+
+        assertEquals(1, filtered.size)
+        assertEquals("registerV1Routes\$lambda\$0\$0", filtered[0].callerMethod)
+    }
+
+    @Test
     fun `include-impls flag is parsed`() {
         val config = FindUsagesConfig.parse(mapOf("type" to "com.example.Target", "include-impls" to "true"))
         assertTrue(config.includeImpls)

@@ -51,6 +51,20 @@ class KotlinMethodFilterTest {
     }
 
     @Test
+    fun `does not exclude lambda methods when treatLambdaBodyAsGenerated is false`() {
+        // A $lambda$-named method can be a real call site (e.g. a DSL block's body), not just a
+        // synthetic bridge — the caller-position query needs to see it.
+        assertFalse(KotlinMethodFilter.isGenerated("registerV1Routes\$lambda\$0\$0", treatLambdaBodyAsGenerated = false))
+    }
+
+    @Test
+    fun `still excludes other generated patterns when treatLambdaBodyAsGenerated is false`() {
+        assertTrue(KotlinMethodFilter.isGenerated("<init>", treatLambdaBodyAsGenerated = false))
+        assertTrue(KotlinMethodFilter.isGenerated("access\$doWork", treatLambdaBodyAsGenerated = false))
+        assertTrue(KotlinMethodFilter.isGenerated("component1", treatLambdaBodyAsGenerated = false))
+    }
+
+    @Test
     fun `allows normal user-defined methods`() {
         assertFalse(KotlinMethodFilter.isGenerated("process"))
         assertFalse(KotlinMethodFilter.isGenerated("findUser"))

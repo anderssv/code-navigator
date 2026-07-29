@@ -42,7 +42,7 @@ object CallTreeOrchestrator {
         val annotations = AnnotationExtractor.scanAll(classDirectories)
 
         val trees = CallTreeBuilder.build(
-            graph, methods, config.maxDepth, direction, config.buildFilter(graph),
+            graph, methods, config.maxDepth, direction, config.buildFilter(graph, direction),
             interfaceImplementors = interfaceImplementors,
             classToInterfaces = classToInterfaces,
             classAnnotations = annotations.classAnnotations,

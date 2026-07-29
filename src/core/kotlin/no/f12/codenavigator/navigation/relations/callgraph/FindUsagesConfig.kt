@@ -27,7 +27,9 @@ data class FindUsagesConfig(
 
     fun filterSyntheticCallers(usages: List<UsageSite>): List<UsageSite> {
         if (!filterSynthetic) return usages
-        return usages.filter { it.callerMethod == "<field>" || !KotlinMethodFilter.isGenerated(it.callerMethod) }
+        // callerMethod is always in the caller role — a $lambda$-named caller (DSL block body)
+        // is a real call site, not synthetic noise, so never treat it as generated here.
+        return usages.filter { it.callerMethod == "<field>" || !KotlinMethodFilter.isGenerated(it.callerMethod, treatLambdaBodyAsGenerated = false) }
     }
 
     companion object {

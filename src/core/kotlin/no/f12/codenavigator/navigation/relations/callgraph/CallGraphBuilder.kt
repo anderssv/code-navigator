@@ -19,7 +19,8 @@ data class MethodRef(
 ) {
     val qualifiedName: String get() = "$className.$methodName"
 
-    fun isGenerated(): Boolean = KotlinMethodFilter.isGenerated(methodName)
+    fun isGenerated(treatLambdaBodyAsGenerated: Boolean = true): Boolean =
+        KotlinMethodFilter.isGenerated(methodName, treatLambdaBodyAsGenerated)
 }
 
 class CallGraph(

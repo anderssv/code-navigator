@@ -5,6 +5,7 @@ import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.navigation.types.SourceSet
+import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraph
 import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 
@@ -16,10 +17,13 @@ data class ContextConfig(
     val scope: Scope,
     val format: OutputFormat,
 ) {
-    fun buildFilter(graph: CallGraph): ((MethodRef) -> Boolean)? {
+    fun buildFilter(graph: CallGraph, direction: CallDirection = CallDirection.CALLERS): ((MethodRef) -> Boolean)? {
         val filters = buildList {
             if (projectOnly) add(graph.projectClassFilter())
-            if (filterSynthetic) add { ref: MethodRef -> !ref.isGenerated() }
+            if (filterSynthetic) {
+                val treatLambdaBodyAsGenerated = direction == CallDirection.CALLEES
+                add { ref: MethodRef -> !ref.isGenerated(treatLambdaBodyAsGenerated) }
+            }
             if (scope != Scope.ALL) add { ref: MethodRef -> scope.matchesSourceSet(graph.sourceSetOf(ref.className) ?: SourceSet.MAIN) }
         }
         return if (filters.isEmpty()) null else { ref -> filters.all { it(ref) } }

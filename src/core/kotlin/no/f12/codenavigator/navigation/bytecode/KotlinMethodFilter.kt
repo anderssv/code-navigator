@@ -24,13 +24,13 @@ object KotlinMethodFilter {
 
     val EXCLUDED_FIELDS = setOf("INSTANCE")
 
-    fun isGenerated(methodName: String): Boolean {
+    fun isGenerated(methodName: String, treatLambdaBodyAsGenerated: Boolean = true): Boolean {
         if (methodName in EXCLUDED_METHODS) return true
         if (methodName.startsWith(SYNTHETIC_PREFIX)) return true
         if (DATA_CLASS_COMPONENT.matches(methodName)) return true
         if (methodName.startsWith("copy$")) return true
         if (MANGLED_COPY.matches(methodName)) return true
-        if (LAMBDA_METHOD.containsMatchIn(methodName)) return true
+        if (treatLambdaBodyAsGenerated && LAMBDA_METHOD.containsMatchIn(methodName)) return true
         if (VALUE_CLASS_SUFFIX.matches(methodName)) return true
         if (methodName.endsWith(DEFAULT_BRIDGE_SUFFIX)) return true
         if (methodName.endsWith(FOR_INLINE_SUFFIX)) return true

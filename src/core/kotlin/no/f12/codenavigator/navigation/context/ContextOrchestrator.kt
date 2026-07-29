@@ -49,7 +49,8 @@ object ContextOrchestrator {
         val classToInterfaces = interfaceRegistry.classToInterfacesMap()
 
         val annotations = AnnotationExtractor.scanAll(classDirectories)
-        val filter = config.buildFilter(graph)
+        val callersFilter = config.buildFilter(graph, CallDirection.CALLERS)
+        val calleesFilter = config.buildFilter(graph, CallDirection.CALLEES)
 
         val results = matchingDetails.map { classDetail ->
             val methods = classDetail.methods.map { method ->
@@ -57,7 +58,7 @@ object ContextOrchestrator {
             }
 
             val callers = CallTreeBuilder.build(
-                graph, methods, config.maxDepth, CallDirection.CALLERS, filter,
+                graph, methods, config.maxDepth, CallDirection.CALLERS, callersFilter,
                 interfaceImplementors = interfaceImplementors,
                 classToInterfaces = classToInterfaces,
                 classAnnotations = annotations.classAnnotations,
@@ -67,7 +68,7 @@ object ContextOrchestrator {
             )
 
             val callees = CallTreeBuilder.build(
-                graph, methods, config.maxDepth, CallDirection.CALLEES, filter,
+                graph, methods, config.maxDepth, CallDirection.CALLEES, calleesFilter,
                 interfaceImplementors = interfaceImplementors,
                 classToInterfaces = classToInterfaces,
                 classAnnotations = annotations.classAnnotations,

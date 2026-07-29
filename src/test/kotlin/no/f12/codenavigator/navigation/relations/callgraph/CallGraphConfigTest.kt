@@ -170,6 +170,23 @@ class CallGraphConfigTest {
     }
 
     @Test
+    fun `buildFilter for CALLERS direction keeps lambda-body methods — they are real call sites`() {
+        val filter = config(filterSynthetic = true).buildFilter(graph, CallDirection.CALLERS)
+
+        assertNotNull(filter)
+        assertTrue(filter(MethodRef(projectClass, "registerV1Routes\$lambda\$0\$0")), "a lambda-body method acting as a caller must not be filtered out")
+        assertTrue(!filter(MethodRef(projectClass, "access\$doWork")), "true synthetic bridges are still filtered regardless of direction")
+    }
+
+    @Test
+    fun `buildFilter for CALLEES direction still rejects lambda-body methods`() {
+        val filter = config(filterSynthetic = true).buildFilter(graph, CallDirection.CALLEES)
+
+        assertNotNull(filter)
+        assertTrue(!filter(MethodRef(projectClass, "registerV1Routes\$lambda\$0\$0")), "callee-side filtering keeps existing lambda-noise behavior")
+    }
+
+    @Test
     fun `parses scope prod from properties`() {
         val config = CallGraphConfig.parse(
             mapOf("pattern" to "MyClass.doWork", "scope" to "prod"),

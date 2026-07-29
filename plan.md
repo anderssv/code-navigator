@@ -47,37 +47,22 @@ Every cnav result is emitted via `logger.lifecycle(...)`, which Gradle's `-q`/`-
 
 **Reproducer**: `./gradlew cnavListClasses --format=llm` vs `./gradlew cnavListClasses --format=llm -q` on any project.
 
-### `--filter-synthetic` (default `true`) hides real call sites when the caller is a DSL lambda body
-**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.112)
+### `--filter-synthetic` (default `true`) hid real call sites when the caller is a DSL lambda body
+~~**ACTIVE**~~ **DONE (v0.1.113-SNAPSHOT)** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.112)
 
-**ROOT CAUSE FOUND.** Not a `*Kt`-facade indexing bug as first suspected — `CallGraphBuilder` correctly records every edge, including calls to top-level functions. The bug is that `KotlinMethodFilter.isGenerated()`'s lambda regex (`Regex("""\$lambda\$""")`, `KotlinMethodFilter.kt:16`) matches on substring alone, with no distinction between:
-- **truly synthetic** lambda-adapter/bridge methods (safe to hide as noise), and
-- **real lambda body methods that ARE the call site** — e.g. the body of `route("/api/v1") { requireCorrelationId { ... } }`, which the Kotlin compiler names `registerV1Routes$lambda$0$0`.
+**ROOT CAUSE**: not a `*Kt`-facade indexing bug as first suspected — `CallGraphBuilder` correctly recorded every edge, including calls to top-level functions. The actual bug: `KotlinMethodFilter.isGenerated()`'s lambda regex (`Regex("""\$lambda\$""")`) matched on substring alone, with no distinction between truly synthetic lambda-adapter/bridge methods and real lambda **body** methods that ARE the call site (e.g. the body of `route("/api/v1") { requireCorrelationId { ... } }`, compiler-named `registerV1Routes$lambda$0$0`). `--filter-synthetic` defaults to `true` and fed this check into both `cnavFindCallers` and `cnavFindUsages`, silently dropping the only caller and producing `(no callers)`/empty results.
 
-`--filter-synthetic` defaults to `true` (`TaskRegistry.kt:217`) and is wired into both `CallGraphConfig` (`if (filterSynthetic) add { ref -> !ref.isGenerated() }`, feeding `CallTreeBuilder`'s caller-tree filter) and `FindUsagesConfig.filterSyntheticCallers`. Since `registerV1Routes$lambda$0$0` matches the lambda regex, it gets excluded by default from **both** `cnavFindCallers` and `cnavFindUsages` — and since it was the *only* caller of `requireCorrelationId`, filtering it out produces `(no callers)`/empty results, exactly as reported. This is not a corner case: any top-level function called from inside a route/builder DSL block (an extremely common Kotlin pattern — Ktor routing, Gradle DSLs, test builders) hits this by default.
+**Diagnosis chain**: ruled out basic static-to-static `*Kt` indexing via synthetic `CallGraphBuilderTest` cases (kept as regression coverage) → pointed `CallGraphBuilder` directly at ra-backend's real compiled classes, found the caller immediately via `callersOf()` → confirmed `--filter-synthetic=false` revealed the full real chain, isolating the filter as the cause.
 
-**Verified diagnosis, in order**:
-1. Ruled out via synthetic `CallGraphBuilderTest` cases (static→static across `*Kt` classes, both directions) — raw indexing is correct in isolation. See two regression tests added to `CallGraphBuilderTest.kt` (kept — they're valid coverage even though they didn't reproduce the bug).
-2. Pointed `CallGraphBuilder.build()` directly at ra-backend's real compiled classes (throwaway diagnostic test, not committed) and called `callersOf(CorrelationIdInterceptorKt, requireCorrelationId)` directly, bypassing the CLI/filter layer — **found the real caller immediately**: `MethodRef(SetupKt, registerV1Routes$lambda$0$0)`. So `CallGraphBuilder` was never broken.
-3. Confirmed the filter is the culprit: `cnavFindCallers --pattern=requireCorrelationId --filter-synthetic=false` on ra-backend shows the full real chain: `SetupKt.registerV1Routes$lambda$0$0 → requireCorrelationId`, plus one level further up (`ktor.routes.SetupKt.setupRoutes$lambda$0$0 → registerV1Routes`) — all previously hidden by the default filter.
+**Fix**: `KotlinMethodFilter.isGenerated(methodName, treatLambdaBodyAsGenerated: Boolean = true)` — new parameter, default preserves all 12 other existing call sites' behavior unchanged (dead code, complexity, symbol/annotation extraction, etc. still treat lambda methods as noise by default). Only the two call-site-position filters were changed to pass `false`:
+- `CallGraphConfig.buildFilter(graph, direction: CallDirection = CallDirection.CALLERS)` — now direction-aware: resolving CALLERS never treats `$lambda$` as generated (real call sites), resolving CALLEES keeps the old behavior (lambda-named callees are usually genuine adapter noise). `CallTreeOrchestrator` and `ContextOrchestrator` (which builds separate CALLERS/CALLEES trees) updated to pass the real direction through — previously both called `buildFilter(graph)` with no direction, silently defaulting to the callee-side behavior for both directions.
+- `FindUsagesConfig.filterSyntheticCallers` — `callerMethod` is always in the caller role for a usage site, so it now always passes `treatLambdaBodyAsGenerated = false`.
 
-**Fix direction**: `isGenerated()`'s lambda check needs to distinguish "this method is a compiler-synthesized *adapter/bridge* with no real body" from "this method IS a real lambda body containing user code, just compiler-named." Candidate approaches:
-- Don't filter `$lambda$` methods when they appear as a **caller** (only filter them as noise when they're purely relaying to another method, i.e., zero-arg passthrough bridges) — callers are inherently "what the user's code does," callees are more often adapter noise.
-- Distinguish by bytecode shape: a bridge/adapter lambda typically has a single call instruction and returns/forwards; a real DSL-body lambda has multiple instructions, multiple calls, or references outer-scope captures.
-- At minimum, make the default `--filter-synthetic=true` behavior for `cnavFindCallers` exclude lambda methods from **callee filtering** but never from **caller filtering** — i.e., never hide a method just because it happens to be the caller in a `caller → callee` edge, since the caller position is where "who calls this" answers live.
+**Verified end-to-end on ra-backend with default settings** (no `--filter-synthetic=false` needed anymore):
+- `cnavFindCallers --pattern=requireCorrelationId` now shows `SetupKt.registerV1Routes$lambda$0$0 → requireCorrelationId` in the tree, plus one level further up (`setupRoutes$lambda$0$0 → registerV1Routes`).
+- `cnavFindUsages --type=CorrelationIdInterceptorKt` now shows `SetupKt.registerV1Routes -> CorrelationIdInterceptorKt method-call`.
 
-**Impact**: this is broader than the original "*Kt facade" framing — it affects any call made from inside **any** lambda (DSL blocks, `also`/`apply`/`let` misuse aside, route builders, test setup blocks), not just top-level function calls specifically.
-
-**Minimal repro** (any Kotlin project):
-```kotlin
-// A.kt
-fun greet() = println("hi")
-// B.kt
-fun main() {
-    listOf(1).forEach { greet() }   // greet() called from a lambda body -> BKt$main$1.invoke
-}
-```
-Expected: `cnavFindCallers --pattern=greet` (default `--filter-synthetic=true`) shows `(no callers)`; `--filter-synthetic=false` shows the real lambda-body caller. Confirms the filter, not the indexer, is the cause.
+**Impact was broader than the original "*Kt facade" framing** — it affected any call made from inside any lambda (DSL blocks, route builders, test setup blocks), not just top-level function calls.
 
 ---
 
