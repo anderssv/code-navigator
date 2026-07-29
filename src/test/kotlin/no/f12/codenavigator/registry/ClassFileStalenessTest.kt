@@ -43,7 +43,9 @@ class ClassFileStalenessTest {
 
         val result = ClassFileStaleness.check(listOf(sourceDir), listOf(classesDir))
 
-        assertIs<StalenessResult.Stale>(result)
+        val stale = assertIs<StalenessResult.Stale>(result)
+        assertTrue(stale.warning.startsWith("STALE BUILD"), "expected warning to start with a clear STALE BUILD prefix, was: ${stale.warning}")
+        assertTrue(stale.warning.contains("recompile"), "expected warning to instruct recompiling, was: ${stale.warning}")
     }
 
     @Test
@@ -53,7 +55,8 @@ class ClassFileStalenessTest {
         val result = ClassFileStaleness.check(listOf(sourceDir), listOf(classesDir))
 
         val noFiles = assertIs<StalenessResult.NoClassFiles>(result)
-        assertTrue(noFiles.error.contains("No class files found"))
+        assertTrue(noFiles.error.startsWith("NO COMPILED CLASSES"), "expected error to start with a clear NO COMPILED CLASSES prefix, was: ${noFiles.error}")
+        assertTrue(noFiles.error.contains("compile"), "expected error to instruct compiling, was: ${noFiles.error}")
     }
 
     @Test

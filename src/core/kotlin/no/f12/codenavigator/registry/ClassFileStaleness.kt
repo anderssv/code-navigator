@@ -19,16 +19,19 @@ object ClassFileStaleness {
 
     fun check(sourceDirectories: List<File>, classDirectories: List<File>): StalenessResult {
         val newestClass = newestTimestamp(classDirectories, setOf("class"), pruneBuildDirs = false)
-            ?: return StalenessResult.NoClassFiles("No class files found — run a successful build first.")
+            ?: return StalenessResult.NoClassFiles(
+                "NO COMPILED CLASSES FOUND. You must compile the project before running this command " +
+                    "(e.g. './gradlew build' or 'mvn compile'). Results would otherwise be empty or misleading."
+            )
 
         val newestSource = newestTimestamp(sourceDirectories, SOURCE_EXTENSIONS, pruneBuildDirs = true)
             ?: return StalenessResult.Fresh
 
         if (newestSource > newestClass) {
             return StalenessResult.Stale(
-                "Class files may be stale: newest source file is ${formatTimestamp(newestSource)}, " +
-                    "newest class file is ${formatTimestamp(newestClass)}. " +
-                    "Changes after ${formatTime(newestClass)} are not reflected."
+                "STALE BUILD: class files are OLDER than source files — results may not reflect your latest changes. " +
+                    "Newest source file is ${formatTimestamp(newestSource)}, newest class file is ${formatTimestamp(newestClass)}. " +
+                    "Changes after ${formatTime(newestClass)} are not reflected. Please recompile before trusting these results."
             )
         }
 
