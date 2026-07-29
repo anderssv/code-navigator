@@ -37,11 +37,11 @@ object CallTreeTaskSupport {
         output.skippedFileWarning?.let { logger.warn(it) }
 
         if (output.trees.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No methods found matching '${config.method}'"))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No methods found matching '${config.method}'"))
             return
         }
 
-        logger.lifecycle(
+        logger.quiet(
             OutputWrapper.formatAndWrap(config.format) { format ->
                 when (format) {
                     OutputFormat.TEXT, OutputFormat.DIFF -> CallTreeFormatter.renderTrees(output.trees, direction) + (output.classHint?.let { "\n\n$it" } ?: "")

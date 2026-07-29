@@ -58,11 +58,11 @@ abstract class ClassMetricsTask : CodeNavigatorTask() {
         output.skippedFileWarning?.let { logger.warn(it) }
 
         if (output.results.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No matching classes found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No matching classes found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> ClassMetricsFormatter.format(output.results)
         OutputFormat.JSON -> ClassMetricsFormatter.formatJson(output.results)

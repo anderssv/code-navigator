@@ -8,10 +8,37 @@ Items grouped by functional area. Each item has:
 
 ## Bugs
 
+### `cnavMoveFile` crashes with OpenRewrite `JavaTemplate` parse error, plus OOM-prone
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113-SNAPSHOT)
+
+`cnavMoveFile --from-file=src/main/kotlin/no/bankid/selvbetjening/http/ErrorMapper.kt --to-package=no.bankid.selvbetjening.ktor.routes` fails with:
+
+```
+org.openrewrite.internal.RecipeRunException: java.lang.IllegalArgumentException: Could not parse as Java:
+package no.bankid.selvbetjening.ktor.routes; class $Template {}
+	at org.openrewrite.java.JavaTemplate.doApply(JavaTemplate.java:129)
+	at org.openrewrite.java.ChangeType$ChangeClassDefinition.visitPackage(ChangeType.java:699)
+```
+
+The rewriter's internal `ChangeType` recipe builds a synthetic `$Template` class to validate the target package name, and OpenRewrite's Java parser rejects it — likely because it's parsed as **Java**, not Kotlin, for a Kotlin source file, or because the template package statement isn't valid on its own without an accompanying class body OpenRewrite's parser expects.
+
+The move failed but was a **partial no-op**: the file was NOT moved (`ErrorMapper.kt` still at its original path), but this needs verification across other failure points — a partial move that updates some imports but not others would be worse.
+
+**Also observed in the same run**: the Gradle daemon hit JVM Metaspace exhaustion (`max metaspace is '384 MiB'`) — the project's `gradle.properties` doesn't set `org.gradle.jvmargs`, and cnav's OpenRewrite-based rewriters are apparently metaspace-heavy per invocation (consistent with the known `cnavExecutePlan`/`cnavMovePackage` metaspace limitation already documented in plan-completed.md for batch operations — but here it's a *single* file move hitting it, worse than previously known).
+
+**Reproducer**: `cnavMoveFile --from-file=<any .kt file>.kt --to-package=<any different package>` — needs a project without `org.gradle.jvmargs` configured to also reproduce the metaspace pressure.
+
+**Investigate**:
+1. Why `ChangeType`'s synthetic template fails to parse — Kotlin vs Java parser confusion in the OpenRewrite recipe pipeline used by `MoveClassRewriter`.
+2. Whether the failure leaves the file/imports in a consistent state (verified here: yes, file untouched) or could partially rewrite in other scenarios.
+3. Whether `cnavMoveFile` needs the same default `-Xmx`/`-XX:MaxMetaspaceSize` guidance already given for `cnavExecutePlan`/`cnavMovePackage`, or whether a single-file move should be lighter weight than it currently is.
+
 ### `-q`/`--quiet` Gradle flag silently suppresses ALL cnav output
 **ACTIVE** | **Value: high** | **Effort: low** | Source: field-test(ra-backend, v0.1.112)
 
 Every cnav result is emitted via `logger.lifecycle(...)`, which Gradle's `-q`/`--quiet` flag mutes (quiet only shows `QUIET`/`ERROR`). Confirmed empirically: `cnavListClasses --format=llm` returns 392 classes normally, 0 with `-q` appended — regardless of `--format`. Since agents (and humans) routinely add `-q` to strip build noise, this produces a **silent false-negative**: "no callers/usages/results" reads identically to "output suppressed." Worst possible failure mode for an analysis tool. Bites the project's own AGENTS.md files, which show cnav examples with `-q`.
+
+**FIXED (unreleased)**: all ~111 `logger.lifecycle(...)` result-emitting calls across Gradle tasks changed to `logger.quiet(...)`, which Gradle always shows regardless of log level. Maven mojos were unaffected (already used `println`, not `log.info`). Verified empirically on ra-backend: `cnavListClasses --format=llm -q` now returns all 392 classes.
 
 **Fix options** (pick one):
 - Emit result payloads via `logger.quiet(...)` instead of `logger.lifecycle(...)` so `-q` still shows them.
@@ -31,7 +58,17 @@ Every cnav result is emitted via `logger.lifecycle(...)`, which Gradle's `-q`/`-
 - `cnavFindUsages --type=...CorrelationIdInterceptorKt` returns empty.
 - **Controls, all correct**: `cnavFindUsages --type=<regular class>` works; `cnavFindCallers --pattern=<member method>` works with full cross-file tree; `cnavFindUsages --type=<non-Kt class in the same file>` resolves correctly. So the gap is specific to static methods on Kotlin file-facade classes, not a general scanning problem.
 
-Initial code read of `CallGraphBuilder.visitMethodInsn`/`UsageScanner.visitMethodInsn` shows no explicit `*Kt`/facade filtering — both unconditionally record `MethodRef(owner, name)` regardless of class name, and an existing test (`UsageScannerTest` — type-parameter-finds-facade-owned-calls) exercises a similar-looking case successfully. The actual gap is therefore likely in how `cnavFindCallers`' `--pattern` resolves a bare method name to its declaring `MethodRef` when multiple compilation units contribute methods with that name via inlining (`route`/`measure` in the caller chain here are both `inline` functions — the call site is compiled directly into `SetupKt.registerV1Routes` rather than a separate lambda class), not in the raw ASM visitor. Needs a focused unit test with an inline-function call chain to isolate the exact lookup path (`findCallers`/`callersOf` in `CallGraphBuilder.kt` or wherever `--pattern` bridges to `MethodRef` lookup).
+Initial code read of `CallGraphBuilder.visitMethodInsn`/`UsageScanner.visitMethodInsn` shows no explicit `*Kt`/facade filtering — both unconditionally record `MethodRef(owner, name)` regardless of class name, and an existing test (`UsageScannerTest` — type-parameter-finds-facade-owned-calls) exercises a similar-looking case successfully.
+
+**Ruled out** (via two new regression tests in `CallGraphBuilderTest.kt`, both pass on the real `CallGraphBuilder`):
+- **Basic static-callee indexing**: an instance-method caller invoking a static top-level function on a `*Kt` class via `INVOKESTATIC` is recorded and found by `callersOf` correctly (`writeClassWithStaticCall`, already existed but was — tellingly — only ever used by `UsageScannerTest`, never `CallGraphBuilderTest`, until now).
+- **Static-caller-calls-static-callee shape** (both methods `ACC_PUBLIC|ACC_STATIC`, matching two real top-level functions calling each other exactly): also recorded and found correctly (new helper `writeClassWithStaticCallerAndCall`).
+
+So the raw ASM visiting + `callersOf` lookup is NOT the problem in isolation — a 2-class synthetic repro of the "top-level function calls top-level function" shape works. The actual gap must be triggered by something present in the real bytecode but absent from the synthetic test, most likely:
+- The caller chain goes through **two `inline` functions** (`route` from Ktor, `measure` defined in-project) before reaching the call site — inlining could interact with `suspend`/continuation-passing transformation (Ktor route builders are typically `suspend` lambdas) in a way that produces a bytecode shape (e.g. extra try/catch from inlining, `COMPUTE_FRAMES`-sensitive control flow) that a 2-instruction synthetic method doesn't exercise.
+- Scan-order/collision risk from **multiple `SetupKt.class` files across different packages** in the real project (`ktor.SetupKt`, `ktor.routes.SetupKt`, `ktor.routes.v1.SetupKt`, `ktor.routes.v1.bankid.SetupKt`) — `MethodRef.className` is fully-qualified so these shouldn't collide as map keys, but worth explicitly testing multiple same-simple-name classes across packages to rule out.
+
+**Next step**: reproduce directly against real ra-backend `.class` files (not synthetic ASM) by pointing `CallGraphBuilder.build()` at the actual `build/classes/kotlin/main` directory in a test/script and asserting on `callersOf(CorrelationIdInterceptorKt, requireCorrelationId)` — this isolates whether the gap is in `CallGraphBuilder` itself (reading the real compiled bytecode) or in a layer above it (`CallTreeBuilder`, `FindCallersConfig`, or the `--pattern` → root resolution in the Gradle/Maven task). Given both hypotheses above point at real-bytecode-only conditions, testing against the actual compiled classes (already available locally) rather than more synthetic bytecode variations is the fastest way to isolate it.
 
 **Impact**: top-level extension functions are idiomatic and common in Kotlin (route DSLs, builders, helpers) — their callers being invisible to cnav silently breaks impact analysis and refactoring-safety guarantees (`cnavMoveFile`/`cnavRenameMethod` on such functions can miss real call sites).
 

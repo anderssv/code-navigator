@@ -107,11 +107,11 @@ abstract class DsmTask : CodeNavigatorTask(), MultiModuleCapable {
         if (matrix.packages.isEmpty() && config.cycleFilter == null && !config.cyclesOnly) {
             val packageCount = output.projectClasses.map { it.packageName() }.distinct().size
             val hints = DsmFormatter.noResultsHints(packageCount)
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCycles(matrix, config.cycleFilter) else DsmFormatter.format(matrix, output.moduleLabels)
         OutputFormat.JSON -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCyclesJson(matrix, config.cycleFilter) else DsmFormatter.formatJson(matrix, output.moduleLabels)
@@ -123,7 +123,7 @@ abstract class DsmTask : CodeNavigatorTask(), MultiModuleCapable {
             val htmlFile = project.file(config.htmlPath)
             htmlFile.parentFile?.mkdirs()
             htmlFile.writeText(DsmHtmlRenderer.render(matrix))
-            logger.lifecycle("DSM HTML written to: ${htmlFile.absolutePath}")
+            logger.quiet("DSM HTML written to: ${htmlFile.absolutePath}")
         }
     }
 }

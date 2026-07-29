@@ -71,11 +71,11 @@ abstract class CyclesTask : CodeNavigatorTask() {
         output.skippedFileWarning?.let { logger.warn(it) }
 
         if (output.details.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No package cycles detected."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No package cycles detected."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
         OutputFormat.JSON -> CyclesFormatter.formatJson(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)

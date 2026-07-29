@@ -59,11 +59,11 @@ abstract class WhyDependsTask : CodeNavigatorTask() {
 
         if (result.edges.isEmpty()) {
             val hints = WhyDependsFormatter.noResultsHints(result.fromPackage, result.toPackage)
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No dependencies found from '${config.fromPackage}' to '${config.toPackage}'.", hints))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No dependencies found from '${config.fromPackage}' to '${config.toPackage}'.", hints))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> WhyDependsFormatter.format(result)
         OutputFormat.JSON -> WhyDependsFormatter.format(result)

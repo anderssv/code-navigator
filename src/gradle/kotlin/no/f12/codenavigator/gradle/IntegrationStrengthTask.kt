@@ -66,6 +66,6 @@ abstract class IntegrationStrengthTask : CodeNavigatorTask() {
         val output = StrengthOrchestrator.run(config, classDirectories, reportFile, classpath)
 
         output.skippedFileWarning?.let { logger.warn(it) }
-        DsmOutputFormatter.format(output, config.format)?.let { logger.lifecycle(it) }
+        DsmOutputFormatter.format(output, config.format)?.let { logger.quiet(it) }
     }
 }

@@ -72,6 +72,6 @@ abstract class BalanceTask : CodeNavigatorTask() {
         val output = BalanceOrchestrator.run(config, classDirectories, reportFile, project.projectDir)
 
         output.skippedFileWarning?.let { logger.warn(it) }
-        DsmOutputFormatter.format(output, config.format)?.let { logger.lifecycle(it) }
+        DsmOutputFormatter.format(output, config.format)?.let { logger.quiet(it) }
     }
 }

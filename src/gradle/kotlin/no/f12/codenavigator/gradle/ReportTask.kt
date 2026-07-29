@@ -82,7 +82,7 @@ abstract class ReportTask : CodeNavigatorTask() {
         val data = ReportOrchestrator.run(config, classDirectories, testClassDirectories, commits, cacheDir, reportFile)
         data.skippedFileWarning?.let { logger.warn(it) }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
             when (format) {
                 OutputFormat.TEXT, OutputFormat.DIFF -> ReportFormatter.format(data)
                 OutputFormat.JSON -> ReportFormatter.formatJson(data)

@@ -58,11 +58,11 @@ abstract class ChangeCouplingTask : CodeNavigatorTask() {
         val pairs = CouplingOrchestrator.run(config, project.projectDir)
 
         if (pairs.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No coupling found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No coupling found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> ChangeCouplingFormatter.format(pairs)
         OutputFormat.JSON -> ChangeCouplingFormatter.formatJson(pairs)

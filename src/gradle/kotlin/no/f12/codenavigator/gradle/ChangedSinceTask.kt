@@ -57,7 +57,7 @@ abstract class ChangedSinceTask : CodeNavigatorTask() {
 
         val gitPaths = GitDiffRunner.run(project.projectDir, config.ref)
         if (gitPaths.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No changed files since ${config.ref}."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No changed files since ${config.ref}."))
             return
         }
 
@@ -69,9 +69,9 @@ abstract class ChangedSinceTask : CodeNavigatorTask() {
         if (resolution.resolved.isEmpty()) {
             if (resolution.unresolved.isNotEmpty()) {
                 val msg = "${resolution.unresolved.size} changed file(s), none mapped to project classes:\n${resolution.unresolved.joinToString("\n") { "  $it" }}"
-                logger.lifecycle(OutputWrapper.emptyResult(config.format, msg))
+                logger.quiet(OutputWrapper.emptyResult(config.format, msg))
             } else {
-                logger.lifecycle(OutputWrapper.emptyResult(config.format, "No changed files since ${config.ref}."))
+                logger.quiet(OutputWrapper.emptyResult(config.format, "No changed files since ${config.ref}."))
             }
             return
         }
@@ -89,7 +89,7 @@ abstract class ChangedSinceTask : CodeNavigatorTask() {
         )
         val impacts = allImpacts.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
-        logger.lifecycle(
+        logger.quiet(
             OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> ChangedSinceFormatter.format(impacts, resolution.unresolved)

@@ -93,16 +93,16 @@ abstract class MoveClassTask @Inject constructor(
         val result = MoveClassResult.fromJson(resultFileLocation.readText())
 
         if (result.error != null) {
-            logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { result.error })
+            logger.quiet(OutputWrapper.formatAndWrap(config.format) { result.error })
             return
         }
 
         if (result.changes.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.format(result, config)
         OutputFormat.JSON -> MoveClassFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))
@@ -143,16 +143,16 @@ abstract class MoveClassTask @Inject constructor(
         val result = MoveClassResult.fromJson(resultFileLocation.readText())
 
         if (result.error != null) {
-            logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { result.error })
+            logger.quiet(OutputWrapper.formatAndWrap(config.format) { result.error })
             return
         }
 
         if (result.changes.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
             when (format) {
                 OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.formatFileMove(result, config)
                 OutputFormat.JSON -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))

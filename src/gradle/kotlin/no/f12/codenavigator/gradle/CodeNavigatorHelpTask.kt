@@ -11,6 +11,6 @@ abstract class CodeNavigatorHelpTask : DefaultTask() {
 
     @TaskAction
     fun showHelp() {
-        logger.lifecycle(HelpText.generate(BuildTool.GRADLE))
+        logger.quiet(HelpText.generate(BuildTool.GRADLE))
     }
 }

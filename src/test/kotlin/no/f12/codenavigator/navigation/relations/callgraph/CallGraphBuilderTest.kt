@@ -48,6 +48,50 @@ class CallGraphBuilderTest {
     }
 
     @Test
+    fun `detects caller of a top-level function invoked via INVOKESTATIC on a Kt facade class`() {
+        // Mirrors a Kotlin top-level function call across files: `fun Route.requireCorrelationId(...)`
+        // in CorrelationIdInterceptorKt, called from `SetupKt.registerV1Routes` — compiles to
+        // INVOKESTATIC on the callee's file-facade class, exactly like writeClassWithStaticCall produces.
+        TestClassWriter.writeClassWithStaticCall(
+            classesDir, "com/example/SetupKt", "Setup.kt",
+            "registerV1Routes", Call("com/example/CorrelationIdInterceptorKt", "requireCorrelationId", "()V"),
+        )
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/CorrelationIdInterceptorKt", "CorrelationIdInterceptor.kt",
+            "requireCorrelationId", emptyList(),
+        )
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        val callers = graph.callersOf(ClassName("com.example.CorrelationIdInterceptorKt"), "requireCorrelationId")
+        assertEquals(1, callers.size, "expected SetupKt.registerV1Routes to be recorded as a caller, got: $callers")
+        assertEquals("com.example.SetupKt", callers.first().className.value)
+        assertEquals("registerV1Routes", callers.first().methodName)
+    }
+
+    @Test
+    fun `detects caller when BOTH caller and callee are static top-level functions on Kt facade classes`() {
+        // Real top-level Kotlin functions compile to ACC_PUBLIC|ACC_STATIC methods on the file
+        // facade class — writeClassWithStaticCall's caller method is only ACC_PUBLIC (instance).
+        // This reproduces the exact static-caller-calls-static-callee shape from the field report.
+        TestClassWriter.writeClassWithStaticCallerAndCall(
+            classesDir, "com/example/SetupKt", "Setup.kt",
+            "registerV1Routes", Call("com/example/CorrelationIdInterceptorKt", "requireCorrelationId", "()V"),
+        )
+        TestClassWriter.writeClassWithCalls(
+            classesDir, "com/example/CorrelationIdInterceptorKt", "CorrelationIdInterceptor.kt",
+            "requireCorrelationId", emptyList(),
+        )
+
+        val graph = CallGraphBuilder.build(listOf(classesDir)).data
+
+        val callers = graph.callersOf(ClassName("com.example.CorrelationIdInterceptorKt"), "requireCorrelationId")
+        assertEquals(1, callers.size, "expected SetupKt.registerV1Routes to be recorded as a caller, got: $callers")
+        assertEquals("com.example.SetupKt", callers.first().className.value)
+        assertEquals("registerV1Routes", callers.first().methodName)
+    }
+
+    @Test
     fun `returns empty set for method with no callers`() {
         TestClassWriter.writeClassWithCalls(classesDir, "com/example/Lonely", "Lonely.kt", "alone", emptyList())
 

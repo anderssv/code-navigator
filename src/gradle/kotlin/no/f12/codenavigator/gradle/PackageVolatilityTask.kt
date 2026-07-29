@@ -49,11 +49,11 @@ abstract class PackageVolatilityTask : CodeNavigatorTask() {
 
         if (result.entries.isEmpty()) {
             val hints = PackageVolatilityFormatter.noResultsHints()
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No package volatility data found.", hints))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No package volatility data found.", hints))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> PackageVolatilityFormatter.format(result)
         OutputFormat.JSON -> PackageVolatilityFormatter.formatJson(result)

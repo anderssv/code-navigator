@@ -66,7 +66,7 @@ abstract class MovePackageTask @Inject constructor(
             .map { it.value }
 
         if (classesInPackage.isEmpty()) {
-            logger.lifecycle(
+            logger.quiet(
                 OutputWrapper.emptyResult(config.format, "No classes found in package '${config.fromPackage}'.", noResultsHints(config)),
             )
             return
@@ -103,11 +103,11 @@ abstract class MovePackageTask @Inject constructor(
         val planResult = ExecutePlanResult(steps = stepResults, preview = config.preview)
 
         if (planResult.totalChanges == 0) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No changes needed for any class in package.", noResultsHints(config)))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No changes needed for any class in package.", noResultsHints(config)))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
             ExecutePlanFormatter.format(planResult, format)
         })
     }

@@ -50,11 +50,11 @@ abstract class AuthorAnalysisTask : CodeNavigatorTask() {
         val modules = AuthorAnalysisBuilder.build(commits, config.minRevs, config.top)
 
         if (modules.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No files found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No files found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> AuthorAnalysisFormatter.format(modules)
         OutputFormat.JSON -> AuthorAnalysisFormatter.formatJson(modules)

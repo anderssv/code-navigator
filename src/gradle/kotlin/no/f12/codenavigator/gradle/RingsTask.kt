@@ -71,7 +71,7 @@ abstract class RingsTask : CodeNavigatorTask() {
             is RingsAnalysis.Emergent -> renderEmergent(analysis.output, format)
         }
 
-        logger.lifecycle(OutputWrapper.wrap(output, format))
+        logger.quiet(OutputWrapper.wrap(output, format))
 
         if (failOnViolationVal && violationCount > maxViolationsVal) {
             throw GradleException("cnavRings found $violationCount violation(s), exceeding --max-violations=$maxViolationsVal")

@@ -57,6 +57,6 @@ abstract class PackageDistanceTask : CodeNavigatorTask() {
         val output = DistanceOrchestrator.run(config, classDirectories, reportFile)
 
         output.skippedFileWarning?.let { logger.warn(it) }
-        DsmOutputFormatter.format(output, config.format)?.let { logger.lifecycle(it) }
+        DsmOutputFormatter.format(output, config.format)?.let { logger.quiet(it) }
     }
 }

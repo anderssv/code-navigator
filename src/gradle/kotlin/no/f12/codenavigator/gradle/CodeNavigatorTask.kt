@@ -61,7 +61,7 @@ abstract class CodeNavigatorTask : DefaultTask() {
     protected fun applyPlan(dependencies: List<PackageDependency>, dropSamePackageEdges: Boolean = true): List<PackageDependency> {
         val plan = loadPlanSteps()
         if (plan.isEmpty()) return dependencies
-        logger.lifecycle("  Applying plan: ${plan.size} step(s) from $planFile")
+        logger.quiet("  Applying plan: ${plan.size} step(s) from $planFile")
         return PlanMutator.apply(dependencies, plan, dropSamePackageEdges)
     }
 

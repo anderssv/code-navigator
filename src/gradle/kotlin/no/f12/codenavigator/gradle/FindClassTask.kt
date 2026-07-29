@@ -80,10 +80,10 @@ abstract class FindClassTask : CodeNavigatorTask() {
 
         val matches = ClassFilter.filter(allClasses, config.pattern)
         if (matches.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No classes matching '${config.pattern}' found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No classes matching '${config.pattern}' found."))
             return
         }
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> TableFormatter.format(matches)
         OutputFormat.JSON -> ClassInfoFormatter.formatJson(matches)

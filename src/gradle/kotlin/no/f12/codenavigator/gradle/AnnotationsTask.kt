@@ -67,11 +67,11 @@ abstract class AnnotationsTask : CodeNavigatorTask() {
         val matches = allMatches.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         if (matches.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No annotations matching '${config.pattern}' found.", AnnotationQueryFormatter.noResultsHints(config.pattern, config.targets)))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No annotations matching '${config.pattern}' found.", AnnotationQueryFormatter.noResultsHints(config.pattern, config.targets)))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> AnnotationQueryFormatter.format(matches)
         OutputFormat.JSON -> AnnotationQueryFormatter.formatJson(matches)

@@ -58,7 +58,7 @@ abstract class ExecutePlanTask @Inject constructor(
         val steps = PlanMutator.parseFile(planPath)
 
         if (steps.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "Plan file contains no steps.", emptyList()))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "Plan file contains no steps.", emptyList()))
             return
         }
 
@@ -103,11 +103,11 @@ abstract class ExecutePlanTask @Inject constructor(
         val planResult = ExecutePlanResult(steps = stepResults, preview = config.preview)
 
         if (planResult.totalChanges == 0) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No changes needed for any step.", emptyList()))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No changes needed for any step.", emptyList()))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
             ExecutePlanFormatter.format(planResult, format)
         })
     }

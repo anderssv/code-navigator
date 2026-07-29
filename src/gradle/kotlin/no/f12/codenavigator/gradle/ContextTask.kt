@@ -64,11 +64,11 @@ abstract class ContextTask : CodeNavigatorTask() {
         output.skippedFileWarnings.forEach { logger.warn(it) }
 
         if (output.results.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No classes found matching '${config.pattern}'"))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No classes found matching '${config.pattern}'"))
             return
         }
 
-        logger.lifecycle(
+        logger.quiet(
             OutputWrapper.formatAndWrap(config.format) { format ->
                 when (format) {
                     OutputFormat.TEXT, OutputFormat.DIFF -> output.results.joinToString("\n\n") { ContextFormatter.format(it) }

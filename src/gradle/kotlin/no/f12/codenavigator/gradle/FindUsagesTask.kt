@@ -98,13 +98,13 @@ abstract class FindUsagesTask : CodeNavigatorTask() {
         if (output.usages.isEmpty() && output.implementations.isEmpty()) {
             val target = UsageFormatter.noResultsTarget(config.ownerClass, config.method, config.field, config.type)
             val hints = UsageFormatter.noResultsHints(config.ownerClass, config.method, config.field, config.type)
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No usages found for '$target'.", hints))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No usages found for '$target'.", hints))
             return
         }
 
         val smartResult = output.toSmartResult()
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
             when (format) {
                 OutputFormat.TEXT, OutputFormat.DIFF -> when {
                     config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummary(output.usages)

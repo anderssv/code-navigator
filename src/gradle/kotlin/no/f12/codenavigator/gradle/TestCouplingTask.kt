@@ -63,7 +63,7 @@ abstract class TestCouplingTask : CodeNavigatorTask() {
 
         if (output.noPortsFound) {
             val guidance = TestCouplingGuidance.GUIDANCE
-            logger.lifecycle(OutputWrapper.wrapWithGuidance(
+            logger.quiet(OutputWrapper.wrapWithGuidance(
                 "No interfaces matching '${config.ports.pattern}' found. Adjust --ports to match your port interface names.",
                 config.format,
                 guidance,
@@ -73,7 +73,7 @@ abstract class TestCouplingTask : CodeNavigatorTask() {
 
         val result = output.result
         if (result == null || result.violations.isEmpty()) {
-            logger.lifecycle(OutputWrapper.wrapWithGuidance(
+            logger.quiet(OutputWrapper.wrapWithGuidance(
                 "No TTTD violations found. All test classes use domain-oriented setup.",
                 config.format,
                 TestCouplingGuidance.GUIDANCE,
@@ -82,7 +82,7 @@ abstract class TestCouplingTask : CodeNavigatorTask() {
         }
 
         val guidance = TestCouplingGuidance.GUIDANCE
-        logger.lifecycle(OutputWrapper.wrapWithGuidance(
+        logger.quiet(OutputWrapper.wrapWithGuidance(
             when {
                 config.format == OutputFormat.LLM -> TestCouplingFormatter.formatLlm(result)
                 config.detail -> TestCouplingFormatter.formatDetailText(result)

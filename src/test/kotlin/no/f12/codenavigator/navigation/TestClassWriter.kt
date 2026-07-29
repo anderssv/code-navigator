@@ -128,6 +128,37 @@ object TestClassWriter {
     }
 
     /**
+     * Generates a class with a default constructor and one STATIC method that makes a static call —
+     * mirrors a Kotlin top-level function (compiled ACC_PUBLIC|ACC_STATIC on the file facade class)
+     * calling another top-level function. writeClassWithStaticCall's caller method is instance-only,
+     * which doesn't reproduce this shape.
+     */
+    fun writeClassWithStaticCallerAndCall(
+        targetDir: File,
+        className: String,
+        sourceFile: String,
+        methodName: String,
+        call: Call,
+    ): File {
+        val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)
+        writer.visitSource(sourceFile, null)
+        writeDefaultConstructor(writer)
+
+        val mv = writer.visitMethod(Opcodes.ACC_PUBLIC or Opcodes.ACC_STATIC, methodName, "()V", null, null)
+        mv.visitCode()
+        mv.visitInsn(Opcodes.ACONST_NULL)
+        mv.visitMethodInsn(Opcodes.INVOKESTATIC, call.owner, call.name, call.descriptor, false)
+        mv.visitInsn(Opcodes.POP)
+        mv.visitInsn(Opcodes.RETURN)
+        mv.visitMaxs(2, 2)
+        mv.visitEnd()
+
+        writer.visitEnd()
+        return writeBytes(targetDir, className, writer)
+    }
+
+    /**
      * Generates a class with a default constructor and multiple named methods, each with its own call list.
      */
     fun writeClassWithMultipleMethods(

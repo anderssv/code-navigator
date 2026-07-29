@@ -84,7 +84,7 @@ abstract class MetricsTask : CodeNavigatorTask() {
         output.skippedFileWarning?.let { logger.warn(it) }
         val metrics = output.result
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> MetricsFormatter.format(metrics)
         OutputFormat.JSON -> MetricsFormatter.formatJson(metrics)

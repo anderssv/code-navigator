@@ -45,11 +45,11 @@ abstract class ChurnTask : CodeNavigatorTask() {
         val churn = ChurnBuilder.build(commits, config.top)
 
         if (churn.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No churn data found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No churn data found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> ChurnFormatter.format(churn)
         OutputFormat.JSON -> ChurnFormatter.formatJson(churn)

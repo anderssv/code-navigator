@@ -116,19 +116,19 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
         ))
 
         if (dead.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No potential dead code found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No potential dead code found."))
             return
         }
 
         if (config.baseline != null) {
             val baselineFile = project.file(config.baseline)
             if (!baselineFile.exists()) {
-                logger.lifecycle("Baseline file not found: ${baselineFile.absolutePath}")
+                logger.quiet("Baseline file not found: ${baselineFile.absolutePath}")
                 return
             }
             val baselineItems = DeadCodeBaselineDiff.parseBaseline(baselineFile.readText())
             val diff = DeadCodeBaselineDiff.compare(baselineItems, dead)
-            logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+            logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> DeadCodeBaselineDiffFormatter.format(diff)
         OutputFormat.JSON -> DeadCodeBaselineDiffFormatter.formatJson(diff)
@@ -138,7 +138,7 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> DeadCodeFormatter.format(dead, config.scope)
         OutputFormat.JSON -> DeadCodeFormatter.formatJson(dead, config.scope)

@@ -25,6 +25,6 @@ abstract class AgentHelpTask : CodeNavigatorTask() {
 
     @TaskAction
     fun showAgentHelp() {
-        logger.lifecycle(AgentHelpText.generate(BuildTool.GRADLE, section, topic))
+        logger.quiet(AgentHelpText.generate(BuildTool.GRADLE, section, topic))
     }
 }

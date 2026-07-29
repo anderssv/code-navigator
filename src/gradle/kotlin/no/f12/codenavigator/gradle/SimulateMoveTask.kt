@@ -72,7 +72,7 @@ abstract class SimulateMoveTask : CodeNavigatorTask() {
         val rawType = rawOptionsMap["type"] ?: config.type
         val resolvedClass = resolveClassName(rawType, projectClasses)
             ?: run {
-                logger.lifecycle(OutputWrapper.emptyResult(config.format, "Class '${config.type}' not found in project."))
+                logger.quiet(OutputWrapper.emptyResult(config.format, "Class '${config.type}' not found in project."))
                 return
             }
 
@@ -89,7 +89,7 @@ abstract class SimulateMoveTask : CodeNavigatorTask() {
             targetPackage = config.toPackage,
         )
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
             when (format) {
                 OutputFormat.TEXT, OutputFormat.DIFF -> SimulateMoveFormatter.formatText(moveResult, displayPrefix)
                 OutputFormat.JSON -> SimulateMoveFormatter.formatText(moveResult, displayPrefix)

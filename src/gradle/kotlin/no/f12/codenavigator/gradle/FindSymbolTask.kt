@@ -89,10 +89,10 @@ abstract class FindSymbolTask : CodeNavigatorTask() {
 
         val matches = SymbolFilter.filter(allSymbols, config.pattern)
         if (matches.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No symbols matching '${config.pattern}' found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No symbols matching '${config.pattern}' found."))
             return
         }
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> SymbolTableFormatter.format(matches)
         OutputFormat.JSON -> SymbolTableFormatter.formatJson(matches)

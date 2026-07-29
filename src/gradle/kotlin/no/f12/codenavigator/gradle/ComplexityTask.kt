@@ -78,11 +78,11 @@ abstract class ComplexityTask : CodeNavigatorTask() {
         val truncated = filtered.take(config.top)
 
         if (truncated.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No matching classes found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No matching classes found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> ComplexityFormatter.format(truncated)
         OutputFormat.JSON -> ComplexityFormatter.formatJson(truncated)

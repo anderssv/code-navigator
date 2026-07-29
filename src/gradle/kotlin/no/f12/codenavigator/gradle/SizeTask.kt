@@ -39,11 +39,11 @@ abstract class SizeTask : CodeNavigatorTask() {
         val entries = FileSizeScanner.scan(sourceRoots, config.over, config.top)
 
         if (entries.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No source files found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No source files found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> FileSizeFormatter.format(entries)
         OutputFormat.JSON -> FileSizeFormatter.formatJson(entries)

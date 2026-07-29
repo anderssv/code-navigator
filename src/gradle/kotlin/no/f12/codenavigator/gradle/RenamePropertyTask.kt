@@ -84,11 +84,11 @@ abstract class RenamePropertyTask @Inject constructor(
         val result = RenamePropertyResult.fromJson(resultFileLocation.readText())
 
         if (result.changes.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> RenamePropertyFormatter.format(result, config)
         OutputFormat.JSON -> RenamePropertyFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))

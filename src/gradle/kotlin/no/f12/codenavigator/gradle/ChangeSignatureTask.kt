@@ -94,11 +94,11 @@ abstract class ChangeSignatureTask @Inject constructor(
         val result = ChangeSignatureResult.fromJson(resultFileLocation.readText())
 
         if (result.changes.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, result.reason ?: "No changes needed.", noResultsHints(config)))
+            logger.quiet(OutputWrapper.emptyResult(config.format, result.reason ?: "No changes needed.", noResultsHints(config)))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> ChangeSignatureFormatter.format(result, config)
         OutputFormat.JSON -> ChangeSignatureFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))

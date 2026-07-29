@@ -59,6 +59,6 @@ abstract class MoveSuggestTask : CodeNavigatorTask() {
         val output = MoveSuggestOrchestrator.fromExtraction(mutatedExtraction, config)
 
         output.skippedFileWarning?.let { logger.warn(it) }
-        DsmOutputFormatter.format(output, config.format)?.let { logger.lifecycle(it) }
+        DsmOutputFormatter.format(output, config.format)?.let { logger.quiet(it) }
     }
 }

@@ -48,11 +48,11 @@ abstract class StringConstantTask : CodeNavigatorTask() {
         val matches = result.data.filter { resolver.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         if (matches.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No string constants matching '${config.pattern.pattern}' found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No string constants matching '${config.pattern.pattern}' found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> StringConstantFormatter.format(matches)
         OutputFormat.JSON -> StringConstantFormatter.formatJson(matches)

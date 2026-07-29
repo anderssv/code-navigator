@@ -78,23 +78,23 @@ abstract class MoveFileTask @Inject constructor(
         try {
             workQueue.await()
         } catch (e: Exception) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "move-file failed: ${e.message ?: "unknown error"}", noResultsHints(config)))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "move-file failed: ${e.message ?: "unknown error"}", noResultsHints(config)))
             return
         }
 
         if (!resultFileLocation.exists()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "move-file failed: no result produced.", noResultsHints(config)))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "move-file failed: no result produced.", noResultsHints(config)))
             return
         }
 
         val result = MoveClassResult.fromJson(resultFileLocation.readText())
 
         if (result.changes.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
             when (format) {
                 OutputFormat.TEXT, OutputFormat.DIFF -> MoveClassFormatter.formatFileMove(result, config)
                 OutputFormat.JSON -> MoveClassFormatter.formatFileMove(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))

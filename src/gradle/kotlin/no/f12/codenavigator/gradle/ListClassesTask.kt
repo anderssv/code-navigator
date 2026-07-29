@@ -77,10 +77,10 @@ abstract class ListClassesTask : CodeNavigatorTask() {
         }
 
         if (filtered.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No classes found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No classes found."))
             return
         }
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> TableFormatter.format(filtered)
         OutputFormat.JSON -> ClassInfoFormatter.formatJson(filtered)

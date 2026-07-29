@@ -61,11 +61,11 @@ abstract class RankTask : CodeNavigatorTask() {
         val filtered = ranked.filter { graph.sourceSetOf(it.className)?.let { ss -> config.scope.matchesSourceSet(ss) } ?: true }
 
         if (filtered.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No ranked types found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No ranked types found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> RankFormatter.format(filtered)
         OutputFormat.JSON -> RankFormatter.formatJson(filtered)

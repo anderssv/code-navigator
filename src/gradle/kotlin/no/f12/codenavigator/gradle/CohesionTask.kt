@@ -52,6 +52,6 @@ abstract class CohesionTask : CodeNavigatorTask() {
         val output = CohesionOrchestrator.run(config, classDirectories, reportFile)
 
         output.skippedFileWarning?.let { logger.warn(it) }
-        DsmOutputFormatter.format(output, config.format)?.let { logger.lifecycle(it) }
+        DsmOutputFormatter.format(output, config.format)?.let { logger.quiet(it) }
     }
 }

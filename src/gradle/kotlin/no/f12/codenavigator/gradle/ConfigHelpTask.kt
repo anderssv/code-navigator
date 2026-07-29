@@ -10,6 +10,6 @@ abstract class ConfigHelpTask : CodeNavigatorTask() {
 
     @TaskAction
     fun showConfig() {
-        logger.lifecycle(ConfigHelpText.generate(BuildTool.GRADLE))
+        logger.quiet(ConfigHelpText.generate(BuildTool.GRADLE))
     }
 }

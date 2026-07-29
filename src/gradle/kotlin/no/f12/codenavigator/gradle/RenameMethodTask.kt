@@ -103,11 +103,11 @@ abstract class RenameMethodTask @Inject constructor(
 
         if (result.changes.isEmpty()) {
             val diagnosis = RenameMethodRewriter.diagnoseNoChanges(classesRoots, config.className, config.methodName)
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, diagnosis.message, diagnosis.hints))
+            logger.quiet(OutputWrapper.emptyResult(config.format, diagnosis.message, diagnosis.hints))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> RenameMethodFormatter.format(result, config)
         OutputFormat.JSON -> RenameMethodFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))

@@ -95,11 +95,11 @@ abstract class ConvergeTask : CodeNavigatorTask() {
             is ConvergeOutput.Risk -> output.output.entries.isEmpty()
         }
         if (isEmpty) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No converging signals found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No converging signals found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> ConvergeFormatter.format(output)
         OutputFormat.JSON -> ConvergeFormatter.formatJson(output)

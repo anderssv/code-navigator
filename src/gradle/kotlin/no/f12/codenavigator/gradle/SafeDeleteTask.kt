@@ -82,11 +82,11 @@ abstract class SafeDeleteTask @Inject constructor(
         val result = SafeDeleteResult.fromJson(resultFileLocation.readText())
 
         if (!result.deleted && result.changes.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, result.reason ?: "Cannot delete.", noResultsHints(config)))
+            logger.quiet(OutputWrapper.emptyResult(config.format, result.reason ?: "Cannot delete.", noResultsHints(config)))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> SafeDeleteFormatter.format(result, config)
         OutputFormat.JSON -> SafeDeleteFormatter.format(result, config.copy(format = no.f12.codenavigator.config.OutputFormat.JSON))

@@ -68,7 +68,7 @@ abstract class PackageDepsTask : CodeNavigatorTask() {
         val packages = if (config.packagePattern != null) {
             val matches = deps.findPackages(config.packagePattern)
             if (matches.isEmpty()) {
-                logger.lifecycle(OutputWrapper.emptyResult(config.format, "No packages found matching '${config.packagePattern}'"))
+                logger.quiet(OutputWrapper.emptyResult(config.format, "No packages found matching '${config.packagePattern}'"))
                 return
             }
             matches
@@ -77,13 +77,13 @@ abstract class PackageDepsTask : CodeNavigatorTask() {
             if (all.isEmpty()) {
                 val packageCount = graph.projectClasses().map { it.packageName() }.distinct().size
                 val hints = PackageDependencyFormatter.noResultsHints(packageCount)
-                logger.lifecycle(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
+                logger.quiet(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
                 return
             }
             all
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> PackageDependencyFormatter.format(deps, packages, config.reverse)
         OutputFormat.JSON -> PackageDependencyFormatter.formatJson(deps, packages, config.reverse)

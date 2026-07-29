@@ -49,11 +49,11 @@ abstract class TypeAffinityTask : CodeNavigatorTask() {
         val result = output.result
 
         if (result.singleOwnerTypes.isEmpty() && result.sharedTypes.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No types found in package '${config.targetPackage}' with external consumers."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No types found in package '${config.targetPackage}' with external consumers."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
             TypeAffinityFormatter.format(result, format)
         })
     }

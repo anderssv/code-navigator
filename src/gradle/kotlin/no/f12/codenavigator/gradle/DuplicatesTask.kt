@@ -44,11 +44,11 @@ abstract class DuplicatesTask : CodeNavigatorTask() {
         val groups = DuplicateScanner.scan(taggedSourceRoots, config.minTokens, config.top, config.scope)
 
         if (groups.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No duplicates found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No duplicates found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> DuplicateFormatter.format(groups)
         OutputFormat.JSON -> DuplicateFormatter.formatJson(groups)

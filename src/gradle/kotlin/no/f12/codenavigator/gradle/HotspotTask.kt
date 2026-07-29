@@ -50,11 +50,11 @@ abstract class HotspotTask : CodeNavigatorTask() {
         val hotspots = HotspotBuilder.build(commits, config.minRevs, config.top, projectDir = project.projectDir)
 
         if (hotspots.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No hotspots found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No hotspots found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> HotspotFormatter.format(hotspots)
         OutputFormat.JSON -> HotspotFormatter.formatJson(hotspots)

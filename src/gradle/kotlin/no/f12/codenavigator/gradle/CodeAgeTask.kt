@@ -46,11 +46,11 @@ abstract class CodeAgeTask : CodeNavigatorTask() {
         val ages = CodeAgeBuilder.build(commits, LocalDate.now(), config.top)
 
         if (ages.isEmpty()) {
-            logger.lifecycle(OutputWrapper.emptyResult(config.format, "No files found."))
+            logger.quiet(OutputWrapper.emptyResult(config.format, "No files found."))
             return
         }
 
-        logger.lifecycle(OutputWrapper.formatAndWrap(config.format) { format ->
+        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
         OutputFormat.TEXT, OutputFormat.DIFF -> CodeAgeFormatter.format(ages)
         OutputFormat.JSON -> CodeAgeFormatter.formatJson(ages)

@@ -49,7 +49,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
         // --- Startup indicator for all cnav tasks ---
 
         project.tasks.matching { it.group?.startsWith("code-navigator") == true }.configureEach {
-            doFirst { logger.lifecycle("\uD83E\uDDED code-navigator: $name") }
+            doFirst { logger.quiet("\uD83E\uDDED code-navigator: $name") }
         }
     }
 
