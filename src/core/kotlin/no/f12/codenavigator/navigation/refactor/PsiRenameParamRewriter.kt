@@ -110,7 +110,7 @@ object PsiRenameParamRewriter {
                 }
 
                 // Find named arguments at call sites
-                if (fileReferencesClass(ktFile, targetSimpleName, targetPackage)) {
+                if (fileReferencesClass(ktFile, className)) {
                     findNamedArgEdits(ktFile, classDecls, filePackage, className, targetSimpleName, methodName, paramName, newName, edits, isConstructor)
                 }
 
@@ -298,23 +298,6 @@ object PsiRenameParamRewriter {
             if (matchesClassOrCompanion(fqn, targetClassName) && clazz.textRange.contains(element.textRange)) {
                 return true
             }
-        }
-        return false
-    }
-
-    private fun fileReferencesClass(
-        ktFile: KtFile,
-        targetSimpleName: String,
-        targetPackage: String,
-    ): Boolean {
-        val filePackage = ktFile.packageFqName.asString()
-        if (filePackage == targetPackage) return true
-        val imports = ktFile.importDirectives
-        val targetFqn = if (targetPackage.isEmpty()) targetSimpleName else "$targetPackage.$targetSimpleName"
-        for (imp in imports) {
-            val importedFqn = imp.importedFqName?.asString() ?: continue
-            if (importedFqn == targetFqn) return true
-            if (imp.isAllUnder && importedFqn == targetPackage) return true
         }
         return false
     }
