@@ -79,21 +79,17 @@ object SafeDeleteRewriter {
         methodName: String?,
         preview: Boolean,
     ): SafeDeleteResult {
-        val targetSimpleName = className.substringAfterLast(".")
-        val targetPackage = className.substringBeforeLast(".", "")
-
         return withKotlinPsiFactory("safe-delete-target") { psiFactory ->
             for (file in sourceFiles) {
                 val content = file.readText()
                 val ktFile = psiFactory.createFile(file.name, content)
                 val filePackage = ktFile.packageFqName.asString()
-                if (filePackage != targetPackage) continue
 
                 if (methodName != null) {
-                    val result = deleteMethod(ktFile, content, file, targetSimpleName, methodName, preview)
+                    val result = deleteMethod(ktFile, content, file, filePackage, className, methodName, preview)
                     if (result != null) return result
                 } else {
-                    val result = deleteClass(ktFile, content, file, targetSimpleName, preview)
+                    val result = deleteClass(ktFile, content, file, filePackage, className, preview)
                     if (result != null) return result
                 }
             }
@@ -106,11 +102,12 @@ object SafeDeleteRewriter {
         ktFile: KtFile,
         content: String,
         file: File,
-        targetSimpleName: String,
+        filePackage: String,
+        className: String,
         preview: Boolean,
     ): SafeDeleteResult? {
         val classDecl = ktFile.collectDescendantsOfType<KtClass>()
-            .firstOrNull { it.name == targetSimpleName } ?: return null
+            .firstOrNull { matchesFqn(buildClassFqn(filePackage, it), className) } ?: return null
 
         val startOffset = classDecl.textRange.startOffset
         val endOffset = classDecl.textRange.endOffset
@@ -134,12 +131,13 @@ object SafeDeleteRewriter {
         ktFile: KtFile,
         content: String,
         file: File,
-        targetSimpleName: String,
+        filePackage: String,
+        className: String,
         methodName: String,
         preview: Boolean,
     ): SafeDeleteResult? {
         val classDecl = ktFile.collectDescendantsOfType<KtClass>()
-            .firstOrNull { it.name == targetSimpleName } ?: return null
+            .firstOrNull { matchesFqn(buildClassFqn(filePackage, it), className) } ?: return null
 
         val method = classDecl.declarations
             .filterIsInstance<KtNamedFunction>()
