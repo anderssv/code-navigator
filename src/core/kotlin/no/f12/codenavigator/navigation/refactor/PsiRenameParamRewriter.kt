@@ -27,16 +27,14 @@ object PsiRenameParamRewriter {
         newName: String,
         preview: Boolean = false,
     ): RenameResult {
-        val sourceFiles = sourceRoots.flatMap { root ->
-            root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        }
-        if (sourceFiles.isEmpty()) return RenameResult(emptyList())
+        val location = DeclarationFinder.locate(sourceRoots, className)
+        if (!location.found) return RenameResult(emptyList())
 
         val warnings = mutableListOf<String>()
 
         if (isConstructorMethod(methodName)) {
             val simpleClassName = className.substringAfterLast(".")
-            val isValVar = sourceFiles.any { file ->
+            val isValVar = location.callSiteFiles.any { file ->
                 isValVarConstructorParam(file, simpleClassName, paramName)
             }
             if (isValVar) {
@@ -58,61 +56,59 @@ object PsiRenameParamRewriter {
             val changes = mutableListOf<RenameChange>()
             val cascadeCandidates = mutableSetOf<CascadeCandidate>()
 
-            for (file in sourceFiles) {
+            for (file in location.callSiteFiles) {
                 val content = file.readText()
                 val ktFile = psiFactory.createFile(file.name, content)
                 val filePackage = ktFile.packageFqName.asString()
 
                 val edits = mutableListOf<TextEdit>()
 
-                // Find target class declarations
+                // Find target class declarations (only in the declaration file)
                 val classDecls = ktFile.collectDescendantsOfType<KtClass>()
-                for (clazz in classDecls) {
-                    val classFqn = buildClassFqn(filePackage, clazz)
-                    if (!matchesClassOrCompanion(classFqn, className)) continue
+                if (file == location.declarationFile) {
+                    for (clazz in classDecls) {
+                        val classFqn = buildClassFqn(filePackage, clazz)
+                        if (!matchesClassOrCompanion(classFqn, className)) continue
 
-                    // Find the target method
-                    val methods = if (isConstructor) {
-                        // For constructors, look at primary constructor parameters
-                        val primaryConstructor = clazz.primaryConstructor
-                        if (primaryConstructor != null) {
-                            renameConstructorParam(primaryConstructor, paramName, newName, edits)
+                        // Find the target method
+                        val methods = if (isConstructor) {
+                            val primaryConstructor = clazz.primaryConstructor
+                            if (primaryConstructor != null) {
+                                renameConstructorParam(primaryConstructor, paramName, newName, edits)
+                            }
+                            emptyList()
+                        } else {
+                            clazz.declarations.filterIsInstance<KtNamedFunction>().filter { it.name == methodName }
                         }
-                        emptyList()
-                    } else {
-                        clazz.declarations.filterIsInstance<KtNamedFunction>().filter { it.name == methodName }
-                    }
 
-                    for (method in methods) {
-                        renameParamInMethod(method, paramName, newName, edits, cascadeCandidates)
-                    }
-
-                    // Also check companion object
-                    for (companion in clazz.companionObjects) {
-                        val companionMethods = companion.declarations
-                            .filterIsInstance<KtNamedFunction>()
-                            .filter { it.name == methodName }
-                        for (method in companionMethods) {
+                        for (method in methods) {
                             renameParamInMethod(method, paramName, newName, edits, cascadeCandidates)
                         }
-                    }
 
-                    // Rename named args in ALL calls to the target method within this class
-                    // (including calls from other methods in the same class)
-                    if (!isConstructor) {
-                        val allCallsInClass = clazz.collectDescendantsOfType<KtCallExpression>()
-                        for (call in allCallsInClass) {
-                            val callee = call.calleeExpression as? KtNameReferenceExpression ?: continue
-                            if (callee.getReferencedName() != methodName) continue
-                            renameNamedArgInCall(call, paramName, newName, edits)
+                        // Also check companion object
+                        for (companion in clazz.companionObjects) {
+                            val companionMethods = companion.declarations
+                                .filterIsInstance<KtNamedFunction>()
+                                .filter { it.name == methodName }
+                            for (method in companionMethods) {
+                                renameParamInMethod(method, paramName, newName, edits, cascadeCandidates)
+                            }
+                        }
+
+                        // Rename named args in ALL calls to the target method within this class
+                        if (!isConstructor) {
+                            val allCallsInClass = clazz.collectDescendantsOfType<KtCallExpression>()
+                            for (call in allCallsInClass) {
+                                val callee = call.calleeExpression as? KtNameReferenceExpression ?: continue
+                                if (callee.getReferencedName() != methodName) continue
+                                renameNamedArgInCall(call, paramName, newName, edits)
+                            }
                         }
                     }
-                }
+                } // end if (file == location.declarationFile)
 
-                // Find named arguments at call sites
-                if (fileReferencesClass(ktFile, className)) {
-                    findNamedArgEdits(ktFile, classDecls, filePackage, className, targetSimpleName, methodName, paramName, newName, edits, isConstructor)
-                }
+                // Find named arguments at call sites across all referencing files
+                findNamedArgEdits(ktFile, classDecls, filePackage, className, targetSimpleName, methodName, paramName, newName, edits, isConstructor)
 
                 if (edits.isNotEmpty()) {
                     val uniqueEdits = edits.distinctBy { it.offset }
