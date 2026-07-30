@@ -22,17 +22,15 @@ object PsiRenamePropertyRewriter {
         newName: String,
         preview: Boolean = false,
     ): RenamePropertyResult {
-        val sourceFiles = sourceRoots.flatMap { root ->
-            root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        }
-        if (sourceFiles.isEmpty()) return RenamePropertyResult(emptyList())
+        val location = DeclarationFinder.locate(sourceRoots, className)
+        if (!location.found) return RenamePropertyResult(emptyList())
 
         return withKotlinPsiFactory("rename-property-target") { psiFactory ->
             val targetSimpleName = className.substringAfterLast(".")
 
             val changes = mutableListOf<RenameChange>()
 
-            for (file in sourceFiles) {
+            for (file in location.callSiteFiles) {
                 val content = file.readText()
                 val ktFile = psiFactory.createFile(file.name, content)
                 val filePackage = ktFile.packageFqName.asString()
@@ -42,72 +40,66 @@ object PsiRenamePropertyRewriter {
                 val classDecls = ktFile.collectDescendantsOfType<KtClass>()
 
                 // Process target class: rename declaration
-                for (clazz in classDecls) {
-                    val classFqn = buildClassFqn(filePackage, clazz)
-                    if (!matchesFqn(classFqn, className)) continue
+                if (file == location.declarationFile) {
+                    for (clazz in classDecls) {
+                        val classFqn = buildClassFqn(filePackage, clazz)
+                        if (!matchesFqn(classFqn, className)) continue
 
-                    // Check if property exists as a body declaration
-                    val hasBodyProperty = clazz.declarations.any { it is KtProperty && it.name == propertyName }
+                        // Check if property exists as a body declaration
+                        val hasBodyProperty = clazz.declarations.any { it is KtProperty && it.name == propertyName }
 
-                    // Rename val/var in primary constructor
-                    val constructor = clazz.primaryConstructor
-                    if (constructor != null) {
-                        for (param in constructor.valueParameters) {
-                            if (param.name == propertyName) {
-                                // Rename if it's a val/var property, OR if it's a plain parameter
-                                // that initializes a body property with the same name
-                                if (param.hasValOrVar() || hasBodyProperty) {
-                                    val nameId = param.nameIdentifier ?: continue
-                                    edits.add(TextEdit(nameId.textOffset, nameId.textLength, newName))
+                        // Rename val/var in primary constructor
+                        val constructor = clazz.primaryConstructor
+                        if (constructor != null) {
+                            for (param in constructor.valueParameters) {
+                                if (param.name == propertyName) {
+                                    if (param.hasValOrVar() || hasBodyProperty) {
+                                        val nameId = param.nameIdentifier ?: continue
+                                        edits.add(TextEdit(nameId.textOffset, nameId.textLength, newName))
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    // Rename val/var declared in class body
-                    for (decl in clazz.declarations) {
-                        if (decl is KtProperty && decl.name == propertyName) {
-                            val nameId = decl.nameIdentifier ?: continue
-                            edits.add(TextEdit(nameId.textOffset, nameId.textLength, newName))
-                            // Also rename references to the constructor param in the initializer
-                            val initializer = decl.initializer
-                            if (initializer is KtNameReferenceExpression && initializer.getReferencedName() == propertyName) {
-                                edits.add(TextEdit(initializer.textOffset, initializer.textLength, newName))
+                        // Rename val/var declared in class body
+                        for (decl in clazz.declarations) {
+                            if (decl is KtProperty && decl.name == propertyName) {
+                                val nameId = decl.nameIdentifier ?: continue
+                                edits.add(TextEdit(nameId.textOffset, nameId.textLength, newName))
+                                val initializer = decl.initializer
+                                if (initializer is KtNameReferenceExpression && initializer.getReferencedName() == propertyName) {
+                                    edits.add(TextEdit(initializer.textOffset, initializer.textLength, newName))
+                                }
                             }
                         }
                     }
                 }
 
                 // Rename property access sites and named args across the file
-                if (fileReferencesClass(ktFile, className)) {
-                    // Dot-qualified property access: instance.propertyName
-                    val dotExprs = ktFile.collectDescendantsOfType<KtDotQualifiedExpression>()
-                    for (dot in dotExprs) {
-                        val selector = dot.selectorExpression
-                        if (selector is KtNameReferenceExpression && selector.getReferencedName() == propertyName) {
-                            // Heuristic: rename if receiver could be the target type
-                            // We check if receiver references target simple name or is a variable likely of that type
-                            if (couldBeTargetAccess(dot, targetSimpleName, classDecls, filePackage, className)) {
-                                edits.add(TextEdit(selector.textOffset, selector.textLength, newName))
-                            }
+                // (all files in callSiteFiles reference the class — no guard needed)
+                // Dot-qualified property access: instance.propertyName
+                val dotExprs = ktFile.collectDescendantsOfType<KtDotQualifiedExpression>()
+                for (dot in dotExprs) {
+                    val selector = dot.selectorExpression
+                    if (selector is KtNameReferenceExpression && selector.getReferencedName() == propertyName) {
+                        if (couldBeTargetAccess(dot, targetSimpleName, classDecls, filePackage, className)) {
+                            edits.add(TextEdit(selector.textOffset, selector.textLength, newName))
                         }
                     }
+                }
 
-                    // Named arguments at constructor call sites: TargetClass(propertyName = ...)
-                    val callExprs = ktFile.collectDescendantsOfType<KtCallExpression>()
-                    for (call in callExprs) {
-                        val callee = call.calleeExpression as? KtNameReferenceExpression ?: continue
-                        val calledName = callee.getReferencedName()
+                // Named arguments at constructor call sites: TargetClass(propertyName = ...)
+                val callExprs = ktFile.collectDescendantsOfType<KtCallExpression>()
+                for (call in callExprs) {
+                    val callee = call.calleeExpression as? KtNameReferenceExpression ?: continue
+                    val calledName = callee.getReferencedName()
 
-                        if (calledName == targetSimpleName) {
-                            // Constructor call
+                    if (calledName == targetSimpleName) {
+                        renameNamedArgInCall(call, propertyName, newName, edits)
+                    } else if (calledName == "copy") {
+                        val parent = call.parent
+                        if (parent is KtDotQualifiedExpression) {
                             renameNamedArgInCall(call, propertyName, newName, edits)
-                        } else if (calledName == "copy") {
-                            // copy() call — check if receiver is the target type (heuristic)
-                            val parent = call.parent
-                            if (parent is KtDotQualifiedExpression) {
-                                renameNamedArgInCall(call, propertyName, newName, edits)
-                            }
                         }
                     }
                 }
