@@ -45,10 +45,8 @@ object SafeDeleteRewriter {
         methodName: String? = null,
         preview: Boolean = false,
     ): SafeDeleteResult {
-        val sourceFiles = sourceRoots.flatMap { root ->
-            root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        }
-        if (sourceFiles.isEmpty()) return SafeDeleteResult(deleted = false, reason = "No source files found")
+        val location = DeclarationFinder.locate(sourceRoots, className)
+        if (!location.found) return SafeDeleteResult(deleted = false, reason = "Declaration not found: $className")
 
         // Check for usages via bytecode scanning
         val scanResult = if (methodName != null) {
@@ -70,31 +68,27 @@ object SafeDeleteRewriter {
         }
 
         // Find and delete the declaration via PSI
-        return deleteDeclaration(sourceFiles, className, methodName, preview)
+        return deleteDeclaration(location.declarationFile!!, className, methodName, preview)
     }
 
     private fun deleteDeclaration(
-        sourceFiles: List<File>,
+        declarationFile: File,
         className: String,
         methodName: String?,
         preview: Boolean,
     ): SafeDeleteResult {
         return withKotlinPsiFactory("safe-delete-target") { psiFactory ->
-            for (file in sourceFiles) {
-                val content = file.readText()
-                val ktFile = psiFactory.createFile(file.name, content)
-                val filePackage = ktFile.packageFqName.asString()
+            val content = declarationFile.readText()
+            val ktFile = psiFactory.createFile(declarationFile.name, content)
+            val filePackage = ktFile.packageFqName.asString()
 
-                if (methodName != null) {
-                    val result = deleteMethod(ktFile, content, file, filePackage, className, methodName, preview)
-                    if (result != null) return result
-                } else {
-                    val result = deleteClass(ktFile, content, file, filePackage, className, preview)
-                    if (result != null) return result
-                }
+            if (methodName != null) {
+                deleteMethod(ktFile, content, declarationFile, filePackage, className, methodName, preview)
+                    ?: SafeDeleteResult(deleted = false, reason = "Method not found: $className.$methodName")
+            } else {
+                deleteClass(ktFile, content, declarationFile, filePackage, className, preview)
+                    ?: SafeDeleteResult(deleted = false, reason = "Class not found in declaration file: $className")
             }
-
-            SafeDeleteResult(deleted = false, reason = "Declaration not found: $className${methodName?.let { ".$it" } ?: ""}")
         }
     }
 
