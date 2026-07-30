@@ -16,36 +16,39 @@ Items grouped by functional area. Each item has:
 ```
 org.openrewrite.internal.RecipeRunException: java.lang.IllegalArgumentException: Could not parse as Java:
 package no.bankid.selvbetjening.ktor.routes; class $Template {}
-	at org.openrewrite.java.JavaTemplate.doApply(JavaTemplate.java:129)
-	at org.openrewrite.java.ChangeType$ChangeClassDefinition.visitPackage(ChangeType.java:699)
 ```
 
-The rewriter's internal `ChangeType` recipe builds a synthetic `$Template` class to validate the target package name, and OpenRewrite's Java parser rejects it — likely because it's parsed as **Java**, not Kotlin, for a Kotlin source file, or because the template package statement isn't valid on its own without an accompanying class body OpenRewrite's parser expects.
+The rewriter's internal `ChangeType` recipe builds a synthetic `$Template` class to validate the target package name, and OpenRewrite's Java parser rejects it — likely Kotlin vs Java parser confusion. File was NOT moved (clean no-op). Also observed: Gradle daemon hit JVM Metaspace exhaustion on a *single* file move (not just batch operations).
 
-The move failed but was a **partial no-op**: the file was NOT moved (`ErrorMapper.kt` still at its original path), but this needs verification across other failure points — a partial move that updates some imports but not others would be worse.
+**Investigate**: Why `ChangeType`'s template fails; whether single-file move can avoid OpenRewrite's metaspace footprint; add the same `org.gradle.jvmargs` guidance given for `cnavExecutePlan`/`cnavMovePackage`.
 
-**Also observed in the same run**: the Gradle daemon hit JVM Metaspace exhaustion (`max metaspace is '384 MiB'`) — the project's `gradle.properties` doesn't set `org.gradle.jvmargs`, and cnav's OpenRewrite-based rewriters are apparently metaspace-heavy per invocation (consistent with the known `cnavExecutePlan`/`cnavMovePackage` metaspace limitation already documented in plan-completed.md for batch operations — but here it's a *single* file move hitting it, worse than previously known).
+### `cnavRenameMethod` misses interface declaration when targeting an `Impl` class
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113-SNAPSHOT)
 
-**Reproducer**: `cnavMoveFile --from-file=<any .kt file>.kt --to-package=<any different package>` — needs a project without `org.gradle.jvmargs` configured to also reproduce the metaspace pressure.
+Renaming `RAClientImpl.getInfo → fetchUserInfo` updated the impl, all callers, and tests — but left `RAClient` (interface) and `RAClientFake` (other implementor) with the original `getInfo` name. `fetchUserInfo` on the impl then `overrides nothing`, compile error.
 
-**Investigate**:
-1. Why `ChangeType`'s synthetic template fails to parse — Kotlin vs Java parser confusion in the OpenRewrite recipe pipeline used by `MoveClassRewriter`.
-2. Whether the failure leaves the file/imports in a consistent state (verified here: yes, file untouched) or could partially rewrite in other scenarios.
-3. Whether `cnavMoveFile` needs the same default `-Xmx`/`-XX:MaxMetaspaceSize` guidance already given for `cnavExecutePlan`/`cnavMovePackage`, or whether a single-file move should be lighter weight than it currently is.
+**Root cause**: the rename locates the declaration in the target class and rewrites callers via bytecode call-site scanning, but does not walk up to the interface or sideways to sibling implementors. **Fix**: after renaming the target, check if it is an `override` (via PSI `overriddenFunctions`), rename the interface method declaration too, then find all other implementors (`InterfaceRegistry`) and rename their declarations. The `DeclarationFinder` + `RenameLocationFinder.findOverrideFamily` infrastructure is already in place — wire it into `RenameMethodEditor`.
+
+**Reproducer**: `cnavRenameMethod --target-class=<Impl> --method=<overridden method> --new-name=<new>` — compiles if targeting the interface directly, fails if targeting the impl.
+
+### `cnavMovePackage` leaves source file in original package when it can't be physically moved
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113-SNAPSHOT)
+
+Moving `cache → infra.cache` reported `RedisCache → infra.cache.RedisCache (0 files)` — zero file edits for that class. The file stayed at its original path with its original `package` declaration, while all other files had their imports rewritten to `infra.cache`. Compile error.
+
+**Fix**: any class in the move plan that ends with `(0 files)` should either produce an explicit warning or be treated as a hard failure — never a silent no-op. Investigate why `RedisCache.kt` was skipped (multi-class file? rewriter decided source was already handled?).
+
+### `cnavMoveClass` creates destination file but does not delete source
+**ACTIVE** | **Value: high** | **Effort: low** | Source: field-test(greitt, v0.1.113-SNAPSHOT)
+
+After `cnavMoveClass --from=polls.UserPollsService --to=polls.model.UserPollsService`, the class existed at *both* paths: original `polls/UserPollsService.kt` (package rewritten to `polls`) and new `polls/model/UserPollsService.kt` (new package). The source file was not deleted. Git revert caught this as an untracked file.
+
+**Fix**: after writing the destination file, delete the source file. Should also be a hard error (not a warning) if the destination already exists and has different content.
 
 ### `-q`/`--quiet` Gradle flag silently suppresses ALL cnav output
-**ACTIVE** | **Value: high** | **Effort: low** | Source: field-test(ra-backend, v0.1.112)
+~~**ACTIVE**~~ **DONE (v0.1.113-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(ra-backend, v0.1.112)
 
-Every cnav result is emitted via `logger.lifecycle(...)`, which Gradle's `-q`/`--quiet` flag mutes (quiet only shows `QUIET`/`ERROR`). Confirmed empirically: `cnavListClasses --format=llm` returns 392 classes normally, 0 with `-q` appended — regardless of `--format`. Since agents (and humans) routinely add `-q` to strip build noise, this produces a **silent false-negative**: "no callers/usages/results" reads identically to "output suppressed." Worst possible failure mode for an analysis tool. Bites the project's own AGENTS.md files, which show cnav examples with `-q`.
-
-**FIXED (unreleased)**: all ~111 `logger.lifecycle(...)` result-emitting calls across Gradle tasks changed to `logger.quiet(...)`, which Gradle always shows regardless of log level. Maven mojos were unaffected (already used `println`, not `log.info`). Verified empirically on ra-backend: `cnavListClasses --format=llm -q` now returns all 392 classes.
-
-**Fix options** (pick one):
-- Emit result payloads via `logger.quiet(...)` instead of `logger.lifecycle(...)` so `-q` still shows them.
-- Detect `-q` (via `project.gradle.startParameter.logLevel`) and warn on stderr that output is suppressed.
-- Document explicitly that cnav is incompatible with `-q`, and that `--format=llm`'s `CNAV_BEGIN`/`CNAV_END` markers already solve the noise problem `-q` is usually reached for.
-
-**Reproducer**: `./gradlew cnavListClasses --format=llm` vs `./gradlew cnavListClasses --format=llm -q` on any project.
+All ~111 `logger.lifecycle(...)` result-emitting calls across Gradle tasks changed to `logger.quiet(...)`. Maven mojos were unaffected (already used `println`). Verified empirically on ra-backend: `cnavListClasses --format=llm -q` now returns all 392 classes.
 
 ### `--filter-synthetic` (default `true`) hid real call sites when the caller is a DSL lambda body
 ~~**ACTIVE**~~ **DONE (v0.1.113-SNAPSHOT)** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.112)
@@ -92,168 +95,7 @@ Submodule-depth question (from the earlier design discussion — does a `:servic
 
 **DONE — staleness check fixed**: the generic pre-check in `CodeNavigatorPlugin`'s task registration (`doFirst` block) now checks `(this as? MultiModuleCapable)?.multiModuleFlag == "true"` and, when true, uses `MultiModuleResolver.resolve(project)`/`.sourceDirectories(project)` (aggregated across included modules) instead of the invoking project's own `SourceSetContainer`. `MultiModuleCapable` (`no.f12.codenavigator.gradle`, alongside `CodeNavigatorTask`) is a small marker interface exposing `multiModuleFlag: String?`, implemented by `DsmTask` — future tasks that gain `--multi-module` support just implement it too, no changes needed to the plugin registration code. Also hardened the single-module branch while in there: `getByType(SourceSetContainer::class.java)` (throws if the project has no Java/Kotlin plugin at all, e.g. a bare aggregator root) became `findByType` (treated as empty dirs → the existing "no class files" error, not a crash) — a real pre-existing gap, fixed rather than left, per the "never leave pre-existing bugs" note in AGENTS.md. Verified live: a bare aggregator root (no `kotlin("jvm")`/`java` plugin at all) running `:cnavDsm --multi-module=true` now correctly aggregates the whole subtree instead of failing.
 
-Original plan text preserved below for the remaining work.
-
-**Problem**: Every cnav task currently analyzes only the module it runs in (`taggedClassDirectories()` returns one module's `classesDirs`). For multi-module Gradle/Maven projects, this means:
-- `cnavDsm` shows only intra-module dependencies — misses cross-module edges entirely
-- `cnavCycles` can't detect cycles spanning module boundaries (e.g., `:shared` ↔ `:service`)
-- `cnavRings` has an incomplete dependency graph — a class may appear ring 0 when its actual framework dependency lives in another module
-- `cnavMoveSuggest` can't suggest moves to packages in sibling modules
-- `cnavDead` flags a class as dead when its only consumer is in another module's test scope
-- User must run `:module-a:cnavX` then `:module-b:cnavX` and manually combine outputs
-
-**Solution**: A new `--multi-module` mode that aggregates class directories + source roots from all (or selected) subprojects before running analysis. The bytecode layer (`DsmDependencyExtractor`, `CallGraphBuilder`, `SourceSetResolver`) already accepts `List<File>` and handles multiple directories — the gap is in collecting them and presenting results with module provenance.
-
-**Architecture**:
-
-```
-┌────────────────────────────────────────────────────────────────────┐
-│                       MultiModuleResolver                           │
-│  Discovers modules, collects (classDir → moduleName) mappings       │
-└────────────────┬───────────────────────────────────────────────────┘
-                 │
-                 ▼
-┌────────────────────────────────────────────────────────────────────┐
-│                  AggregatedClassDirectoryProvider                    │
-│  Collects classes + source dirs + classpath from every module       │
-│  Tags each file/dir with its module of origin                       │
-└────────────────┬───────────────────────────────────────────────────┘
-                 │
-                 ▼
-┌────────────────────────────────────────────────────────────────────┐
-│              Existing analysis (no change needed)                    │
-│  DsmDependencyExtractor.extract(classDirectories, classpath)        │
-│  CallGraphBuilder.build(taggedDirs, classpath)                       │
-│  SourceSetResolver.from(taggedDirs)                                  │
-│  Any task that takes List<File> for class dirs                       │
-└────────────────┬───────────────────────────────────────────────────┘
-                 │
-                 ▼
-┌────────────────────────────────────────────────────────────────────┐
-│                  ModuleAwareFormatter                                │
-│  Wraps existing formatters, adds module labels to output            │
-│  Renders module-column in tables, module-group in JSON              │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-**Gradle implementation** — `MultiModuleResolver`:
-```kotlin
-class MultiModuleResolver(project: Project) {
-    val rootProject = project.rootProject
-    val modules: List<ModuleInfo> = rootProject.subprojects
-        .filter { hasCodeNavigatorPlugin(it) || isExplicitlyIncluded(it) }
-        .map { sub ->
-            val sourceSets = sub.extensions.getByType(SourceSetContainer::class.java)
-            ModuleInfo(
-                name = sub.name,
-                path = sub.path,                    // ":module-a"
-                classDirectories = sourceSets.getByName("main").output.classesDirs.files.toList(),
-                testClassDirectories = sourceSets.getByName("test").output.classesDirs.files.toList(),
-                sourceDirectories = sourceSets.getByName("main").allSource.srcDirs.toList(),
-            )
-        }
-
-    // Aggregated views
-    val allClassDirectories: List<File> = modules.flatMap { it.classDirectories }
-    val allTaggedDirectories: List<Pair<File, ModuleSourceSet>> = modules.flatMap { m ->
-        m.classDirectories.map { it to ModuleSourceSet(m.name, SourceSet.MAIN) } +
-        m.testClassDirectories.map { it to ModuleSourceSet(m.name, SourceSet.TEST) }
-    }
-    val allSourceDirectories: List<Pair<File, String>> = modules.flatMap { m ->
-        m.sourceDirectories.map { it to m.name }
-    }
-}
-```
-
-**Maven implementation** — `MavenReactorResolver`:
-```kotlin
-class MavenReactorResolver(project: MavenProject, session: MavenSession) {
-    val modules: List<ModuleInfo> = session.getAllProjects()
-        .filter { hasCodeNavigatorPlugin(it) || isExplicitlyIncluded(it) }
-        .map { sub ->
-            ModuleInfo(
-                name = sub.artifactId,
-                groupId = sub.groupId,
-                classDirectories = listOf(File(sub.build.outputDirectory)),
-                testClassDirectories = listOf(File(sub.build.testOutputDirectory)),
-                sourceDirectories = sub.compileSourceRoots.map { File(it as String) },
-            )
-        }
-}
-```
-
-**Detection strategy** — two modes:
-
-1. **Auto-detect**: When `--multi-module` is set, scan `rootProject.subprojects` (Gradle) or `session.getAllProjects()` (Maven). Include every subproject that:
-   - Has the code-navigator plugin applied (`project.plugins.hasPlugin("no.f12.code-navigator")`)
-   - OR has a `cnav-config.json` in its project root
-   - OR is explicitly listed in `cnav-config.json`'s `modules` section
-
-2. **Explicit config**: In `cnav-config.json` `modules` section (see consolidated config item below).
-
-**CLI**: Tasks get a `--multi-module` flag (boolean). When set, the task's orchestrator uses `MultiModuleResolver` instead of the single-project `taggedClassDirectories()`. Optionally `--modules=":shared,:service"` for explicit selection without config.
-
-**Output changes — module labels**:
-
-| Format | Current | Multi-module |
-|--------|---------|--------------|
-| TEXT | `com.example.foo.Service` | `[:shared] com.example.foo.Service` |
-| JSON | `"className": "com.example.foo.Service"` | `"className": "com.example.foo.Service", "module": ":shared"` |
-| LLM | Same as TEXT | Same as TEXT |
-| DSM | Packages as row/col labels | `module/package` compound labels, or module-color bands |
-
-**Module prefix strategy**: Show module prefix **only when ambiguous** (class exists in multiple modules with same FQCN) or when `--multi-module` is active. Single-module output unchanged.
-
-**Task-by-task impact**:
-
-| Task | What changes | New capability |
-|------|-------------|----------------|
-| `cnavDsm` | Row/col labels include module prefix | Cross-module dependency matrix. Upper-right quadrant shows inter-module deps. |
-| `cnavCycles` | No cycle detection change (graph is already unified) | Detects cycles spanning module boundaries. Labels each node with module. |
-| `cnavRings` | `ClassRingClassifier` gets module info | Sees all dependencies including those in other modules — more accurate ring assignment. Reports which module each violator belongs to. |
-| `cnavBalance` | `BalanceBuilder` gets module-tagged entries | Cross-module edges visible in strength/distance/volatility analysis. |
-| `cnavMoveSuggest` | `MoveSuggester` includes cross-module deps | Can suggest moves to sibling module packages. |
-| `cnavDead` | Cross-module callers included | A class called only from another module's tests is marked `TEST_ONLY`. A class called from no module is truly dead. |
-| `cnavCoupling` | Already path-based, no change needed | Benefits from unified view (co-change pairs across module boundaries already detected by git). |
-| `cnavChangedSince` | Already path-based | Already works across modules. |
-| `cnavSize` | Summed across modules | Total project size regardless of module split. |
-| `cnavMetrics` | Module-level rollup | Per-module metrics summary alongside project totals. |
-
-**The formatter barrier — why this strengthens it**:
-
-Multi-module support forces the long-needed cleanup: today's `taggedClassDirectories()` returns `List<Pair<File, SourceSet>>` — the source set tells us MAIN vs TEST but NOT which module. To support multi-module, this must become `List<Pair<File, ModuleSourceSet>>` where `ModuleSourceSet(name, sourceSet)`. That change ripples through every resolver, builder, and formatter.
-
-The **formatter boundary** strengthens because:
-- Formatters must now render module labels — this is a pure display concern that must NOT leak into analysis
-- Analysis (resolved class graph, cycle detection, ring assignment) must be identical whether modules come from one or many projects
-- The module-collection logic lives in a new `MultiModuleResolver` wrapper — analysis code never imports it
-
-The **domain boundary** strengthens because:
-- `ClassName` and `PackageName` remain the domain primitives — they don't carry module info
-- Module info is an infrastructure concern added at the presentation layer
-- If a class exists in two modules (same FQCN, different compilation), the resolver picks one (first wins + warning) or tags both — but the analysis layer never sees the ambiguity
-
-**Implementation order**:
-
-1. **Add `ModuleSourceSet` type** — replaces bare `SourceSet` in tagged-directory tuples. Add `name: String` field carrying the Gradle project path / Maven artifact ID.
-2. **Extract `ModuleClassDirectoryProvider` interface** — single-module and multi-module implementations. Single-module delegates to `taggedClassDirectories()`; multi-module delegates to `MultiModuleResolver`.
-3. **Build `MultiModuleResolver`** (Gradle + Maven variants) — collects from `rootProject.subprojects` / `session.getAllProjects()`, respects config includes/excludes.
-4. **Wire `--multi-module` flag into all structural tasks** (Dsm, Cycles, Rings, Balance, MoveSuggest, Dead, Cohesion, IntegrationStrength, Distance, Volatility).
-5. **Add module labels to formatters** — TEXT/JSON/LLM formatters render `module` prefix or field when multi-module is active. Start with `cnavDsm` (most visible impact), then `cnavCycles`, then `cnavRings`.
-6. **Add `--modules` CLI shortcut** — `--modules=":shared,:service"` to select specific modules without config.
-8. **Cross-module plan-file support** — move suggestions and execute-plan resolve target module from class location.
-
-**Test strategy**:
-- New `test-project-multi/` with 2-3 Gradle subprojects (`shared`, `service`, `web`) containing cross-module dependencies
-- Verify cross-module cycles are detected (service → shared → service)
-- Verify DSM shows inter-module cells
-- Verify rings use cross-module deps for classification
-- Verify dead code flagged only when no module references it
-- Verify move-suggest across module boundaries
-
-The test project itself becomes a forcing function for the formatter boundary — if formatters or analysis accidentally depend on single-module assumptions, the multi-module fixtures will catch it at compile time.
-
-**Strengthens formatter and domain barrier** | **Value: high** | **Effort: high**
+**Remaining work** (not done): Maven `MavenReactorResolver`; wiring `--multi-module` into ~9 more structural tasks (Cycles, Rings, Balance, MoveSuggest, Dead, Cohesion, Strength, Distance, Volatility); `--modules` CLI shortcut; `cnav-config.json` `modules` section (deferred until consumers exist); cross-module plan-file support; committed `test-project-multi/` fixture.
 
 ### Replace regex JSON parsing with Jackson
 **PARKED** | **Value: low** | **Effort: low** | Source: internal
@@ -607,7 +449,12 @@ On ra-backend the top duplicate blocks were all JAXB-generated `.java` under `no
 ### `cnavMoveSuggest --plan-file` missing from agent help
 **LOW** | **Value: low** | **Effort: low** | Source: field-test(v0.1.113)
 
-`cnavMoveSuggest` supports `--plan-file` but the `cnavAgentHelp` task-reference line for it and the global `--plan-file` param description don't list it among the plan-file-aware tasks. Add it to both. (Repeat finding — bears fixing.)
+`cnavMoveSuggest` supports `--plan-file` but the `cnavAgentHelp` task-reference line for it and the global `--plan-file` param description don't list it among the plan-file-aware tasks. Add it to both.
+
+### `--fail-on-violation` invisible in agent help
+**LOW** | **Value: medium** | **Effort: low** | Source: field-test(v0.1.111)
+
+`--fail-on-violation` and `--max-cycles`/`--max-violations` are defined in `TaskRegistry` and work correctly, but are absent from the `cnavCycles` and `cnavRings` task reference lines in `cnavAgentHelp`. The global param list also omits them. An agent or CI author reading the task table has no way to discover the CI gate feature exists — a significant discoverability gap. Fix: ensure `TaskDef.params` for `CYCLES` and `RINGS` include `FAIL_ON_VIOLATION`, `MAX_CYCLES`, `MAX_VIOLATIONS`, so the help generator picks them up automatically.
 
 ---
 
@@ -650,7 +497,40 @@ Would need `ConvergeOrchestrator`'s risk-mode entries (per-class) to cross-refer
 
 ## Internal code quality
 
-### New DANGER balance finding: root package → navigation.types
+### ~~Separate finding from doing in PSI refactoring operations~~ — DONE (v0.1.113-SNAPSHOT)
+**DONE** | **Value: high** | **Effort: medium** | Source: internal
+
+Extracted `DeclarationFinder` (`refactor/DeclarationFinder.kt`) — a shared pure-finding layer that walks all `.kt` source files and returns `DeclarationLocation(declarationFile, callSiteFiles, overrideFamilyFqns)`. Wired into all four PSI rewriters:
+- `PsiRenamePropertyRewriter` — now iterates `location.callSiteFiles` instead of all source files; declaration edits only run against `location.declarationFile`.
+- `PsiRenameParamRewriter` — same; `isValVar` pre-check uses `location.callSiteFiles`.
+- `ChangeSignatureRewriter` — first pass targets `declarationFile` only; second pass targets `callSiteFiles`.
+- `SafeDeleteRewriter` — `deleteDeclaration` simplified from a list-walking function to single-file, accepting `declarationFile` directly.
+
+Also removed three copies of `buildClassFqn`/`matchesClassOrCompanion`/`fileReferencesClass` duplicated in `PsiRenameParamRewriter` vs `KotlinFqnSupport`/`RewriterSupport`, and replaced raw string comparisons (`filePackage != targetPackage` + `clazz.name != simple`) with `buildClassFqn/matchesFqn` in `ChangeSignatureRewriter` and `SafeDeleteRewriter` — those now correctly handle nested classes and Companion objects.
+
+### Split JsonFormatter and LlmFormatter per-feature
+**ACTIVE** | **Value: medium** | **Effort: high** | Source: internal(v0.1.83)
+
+`JsonFormatter` (364 outgoing, 77 types, fanIn=261) and `LlmFormatter` are highest-complexity classes. Change together 96% of the time. Split into per-feature formatters; top-level becomes thin dispatcher. Wide change touching many files.
+
+### Reduce Gradle/Maven duplication via orchestrator extraction
+**PARKED** | **Value: medium** | **Effort: high** | Source: internal
+
+Every Gradle/Maven pair duplicates orchestration. Three pairs already have orchestrators. Extend to rest (~590 lines duplicated across 14 pairs). Tedious but mechanical. More orchestrators extracted in v0.1.111-112 (volatility/coupling/type-affinity/cycles/dsm/rings/metrics); the bulk of the remaining duplication is in the refactoring tasks which have a different pattern (PSI-based, not orchestrator-based).
+
+### Potentially dead code in cnav's own codebase
+**PARKED** | **Value: medium** | **Effort: low** | Source: internal
+
+Self-analysis found: `CallGraphCache.build()`, `ClassIndexCache.build()`, `InterfaceRegistryCache.build()`, `SymbolIndexCache.build()`, `UsageScanner.scan()`, various `FileCache` methods. Investigate if truly dead or called via dispatch.
+
+### Test suite health
+**LOW** | **Value: medium** | **Effort: medium** | Source: internal
+
+- **Cache KotlinParser in rewriter tests** — 71% of test time in 5 classes. Sharing parsed AST could cut from 10.4s to ~3-4s.
+- **Add `FieldExtractor` tests** — 0% coverage, only non-Gradle core class at zero.
+- **Cover `LlmFormatter`/`JsonFormatter` uncovered branches** — primary agent-facing formatters at ~80%.
+
+
 **PARKED** | **Value: low** | **Effort: low** | Source: internal
 
 Confirmed via a live `cnavBalance` self-check (see [[Fix DANGER balance: root package → callgraph/implementors]] in `plan-completed.md`) that a *different* DANGER edge exists today: `no.f12.codenavigator → no.f12.codenavigator.navigation.types` (FUNCTIONAL, distance=2, volatility=74/0). Cause: `AgentHelpText.kt` imports `navigation.types.FrameworkPresets` to list framework presets in help output. Lower severity than the original finding (`navigation.types` is a shared low-level types package, not a concrete feature type like callgraph/implementors), so parked rather than acted on immediately — but worth a look if the root package picks up more such imports.
