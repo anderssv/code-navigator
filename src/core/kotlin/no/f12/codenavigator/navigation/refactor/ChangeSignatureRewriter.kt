@@ -39,10 +39,8 @@ object ChangeSignatureRewriter {
         defaults: Map<String, String> = emptyMap(),
         preview: Boolean = false,
     ): ChangeSignatureResult {
-        val sourceFiles = sourceRoots.flatMap { root ->
-            root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-        }
-        if (sourceFiles.isEmpty()) return ChangeSignatureResult(reason = "No source files found")
+        val location = DeclarationFinder.locate(sourceRoots, className)
+        if (!location.found) return ChangeSignatureResult(reason = "Declaration not found: $className")
 
         val newParamSpecs = parseParamList(newParams)
 
@@ -50,10 +48,11 @@ object ChangeSignatureRewriter {
             var currentParams: List<ParamSpec>? = null
             val changes = mutableListOf<RenameChange>()
 
-            // First pass: find the declaration and extract current params
-            for (file in sourceFiles) {
-                val content = file.readText()
-                val ktFile = psiFactory.createFile(file.name, content)
+            // First pass: find the declaration in the known declaration file only
+            val declFile = location.declarationFile!!
+            run {
+                val content = declFile.readText()
+                val ktFile = psiFactory.createFile(declFile.name, content)
                 val filePackage = ktFile.packageFqName.asString()
 
                 val classDecls = ktFile.collectDescendantsOfType<KtClassOrObject>()
@@ -77,7 +76,7 @@ object ChangeSignatureRewriter {
                             val edits = listOf(TextEdit(paramList.textOffset + 1, paramList.textLength - 2, newParamText))
                             val after = applyEdits(content, edits)
                             if (after != content) {
-                                changes.add(RenameChange(file.absolutePath, content, after))
+                                changes.add(RenameChange(declFile.absolutePath, content, after))
                             }
                             break
                         }
@@ -94,12 +93,11 @@ object ChangeSignatureRewriter {
                     val edits = listOf(TextEdit(paramList.textOffset + 1, paramList.textLength - 2, newParamText))
                     val after = applyEdits(content, edits)
                     if (after != content) {
-                        changes.add(RenameChange(file.absolutePath, content, after))
+                        changes.add(RenameChange(declFile.absolutePath, content, after))
                     }
                     break
                 }
-                if (currentParams != null) break
-            }
+            } // end run (first pass)
 
             if (currentParams == null) {
                 return ChangeSignatureResult(reason = "Method not found: $className.$methodName")
@@ -117,12 +115,12 @@ object ChangeSignatureRewriter {
             val oldParamNames = currentParams!!.map { it.name }
             val newParamNames = newParamSpecs.map { it.name }
 
-            // Second pass: rewrite call sites
-            for (file in sourceFiles) {
+            // Second pass: rewrite call sites across all files referencing the class
+            for (file in location.callSiteFiles) {
                 val content = file.readText()
                 val ktFile = psiFactory.createFile(file.name, content)
 
-                // Skip if we already have a change for this file (declaration file)
+                // Reuse already-updated content if declaration was already changed in first pass
                 val existingChangeIdx = changes.indexOfFirst { it.filePath == file.absolutePath }
                 val workingContent = if (existingChangeIdx >= 0) changes[existingChangeIdx].after else content
 
@@ -137,9 +135,6 @@ object ChangeSignatureRewriter {
                 for (call in callExprs) {
                     val callee = call.calleeExpression as? KtNameReferenceExpression ?: continue
                     if (callee.getReferencedName() != methodName) continue
-
-                    // Heuristic: check if this is likely a call to our target method
-                    // (dot-qualified on an instance, or same-class call)
                     rewriteCallSite(call, oldParamNames, newParamNames, defaults, edits)
                 }
 
