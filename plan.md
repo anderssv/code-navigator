@@ -9,41 +9,24 @@ Items grouped by functional area. Each item has:
 ## Bugs
 
 ### `cnavMoveFile` crashes with OpenRewrite `JavaTemplate` parse error, plus OOM-prone
-**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113-SNAPSHOT)
+~~**ACTIVE**~~ **FIXED (already in source)** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113-SNAPSHOT)
 
-`cnavMoveFile --from-file=src/main/kotlin/no/bankid/selvbetjening/http/ErrorMapper.kt --to-package=no.bankid.selvbetjening.ktor.routes` fails with:
-
-```
-org.openrewrite.internal.RecipeRunException: java.lang.IllegalArgumentException: Could not parse as Java:
-package no.bankid.selvbetjening.ktor.routes; class $Template {}
-```
-
-The rewriter's internal `ChangeType` recipe builds a synthetic `$Template` class to validate the target package name, and OpenRewrite's Java parser rejects it — likely Kotlin vs Java parser confusion. File was NOT moved (clean no-op). Also observed: Gradle daemon hit JVM Metaspace exhaustion on a *single* file move (not just batch operations).
-
-**Investigate**: Why `ChangeType`'s template fails; whether single-file move can avoid OpenRewrite's metaspace footprint; add the same `org.gradle.jvmargs` guidance given for `cnavExecutePlan`/`cnavMovePackage`.
+Fixed by `8322d71` — MoveClassRewriter was fully migrated off OpenRewrite to a PSI + `KotlinTypeReferenceRewriter` implementation, removing OpenRewrite entirely. The `JavaTemplate`/`ChangeType` crash path no longer exists. The Metaspace pressure was also a symptom of OpenRewrite's classloader footprint, which is now gone.
 
 ### `cnavRenameMethod` misses interface declaration when targeting an `Impl` class
-**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113-SNAPSHOT)
+~~**ACTIVE**~~ **NOT REPRODUCED** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113-SNAPSHOT)
 
-Renaming `RAClientImpl.getInfo → fetchUserInfo` updated the impl, all callers, and tests — but left `RAClient` (interface) and `RAClientFake` (other implementor) with the original `getInfo` name. `fetchUserInfo` on the impl then `overrides nothing`, compile error.
-
-**Root cause**: the rename locates the declaration in the target class and rewrites callers via bytecode call-site scanning, but does not walk up to the interface or sideways to sibling implementors. **Fix**: after renaming the target, check if it is an `override` (via PSI `overriddenFunctions`), rename the interface method declaration too, then find all other implementors (`InterfaceRegistry`) and rename their declarations. The `DeclarationFinder` + `RenameLocationFinder.findOverrideFamily` infrastructure is already in place — wire it into `RenameMethodEditor`.
-
-**Reproducer**: `cnavRenameMethod --target-class=<Impl> --method=<overridden method> --new-name=<new>` — compiles if targeting the interface directly, fails if targeting the impl.
+Tested via `RenameMethodRewriterTest` — `renaming a method on an Impl also renames the interface and sibling implementors` (line 346) passes: renaming `RaClientImpl.getInfo` correctly renames the `RaClient` interface and `RaClientFake` in the same file. `RenameLocationFinder.findOverrideFamily` correctly walks up to the interface and down to all declarers, and those FQNs are passed as `implementorFqns` to `KotlinRenameMethodRewriter`. The ra-backend instance may have been caused by the compiled classes not being on the classpath (the `classesRoots` param defaulting to empty), which disables the override-family lookup entirely. Closing; if it recurs on a real project, check that `--classpath` / compiled classes are provided.
 
 ### `cnavMovePackage` leaves source file in original package when it can't be physically moved
-**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113-SNAPSHOT)
+~~**ACTIVE**~~ **FIXED (already in source)** | **Value: high** | **Effort: medium** | Source: field-test(ra-backend, v0.1.113-SNAPSHOT)
 
-Moving `cache → infra.cache` reported `RedisCache → infra.cache.RedisCache (0 files)` — zero file edits for that class. The file stayed at its original path with its original `package` declaration, while all other files had their imports rewritten to `infra.cache`. Compile error.
-
-**Fix**: any class in the move plan that ends with `(0 files)` should either produce an explicit warning or be treated as a hard failure — never a silent no-op. Investigate why `RedisCache.kt` was skipped (multi-class file? rewriter decided source was already handled?).
+Fixed via two subsequent commits: `3f53015` (detect visibility-modified classes that weren't being located) and `59dfa26` (hard-stop on destination collision instead of silent overwrite). `withZeroChangeWarning` also already surfaces the warning when a class produces zero changes. All MoveClass tests pass.
 
 ### `cnavMoveClass` creates destination file but does not delete source
-**ACTIVE** | **Value: high** | **Effort: low** | Source: field-test(greitt, v0.1.113-SNAPSHOT)
+~~**ACTIVE**~~ **NOT REPRODUCED** | **Value: high** | **Effort: low** | Source: field-test(greitt, v0.1.113-SNAPSHOT)
 
-After `cnavMoveClass --from=polls.UserPollsService --to=polls.model.UserPollsService`, the class existed at *both* paths: original `polls/UserPollsService.kt` (package rewritten to `polls`) and new `polls/model/UserPollsService.kt` (new package). The source file was not deleted. Git revert caught this as an untracked file.
-
-**Fix**: after writing the destination file, delete the source file. Should also be a hard error (not a warning) if the destination already exists and has different content.
+Marked as not reproduced: `applyChanges` uses `Files.move(src, dst, REPLACE_EXISTING)` which atomically moves (deleting the source), and a test at `MoveClassRewriterTest.kt:174` explicitly asserts `!oldFile.exists()`. The "leftover" untracked file observed in the session was likely the pre-existing `polls/model/UserPollsService.kt` overwritten by `REPLACE_EXISTING` — not the source file. The destination-collision guard (`destinationCollisionError`, returns error + empty changes when destination exists) is also in place. Closing; reopen with a reproducible test case if it recurs.
 
 ### `-q`/`--quiet` Gradle flag silently suppresses ALL cnav output
 ~~**ACTIVE**~~ **DONE (v0.1.113-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(ra-backend, v0.1.112)
