@@ -319,13 +319,6 @@ object PsiRenameParamRewriter {
         return false
     }
 
-    private fun matchesClassOrCompanion(classFqn: String?, targetClassName: String): Boolean {
-        if (classFqn == null) return false
-        if (classFqn == targetClassName) return true
-        if (classFqn == "$targetClassName.Companion") return true
-        return false
-    }
-
     private fun isConstructorMethod(methodName: String): Boolean =
         methodName in CONSTRUCTOR_METHOD_NAMES
 
