@@ -44,9 +44,6 @@ object ChangeSignatureRewriter {
         }
         if (sourceFiles.isEmpty()) return ChangeSignatureResult(reason = "No source files found")
 
-        val targetSimpleName = className.substringAfterLast(".")
-        val targetPackage = className.substringBeforeLast(".", "")
-
         val newParamSpecs = parseParamList(newParams)
 
         return withKotlinPsiFactory("change-signature-target") { psiFactory ->
@@ -58,11 +55,11 @@ object ChangeSignatureRewriter {
                 val content = file.readText()
                 val ktFile = psiFactory.createFile(file.name, content)
                 val filePackage = ktFile.packageFqName.asString()
-                if (filePackage != targetPackage) continue
 
                 val classDecls = ktFile.collectDescendantsOfType<KtClassOrObject>()
                 for (clazz in classDecls) {
-                    if (clazz.name != targetSimpleName) continue
+                    if (clazz !is KtClass) continue
+                    if (!matchesFqn(buildClassFqn(filePackage, clazz), className)) continue
                     val method = clazz.declarations
                         .filterIsInstance<KtNamedFunction>()
                         .firstOrNull { it.name == methodName }
