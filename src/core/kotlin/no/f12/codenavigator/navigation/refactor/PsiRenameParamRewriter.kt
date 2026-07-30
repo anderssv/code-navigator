@@ -319,19 +319,6 @@ object PsiRenameParamRewriter {
         return false
     }
 
-    private fun buildClassFqn(filePackage: String, clazz: KtClass): String {
-        val names = mutableListOf(clazz.name ?: "")
-        var parent = clazz.parent
-        while (parent != null) {
-            if (parent is KtClass) {
-                names.add(0, parent.name ?: "")
-            }
-            parent = parent.parent
-        }
-        val classPath = names.joinToString(".")
-        return if (filePackage.isEmpty()) classPath else "$filePackage.$classPath"
-    }
-
     private fun matchesClassOrCompanion(classFqn: String?, targetClassName: String): Boolean {
         if (classFqn == null) return false
         if (classFqn == targetClassName) return true
