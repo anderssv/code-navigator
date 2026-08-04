@@ -12,7 +12,7 @@ import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class PackageDistanceTask : CodeNavigatorTask() {
+abstract class PackageDistanceTask : WorkspaceAnalysisTask() {
 
     @Option(option = "package-filter", description = "Only include packages under this prefix")
     @get:Internal
@@ -34,7 +34,7 @@ abstract class PackageDistanceTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
-    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+    override fun analysisOptionsMap(): Map<String, String?> = buildMap {
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
         dsmDepth?.let { put("dsm-depth", it) }
@@ -49,9 +49,8 @@ abstract class PackageDistanceTask : CodeNavigatorTask() {
 
         val config = PackageDistanceConfig.parse(props)
 
-        val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
-        val classDirectories = filteredDirs.map { it.first }
+        val workspace = resolveAnalysisWorkspace()
+        val classDirectories = workspace.classDirectories(config.scope)
 
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         val output = DistanceOrchestrator.run(config, classDirectories, reportFile)

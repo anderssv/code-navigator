@@ -11,7 +11,7 @@ import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class BalanceTask : CodeNavigatorTask() {
+abstract class BalanceTask : WorkspaceAnalysisTask() {
 
     @Option(option = "package-filter", description = "Only include packages under this prefix")
     @get:Internal
@@ -45,7 +45,7 @@ abstract class BalanceTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
-    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+    override fun analysisOptionsMap(): Map<String, String?> = buildMap {
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
         dsmDepth?.let { put("dsm-depth", it) }
@@ -64,9 +64,8 @@ abstract class BalanceTask : CodeNavigatorTask() {
 
         val config = BalanceConfig.parse(props)
 
-        val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
-        val classDirectories = filteredDirs.map { it.first }
+        val workspace = resolveAnalysisWorkspace()
+        val classDirectories = workspace.classDirectories(config.scope)
 
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         val output = BalanceOrchestrator.run(config, classDirectories, reportFile, project.projectDir)

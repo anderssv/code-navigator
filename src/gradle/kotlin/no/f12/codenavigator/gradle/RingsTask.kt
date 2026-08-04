@@ -19,7 +19,7 @@ import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class RingsTask : CodeNavigatorTask() {
+abstract class RingsTask : WorkspaceAnalysisTask() {
 
     @Option(option = "scope", description = "Filter by source set: all (default), prod (production only), test (test only)")
     @get:Internal
@@ -41,7 +41,7 @@ abstract class RingsTask : CodeNavigatorTask() {
     @get:Internal
     var maxViolations: String? = null
 
-    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+    override fun analysisOptionsMap(): Map<String, String?> = buildMap {
         scope?.let { put("scope", it) }
         mode?.let { put("mode", it) }
         bootstrapConfig?.let { put("bootstrap-config", "true") }
@@ -61,9 +61,9 @@ abstract class RingsTask : CodeNavigatorTask() {
         val failOnViolationVal = TaskRegistry.FAIL_ON_VIOLATION.parseFrom(props)
         val maxViolationsVal = TaskRegistry.MAX_VIOLATIONS.parseFrom(props)
 
-        val taggedDirs = project.taggedClassDirectories()
+        val workspace = resolveAnalysisWorkspace()
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        val analysis = RingsOrchestrator.run(taggedDirs, scopeVal, modeVal, bootstrap, loadPlanSteps(), project.projectDir, reportFile)
+        val analysis = RingsOrchestrator.run(workspace, scopeVal, modeVal, bootstrap, loadPlanSteps(), project.projectDir, reportFile)
 
         val (output, violationCount) = when (analysis) {
             is RingsAnalysis.Bootstrap -> analysis.hintsConfigJson to 0
@@ -81,8 +81,8 @@ abstract class RingsTask : CodeNavigatorTask() {
     private fun renderPackage(output: PackageRingsOutput, format: OutputFormat): Pair<String, Int> {
         output.skippedFileWarning?.let { logger.warn(it) }
         val rings = when (format) {
-            OutputFormat.JSON -> RingFormatter.formatJson(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE)
-            else -> RingFormatter.format(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE, format = format)
+            OutputFormat.JSON -> RingFormatter.formatJson(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE, moduleLabels = output.moduleLabels)
+            else -> RingFormatter.format(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE, format = format, moduleLabels = output.moduleLabels)
         }
         return rings to output.assignment.reportableViolations.size
     }
@@ -90,8 +90,8 @@ abstract class RingsTask : CodeNavigatorTask() {
     private fun renderEmergent(output: EmergentRingsOutput, format: OutputFormat): Pair<String, Int> {
         output.skippedFileWarning?.let { logger.warn(it) }
         val rings = when (format) {
-            OutputFormat.JSON -> EmergentRingFormatter.formatJson(output.result, output.ringNames, hasHints = output.hasHints, testInvolvement = output.testInvolvement)
-            else -> EmergentRingFormatter.format(output.result, output.ringNames, hasHints = output.hasHints, format = format, testInvolvement = output.testInvolvement)
+            OutputFormat.JSON -> EmergentRingFormatter.formatJson(output.result, output.ringNames, hasHints = output.hasHints, testInvolvement = output.testInvolvement, modulesOfClass = output.modulesOfClass)
+            else -> EmergentRingFormatter.format(output.result, output.ringNames, hasHints = output.hasHints, format = format, testInvolvement = output.testInvolvement, modulesOfClass = output.modulesOfClass)
         }
         return rings to output.result.violations.size
     }

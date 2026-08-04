@@ -6,6 +6,7 @@ import no.f12.codenavigator.formatting.jsonArray
 import no.f12.codenavigator.formatting.jsonObject
 import no.f12.codenavigator.formatting.jsonStringArray
 import no.f12.codenavigator.navigation.types.PackageName
+import no.f12.codenavigator.navigation.types.ClassName
 
 object EmergentRingFormatter {
 
@@ -15,6 +16,7 @@ object EmergentRingFormatter {
         hasHints: Boolean = false,
         format: OutputFormat = OutputFormat.TEXT,
         testInvolvement: TestInvolvement.Counts? = null,
+        modulesOfClass: Map<ClassName, Set<String>> = emptyMap(),
     ): String {
         val sb = StringBuilder()
 
@@ -40,7 +42,7 @@ object EmergentRingFormatter {
             val label = ringLabel(ring)
             sb.appendLine("Ring $ring ($label): ${classes.size} classes")
             for (entry in classes.sortedBy { it.key }) {
-                sb.appendLine("  ${entry.key}")
+                sb.appendLine("  ${classLabel(entry.key, modulesOfClass)}")
             }
             sb.appendLine()
         }
@@ -60,7 +62,7 @@ object EmergentRingFormatter {
             for ((pkg, summary) in mixedPackages) {
                 sb.appendLine("$pkg (rings ${summary.minRing}–${summary.maxRing}):")
                 for ((ring, classes) in summary.classesByRing.toSortedMap()) {
-                    sb.appendLine("  ${ringLabel(ring)}: ${classes.sorted().joinToString(", ") { it.simpleName() }}")
+                    sb.appendLine("  ${ringLabel(ring)}: ${classes.sorted().joinToString(", ") { classLabel(it, modulesOfClass, simple = true) }}")
                 }
                 sb.appendLine()
             }
@@ -70,7 +72,7 @@ object EmergentRingFormatter {
             sb.appendLine("## Violations (${result.violations.size})")
             sb.appendLine()
             for (v in result.violations) {
-                sb.appendLine("OUTWARD: ${v.sourceClass.simpleName()} (ring ${v.sourceRing}) → ${v.targetClass.simpleName()} (ring ${v.targetRing})")
+                sb.appendLine("OUTWARD: ${classLabel(v.sourceClass, modulesOfClass, simple = true)} (ring ${v.sourceRing}) → ${classLabel(v.targetClass, modulesOfClass, simple = true)} (ring ${v.targetRing})")
             }
         }
 
@@ -124,6 +126,7 @@ object EmergentRingFormatter {
         ringNames: Map<Int, String> = emptyMap(),
         hasHints: Boolean = false,
         testInvolvement: TestInvolvement.Counts? = null,
+        modulesOfClass: Map<ClassName, Set<String>> = emptyMap(),
     ): String {
         val ringLabel: (Int) -> String = { ring -> ringNames[ring] ?: if (ring == 0) "domain" else "ring $ring" }
 
@@ -132,6 +135,7 @@ object EmergentRingFormatter {
                 "className" to className.toString(),
                 "ring" to ring,
                 "ringName" to ringLabel(ring),
+                "modules" to modulesOfClass[className]?.let { JsonRaw(jsonStringArray(it.sorted())) },
             )
         }
 
@@ -160,6 +164,8 @@ object EmergentRingFormatter {
                 "targetClass" to v.targetClass.toString(),
                 "sourceRing" to v.sourceRing,
                 "targetRing" to v.targetRing,
+                "sourceModules" to modulesOfClass[v.sourceClass]?.let { JsonRaw(jsonStringArray(it.sorted())) },
+                "targetModules" to modulesOfClass[v.targetClass]?.let { JsonRaw(jsonStringArray(it.sorted())) },
             )
         }
 
@@ -175,5 +181,10 @@ object EmergentRingFormatter {
             "testInvolvement" to testInvolvementJson,
         )
     }
-}
 
+    private fun classLabel(className: ClassName, modulesOfClass: Map<ClassName, Set<String>>, simple: Boolean = false): String {
+        val name = if (simple) className.simpleName() else className.toString()
+        val modules = modulesOfClass[className].orEmpty().sorted()
+        return if (modules.isEmpty()) name else "[${modules.joinToString(",")}] $name"
+    }
+}

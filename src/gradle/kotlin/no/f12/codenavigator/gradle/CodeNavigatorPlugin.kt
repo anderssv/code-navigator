@@ -8,7 +8,6 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
-import org.gradle.api.tasks.SourceSetContainer
 
 class CodeNavigatorPlugin : Plugin<Project> {
 
@@ -68,27 +67,9 @@ class CodeNavigatorPlugin : Plugin<Project> {
                 group = "code-navigator"
                 if (taskDef.requiresCompilation || taskDef.requiresTestCompilation) {
                     doFirst {
-                        val isMultiModule = (this as? MultiModuleCapable)?.multiModuleFlag == "true"
-                        if (isMultiModule) {
-                            // Aggregated dirs span every included module, so there's no separate
-                            // main/test split to honor here — the invoking project alone may have
-                            // no source of its own (e.g. a bare aggregator root).
-                            val classDirs = MultiModuleResolver.resolve(project).map { it.first }
-                            val sourceDirs = MultiModuleResolver.sourceDirectories(project)
-                            checkStaleness(sourceDirs, classDirs)
-                        } else {
-                            val sourceSets = project.extensions.findByType(SourceSetContainer::class.java)
-                            val sourceDirs = sourceSets?.findByName("main")?.allSource?.srcDirs?.toList() ?: emptyList()
-                            val classDirs = sourceSets?.findByName("main")?.output?.classesDirs?.files?.toList() ?: emptyList()
-                            if (taskDef.requiresTestCompilation) {
-                                val testSourceSet = sourceSets?.findByName("test")
-                                val testSourceDirs = testSourceSet?.allSource?.srcDirs?.toList() ?: emptyList()
-                                val testClassDirs = testSourceSet?.output?.classesDirs?.files?.toList() ?: emptyList()
-                                checkStaleness(sourceDirs + testSourceDirs, classDirs + testClassDirs)
-                            } else {
-                                checkStaleness(sourceDirs, classDirs)
-                            }
-                        }
+                        val workspace = AnalysisWorkspaceResolver.resolve(project)
+                        val stalenessScope = if (taskDef.requiresTestCompilation) no.f12.codenavigator.navigation.types.Scope.ALL else no.f12.codenavigator.navigation.types.Scope.PROD
+                        checkStaleness(workspace.sourceDirectories(stalenessScope), workspace.classDirectories(stalenessScope))
                     }
                 }
                 if (this is RenameParamTask) {

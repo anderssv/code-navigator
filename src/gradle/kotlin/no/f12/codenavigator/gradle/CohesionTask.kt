@@ -11,7 +11,7 @@ import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class CohesionTask : CodeNavigatorTask() {
+abstract class CohesionTask : WorkspaceAnalysisTask() {
 
     @Option(option = "package-filter", description = "Only include packages under this prefix")
     @get:Internal
@@ -29,7 +29,7 @@ abstract class CohesionTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
-    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+    override fun analysisOptionsMap(): Map<String, String?> = buildMap {
         packageFilter?.let { put("package-filter", it) }
         top?.let { put("top", it) }
         minEdges?.let { put("min-edges", it) }
@@ -44,9 +44,8 @@ abstract class CohesionTask : CodeNavigatorTask() {
 
         val config = CohesionConfig.parse(props)
 
-        val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
-        val classDirectories = filteredDirs.map { it.first }
+        val workspace = resolveAnalysisWorkspace()
+        val classDirectories = workspace.classDirectories(config.scope)
 
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
         val output = CohesionOrchestrator.run(config, classDirectories, reportFile)

@@ -1,14 +1,10 @@
 package no.f12.codenavigator.gradle
 
-import no.f12.codenavigator.navigation.types.ModuleSourceSet
-import no.f12.codenavigator.navigation.types.SourceSet
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
-import org.gradle.api.tasks.SourceSetContainer
-import java.io.File
 
 /**
- * How a module relates to the project the task was invoked on, for `--multi-module` aggregation.
+ * How a module relates to the project the task was invoked on during workspace resolution.
  *
  * SOURCE isn't a single project — it's the transitive subtree rooted at the invoked project.
  * Invoked on a leaf, SOURCE is just that project. Invoked on an aggregator/root, SOURCE is the
@@ -26,28 +22,8 @@ enum class ModuleRelationship {
     HIERARCHY,
 }
 
-/**
- * Aggregates tagged class directories across the modules actually related to the invoked project
- * (its own subtree plus real project dependencies), for `--multi-module` analysis. Module name is
- * the Gradle project path (e.g. ":shared") since it's unique across the build, unlike the bare
- * project name.
- */
+/** Classifies the Gradle project graph; [AnalysisWorkspaceResolver] owns directory resolution. */
 object MultiModuleResolver {
-
-    fun resolve(project: Project): List<Pair<File, ModuleSourceSet>> =
-        includedModules(project).flatMap { taggedDirectoriesForModule(it) }
-
-    /** Source directories (main + test) across every included module — for staleness checking, not analysis. */
-    fun sourceDirectories(project: Project): List<File> =
-        includedModules(project).flatMap { module ->
-            val sourceSets = module.extensions.findByType(SourceSetContainer::class.java) ?: return@flatMap emptyList()
-            val mainDirs = sourceSets.findByName("main")?.allSource?.srcDirs.orEmpty()
-            val testDirs = sourceSets.findByName("test")?.allSource?.srcDirs.orEmpty()
-            (mainDirs + testDirs).toList()
-        }
-
-    private fun includedModules(project: Project): Set<Project> =
-        classify(project).filterValues { it != ModuleRelationship.HIERARCHY }.keys
 
     /** Classifies every project in the build relative to the invoked project. */
     fun classify(project: Project): Map<Project, ModuleRelationship> {
@@ -88,22 +64,6 @@ object MultiModuleResolver {
                 runCatching { root.project(dep.path) }.getOrNull()?.let { result += it }
             }
         }
-        return result
-    }
-
-    private fun taggedDirectoriesForModule(module: Project): List<Pair<File, ModuleSourceSet>> {
-        val sourceSets = module.extensions.findByType(SourceSetContainer::class.java) ?: return emptyList()
-        val moduleName = module.path
-        val result = mutableListOf<Pair<File, ModuleSourceSet>>()
-
-        sourceSets.findByName("main")?.output?.classesDirs?.files?.forEach { dir ->
-            result.add(dir to ModuleSourceSet(moduleName, SourceSet.MAIN))
-        }
-
-        sourceSets.findByName("test")?.output?.classesDirs?.files
-            ?.filter { it.exists() }
-            ?.forEach { dir -> result.add(dir to ModuleSourceSet(moduleName, SourceSet.TEST)) }
-
         return result
     }
 }

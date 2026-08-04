@@ -60,6 +60,23 @@ class CyclesOrchestratorTest {
     }
 
     @Test
+    fun `retains module provenance for packages in a cross-module cycle`() {
+        val controller = ClassName("com.example.api.Controller")
+        val service = ClassName("com.example.service.Service")
+
+        val output = CyclesOrchestrator.run(
+            config(),
+            taggedDirs,
+            emptyList(),
+            reportFile,
+            modulesOfClass = mapOf(controller to setOf(":web"), service to setOf(":service")),
+        )
+
+        assertEquals(setOf(":web"), output.moduleLabels[PackageName("api")])
+        assertEquals(setOf(":service"), output.moduleLabels[PackageName("service")])
+    }
+
+    @Test
     fun `simulated move via plan-file can break the cycle`() {
         // Move Service into the api package — both classes now share a package, so the
         // cross-package cycle disappears (PlanMutator drops edges landing in the same package).

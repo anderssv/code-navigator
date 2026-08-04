@@ -5,21 +5,20 @@ import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.PlanStep
 import no.f12.codenavigator.navigation.dsm.PackageDependency
 import no.f12.codenavigator.registry.TaskRegistry
+import no.f12.codenavigator.navigation.types.AnalysisWorkspace
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.options.Option
 import java.io.File
 
-/**
- * Implemented by tasks that support `--multi-module`. Lets the plugin's generic staleness
- * pre-check (registered before any @Option properties or @TaskAction code run) know whether
- * to check the aggregated multi-module source/class dirs instead of just this project's own —
- * a bare aggregator root project has no source of its own, so the single-module check would
- * always fail there once `--multi-module` is meant to take over.
- */
-interface MultiModuleCapable {
-    val multiModuleFlag: String?
+/** Base for read-only analyses that can resolve a single- or multi-module [AnalysisWorkspace]. */
+abstract class WorkspaceAnalysisTask : CodeNavigatorTask() {
+    final override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        putAll(analysisOptionsMap())
+    }
+
+    protected open fun analysisOptionsMap(): Map<String, String?> = emptyMap()
 }
 
 /**
@@ -69,6 +68,10 @@ abstract class CodeNavigatorTask : DefaultTask() {
         val path = planFile ?: return emptyList()
         return PlanMutator.parseFile(project.file(path))
     }
+
+    /** Resolve single- or multi-module inputs once, before the analysis orchestrator runs. */
+    protected fun resolveAnalysisWorkspace(): AnalysisWorkspace =
+        AnalysisWorkspaceResolver.resolve(project)
 
     /**
      * Override to provide task-specific options as a map.

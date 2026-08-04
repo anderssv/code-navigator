@@ -3,6 +3,8 @@ package no.f12.codenavigator.navigation.dsm
 import no.f12.codenavigator.navigation.bytecode.RootPackageDetector
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
+import no.f12.codenavigator.navigation.bytecode.modulesOfClass
+import no.f12.codenavigator.navigation.types.AnalysisWorkspace
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.types.SourceSet
@@ -12,7 +14,7 @@ data class DsmAnalysisOutput(
     val matrix: DsmMatrix,
     val projectClasses: Set<ClassName>,
     val skippedFileWarning: String?,
-    /** Module(s) each displayed (post-prefix-truncation) package was found in. Empty unless --multi-module is active. */
+    /** Module(s) each displayed (post-prefix-truncation) package was found in. Empty for a one-module workspace. */
     val moduleLabels: Map<PackageName, Set<String>> = emptyMap(),
 )
 
@@ -21,10 +23,23 @@ object DsmOrchestrator {
 
     fun run(
         config: DsmConfig,
+        workspace: AnalysisWorkspace,
+        plan: List<PlanStep>,
+        reportFile: File,
+    ): DsmAnalysisOutput = run(
+        config,
+        workspace.taggedClassDirectories(),
+        plan,
+        reportFile,
+        workspace.modulesOfClass(),
+    )
+
+    fun run(
+        config: DsmConfig,
         taggedDirs: List<Pair<File, SourceSet>>,
         plan: List<PlanStep>,
         reportFile: File,
-        moduleOfClass: Map<ClassName, String> = emptyMap(),
+        modulesOfClass: Map<ClassName, Set<String>> = emptyMap(),
     ): DsmAnalysisOutput {
         val classDirectories = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }.map { it.first }
         val projectClasses = scanProjectClasses(classDirectories)
@@ -36,13 +51,7 @@ object DsmOrchestrator {
         val displayPrefix = RootPackageDetector.detectFromClassNames(projectClasses.toList())
         val matrix = DsmMatrixBuilder.build(dependencies, displayPrefix, config.depth)
 
-        val moduleLabels = if (moduleOfClass.isEmpty()) {
-            emptyMap()
-        } else {
-            projectClasses
-                .groupBy { it.packageName().truncate(displayPrefix, config.depth) }
-                .mapValues { (_, classes) -> classes.mapNotNull { moduleOfClass[it] }.toSet() }
-        }
+        val moduleLabels = ModulePackageLabels.build(projectClasses, modulesOfClass, displayPrefix, config.depth)
 
         return DsmAnalysisOutput(matrix, projectClasses, skippedFileWarning, moduleLabels)
     }

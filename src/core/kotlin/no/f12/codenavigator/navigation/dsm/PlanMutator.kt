@@ -45,6 +45,24 @@ object PlanMutator {
         return current
     }
 
+    /** Applies class moves to metadata keyed by class name (module provenance, annotations, etc.). */
+    fun <T> applyToClassMap(values: Map<ClassName, T>, plan: List<PlanStep>): Map<ClassName, T> {
+        if (plan.isEmpty()) return values
+        var current = values
+        for (step in plan) {
+            current = when (step) {
+                is PlanStep.Move -> current.mapKeys { (className, _) ->
+                    if (className == step.classToMove) {
+                        ClassName("${step.targetPackage}.${className.simpleName()}")
+                    } else {
+                        className
+                    }
+                }
+            }
+        }
+        return current
+    }
+
     fun parseJson(jsonString: String): List<PlanStep> {
         val steps = mutableListOf<PlanStep>()
         val objectPattern = Regex("""\{[^}]+\}""")

@@ -10,20 +10,7 @@ fun Project.codeNavigatorExtension(): CodeNavigatorExtension =
     extensions.getByType(CodeNavigatorExtension::class.java)
 
 fun Project.taggedClassDirectories(): List<Pair<File, SourceSet>> {
-    val sourceSets = extensions.getByType(SourceSetContainer::class.java)
-    val result = mutableListOf<Pair<File, SourceSet>>()
-
-    val mainSourceSet = sourceSets.getByName("main")
-    mainSourceSet.output.classesDirs.files.forEach { dir ->
-        result.add(dir to SourceSet.MAIN)
-    }
-
-    val testSourceSet = sourceSets.findByName("test")
-    testSourceSet?.output?.classesDirs?.files
-        ?.filter { it.exists() }
-        ?.forEach { dir -> result.add(dir to SourceSet.TEST) }
-
-    return result
+    return AnalysisWorkspaceResolver.resolve(this).taggedClassDirectories()
 }
 
 fun Project.sourceDirectories(): List<File> {

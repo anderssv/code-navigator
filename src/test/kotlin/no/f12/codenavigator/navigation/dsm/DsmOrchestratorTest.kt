@@ -47,8 +47,8 @@ class DsmOrchestratorTest {
         val config = DsmConfig.parse(emptyMap())
         val taggedDirs = listOf(classesDir to SourceSet.MAIN)
         val moduleOfClass = mapOf(
-            ClassName("com.example.api.Controller") to ":web",
-            ClassName("com.example.service.Service") to ":service",
+            ClassName("com.example.api.Controller") to setOf(":web"),
+            ClassName("com.example.service.Service") to setOf(":service"),
         )
 
         val output = DsmOrchestrator.run(config, taggedDirs, emptyList(), reportFile, moduleOfClass)
@@ -65,9 +65,9 @@ class DsmOrchestratorTest {
         // simulate ambiguity by mapping both to different modules for the SAME package instead.
         TestClassWriter.writeClassFile(classesDir, "com/example/api/Filter", "Filter.kt")
         val moduleOfClass = mapOf(
-            ClassName("com.example.api.Controller") to ":web",
-            ClassName("com.example.api.Filter") to ":gateway",
-            ClassName("com.example.service.Service") to ":service",
+            ClassName("com.example.api.Controller") to setOf(":web"),
+            ClassName("com.example.api.Filter") to setOf(":gateway"),
+            ClassName("com.example.service.Service") to setOf(":service"),
         )
 
         val output = DsmOrchestrator.run(config, taggedDirs, emptyList(), reportFile, moduleOfClass)

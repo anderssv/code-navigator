@@ -85,6 +85,23 @@ class RingsOrchestratorTest {
     }
 
     @Test
+    fun `emergent mode retains module provenance after a simulated move`() {
+        val service = ClassName("com.example.domain.Service")
+        val movedService = ClassName("com.example.moved.Service")
+        val plan = listOf(PlanStep.Move(service, PackageName("com.example.moved")))
+
+        val analysis = RingsOrchestrator.run(
+            taggedDirs, Scope.ALL, mode = "emergent", bootstrap = false,
+            plan = plan, projectDir = projectDir, reportFile = reportFile,
+            modulesOfClass = mapOf(service to setOf(":core")),
+        )
+
+        val output = (analysis as RingsAnalysis.Emergent).output
+        assertEquals(setOf(":core"), output.modulesOfClass[movedService])
+        assertFalse(service in output.modulesOfClass)
+    }
+
+    @Test
     fun `bootstrap mode returns hints config JSON without applying a plan`() {
         val analysis = RingsOrchestrator.run(
             taggedDirs, Scope.ALL, mode = "emergent", bootstrap = true,

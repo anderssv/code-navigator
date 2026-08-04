@@ -4,6 +4,8 @@ import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.JsonRaw
 import no.f12.codenavigator.formatting.jsonArray
 import no.f12.codenavigator.formatting.jsonObject
+import no.f12.codenavigator.formatting.jsonStringArray
+import no.f12.codenavigator.navigation.types.PackageName
 
 /** Separates a factual observation (shown in all formats) from an action recommendation (LLM only). */
 data class RingHint(
@@ -29,6 +31,7 @@ object RingFormatter {
         ringNames: Map<Int, String> = emptyMap(),
         configNotice: String? = null,
         format: OutputFormat = OutputFormat.TEXT,
+        moduleLabels: Map<PackageName, Set<String>> = emptyMap(),
     ): String {
         val sb = StringBuilder()
 
@@ -58,7 +61,7 @@ object RingFormatter {
             sb.appendLine("Ring $ring ($label): ${pkgs.size} packages")
             for (pkg in pkgs) {
                 val suffix = if (pkg in compositionMark) " [composition root]" else ""
-                sb.appendLine("  $pkg$suffix")
+                sb.appendLine("  ${DsmFormatter.labelFor(pkg, moduleLabels)}$suffix")
             }
             sb.appendLine()
         }
@@ -77,7 +80,7 @@ object RingFormatter {
                     RingViolationType.OUTWARD -> "OUTWARD"
                     RingViolationType.PEER -> "PEER/CYCLE"
                 }
-                sb.appendLine("$typeLabel: ${v.sourcePackage} (ring ${v.sourceRing}) → ${v.targetPackage} (ring ${v.targetRing})")
+                sb.appendLine("$typeLabel: ${DsmFormatter.labelFor(v.sourcePackage, moduleLabels)} (ring ${v.sourceRing}) → ${DsmFormatter.labelFor(v.targetPackage, moduleLabels)} (ring ${v.targetRing})")
             }
         }
 
@@ -88,6 +91,7 @@ object RingFormatter {
         result: RingAssignment,
         ringNames: Map<Int, String> = emptyMap(),
         configNotice: String? = null,
+        moduleLabels: Map<PackageName, Set<String>> = emptyMap(),
     ): String {
         val ringLabel: (Int) -> String = { ring -> ringNames[ring] ?: if (ring == 0) "domain" else "ring $ring" }
 
@@ -97,6 +101,7 @@ object RingFormatter {
                 "ring" to ring,
                 "ringName" to ringLabel(ring),
                 "isCompositionRoot" to (pkg in result.compositionRoots),
+                "modules" to moduleLabels[pkg]?.let { JsonRaw(jsonStringArray(it.sorted())) },
             )
         }
 
@@ -107,6 +112,8 @@ object RingFormatter {
                 "targetPackage" to v.targetPackage.toString(),
                 "sourceRing" to v.sourceRing,
                 "targetRing" to v.targetRing,
+                "sourceModules" to moduleLabels[v.sourcePackage]?.let { JsonRaw(jsonStringArray(it.sorted())) },
+                "targetModules" to moduleLabels[v.targetPackage]?.let { JsonRaw(jsonStringArray(it.sorted())) },
             )
         }
 

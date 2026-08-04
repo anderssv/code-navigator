@@ -106,7 +106,7 @@ object DsmFormatter {
         }.trimEnd()
     }
 
-    /** Renders "[:module] pkg" when module info is available (--multi-module); plain "pkg" otherwise. */
+    /** Renders "[:module] pkg" when the workspace contains multiple modules; plain "pkg" otherwise. */
     internal fun labelFor(pkg: PackageName, moduleLabels: Map<PackageName, Set<String>>): String {
         val modules = moduleLabels[pkg]
         if (modules.isNullOrEmpty()) return pkg.toString()

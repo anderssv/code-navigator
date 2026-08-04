@@ -11,16 +11,16 @@ import no.f12.codenavigator.navigation.deadcode.DeadCodeConfig
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
 import no.f12.codenavigator.navigation.deadcode.DeadCodeOrchestrator
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.types.Scope
 
 import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class DeadCodeTask : CodeNavigatorTask() {
+abstract class DeadCodeTask : WorkspaceAnalysisTask() {
 
     @Option(option = "filter", description = "Only show results matching this regex")
     @get:Internal
@@ -58,7 +58,7 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
     @get:Internal
     var includeSuppressed: Boolean = false
 
-    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+    override fun analysisOptionsMap(): Map<String, String?> = buildMap {
         filter?.let { put("filter", it) }
         exclude?.let { put("exclude", it) }
         if (classesOnly) put("classes-only", "true")
@@ -76,9 +76,8 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
             TaskRegistry.DEAD.enhanceProperties(buildOptionsMap()),
         )
 
-        val sourceSets = project.extensions.getByType(SourceSetContainer::class.java)
-        val mainSourceSet = sourceSets.getByName("main")
-        val classDirectories = mainSourceSet.output.classesDirs.files.toList()
+        val workspace = resolveAnalysisWorkspace()
+        val classDirectories = workspace.classDirectories(Scope.PROD)
 
         val cacheDir = File(project.layout.buildDirectory.asFile.get(), "cnav")
         val cacheFile = File(cacheDir, "call-graph.cache")
@@ -87,8 +86,7 @@ abstract class DeadCodeTask : CodeNavigatorTask() {
         SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
         val graph = result.data
 
-        val testSourceSet = sourceSets.findByName("test")
-        val testClassDirectories = testSourceSet?.output?.classesDirs?.files?.filter { it.exists() }?.toList() ?: emptyList()
+        val testClassDirectories = workspace.classDirectories(Scope.TEST).filter { it.exists() }
         val testGraph = if (testClassDirectories.isNotEmpty()) {
             CallGraphCache.getOrBuild(
                 File(cacheDir, "test-call-graph.cache"),

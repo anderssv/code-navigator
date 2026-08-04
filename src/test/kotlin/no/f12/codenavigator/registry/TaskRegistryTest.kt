@@ -1081,7 +1081,6 @@ class TaskRegistryTest {
             "min-tcc" to ParamType.DOUBLE,
             "max-wmc" to ParamType.INT,
             "max-cbo" to ParamType.INT,
-            "multi-module" to ParamType.BOOLEAN,
             "max-implementors" to ParamType.INT,
             "target" to ParamType.LIST_STRING,
         )

@@ -174,7 +174,6 @@ object HelpText {
         appendLine("      ${pd(TaskRegistry.DSM.paramByName("cycle"))}")
         appendLine("      ${pd(TaskRegistry.DSM.paramByName("root-package"))}")
         appendLine("      ${pd(TaskRegistry.PLAN_FILE)}")
-        appendLine("      ${pd(TaskRegistry.MULTI_MODULE, "Aggregate classes from this project's real project dependencies, transitively (Gradle only); unrelated siblings excluded; labels rows/columns with their module")}")
         examples(TaskRegistry.DSM)
         appendLine()
         appendLine("  ${t("cycles")}")

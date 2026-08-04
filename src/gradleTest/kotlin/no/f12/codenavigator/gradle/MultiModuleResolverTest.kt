@@ -68,60 +68,6 @@ class MultiModuleResolverTest {
         assertEquals(ModuleRelationship.DEPENDENCY, result[core], "Transitive dependency should also be classified DEPENDENCY")
     }
 
-    // === resolve ===
-
-    @Test
-    fun `resolve tags class directories with the source module's own path`() {
-        val root = ProjectBuilder.builder().build()
-        val service = ProjectBuilder.builder().withParent(root).withName("service").build()
-        applyJava(service)
-
-        val result = MultiModuleResolver.resolve(service)
-
-        val modules = result.map { (_, mss) -> mss.moduleName }.toSet()
-        assertEquals(setOf(":service"), modules)
-    }
-
-    @Test
-    fun `resolve excludes HIERARCHY modules that are not real dependencies`() {
-        val root = ProjectBuilder.builder().build()
-        val service = ProjectBuilder.builder().withParent(root).withName("service").build()
-        val unrelated = ProjectBuilder.builder().withParent(root).withName("unrelated").build()
-        applyJava(service, unrelated)
-
-        val result = MultiModuleResolver.resolve(service)
-
-        val modules = result.map { (_, mss) -> mss.moduleName }.toSet()
-        assertEquals(setOf(":service"), modules, "Unrelated sibling must not be aggregated")
-    }
-
-    @Test
-    fun `resolve includes real project dependencies alongside the source module`() {
-        val root = ProjectBuilder.builder().build()
-        val shared = ProjectBuilder.builder().withParent(root).withName("shared").build()
-        val service = ProjectBuilder.builder().withParent(root).withName("service").build()
-        applyJava(shared, service)
-        dependOn(service, shared)
-
-        val result = MultiModuleResolver.resolve(service)
-
-        val modules = result.map { (_, mss) -> mss.moduleName }.toSet()
-        assertEquals(setOf(":service", ":shared"), modules)
-    }
-
-    @Test
-    fun `resolve on root aggregates the whole subtree`() {
-        val root = ProjectBuilder.builder().build()
-        val shared = ProjectBuilder.builder().withParent(root).withName("shared").build()
-        val service = ProjectBuilder.builder().withParent(root).withName("service").build()
-        applyJava(root, shared, service)
-
-        val result = MultiModuleResolver.resolve(root)
-
-        val modules = result.map { (_, mss) -> mss.moduleName }.toSet()
-        assertEquals(setOf(":", ":shared", ":service"), modules)
-    }
-
     private fun applyJava(vararg projects: org.gradle.api.Project) {
         projects.forEach { it.plugins.apply("java") }
     }

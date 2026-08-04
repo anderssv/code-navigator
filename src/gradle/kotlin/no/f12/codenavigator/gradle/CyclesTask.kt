@@ -15,7 +15,7 @@ import org.gradle.work.DisableCachingByDefault
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class CyclesTask : CodeNavigatorTask() {
+abstract class CyclesTask : WorkspaceAnalysisTask() {
 
     @Option(option = "package-filter", description = "Only include packages under this prefix")
     @get:Internal
@@ -45,7 +45,7 @@ abstract class CyclesTask : CodeNavigatorTask() {
     @get:Internal
     var maxCycles: String? = null
 
-    override fun taskOptionsMap(): Map<String, String?> = buildMap {
+    override fun analysisOptionsMap(): Map<String, String?> = buildMap {
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
         dsmDepth?.let { put("dsm-depth", it) }
@@ -64,9 +64,9 @@ abstract class CyclesTask : CodeNavigatorTask() {
         val config = CyclesConfig.parse(props)
         config.deprecations().forEach { logger.warn(it) }
 
-        val taggedDirs = project.taggedClassDirectories()
+        val workspace = resolveAnalysisWorkspace()
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        val output = CyclesOrchestrator.run(config, taggedDirs, loadPlanSteps(), reportFile)
+        val output = CyclesOrchestrator.run(config, workspace, loadPlanSteps(), reportFile)
 
         output.skippedFileWarning?.let { logger.warn(it) }
 
@@ -77,9 +77,9 @@ abstract class CyclesTask : CodeNavigatorTask() {
 
         logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
-        OutputFormat.JSON -> CyclesFormatter.formatJson(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
-        OutputFormat.LLM -> CyclesFormatter.formatLlm(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
+        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement, moduleLabels = output.moduleLabels)
+        OutputFormat.JSON -> CyclesFormatter.formatJson(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement, moduleLabels = output.moduleLabels)
+        OutputFormat.LLM -> CyclesFormatter.formatLlm(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement, moduleLabels = output.moduleLabels)
     }
 })
 

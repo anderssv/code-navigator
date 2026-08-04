@@ -54,7 +54,8 @@ class CyclesMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = CyclesConfig.parse(TaskRegistry.CYCLE_DETECTION.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val props = TaskRegistry.CYCLE_DETECTION.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val config = CyclesConfig.parse(props)
         config.deprecations().forEach { log.warn(it) }
 
         val taggedDirs = project.taggedClassDirectories()
@@ -77,9 +78,9 @@ class CyclesMojo : AbstractMojo() {
 
         println(OutputWrapper.formatAndWrap(config.format) { format ->
     when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
-        OutputFormat.JSON -> CyclesFormatter.formatJson(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
-        OutputFormat.LLM -> CyclesFormatter.formatLlm(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement)
+        OutputFormat.TEXT, OutputFormat.DIFF -> CyclesFormatter.format(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement, moduleLabels = output.moduleLabels)
+        OutputFormat.JSON -> CyclesFormatter.formatJson(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement, moduleLabels = output.moduleLabels)
+        OutputFormat.LLM -> CyclesFormatter.formatLlm(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement, moduleLabels = output.moduleLabels)
     }
 })
 

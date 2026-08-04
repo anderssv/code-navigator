@@ -54,18 +54,11 @@ class DsmMojo : AbstractMojo() {
     @Parameter(property = "plan-file")
     private var planFile: String? = null
 
-    @Parameter(property = "multi-module")
-    private var multiModule: String? = null
-
     override fun execute() {
         project.checkStaleness(log)
 
         val config = DsmConfig.parse(TaskRegistry.DSM.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
         config.deprecations().forEach { log.warn(it) }
-
-        if (TaskRegistry.MULTI_MODULE.parseFrom(project.applyConfigDefaults(buildPropertyMap()))) {
-            log.warn("--multi-module is not yet implemented for Maven (Gradle only for now) — analyzing this module only.")
-        }
 
         val taggedDirs = project.taggedClassDirectories()
         val classDirectories = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }.map { it.first }
@@ -115,6 +108,5 @@ class DsmMojo : AbstractMojo() {
         cycle?.let { put("cycle", it) }
         scope?.let { put("scope", it) }
         planFile?.let { put("plan-file", it) }
-        multiModule?.let { put("multi-module", it) }
     }
 }

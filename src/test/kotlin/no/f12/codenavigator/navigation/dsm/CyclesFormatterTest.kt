@@ -13,6 +13,11 @@ import kotlin.test.assertTrue
 
 class CyclesFormatterTest {
 
+    private val moduleLabels = mapOf(
+        PackageName("api") to setOf(":web"),
+        PackageName("service") to setOf(":service"),
+    )
+
     @Test
     fun `no cycles produces message`() {
         val output = CyclesFormatter.format(emptyList())
@@ -41,6 +46,41 @@ class CyclesFormatterTest {
         assertTrue(output.contains("service.Service -> api.Controller"))
         assertTrue(output.contains("Weakest link"), "Should show weakest link suggestion, got:\n$output")
     }
+
+    @Test
+    fun `module-aware TEXT labels cycle packages and edges`() {
+        val output = CyclesFormatter.format(singleCycle(), moduleLabels = moduleLabels)
+
+        assertTrue(output.contains("CYCLE: [:web] api, [:service] service"), output)
+        assertTrue(output.contains("[:web] api -> [:service] service"), output)
+    }
+
+    @Test
+    fun `module-aware LLM labels cycle packages and edges`() {
+        val output = CyclesFormatter.formatLlm(singleCycle(), moduleLabels = moduleLabels)
+
+        assertTrue(output.contains("CYCLE [:web] api,[:service] service"), output)
+        assertTrue(output.contains("[:web] api->[:service] service"), output)
+    }
+
+    @Test
+    fun `module-aware JSON includes additive packageModules field`() {
+        val output = CyclesFormatter.formatJson(singleCycle(), moduleLabels = moduleLabels)
+
+        assertTrue(output.contains("\"packageModules\""), output)
+        assertTrue(output.contains("\"modules\":[\":web\"]"), output)
+        assertTrue(output.contains("\"modules\":[\":service\"]"), output)
+    }
+
+    private fun singleCycle(): List<CycleDetail> = listOf(
+        CycleDetail(
+            packages = listOf(PackageName("api"), PackageName("service")),
+            edges = listOf(
+                CycleEdge(PackageName("api"), PackageName("service"), setOf(ClassName("api.Controller") to ClassName("service.Service"))),
+                CycleEdge(PackageName("service"), PackageName("api"), setOf(ClassName("service.Service") to ClassName("api.Controller"))),
+            ),
+        ),
+    )
 
     @Test
     fun `formats multiple cycles separated by blank lines`() {

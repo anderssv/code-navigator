@@ -15,6 +15,7 @@ object CyclesFormatter {
         details: List<CycleDetail>,
         displayPrefix: PackageName = PackageName(""),
         testInvolvement: TestInvolvement.Counts? = null,
+        moduleLabels: Map<PackageName, Set<String>> = emptyMap(),
     ): String {
         if (details.isEmpty()) return "No dependency cycles found."
 
@@ -24,7 +25,7 @@ object CyclesFormatter {
                 appendLine()
             }
             append(details.joinToString("\n\n") { detail ->
-                formatCycle(detail, displayPrefix)
+                formatCycle(detail, displayPrefix, moduleLabels)
             })
             testInvolvement?.let { counts ->
                 TestInvolvement.notice(counts, "cycle edges")?.let { notice ->
@@ -36,12 +37,16 @@ object CyclesFormatter {
         }.trimEnd()
     }
 
-    private fun formatCycle(detail: CycleDetail, displayPrefix: PackageName): String = buildString {
-        append("CYCLE: ${detail.packages.joinToString(", ")}")
+    private fun formatCycle(
+        detail: CycleDetail,
+        displayPrefix: PackageName,
+        moduleLabels: Map<PackageName, Set<String>>,
+    ): String = buildString {
+        append("CYCLE: ${detail.packages.joinToString(", ") { DsmFormatter.labelFor(it, moduleLabels) }}")
 
         for (edge in detail.edges) {
             val weight = edge.classEdges.size
-            append("\n  ${edge.from} -> ${edge.to} ($weight ref${if (weight != 1) "s" else ""}):")
+            append("\n  ${DsmFormatter.labelFor(edge.from, moduleLabels)} -> ${DsmFormatter.labelFor(edge.to, moduleLabels)} ($weight ref${if (weight != 1) "s" else ""}):")
             for ((src, tgt) in edge.classEdges.sortedBy { "${it.first}-${it.second}" }) {
                 append("\n    ${src.stripPackagePrefix(displayPrefix)} -> ${tgt.stripPackagePrefix(displayPrefix)}")
             }
@@ -54,7 +59,7 @@ object CyclesFormatter {
         if (breakPoints.isNotEmpty()) {
             append("\n  ⚡ Weakest link${if (breakPoints.size > 1) "s" else ""} to break:")
             for (bp in breakPoints.take(3)) {
-                append("\n    ${bp.from} -> ${bp.to} (${bp.weight} ref${if (bp.weight != 1) "s" else ""})")
+                append("\n    ${DsmFormatter.labelFor(bp.from, moduleLabels)} -> ${DsmFormatter.labelFor(bp.to, moduleLabels)} (${bp.weight} ref${if (bp.weight != 1) "s" else ""})")
             }
         }
 
@@ -65,6 +70,7 @@ object CyclesFormatter {
         details: List<CycleDetail>,
         displayPrefix: PackageName = PackageName(""),
         testInvolvement: TestInvolvement.Counts? = null,
+        moduleLabels: Map<PackageName, Set<String>> = emptyMap(),
     ): String {
         val cyclesJson = jsonArray(details) { detail ->
             jsonObject(
@@ -86,13 +92,27 @@ object CyclesFormatter {
         val testInvolvementJson = testInvolvement?.let {
             JsonRaw(jsonObject("testInvolved" to it.testInvolved, "total" to it.total))
         }
-        return jsonObject("displayPrefix" to prefix, "cycles" to JsonRaw(cyclesJson), "testInvolvement" to testInvolvementJson)
+        val packageModules = if (moduleLabels.isEmpty()) null else JsonRaw(
+            jsonArray(moduleLabels.entries.sortedBy { it.key.toString() }) { (pkg, modules) ->
+                jsonObject(
+                    "package" to pkg.toString(),
+                    "modules" to JsonRaw(jsonStringArray(modules.sorted())),
+                )
+            },
+        )
+        return jsonObject(
+            "displayPrefix" to prefix,
+            "cycles" to JsonRaw(cyclesJson),
+            "testInvolvement" to testInvolvementJson,
+            "packageModules" to packageModules,
+        )
     }
 
     fun formatLlm(
         details: List<CycleDetail>,
         displayPrefix: PackageName = PackageName(""),
         testInvolvement: TestInvolvement.Counts? = null,
+        moduleLabels: Map<PackageName, Set<String>> = emptyMap(),
     ): String {
         if (details.isEmpty()) return "(no cycles)"
 
@@ -102,16 +122,16 @@ object CyclesFormatter {
             }
             append(details.joinToString("\n") { detail ->
                 buildString {
-                    append("CYCLE ${detail.packages.joinToString(",")}")
+                    append("CYCLE ${detail.packages.joinToString(",") { DsmFormatter.labelFor(it, moduleLabels) }}")
                     for (edge in detail.edges) {
                         val classStr = edge.classEdges.sortedBy { "${it.first}-${it.second}" }
                             .joinToString(",") { "${it.first.stripPackagePrefix(displayPrefix)}->${it.second.stripPackagePrefix(displayPrefix)}" }
-                        append("\n  ${edge.from}->${edge.to}(${edge.classEdges.size}): $classStr")
+                        append("\n  ${DsmFormatter.labelFor(edge.from, moduleLabels)}->${DsmFormatter.labelFor(edge.to, moduleLabels)}(${edge.classEdges.size}): $classStr")
                     }
                     val ranked = CycleBreakAnalyzer.rankEdges(detail)
                     val breakPoints = ranked.filter { it.breaksycle }.take(3)
                     if (breakPoints.isNotEmpty()) {
-                        append("\n  break: ${breakPoints.joinToString(",") { "${it.from}->${it.to}(${it.weight})" }}")
+                        append("\n  break: ${breakPoints.joinToString(",") { "${DsmFormatter.labelFor(it.from, moduleLabels)}->${DsmFormatter.labelFor(it.to, moduleLabels)}(${it.weight})" }}")
                     }
                 }
             })

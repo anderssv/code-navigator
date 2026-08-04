@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed: Gradle module discovery is automatic for analysis tasks
+
+Code-navigator now resolves an `AnalysisWorkspace` before analysis: the invoked project/source subtree plus real transitive `project(...)` dependencies, with unrelated siblings excluded. The former `--multi-module` task option has been removed — module discovery is input infrastructure, not analysis configuration. Existing single-module builds remain one-node workspaces and keep their existing output. Multi-module DSM, Cycles, and Rings preserve module provenance in TEXT/LLM/JSON; other Gradle bytecode analyses consume the same workspace class directories automatically. A committed `test-project-multi/` fixture verifies `:service -> :shared` while excluding `:unrelated`.
+
 ## 0.1.112
 
 ### New: `cnavClassMetrics` — per-class cohesion and CK metrics
