@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed: `cnavDead` false positive on Kotlin `const val` holder objects
+
+Classes/objects composed entirely of `const val` declarations (e.g. a `TemplateKeys` holder) were flagged `HIGH` confidence dead code, because Kotlin inlines `const val` references as literals at every call site and no bytecode edge survives back to the declaring class. `ConstValHolderDetector` (parses `@kotlin.Metadata`, same technique as the existing inline-method detector) now identifies these holders, and `ConfidenceScorer` downgrades them to `LOW` confidence instead of `HIGH` — still surfaced for review, no longer misrepresented as a confident deletion candidate. Reported in [#1](https://github.com/anderssv/code-navigator/issues/1).
+
 ### Changed: Gradle module discovery is automatic for analysis tasks
 
 Code-navigator now resolves an `AnalysisWorkspace` before analysis: the invoked project/source subtree plus real transitive `project(...)` dependencies, with unrelated siblings excluded. The former `--multi-module` task option has been removed — module discovery is input infrastructure, not analysis configuration. Existing single-module builds remain one-node workspaces and keep their existing output. Multi-module DSM, Cycles, and Rings preserve module provenance in TEXT/LLM/JSON; other Gradle bytecode analyses consume the same workspace class directories automatically. A committed `test-project-multi/` fixture verifies `:service -> :shared` while excluding `:unrelated`.

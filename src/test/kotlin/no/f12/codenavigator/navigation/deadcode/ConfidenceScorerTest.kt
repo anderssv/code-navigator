@@ -100,4 +100,24 @@ class ConfidenceScorerTest {
 
         assertEquals(DeadCodeConfidence.HIGH, result)
     }
+
+    @Test
+    fun `low confidence for const val holder class with no references`() {
+        val result = ConfidenceScorer.score(
+            cls, null, null, false, emptyMap(), emptyMap(), emptyMap(),
+            constValHolders = setOf(cls),
+        )
+
+        assertEquals(DeadCodeConfidence.LOW, result)
+    }
+
+    @Test
+    fun `const val holder downgrade does not apply to methods`() {
+        val result = ConfidenceScorer.score(
+            cls, method, null, false, emptyMap(), emptyMap(), emptyMap(),
+            constValHolders = setOf(cls),
+        )
+
+        assertEquals(DeadCodeConfidence.HIGH, result)
+    }
 }

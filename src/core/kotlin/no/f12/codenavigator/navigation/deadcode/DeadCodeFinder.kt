@@ -70,6 +70,7 @@ data class DeadCodeQuery(
     val delegationMethods: Set<MethodRef> = emptySet(),
     val bridgeMethods: Set<MethodRef> = emptySet(),
     val declaredMethods: Map<ClassName, Set<String>> = emptyMap(),
+    val constValHolders: Set<ClassName> = emptySet(),
 )
 
 object DeadCodeFinder {
@@ -99,6 +100,7 @@ object DeadCodeFinder {
         delegationMethods = query.delegationMethods,
         bridgeMethods = query.bridgeMethods,
         declaredMethods = query.declaredMethods,
+        constValHolders = query.constValHolders,
     )
 
     fun find(
@@ -126,6 +128,7 @@ object DeadCodeFinder {
         delegationMethods: Set<MethodRef> = emptySet(),
         bridgeMethods: Set<MethodRef> = emptySet(),
         declaredMethods: Map<ClassName, Set<String>> = emptyMap(),
+        constValHolders: Set<ClassName> = emptySet(),
     ): List<DeadCode> {
         val projectClasses = graph.projectClasses()
         if (projectClasses.isEmpty()) return emptyList()
@@ -229,7 +232,7 @@ object DeadCodeFinder {
                         memberName = null,
                         kind = DeadCodeKind.CLASS,
                         sourceFile = graph.sourceFileOf(cls),
-                        confidence = ConfidenceScorer.score(cls, null, testGraph, referencedInTests, classAnnotations, methodAnnotations, classExternalInterfaces, modifierAnnotated),
+                        confidence = ConfidenceScorer.score(cls, null, testGraph, referencedInTests, classAnnotations, methodAnnotations, classExternalInterfaces, modifierAnnotated, constValHolders),
                         reason = reason,
                     )
                 )
@@ -250,7 +253,7 @@ object DeadCodeFinder {
                 ) {
                     val referencedInTests = method in testCalledMethods
                     val reason = if (testGraph != null && referencedInTests) DeadCodeReason.TEST_ONLY else DeadCodeReason.NO_REFERENCES
-                    val conf = ConfidenceScorer.score(method.className, method, testGraph, referencedInTests, classAnnotations, methodAnnotations, classExternalInterfaces, modifierAnnotated)
+                    val conf = ConfidenceScorer.score(method.className, method, testGraph, referencedInTests, classAnnotations, methodAnnotations, classExternalInterfaces, modifierAnnotated, constValHolders)
                     results.add(
                         DeadCode(
                             className = method.className,

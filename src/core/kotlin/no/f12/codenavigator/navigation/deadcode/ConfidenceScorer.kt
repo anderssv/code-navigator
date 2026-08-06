@@ -16,8 +16,16 @@ object ConfidenceScorer {
         methodAnnotations: Map<MethodRef, Set<AnnotationName>>,
         classExternalInterfaces: Map<ClassName, Set<ClassName>>,
         modifierAnnotated: Set<String> = emptySet(),
+        constValHolders: Set<ClassName> = emptySet(),
     ): DeadCodeConfidence {
         if (hasModifierAnnotation(className, method, classAnnotations, methodAnnotations, modifierAnnotated)) {
+            return DeadCodeConfidence.LOW
+        }
+
+        // Kotlin inlines const val references as literal values at every call site,
+        // so bytecode can never carry evidence that a const val holder is used —
+        // absence of references cannot be treated as HIGH-confidence dead code here.
+        if (method == null && className in constValHolders) {
             return DeadCodeConfidence.LOW
         }
 

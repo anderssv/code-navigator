@@ -438,7 +438,7 @@ class LlmFormatterTest {
             "com.example.Orphan CLASS Orphan.kt confidence=HIGH reason=NO_REFERENCES\n" +
                 "com.example.Service.unused METHOD Service.kt confidence=MEDIUM reason=TEST_ONLY\n" +
                 "\n" +
-                "Note: Dead code detection is a hard problem with many edge cases (reflection, serialization, generated code). Use exclude=<regex> to filter out packages or classes you know are not dead.",
+                "Note: Dead code detection is a hard problem with many edge cases (reflection, serialization, generated code, const val inlining). Use exclude=<regex> to filter out packages or classes you know are not dead.",
             result,
         )
     }

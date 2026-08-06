@@ -50,36 +50,55 @@ All ~111 `logger.lifecycle(...)` result-emitting calls across Gradle tasks chang
 
 **Impact was broader than the original "*Kt facade" framing** — it affected any call made from inside any lambda (DSL blocks, route builders, test setup blocks), not just top-level function calls.
 
+### `cnavDead`: false positive on Kotlin `const val` holder objects (compiler-inlined, no bytecode references survive)
+~~**ACTIVE**~~ **DONE (v0.1.113-SNAPSHOT)** | **Value: medium** | **Effort: medium** | Source: user-feedback([GitHub #1](https://github.com/anderssv/code-navigator/issues/1))
+
+**ROOT CAUSE**: Kotlin inlines `const val` references as literal values at every call site (`TemplateKeys.LANG` compiles to the plain string literal `"lang"` in the caller's bytecode), so no `GETSTATIC`-style edge ever points back to the declaring class/object — a purely bytecode-based analyzer has nothing to find even when the holder is referenced dozens of times in source. `DeadCodeFinder` flagged such classes `HIGH` confidence `NO_REFERENCES`, which is misleading since bytecode fundamentally cannot verify liveness here (unlike a genuinely dead class, where absence of references is real evidence).
+
+**Fix**: `ConstValHolderDetector` (new, mirrors the existing `InlineMethodDetector` pattern for the same class of problem — inline functions leave no call edges either) parses the `@kotlin.Metadata` annotation via `kotlin-metadata-jvm` and flags a class as a "const val holder" when it declares one or more `const val` properties and no functions. `ConfidenceScorer.score()` downgrades such classes from `HIGH` to `LOW` confidence instead of excluding them outright — the class is still surfaced (so a genuinely dead const-val holder can still be found and removed), but no longer misrepresented as a confident deletion candidate. `DeadCodeFormatter`'s user-facing note now lists "const val inlining" alongside "reflection, serialization, generated code" as a known limitation.
+
+**Wiring**: `DeadCodeOrchestrator` scans `constValHolders` via `ConstValHolderDetector.scanAll(classDirectories)` and threads it through `DeadCodeQuery`/`DeadCodeFinder.find()` to `ConfidenceScorer.score()`, same shape as `inlineMethods`/`delegationMethods`/`bridgeMethods`.
+
+**Tests**: `ConstValHolderDetectorTest` (new, mirrors `InlineMethodDetectorTest`, real compiled fixtures in `ConstValFixtures.kt` — pure holder, nested holder, mixed holder+function, no-const-vals-at-all), `ConfidenceScorerTest` (two new cases: const-val-holder class downgrades to LOW, downgrade does not apply to methods), `DeadCodeFinderTest` (two new end-to-end cases), `LlmFormatterTest` updated for the new NOTE text.
+
 ---
 
 ## Multi-module support
 
-### Full workspace analysis — automatically include real project dependencies
-**PARTIALLY DONE** | **Value: high** | **Effort: high** | Source: internal
+### ~~Full workspace analysis — automatically include real project dependencies~~ — DONE (v0.1.113-SNAPSHOT)
+**DONE** | **Value: high** | **Effort: high** | Source: internal
 
-**Workspace input phase implemented (v0.1.113-SNAPSHOT)**: module discovery is automatic input resolution, not a task parameter. There is no `--multi-module` flag and no per-task `ParamDef`; invoking a task on a leaf analyzes that project plus real transitive project dependencies, while invoking on an aggregator/root analyzes its whole source subtree. Core types in `navigation.types.AnalysisWorkspace.kt` retain hierarchy and dependency relationships independently:
-- `AnalysisWorkspace(modules, classpath, moduleAware)` — one module for ordinary analysis, the included module tree/DAG for multi-module.
-- `ModuleNode(id, role, parentId, dependencies, classDirectories, sourceDirectories)` — role is SOURCE or DEPENDENCY relative to the invocation; parent models hierarchy, `dependencies` models the build DAG.
-- `TaggedClassDirectory(directory, moduleId, sourceSet)` — provenance survives flattening. `WorkspaceClassIndex.moduleOfClass()` indexes class→module before analysis.
+Module discovery is automatic input resolution, not a task parameter — no `--multi-module` flag, no per-task `ParamDef`. Invoking a task on a leaf analyzes that project plus real transitive project dependencies; invoking on an aggregator/root analyzes its whole source subtree. Unrelated sibling/hierarchy modules are excluded.
 
-`AnalysisWorkspaceResolver` (Gradle) always resolves the workspace using `MultiModuleResolver.classify()`. Unrelated hierarchy/sibling modules are excluded for leaf invocation. `Project.taggedClassDirectories()` and `CodeNavigatorTask.resolveAnalysisWorkspace()` both delegate to it, so existing analysis targets inherit the same location logic without task-specific options. The generic staleness pre-check consumes the same workspace too.
+Core types in `navigation.types.AnalysisWorkspace.kt` retain hierarchy and dependency relationships independently:
+- `AnalysisWorkspace(modules, classpath, moduleAware)` — one module for ordinary analysis, the included module tree/DAG otherwise.
+- `ModuleNode(id, role, parentId, dependencies, classDirectories, sourceDirectories)` — role is SOURCE or DEPENDENCY relative to the invocation; `parentId` models hierarchy, `dependencies` models the build DAG.
+- `TaggedClassDirectory`/`TaggedSourceDirectory` — provenance survives flattening. `WorkspaceClassIndex.modulesOfClass()` indexes class→module(s) as `Map<ClassName, Set<String>>` (not a single module) so a duplicate FQCN across modules is preserved rather than silently overwritten.
 
-**Consumers done**:
-- DSM, Cycles, and Rings have explicit workspace orchestrator overloads and module-aware TEXT/LLM/JSON output. `ModulePackageLabels` is shared by DSM/Cycles/package-rings; emergent rings retain class→module provenance.
-- Balance, MoveSuggest, Cohesion, Strength, Distance, and Dead use the same workspace resolver for their class-directory input. Other existing Gradle bytecode analyses inherit automatic resolution through `Project.taggedClassDirectories()`.
+`AnalysisWorkspaceResolver` (Gradle) always resolves the workspace via `MultiModuleResolver.classify()`, which classifies every project in the build relative to the invoked project into three roles: **SOURCE** (the invoked project's own transitive subtree — a leaf invocation is just that project, a root/aggregator invocation is the whole subtree collapsed into one scope), **DEPENDENCY** (reachable via a real `project(":x")` edge from something in SOURCE, walked transitively), or **HIERARCHY** (structurally related — parent, sibling — but not an actual dependency; excluded by default). Inclusion never requires the code-navigator plugin to be applied on the dependency module itself — a real `project(...)` dependency with source sets is enough. `classify(project): Map<Project, ModuleRelationship>` is exposed separately from resolution for testability. (Submodule-depth question — does `:services:billing`→`:services:shared` deserve different default treatment than a top-level boundary crossing — is deliberately left open; all DEPENDENCY edges are treated identically regardless of nesting depth for now.)
 
-**Committed live fixture**: `test-project-multi/` with `:service → :shared` and unrelated `:unrelated`. Verified with locally published snapshot and no special flags: `:service:cnavDsm` shows only `[:service] service → [:shared] shared`; Rings labels classes/packages by module; Cycles and the other structural analyses execute against the same workspace; unrelated sibling excluded. ProjectBuilder tests cover one-node workspace, dependency inclusion, hierarchy parent, and unrelated exclusion.
+`Project.taggedClassDirectories()` and `CodeNavigatorTask.resolveAnalysisWorkspace()` both delegate to it, so every existing Gradle bytecode analysis inherits automatic resolution with zero task-specific wiring. The generic staleness pre-check consumes the same workspace.
 
-**DONE — classification implemented**: `MultiModuleResolver` no longer includes "any subproject with the plugin applied." It now classifies every project in the build relative to the invoked project via `ModuleRelationship` (`no.f12.codenavigator.gradle`), three-way:
-- **SOURCE** — not a single project, but the transitive subtree rooted at whatever project the task was invoked on (`project.allprojects`). Invoked on a leaf (`:service`): SOURCE = just `:service`. Invoked on an aggregator/root: SOURCE = the root + everything beneath it, collapsed into one scope.
-- **DEPENDENCY** — a module reachable via an actual `project(":x")` edge (any configuration, not just `implementation`) from something in SOURCE, walked transitively via BFS. On-disk, part of this build, represents real compiled coupling.
-- **HIERARCHY** — everything else in `rootProject.allprojects` — structurally in the same build but neither SOURCE nor a real dependency. Excluded by default; `resolve()` filters these out before aggregating.
+**Consumers**: DSM, Cycles, and Rings have explicit workspace orchestrator overloads and module-aware TEXT/LLM/JSON output (`ModulePackageLabels` shared across all three; emergent rings retain class→module provenance through simulated moves). Balance, MoveSuggest, Cohesion, Strength, Distance, and Dead consume the workspace for class-directory input. All other existing Gradle bytecode analyses inherit automatic resolution through `Project.taggedClassDirectories()`.
 
-`classify(project): Map<Project, ModuleRelationship>` is exposed separately for testability. The plugin-applied filter is gone entirely — a dependency module is included because it is a real `project(...)` dependency and has source sets, whether or not it applies code-navigator itself.
+**Committed live fixture**: `test-project-multi/` (`:service → :shared`, unrelated `:unrelated`) includes the plugin directly from source via `includeBuild("..")` — no publish step, no flags needed to verify. `ProjectBuilder` tests cover one-node workspace, dependency inclusion, hierarchy parent, and unrelated exclusion.
 
-Submodule-depth question (from the earlier design discussion — does a `:services:billing`→`:services:shared` dependency deserve different default treatment than one crossing a top-level boundary) is **deliberately left open**: for now, all DEPENDENCY edges are treated identically regardless of nesting depth. Revisit if real multi-level projects show this needs different defaults.
+**Scoped out — see separate items below**: Maven reactor resolver, module-qualified dependency-graph identity, explicit module-level dependency reporting, and cross-module write/refactoring operations are each a distinct piece of follow-on work, not blockers on this item.
 
-**Remaining work**: Maven reactor workspace resolver; explicit module-level dependency aggregation/reporting (class/package analysis already shares one workspace); module-qualified graph identity for duplicate FQCNs (the workspace retains all module provenance, but existing `ClassName`-keyed dependency graphs still merge identical FQCNs across modules); decide whether `cnav-config.json` needs module include/exclude overrides after field use. Cross-module write/refactoring operations remain intentionally separate from automatic read-only analysis until destination-module semantics are designed.
+### Maven reactor workspace resolver
+**FUTURE** | **Value: medium** | **Effort: high** | Source: internal
+
+Gradle's `AnalysisWorkspaceResolver` has no Maven equivalent — Maven mojos still see only their own module. Real support needs `MavenSession`/reactor project list threaded into every mojo (no shared base Mojo class exists today, so this is per-mojo wiring, not a single change point). Lower priority than the Gradle-side work since Maven-based multi-module cnav usage hasn't been field-tested yet.
+
+### Module-qualified class identity for duplicate FQCNs
+**FUTURE** | **Value: medium** | **Effort: high** | Source: internal
+
+`WorkspaceClassIndex.modulesOfClass()` correctly detects when the same FQCN exists in more than one module (`Map<ClassName, Set<String>>`), and that's surfaced in DSM/Cycles/Rings module labels. But the underlying dependency graphs (`PackageDependency`, `CallGraph`, etc.) are still keyed by `ClassName` alone — a genuine duplicate silently merges into one graph node, so cross-module edges touching a duplicated class can't be attributed to the correct module. This is a real correctness gap, not just a display one; fixing it means threading module identity into the dependency-extraction layer itself (`DsmDependencyExtractor`, `CallGraphBuilder`), which touches every consumer. High effort, parked until duplicate FQCNs across dependency modules are shown to matter in practice (uncommon with clean module boundaries).
+
+### Module-level dependency aggregation/reporting
+**FUTURE** | **Value: low** | **Effort: medium** | Source: internal
+
+Class/package-level analysis already runs against the shared workspace and labels results by module. A dedicated module-level view (e.g. "module A depends on module B via N class references, here are the top edges") doesn't exist yet — today you infer it by reading module labels across many package-level results. Low priority; the underlying data already exists in `AnalysisWorkspace`'s `dependencies`/`dependenciesOf`, so this would be a formatter/aggregation exercise, not new analysis.
 
 ### Replace regex JSON parsing with Jackson
 **PARKED** | **Value: low** | **Effort: low** | Source: internal

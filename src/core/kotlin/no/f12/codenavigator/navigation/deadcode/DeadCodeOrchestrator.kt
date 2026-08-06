@@ -47,6 +47,7 @@ object DeadCodeOrchestrator {
         val inlineMethods = InlineMethodDetector.scanAll(input.classDirectories)
         val delegationMethods = DelegationMethodDetector.scanAll(input.classDirectories)
         val bridgeMethods = BridgeMethodDetector.scanAll(input.classDirectories)
+        val constValHolders = ConstValHolderDetector.scanAll(input.classDirectories)
         val classExternalInterfaces = interfaceRegistry.externalInterfacesOf(input.graph.projectClasses())
         val classReceiverTypes = ReceiverTypeExtractor.scanAll(input.classDirectories)
 
@@ -75,6 +76,7 @@ object DeadCodeOrchestrator {
             delegationMethods = delegationMethods,
             bridgeMethods = bridgeMethods,
             declaredMethods = input.graph.allDeclaredMethods(),
+            constValHolders = constValHolders,
         )).let { filterByConfidence(it, input.minConfidence) }
     }
 

@@ -6,7 +6,7 @@ import no.f12.codenavigator.navigation.types.Scope
 
 object DeadCodeFormatter {
 
-    private val NOTE = "Note: Dead code detection is a hard problem with many edge cases (reflection, serialization, generated code). Use exclude=<regex> to filter out packages or classes you know are not dead."
+    private val NOTE = "Note: Dead code detection is a hard problem with many edge cases (reflection, serialization, generated code, const val inlining). Use exclude=<regex> to filter out packages or classes you know are not dead."
 
     fun format(dead: List<DeadCode>, scope: Scope = Scope.ALL): String {
         if (dead.isEmpty()) return "No potential dead code found."

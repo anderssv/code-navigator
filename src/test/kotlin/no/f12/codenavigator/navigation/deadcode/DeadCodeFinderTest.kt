@@ -40,6 +40,7 @@ class DeadCodeFinderTest {
         delegationMethods: Set<MethodRef> = emptySet(),
         bridgeMethods: Set<MethodRef> = emptySet(),
         declaredMethods: Map<ClassName, Set<String>> = emptyMap(),
+        constValHolders: Set<ClassName> = emptySet(),
     ): List<DeadCode> = DeadCodeFinder.find(
         graph = graph,
         filter = filter,
@@ -62,6 +63,7 @@ class DeadCodeFinderTest {
         delegationMethods = delegationMethods,
         bridgeMethods = bridgeMethods,
         declaredMethods = declaredMethods,
+        constValHolders = constValHolders,
     )
 
     private fun List<DeadCode>.deadClassNames(): List<String> =
@@ -755,6 +757,34 @@ class DeadCodeFinderTest {
     }
 
     // === Kotlin inline function filtering tests ===
+
+    // === Kotlin const val holder tests ===
+
+    @Test
+    fun `const val holder class with no references gets LOW confidence, not HIGH`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.TemplateKeys"),
+        )
+
+        val dead = findDead(graph, constValHolders = setOf(ClassName("com.example.TemplateKeys")))
+
+        val templateKeys = dead.deadClasses().single { it.className.value == "com.example.TemplateKeys" }
+        assertEquals(DeadCodeConfidence.LOW, templateKeys.confidence, "const val holders can't be verified via bytecode, so confidence should be LOW not HIGH")
+    }
+
+    @Test
+    fun `class with no references is still HIGH confidence when not a const val holder`() {
+        val graph = testCallGraph(
+            method("com.example.Controller", "handle") to method("com.example.Service", "process"),
+            projectClasses = setOf("com.example.Controller", "com.example.Service", "com.example.Orphan"),
+        )
+
+        val dead = findDead(graph)
+
+        val orphan = dead.deadClasses().single { it.className.value == "com.example.Orphan" }
+        assertEquals(DeadCodeConfidence.HIGH, orphan.confidence, "Non-const-val-holder classes should keep HIGH confidence")
+    }
 
     @Test
     fun `inline method is filtered from dead method results`() {
