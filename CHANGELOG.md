@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.113
 
 ### Fixed: `cnavDead` false positive on Kotlin `const val` holder objects
 
