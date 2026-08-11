@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.114
 
 ### Fixed: `cnavMovePackage`/`cnavExecutePlan` silently swallowed per-class errors when total changes was zero
 
