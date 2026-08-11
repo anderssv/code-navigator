@@ -14,6 +14,7 @@ data class ExecutePlanResult(
 ) {
     val totalChanges: Int get() = steps.sumOf { it.result.changes.size }
     val allWarnings: List<String> get() = steps.flatMap { it.result.warnings }
+    val allErrors: List<String> get() = steps.mapNotNull { it.result.error }
 }
 
 object ExecutePlanFormatter {
@@ -37,7 +38,9 @@ object ExecutePlanFormatter {
             appendLine()
             for ((index, step) in result.steps.withIndex()) {
                 appendLine("Step ${index + 1}: move ${step.from} -> ${step.to}")
-                if (step.result.changes.isEmpty()) {
+                if (step.result.error != null) {
+                    appendLine("  ERROR: ${step.result.error}")
+                } else if (step.result.changes.isEmpty()) {
                     appendLine("  No changes needed.")
                 } else {
                     appendLine("  ${step.result.changes.size} file(s) modified")
@@ -69,7 +72,8 @@ object ExecutePlanFormatter {
             appendLine("""      "from": "${step.from}",""")
             appendLine("""      "to": "${step.to}",""")
             appendLine("""      "changedFiles": ${step.result.changes.size},""")
-            appendLine("""      "files": [${step.result.changes.joinToString(", ") { "\"${it.filePath}\"" }}]""")
+            val errorJson = step.result.error?.let { """, "error": "${it.replace("\"", "\\\"")}"""" } ?: ""
+            appendLine("""      "files": [${step.result.changes.joinToString(", ") { "\"${it.filePath}\"" }}]$errorJson""")
             append("    }")
             if (index < result.steps.size - 1) appendLine(",") else appendLine()
         }
@@ -85,7 +89,8 @@ object ExecutePlanFormatter {
             appendLine("$mode ${result.steps.size} move(s), ${result.totalChanges} file(s) changed")
             for ((index, step) in result.steps.withIndex()) {
                 val files = step.result.changes.size
-                appendLine("  ${index + 1}. ${step.from} → ${step.to} ($files file${if (files != 1) "s" else ""})")
+                val suffix = step.result.error?.let { " — ERROR: $it" } ?: ""
+                appendLine("  ${index + 1}. ${step.from} → ${step.to} ($files file${if (files != 1) "s" else ""})$suffix")
             }
             if (result.allWarnings.isNotEmpty()) {
                 appendLine()

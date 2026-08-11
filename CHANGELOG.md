@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed: `cnavMovePackage`/`cnavExecutePlan` silently swallowed per-class errors when total changes was zero
+
+A step that failed with a real error (e.g. a sealed class with nested objects hitting the multi-class-file guard) produced zero changes, and the error was never rendered by `ExecutePlanFormatter` in any output format, nor checked by the bail-early "No changes needed" path in `cnavMovePackage`/`cnavExecutePlan` (both Gradle and Maven) — result: a genuine, actionable failure printed as an empty success. `ExecutePlanResult.allErrors` now collects step errors, all three formatters render them, and the early-return condition now checks for errors before declaring "no changes needed." Reported via field use in [bass-self-service PR #1461](https://github.com/techcloud0/bass-self-service/pull/1461).
+
 ## 0.1.113
 
 ### Fixed: `cnavDead` false positive on Kotlin `const val` holder objects

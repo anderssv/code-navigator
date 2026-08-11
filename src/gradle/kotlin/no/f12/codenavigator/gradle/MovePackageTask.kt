@@ -102,7 +102,7 @@ abstract class MovePackageTask @Inject constructor(
 
         val planResult = ExecutePlanResult(steps = stepResults, preview = config.preview)
 
-        if (planResult.totalChanges == 0) {
+        if (planResult.totalChanges == 0 && planResult.allErrors.isEmpty()) {
             logger.quiet(OutputWrapper.emptyResult(config.format, "No changes needed for any class in package.", noResultsHints(config)))
             return
         }
