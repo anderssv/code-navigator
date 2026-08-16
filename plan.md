@@ -152,16 +152,6 @@ The `--plan-file` simulation mutates the dependency graph structurally but doesn
 
 Improvement: after `execute-plan` runs, automatically re-run ring/cycle analysis and compare against the pre-execution simulation. If they diverge significantly, warn the user. This would catch cases where a move drags framework dependencies into the wrong layer (e.g., Ktor types ending up in infrastructure).
 
-### `cnavFileDeps` — file-level dependency tree
-**FUTURE** | **Value: medium** | **Effort: medium** | Source: internal
-
-Current dependency analysis works at package granularity (`cnavPackageDeps`, `cnavDsm`) or method/symbol granularity (`cnavFindCallers`, `cnavFindUsages`). There is no file-level view, which is the granularity humans and agents actually navigate at.
-
-- **Builder**: Aggregate class-level bytecode references up to `UsageSite.sourceFile`.
-- **Single-file mode**: `--file=OrderService.kt` — direct deps. `--reverse=true` — files that depend on this one. `--depth=N` — transitive tree.
-- **All-files mode**: `--all=true` — full file-dep graph (fan-in/fan-out ranking, orphan detection, file-level cycle detection).
-- **Alternative framing**: Extend `cnavDsm` with `--granularity=file|package|class` instead of a separate task.
-
 ### Structural ring mode improvement
 **FUTURE** | **Value: medium** | **Effort: medium** | Source: field-test(greitt, v0.1.102)
 
@@ -489,6 +479,24 @@ A single logical call site produces 3-4 lines (`.new` + `.<init>` + `.checkcast`
 ---
 
 ## Behavioral + structural fusion
+
+### Shared `--granularity=package|file|class` across structural (`cnavDsm`) and change-based (`cnavChangeCoupling`) coupling, plus a combined "belongs together" view
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: internal (design discussion)
+
+Motivation: "does file/class X belong in the same package as Y" needs two independent signals — structural coupling (do they actually reference each other in code) and change coupling (do they habitually get edited together) — cross-referenced. Right now `cnavDsm` is package-only and `cnavChangeCoupling` is file-only, so they can't be joined on a common key.
+
+**Structural side (`cnavDsm`/new `cnavFileDeps`)**: `DsmDependencyExtractor` already produces real class-pair bytecode edges; `DsmMatrixBuilder` currently only aggregates them up to package pairs. Class and file granularity are different aggregation levels over the *same* underlying data, not separate implementations:
+- **class**: no aggregation — expose the class-pair edges directly (this already exists internally as `DsmMatrix.classDependencies`, used today only for `--cycles=true` drill-down; needs to become a first-class output shape).
+- **file**: aggregate class-pairs by `sourceFile` (this is what was previously scoped as a separate `cnavFileDeps` task — folding it into `cnavDsm --granularity=file` avoids a second task/orchestrator/formatter trio).
+- **package**: current behavior, unchanged.
+
+**Change-coupling side (`cnavChangeCoupling`)**: currently file-level only, driven by raw git file paths from `ChangeCouplingBuilder`.
+- **package**: straightforward — map each changed file path to its containing package (strip source root, take directory) and aggregate co-change counts at that level. No new data source needed.
+- **class**: git operates on files, not classes, so **real per-class attribution is out of scope for now — a file stands in for its class** when the mapping is unambiguous (the common one-class-per-file case: label the pair with the class name instead of the path). A file that declares multiple top-level classes (sealed hierarchies, multi-class files) stays labeled by file path rather than being split or over-attributed to every class it contains. This is a labeling/display change over the existing file-level co-change computation, not a new attribution model — call this out explicitly in the task's help text so it isn't mistaken for true class-level git blame attribution.
+
+**Combined view**: once both sides share one granularity enum, join structural DSM edges and change-coupling pairs at the same granularity and surface pairs that score high on *both* — a much stronger "these belong together" signal than either alone (structural-only misses shared-concept-but-not-directly-referenced pairs; change-coupling-only is noisy from incidental same-PR edits). Where to land the join (a new `cnavConverge`-style mode vs. a field on one of the two existing outputs) is still open — decide once both sides support the shared granularity.
+
+**Order of work**: (1) `cnavDsm --granularity=class|file|package` first, since the underlying class-pair data already exists and this unblocks the file-level piece without a new task; (2) `cnavChangeCoupling --granularity=package|class` next; (3) the combined view last, once both sides can be keyed the same way.
 
 ### Port volatility lockstep detector
 **FUTURE** | **Value: medium** | **Effort: medium** | Source: internal
