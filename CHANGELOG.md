@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed: `cnavDead` false positive on companion-object `const val` holders
+
+Classes that hold `const val` declarations inside a `companion object` (e.g. `class Foo { companion object { const val X = "x" } }`) were still flagged `HIGH` confidence dead code after the 0.1.113 fix, because `ConstValHolderDetector` only checked a class's own `KmClass.properties`, not its companion's. The companion class file (`Foo$Companion.class`) was detected correctly, but the outer class `Foo` — the one actually flagged dead — was not. Now when a companion class is detected as a const-val holder, the outer class is also registered as one.
+
+### Fixed: `cnavMovePackage`/`cnavExecutePlan` JSON output produced invalid JSON when error messages contained backslashes or double quotes
+
+The `formatJson` path in `ExecutePlanFormatter` used a hand-rolled replace of `"` only, missing `\`, `\n`, `\r`, and `\t`. Now uses the existing `escapeJson` helper consistently with all other JSON formatters.
+
 ## 0.1.114
 
 ### Fixed: `cnavMovePackage`/`cnavExecutePlan` silently swallowed per-class errors when total changes was zero

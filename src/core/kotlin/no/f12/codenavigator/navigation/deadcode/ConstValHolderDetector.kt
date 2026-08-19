@@ -35,7 +35,16 @@ object ConstValHolderDetector {
                 .filter { it.isFile && it.extension == "class" }
                 .forEach { classFile ->
                     try {
-                        detectConstValHolder(classFile)?.let { result.add(it) }
+                        detectConstValHolder(classFile)?.let { detected ->
+                            result.add(detected)
+                            // A companion object holding only const vals is a synthetic
+                            // container — the outer class is the logical const-val holder.
+                            // If the outer class has no bytecode references of its own,
+                            // it would be falsely flagged as dead without this.
+                            if (detected.value.endsWith("\$Companion")) {
+                                result.add(detected.outerClass())
+                            }
+                        }
                     } catch (_: Exception) {
                         // Skip files we can't read
                     }

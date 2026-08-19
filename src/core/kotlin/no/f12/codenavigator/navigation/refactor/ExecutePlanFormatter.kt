@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation.refactor
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.formatting.escapeJson
 
 data class ExecutePlanStepResult(
     val from: String,
@@ -72,7 +73,7 @@ object ExecutePlanFormatter {
             appendLine("""      "from": "${step.from}",""")
             appendLine("""      "to": "${step.to}",""")
             appendLine("""      "changedFiles": ${step.result.changes.size},""")
-            val errorJson = step.result.error?.let { """, "error": "${it.replace("\"", "\\\"")}"""" } ?: ""
+            val errorJson = step.result.error?.let { """, "error": "${escapeJson(it)}""" } ?: ""
             appendLine("""      "files": [${step.result.changes.joinToString(", ") { "\"${it.filePath}\"" }}]$errorJson""")
             append("    }")
             if (index < result.steps.size - 1) appendLine(",") else appendLine()

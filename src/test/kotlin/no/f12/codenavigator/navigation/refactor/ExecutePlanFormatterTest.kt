@@ -71,6 +71,28 @@ class ExecutePlanFormatterTest {
     }
 
     @Test
+    fun `json output properly escapes special characters in error messages`() {
+        val result = ExecutePlanResult(
+            steps = listOf(
+                ExecutePlanStepResult(
+                    from = "com.example.A",
+                    to = "com.example.moved.A",
+                    result = MoveClassResult(
+                        changes = emptyList(),
+                        error = """path\to\file also declares: "Valid". Use cnavMoveFile.""",
+                    ),
+                ),
+            ),
+            preview = false,
+        )
+
+        val json = ExecutePlanFormatter.format(result, OutputFormat.JSON)
+
+        assertTrue(json.contains("""path\\to\\file"""), "Backslashes should be escaped in JSON, got: $json")
+        assertTrue(json.contains("""\"Valid\""""), "Double quotes should be escaped in JSON, got: $json")
+    }
+
+    @Test
     fun `allErrors collects errors across all steps`() {
         val result = ExecutePlanResult(
             steps = listOf(

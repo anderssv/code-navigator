@@ -31,3 +31,24 @@ object NoConstValsHere {
     fun doSomething(): String = "hello"
     fun doSomethingElse(): String = "world"
 }
+
+class ClassWithCompanionConstVals {
+    companion object {
+        const val FIRST = "first"
+        const val SECOND = "second"
+    }
+}
+
+class ClassWithCompanionConstValsAndFunction {
+    companion object {
+        const val FIRST = "first"
+    }
+
+    fun doSomething(): String = "hello"
+}
+
+class ClassWithCompanionNoConstVals {
+    companion object {
+        val notConst = "not const"
+    }
+}
