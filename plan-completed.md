@@ -1,5 +1,25 @@
 # Plan — Completed
 
+### ~~`cnavFindCallers` silently reports "(no callers)" for `inline` functions~~ — DONE (v0.1.117-SNAPSHOT)
+~~**ACTIVE**~~ **DONE (fixes 1 and 2; fix 3 left open, see plan.md)** | **Value: high** | **Effort: low** | Source: field-test(greitt, v0.1.116, feedback #3)
+
+`cnavFindCallers --pattern=withAdminPoll` reports `(no callers)` for `internal suspend inline fun RoutingContext.withAdminPoll(...)` which has **15 live call sites**. The compiler inlines the body, so no invoke instruction survives for bytecode analysis to find.
+
+**Why this is the most dangerous defect reported so far** — not the wrong answer, but the workflow it sits in. cnav's own recommended `AGENTS.md` snippet tells agents: *"NEVER use grep, ripgrep, Glob, or Read to find type/method references in this project. ALWAYS use cnav commands — bytecode analysis is complete..."*. The tool instructs the agent not to cross-check, then returns "(no callers)" for a live function. An agent following that instruction deletes working code. The Kotlin compiler catches it, so it's wasted work rather than silent loss — but the instruction and the defect compound, and "bytecode analysis is complete" is exactly the claim that fails here.
+
+Note `cnavDead` did **not** flag `withAdminPoll`, so something in that path already handles inline (`InlineMethodDetector` exists for exactly this). **Two tasks over the same reference data disagreeing about whether a function has callers is worth reconciling regardless of which is right** — start there.
+
+Fixes, cheapest first:
+1. **Never print a bare `(no callers)` for an inline function.** `inline` is readable from `@Metadata`, and the `$$forInline` synthetic is already visible in the output. Say instead: *"inline function — call sites are inlined and not recorded in bytecode; this result is incomplete, check the source."* Costs nothing, removes the trap. Do this one now.
+2. **Soften the `AGENTS.md`/README snippet** to carve out inline functions, so the "never grep" rule doesn't outrun what bytecode can answer.
+3. Optionally resolve inline call sites properly via line-number tables in the inlining callers — real work, only worth it if inline-heavy Kotlin codebases are a target.
+
+**Fixed**: `CallTreeNode.isInline` (a flag, not a rendered string, so TEXT/LLM/JSON all expose it), set by `CallTreeBuilder` from `InlineMethodDetector` — the same detector `cnavDead` already used, so the two tasks can no longer disagree about which functions bytecode cannot answer for. The detector moved from `deadcode/` to `bytecode/` to make that shared use explicit. `CallTreeFormatter.inlineFunctionWarning` replaces the bare "(no callers)" with an explicit incompleteness warning, and is shown even when callers *were* found, since any caller list for an inline function is incomplete rather than merely possibly-empty. `$$forInline` twins are matched by name, since Kotlin metadata only names the callable copy. The agent-help "never grep" snippet now carves out inline functions and points at the warning (kept within the install section's line budget, which the existing conciseness test enforces).
+
+Verified end-to-end through the Gradle plugin on the reported shape:
+`(no callers) — inline function — call sites are inlined and leave no call edge in bytecode, so this result is INCOMPLETE; check the source.`
+
+
 ### ~~Ambient input in the domain: wall clock, randomness, environment~~ — DONE (v0.1.117-SNAPSHOT)
 ~~**ACTIVE**~~ **DONE** | **Value: high** | **Effort: low** | Source: field-test(greitt, independent LLM code review) + design review
 

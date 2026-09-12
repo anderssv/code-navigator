@@ -3,7 +3,7 @@
 package no.f12.codenavigator.navigation.fixtures
 
 /**
- * Test fixtures for [no.f12.codenavigator.navigation.deadcode.InlineMethodDetector].
+ * Test fixtures for [no.f12.codenavigator.navigation.bytecode.InlineMethodDetector].
  * These classes are compiled by the Kotlin compiler, so they carry real
  * `@kotlin.Metadata` annotations that the detector can parse.
  */

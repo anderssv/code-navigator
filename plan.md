@@ -521,6 +521,16 @@ On ra-backend the top duplicate blocks were all JAXB-generated `.java` under `no
 
 ---
 
+### Resolve inline function call sites via line-number tables
+**FUTURE** | **Value: medium** | **Effort: high** | Source: field-test(greitt, v0.1.116, feedback #3)
+
+`cnavFindCallers` now *warns* that an inline function's callers cannot be found in bytecode (see plan-completed.md), but still cannot list them. The inlined body carries the original line numbers of the inline function's source into each caller's line-number table, so the call sites are in principle recoverable by looking for callers whose line-number table references a foreign source file/line range. Only worth building if inline-heavy Kotlin codebases are a target; the warning removes the danger, this would remove the gap.
+
+### `--owner-class` missing from `cnavFindCallers`
+**LOW** | **Value: medium** | **Effort: low** | Source: field-test(greitt, v0.1.116, feedback #3)
+
+`--owner-class` exists on `cnavFindUsages` but not `cnavFindCallers`, which answer near-identical questions. A loop using it on `cnavFindCallers` failed per-iteration with `Unknown command-line option '--owner-class'`, and because each run failed independently the loop printed four empty sections rather than an error — easy to misread as "no results". Align the parameter sets, or cross-reference them in help. Concrete instance of [[Consistent `--project-only` support across all tasks]].
+
 ---
 
 ## Find-usages output quality

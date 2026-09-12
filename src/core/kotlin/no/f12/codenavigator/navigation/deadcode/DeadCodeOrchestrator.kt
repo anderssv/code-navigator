@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation.deadcode
 
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
+import no.f12.codenavigator.navigation.bytecode.InlineMethodDetector
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraph
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.types.ClassName

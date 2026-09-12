@@ -25,6 +25,14 @@ data class CallTreeNode(
      * widely-implemented interfaces (e.g. Repository, EventHandler).
      */
     val collapsedImplementorCount: Int = 0,
+    /**
+     * True when this node is a Kotlin `inline` function (or its `$$forInline` twin). The compiler
+     * copies the body into every call site, so **no invoke instruction survives for bytecode
+     * analysis to find** — a CALLERS result for an inline function is structurally incomplete, and
+     * an empty one does not mean the function is unused. Carried as a flag rather than a rendered
+     * string so every output format (including JSON) can expose it.
+     */
+    val isInline: Boolean = false,
 )
 
 object CallTreeBuilder {
@@ -44,11 +52,25 @@ object CallTreeBuilder {
         classAnnotationParameters: Map<ClassName, Map<AnnotationName, Map<String, String>>> = emptyMap(),
         methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>> = emptyMap(),
         maxImplementors: Int = DEFAULT_MAX_IMPLEMENTORS,
+        inlineMethods: Set<MethodRef> = emptySet(),
     ): List<CallTreeNode> {
         return roots.map { method ->
-            buildNode(graph, method, maxDepth, direction, depth = 0, visited = mutableSetOf(), filter = filter, interfaceImplementors = interfaceImplementors, classToInterfaces = classToInterfaces, classAnnotations = classAnnotations, methodAnnotations = methodAnnotations, classAnnotationParameters = classAnnotationParameters, methodAnnotationParameters = methodAnnotationParameters, maxImplementors = maxImplementors)
+            buildNode(graph, method, maxDepth, direction, depth = 0, visited = mutableSetOf(), filter = filter, interfaceImplementors = interfaceImplementors, classToInterfaces = classToInterfaces, classAnnotations = classAnnotations, methodAnnotations = methodAnnotations, classAnnotationParameters = classAnnotationParameters, methodAnnotationParameters = methodAnnotationParameters, maxImplementors = maxImplementors, inlineMethods = inlineMethods)
         }
     }
+
+    /**
+     * Kotlin compiles an inline function twice: the callable copy and a `$$forInline` twin. Metadata
+     * only names the former, so the twin has to be matched by name or it would be reported as a
+     * plain function with no callers — the exact trap this flag exists to close.
+     */
+    internal fun isInlineMethod(method: MethodRef, inlineMethods: Set<MethodRef>): Boolean {
+        if (method in inlineMethods) return true
+        val base = method.methodName.removeSuffix(FOR_INLINE_SUFFIX)
+        return base != method.methodName && MethodRef(method.className, base) in inlineMethods
+    }
+
+    private const val FOR_INLINE_SUFFIX = "\$\$forInline"
 
     private fun buildNode(
         graph: CallGraph,
@@ -65,6 +87,7 @@ object CallTreeBuilder {
         classAnnotationParameters: Map<ClassName, Map<AnnotationName, Map<String, String>>>,
         methodAnnotationParameters: Map<MethodRef, Map<AnnotationName, Map<String, String>>>,
         maxImplementors: Int,
+        inlineMethods: Set<MethodRef>,
     ): CallTreeNode {
         val sourceFile = graph.sourceFileOf(method.className)
         val lineNumber = graph.lineNumberOf(method)
@@ -95,12 +118,20 @@ object CallTreeBuilder {
 
             val related = direct + keptImplementors + dispatchedCallers
             children = related.sortedBy { it.qualifiedName }.map { child ->
-                val node = buildNode(graph, child, maxDepth, direction, depth + 1, visited, filter, interfaceImplementors, classToInterfaces, classAnnotations, methodAnnotations, classAnnotationParameters, methodAnnotationParameters, maxImplementors)
+                val node = buildNode(graph, child, maxDepth, direction, depth + 1, visited, filter, interfaceImplementors, classToInterfaces, classAnnotations, methodAnnotations, classAnnotationParameters, methodAnnotationParameters, maxImplementors, inlineMethods)
                 val collapsed = collapsedByChild[child] ?: 0
                 if (collapsed > 0) node.copy(collapsedImplementorCount = collapsed) else node
             }
         }
-        return CallTreeNode(method, sourceFile, lineNumber, children, annotations, graph.sourceSetOf(method.className))
+        return CallTreeNode(
+            method,
+            sourceFile,
+            lineNumber,
+            children,
+            annotations,
+            graph.sourceSetOf(method.className),
+            isInline = isInlineMethod(method, inlineMethods),
+        )
     }
 
     private fun resolveAnnotations(

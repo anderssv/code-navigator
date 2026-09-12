@@ -1,6 +1,7 @@
 package no.f12.codenavigator.navigation.relations.callgraph
 
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
+import no.f12.codenavigator.navigation.bytecode.InlineMethodDetector
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistryCache
 import no.f12.codenavigator.navigation.types.SourceSet
@@ -41,6 +42,16 @@ object CallTreeOrchestrator {
 
         val annotations = AnnotationExtractor.scanAll(classDirectories)
 
+        // Only for CALLERS: an inline function's call sites are compiled into the callers, so the
+        // caller list is structurally incomplete and an empty one must never read as "unused".
+        // The same detector drives cnavDead's inline handling, so the two tasks now agree about
+        // which functions bytecode cannot answer for.
+        val inlineMethods = if (direction == CallDirection.CALLERS) {
+            InlineMethodDetector.scanAll(classDirectories)
+        } else {
+            emptySet()
+        }
+
         val trees = CallTreeBuilder.build(
             graph, methods, config.maxDepth, direction, config.buildFilter(graph, direction),
             interfaceImplementors = interfaceImplementors,
@@ -50,6 +61,7 @@ object CallTreeOrchestrator {
             classAnnotationParameters = annotations.classAnnotationParameters,
             methodAnnotationParameters = annotations.methodAnnotationParameters,
             maxImplementors = config.maxImplementors,
+            inlineMethods = inlineMethods,
         )
 
         val classHint = CallTreeFormatter.classMatchHint(config.method, methods)

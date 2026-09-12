@@ -35,10 +35,11 @@ object CallTreeFormatter {
             appendLine("${tree.method.qualifiedName}${formatAnnotationTags(tree.annotations)}")
             if (tree.children.isEmpty()) {
                 append("  ${direction.emptyMessage}")
-                val hint = frameworkEntryPointHint(tree, direction)
+                val hint = inlineFunctionWarning(tree, direction) ?: frameworkEntryPointHint(tree, direction)
                 if (hint != null) append(" — $hint")
             } else {
                 renderChildren(tree.children, direction, depth = 1)
+                inlineFunctionWarning(tree, direction)?.let { appendLine(); append("  $it") }
             }
         }
     }.trimEnd()
@@ -71,6 +72,18 @@ object CallTreeFormatter {
                 renderChildren(node.children, direction, depth + 1)
             }
         }
+    }
+
+    /**
+     * The warning that replaces a bare "(no callers)" for a Kotlin `inline` function. Without it the
+     * output states, in the tool's own voice, that a live function has no callers — and cnav's agent
+     * guidance tells agents not to cross-check with grep, so the two compound into deleting working
+     * code. Shown whether or not callers were found, since any caller list for an inline function is
+     * incomplete, not merely possibly-empty.
+     */
+    internal fun inlineFunctionWarning(node: CallTreeNode, direction: CallDirection): String? {
+        if (direction != CallDirection.CALLERS || !node.isInline) return null
+        return "inline function — call sites are inlined and leave no call edge in bytecode, so this result is INCOMPLETE; check the source."
     }
 
     internal fun frameworkEntryPointHint(node: CallTreeNode, direction: CallDirection): String? {
@@ -119,6 +132,7 @@ object CallTreeFormatter {
         } else {
             null
         }
+        val inlineWarning = if (isRoot && direction != null) inlineFunctionWarning(node, direction) else null
         return jsonObject(
             "method" to node.method.qualifiedName,
             "sourceFile" to node.sourceFile,
@@ -128,6 +142,8 @@ object CallTreeFormatter {
             "children" to JsonRaw(children),
             "frameworkEntryPointHint" to hint,
             "collapsedImplementorCount" to if (node.collapsedImplementorCount > 0) node.collapsedImplementorCount else null,
+            "inline" to if (node.isInline) true else null,
+            "incompleteReason" to inlineWarning,
         )
     }
 
@@ -152,10 +168,11 @@ object CallTreeFormatter {
             append("${tree.method.qualifiedName} ${tree.sourceFile ?: "<unknown>"}$lineRef${formatAnnotationTagsLlm(tree.annotations)}")
             if (tree.children.isNotEmpty()) {
                 renderChildrenLlm(tree.children, direction, 1)
+                inlineFunctionWarning(tree, direction)?.let { appendLine(); append("  $it") }
             } else {
                 appendLine()
                 append("  ${direction.emptyMessage}")
-                val hint = frameworkEntryPointHint(tree, direction)
+                val hint = inlineFunctionWarning(tree, direction) ?: frameworkEntryPointHint(tree, direction)
                 if (hint != null) append(" — $hint")
             }
         }

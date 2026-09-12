@@ -1,9 +1,8 @@
-package no.f12.codenavigator.navigation.deadcode
+package no.f12.codenavigator.navigation.bytecode
 
 import no.f12.codenavigator.navigation.*
 
 import no.f12.codenavigator.navigation.types.ClassName
-import no.f12.codenavigator.navigation.deadcode.InlineMethodDetector
 import no.f12.codenavigator.navigation.fixtures.ClassWithInline
 import no.f12.codenavigator.navigation.fixtures.ClassWithMixedMethods
 import no.f12.codenavigator.navigation.fixtures.ClassWithoutInline
