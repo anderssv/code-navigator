@@ -643,6 +643,42 @@ class AdapterDetectorTest {
     }
 
     @Test
+    fun `extraValuePackages also suppresses a FRAMEWORK_SIGNATURE finding, not just SINK_WITH_EXTERNAL_CALLS`() {
+        // A real, reproducible case from a field-tested project (greitt): declaring
+        // "jakarta.validation." a value package via cnav-config.json fixed classes that only *called*
+        // it, but not a class naming a jakarta.validation type in its own signature -- extraValuePackages
+        // was only threaded into isLibraryType (the SINK_WITH_EXTERNAL_CALLS check), never into
+        // isFrameworkType (the FRAMEWORK_SIGNATURE/FRAMEWORK_TYPE checks). Bean-validation annotation
+        // types are pure metadata, never I/O, regardless of which of the three rules would otherwise
+        // catch them -- a package declared a value library should be exempt from all three uniformly.
+        val service = ClassName("com.app.polls.ValidationService")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service),
+            projectDeps = emptyList(),
+            externalDeps = emptyList(),
+            signatureTypes = mapOf(service to setOf(ClassName("jakarta.validation.Validator"))),
+            extraValuePackages = setOf("jakarta.validation."),
+        )
+
+        assertEquals(null, findings[service], "a configured value package must suppress FRAMEWORK_SIGNATURE too, not just SINK_WITH_EXTERNAL_CALLS")
+    }
+
+    @Test
+    fun `extraValuePackages also suppresses a FRAMEWORK_TYPE finding`() {
+        val service = ClassName("com.app.polls.HtmlConstraints")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service),
+            projectDeps = emptyList(),
+            externalDeps = listOf(dep(service.value, "jakarta.validation.constraints.NotBlank")),
+            extraValuePackages = setOf("jakarta.validation."),
+        )
+
+        assertEquals(null, findings[service], "a configured value package must suppress FRAMEWORK_TYPE too, not just SINK_WITH_EXTERNAL_CALLS")
+    }
+
+    @Test
     fun `extraFrameworkPackages lets a project extend the framework detection list`() {
         val service = ClassName("com.app.polls.PollService")
         val client = ClassName("com.app.infra.InternalQueueClient")

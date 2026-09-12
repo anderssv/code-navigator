@@ -34,7 +34,7 @@ object RingGraphBuilder {
         // Staged on purpose: the topological adapter rules need to know the composition roots, and root
         // detection needs to know what an adapter is. The framework pass depends on neither, so it goes
         // first and breaks the cycle.
-        val frameworkAdapters = AdapterDetector.detectFrameworkAdapters(projectClasses, externalDeps, signatureTypes, extraFrameworkPackages, classAnnotations)
+        val frameworkAdapters = AdapterDetector.detectFrameworkAdapters(projectClasses, externalDeps, signatureTypes, extraFrameworkPackages, classAnnotations, extraValuePackages)
         val detectedRoots = CompositionRootDetector.detect(base.copy(ioClasses = frameworkAdapters.keys))
         val compositionRoots = configuredCompositionRoots + detectedRoots.keys
 

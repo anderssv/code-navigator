@@ -84,6 +84,32 @@ class MoveClassRewriterBatchTest {
     }
 
     @Test
+    fun `batch move adds a new import to a same-package caller that had none`() {
+        // Same underlying bug as the single-move paths, in the batch/CompositeRecipe path used by
+        // cnavMovePackage/cnavExecutePlan: TaxCalculatorUser is in the SAME package as
+        // TaxCalculator and references it unqualified — no import to rewrite, since none was needed
+        // before the move. The batch loop only rewrote EXISTING imports of moved names in other
+        // files; it never checked a former same-package caller for a symbol it needs a brand-new
+        // import for.
+        val results = MoveClassRewriter.moveBatch(
+            sourceRoots = listOf(testProjectSrc),
+            moves = listOf(
+                BatchMoveRequest("com.example.variants.moveclass.original.TaxCalculator", "com.example.variants.moveclass.billing.TaxCalculator"),
+            ),
+            classpath = listOf(testProjectClasses),
+            preview = true,
+        )
+
+        val result = results[0]
+        val userChange = result.changes.firstOrNull { it.filePath.endsWith("TaxCalculatorUser.kt") }
+        assertTrue(userChange != null, "Should update TaxCalculatorUser.kt with a new import. Got: ${result.changes.map { it.filePath }}")
+        assertTrue(
+            userChange!!.after.contains("import com.example.variants.moveclass.billing.TaxCalculator"),
+            "Should add a new import for the moved class, got:\n${userChange.after}",
+        )
+    }
+
+    @Test
     fun `batch move handles classes that reference each other within the same batch`() {
         // original/OrderService.kt references PaymentService, InventoryService, and Notifier — all same-package,
         // implicit references. Moving all four together in one batch must not corrupt any of them.

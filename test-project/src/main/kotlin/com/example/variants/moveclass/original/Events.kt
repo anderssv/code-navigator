@@ -11,3 +11,5 @@ class EventProcessor {
         is Event.OrderCancelled -> "Cancelling order ${event.orderId}: ${event.reason}"
     }
 }
+
+fun describeEvent(event: Event): String = event.toString()

@@ -82,4 +82,31 @@ class MoveFileRewriterTest {
             "Should NOT rewrite ExtensionHost import in ExtensionHostUser.kt — ExtensionHost did not move",
         )
     }
+
+    @Test
+    fun `move file with a top-level function adds a new import to a same-package caller that had none`() {
+        // A real, reproducible bug: SvgIcons.kt (pure top-level file, no classes) declares
+        // checkmarkSvg(). CalendarComponents.kt, in the SAME package, calls it unqualified — no
+        // import exists to rewrite, because none was needed before the move. MoveFileRewriter's
+        // "pure top-level file" path only tracked the synthetic Kt-facade name (SvgIconsKt) for its
+        // same-package-import-adding logic, not the actual function names declared in the file — so
+        // the caller's missing import was never added, and it reported success while leaving the
+        // tree broken.
+        val result = MoveFileRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            fromFile = "com/example/variants/moveclass/original/SvgIcons.kt",
+            toPackage = "com.example.variants.moveclass.icons",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+        )
+
+        assertTrue(result.movedFilePath != null, "Should find and move the file")
+
+        val callerChange = result.changes.firstOrNull { it.filePath.endsWith("CalendarComponents.kt") }
+        assertTrue(callerChange != null, "Should update CalendarComponents.kt with a new import")
+        assertTrue(
+            callerChange!!.after.contains("import com.example.variants.moveclass.icons.checkmarkSvg"),
+            "Should add a new import for the moved top-level function, got:\n${callerChange.after}",
+        )
+    }
 }

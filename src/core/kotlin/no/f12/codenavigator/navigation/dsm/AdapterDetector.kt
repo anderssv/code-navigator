@@ -44,9 +44,10 @@ object AdapterDetector {
         signatureTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
         extraFrameworkPackages: Set<String> = emptySet(),
         classAnnotations: Map<ClassName, Set<AnnotationName>> = emptyMap(),
+        extraValuePackages: Set<String> = emptySet(),
     ): Map<ClassName, AdapterFinding> =
         projectClasses
-            .mapNotNull { cls -> frameworkFindingFor(cls, projectClasses, externalDeps, signatureTypes, extraFrameworkPackages, classAnnotations)?.let { cls to it } }
+            .mapNotNull { cls -> frameworkFindingFor(cls, projectClasses, externalDeps, signatureTypes, extraFrameworkPackages, classAnnotations, extraValuePackages)?.let { cls to it } }
             .toMap()
 
     private fun frameworkFindingFor(
@@ -56,6 +57,7 @@ object AdapterDetector {
         signatureTypes: Map<ClassName, Set<ClassName>>,
         extraFrameworkPackages: Set<String>,
         classAnnotations: Map<ClassName, Set<AnnotationName>>,
+        extraValuePackages: Set<String> = emptySet(),
     ): AdapterFinding? {
         // A known framework entry-point annotation (@RestController, @Controller, JAX-RS @Path) is
         // checked first and independent of everything else: it's a direct, unambiguous signal that the
@@ -73,10 +75,10 @@ object AdapterDetector {
         // framework prefix (e.g. org.springframework.samples.petclinic, nested under the exact
         // prefix used to detect real Spring usage) would have every class self-match "framework"
         // merely by referencing another class in the same project.
-        signatureTypes[cls].orEmpty().filter { it !in projectClasses }.firstOrNull { isFrameworkType(it, extraFrameworkPackages) }?.let {
+        signatureTypes[cls].orEmpty().filter { it !in projectClasses }.firstOrNull { isFrameworkType(it, extraFrameworkPackages, extraValuePackages) }?.let {
             return AdapterFinding(AdapterReason.FRAMEWORK_SIGNATURE, it)
         }
-        externalDeps.firstOrNull { it.sourceClass == cls && it.targetClass !in projectClasses && isFrameworkType(it.targetClass, extraFrameworkPackages) }?.let {
+        externalDeps.firstOrNull { it.sourceClass == cls && it.targetClass !in projectClasses && isFrameworkType(it.targetClass, extraFrameworkPackages, extraValuePackages) }?.let {
             return AdapterFinding(AdapterReason.FRAMEWORK_TYPE, it.targetClass)
         }
         return null
@@ -93,7 +95,7 @@ object AdapterDetector {
         extraFrameworkPackages: Set<String>,
         classAnnotations: Map<ClassName, Set<AnnotationName>>,
     ): AdapterFinding? {
-        frameworkFindingFor(cls, projectClasses, externalDeps, signatureTypes, extraFrameworkPackages, classAnnotations)?.let { return it }
+        frameworkFindingFor(cls, projectClasses, externalDeps, signatureTypes, extraFrameworkPackages, classAnnotations, extraValuePackages)?.let { return it }
 
 
         // Every class references String and Intrinsics; counting those as "talks to a library" would
@@ -123,16 +125,18 @@ object AdapterDetector {
     private fun isLibraryType(type: ClassName, extraValuePackages: Set<String>): Boolean =
         (NON_ADAPTER_SIGNAL_PACKAGES + extraValuePackages).none { prefix -> type.value.startsWith(prefix) }
 
-    private fun isFrameworkType(type: ClassName, extraFrameworkPackages: Set<String>): Boolean {
+    private fun isFrameworkType(type: ClassName, extraFrameworkPackages: Set<String>, extraValuePackages: Set<String> = emptySet()): Boolean {
         // Value libraries, logging, and exact-match value types are a carve-out that beats even a
         // broad framework prefix (e.g. bare "javax."): javax.xml.datatype is JAXB's pure date value
         // type, no I/O of its own, but it would otherwise match "javax." — the same broad prefix that
         // correctly covers javax.net.ssl (TLS), javax.xml.parsers (XML parsing), and
         // javax.security.auth (certificates) elsewhere in real code. Narrowing "javax." itself risks
         // silently losing those real signals; excluding known non-I/O types first is safer and more
-        // precise.
+        // precise. A project-configured value package (cnav-config.json's rings.valuePackages) gets
+        // the same carve-out as the built-in list — a package declared pure is pure under every rule,
+        // not just the SINK_WITH_EXTERNAL_CALLS one.
         if (type.value in EXACT_VALUE_TYPES) return false
-        if ((VALUE_LIBRARY_PACKAGES + LOGGING_PACKAGES).any { type.value.startsWith(it) }) return false
+        if ((VALUE_LIBRARY_PACKAGES + LOGGING_PACKAGES + extraValuePackages).any { type.value.startsWith(it) }) return false
         return (FRAMEWORK_PACKAGES + extraFrameworkPackages).any { prefix -> type.value.startsWith(prefix) }
     }
 

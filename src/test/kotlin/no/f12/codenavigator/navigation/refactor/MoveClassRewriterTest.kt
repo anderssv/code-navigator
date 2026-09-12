@@ -601,6 +601,30 @@ class MoveClassRewriterTest {
     }
 
     @Test
+    fun `moving a multi-class file with a top-level function adds a new import to a same-package caller that had none`() {
+        // Same bug as MoveFileRewriterTest's Kt-facade case, but for the moveMultiClassFile path:
+        // Events.kt (multi-class file: Event, EventProcessor) also declares a top-level function
+        // describeEvent(). EventLogger.kt, in the SAME package, calls it unqualified — no import
+        // exists to rewrite. replacePackageImports only rewrites existing imports in OTHER packages;
+        // it never adds a new one for a former same-package caller.
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.EventProcessor",
+            newFqcn = "com.example.variants.moveclass.events.EventProcessor",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+            allowMultiClass = true,
+        )
+
+        val loggerChange = result.changes.firstOrNull { it.filePath.endsWith("EventLogger.kt") }
+        assertTrue(loggerChange != null, "Should update EventLogger.kt with a new import. Changed files: ${result.changes.map { it.filePath }}")
+        assertTrue(
+            loggerChange!!.after.contains("import com.example.variants.moveclass.events.describeEvent"),
+            "Should add a new import for the moved top-level function, got:\n${loggerChange.after}",
+        )
+    }
+
+    @Test
     fun `move errors and writes nothing when destination file already holds a different class`() {
         val tempDir = Files.createTempDirectory("cnav-test-moveclass-collide").toFile()
         val sourceFile = File(tempDir, "com/app/polls/UserPollsService.kt").apply {

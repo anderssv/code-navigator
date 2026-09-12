@@ -213,6 +213,10 @@ object MoveClassRewriter {
             if (finalContent != original) sharedChanges[path] = RenameChange(path, original, finalContent)
         }
 
+        // Populated below with paths where a former same-package caller got a brand-new import (never
+        // had the old one to begin with) — the later attribution loop can't discover these on its own.
+        val extraRelevantPaths = mutableMapOf<Int, Set<String>>()
+
         for (move in batchable) {
             val allSiblingNames = findSiblingClassNames(ps, move.oldPackage, move.simpleClassName)
 
@@ -241,16 +245,23 @@ object MoveClassRewriter {
             }
 
             val movedFileSource = ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == move.movedFilePath }?.printAll()
-            if (movedFileSource != null) {
-                val topLevelNames = extractTopLevelNames(movedFileSource)
-                if (topLevelNames.isNotEmpty()) {
-                    updateTopLevelImportsInConsumersMap(ps, sharedChanges, move.oldPackage, move.newPackage, move.movedFilePath, topLevelNames)
-                }
+            val topLevelNames = movedFileSource?.let(::extractTopLevelNames).orEmpty()
+            if (topLevelNames.isNotEmpty()) {
+                updateTopLevelImportsInConsumersMap(ps, sharedChanges, move.oldPackage, move.newPackage, move.movedFilePath, topLevelNames)
             }
+
+            // A former same-package caller referencing the moved class itself, or one of its
+            // co-located top-level functions/properties, unqualified — no import to rewrite existed,
+            // so the checks above never touch it. Same gap importMovedTypeInFormerSamePackage fixes
+            // for the single-move paths.
+            extraRelevantPaths[move.index] = importMovedTypeInFormerSamePackageMap(
+                ps, sharedChanges, move.oldPackage, move.newPackage, setOf(move.simpleClassName) + topLevelNames, move.movedFilePath,
+            )
         }
 
         for (move in batchable) {
             val relevantPaths = mutableSetOf(move.movedFilePath)
+            relevantPaths += extraRelevantPaths[move.index].orEmpty()
             val oldImport = "import ${move.oldPackage}.${move.simpleClassName}"
             for ((filePath, change) in sharedChanges) {
                 if (filePath == move.movedFilePath) continue
@@ -423,7 +434,16 @@ object MoveClassRewriter {
             }
         }
 
-        importMovedTypeInFormerSamePackage(ps, changes, oldPackage, newPackage, targetName, movedFilePath)
+        importMovedTypeInFormerSamePackage(
+            ps,
+            changes,
+            oldPackage,
+            newPackage,
+            setOf(targetName) + movedFilePath?.let { path ->
+                ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == path }?.printAll()?.let(::extractTopLevelNames)
+            }.orEmpty(),
+            movedFilePath,
+        )
 
         // Add imports for former same-package classes referenced by the moved file
         if (movedFilePath != null) {
@@ -515,7 +535,13 @@ object MoveClassRewriter {
 
         val allChanges = replacePackageImports(
             changes, ps, oldPackage, newPackage, movedFilePath, sourceContent, movedNames,
-        )
+        ).toMutableList()
+
+        // replacePackageImports only rewrites an EXISTING import in a consumer file — a former
+        // same-package caller that referenced a top-level function/property unqualified (no import
+        // needed while both files shared a package) has nothing there to rewrite, and was silently
+        // left with a now-broken reference. Add the missing import using the same movedNames set.
+        importMovedTypeInFormerSamePackage(ps, allChanges, oldPackage, newPackage, movedNames, movedFilePath)
 
         destinationCollisionError(newFilePath, movedFilePath)?.let {
             return MoveClassResult(emptyList(), movedFilePath, newFilePath, error = it)
@@ -559,7 +585,11 @@ object MoveClassRewriter {
 
         val allChanges = replacePackageImports(
             changes, ps, oldPackage, newPackage, movedFilePath, movedSource, movedNames,
-        )
+        ).toMutableList()
+
+        // Same gap as moveKtFacade: replacePackageImports only rewrites an EXISTING import, so a
+        // former same-package caller with no import to rewrite is left with a broken reference.
+        importMovedTypeInFormerSamePackage(ps, allChanges, oldPackage, newPackage, movedNames, movedFilePath)
 
         destinationCollisionError(newFilePath, movedFilePath)?.let {
             return MoveClassResult(emptyList(), movedFilePath, newFilePath, error = it)
@@ -646,13 +676,20 @@ object MoveClassRewriter {
      * location added. (OpenRewrite's `ChangeType` did this implicitly; the PSI retarget only rewrites
      * existing references, it doesn't manage imports.) Reuses [addMissingImportsForSiblings] by treating
      * the moved type as a "sibling" now living in [newPackage].
+     *
+     * [newSimpleNames] is the moved class's simple name *plus* any top-level function/property names
+     * declared in the same file — a pure top-level file (no classes) has no "class name" a same-package
+     * caller could reference at all, only its actual declared function/property names, which is exactly
+     * what an unqualified call site like `checkmarkSvg()` looks like in source. Tracking only the
+     * synthetic Kt-facade name here would never match such a call, silently leaving the caller's missing
+     * import unadded.
      */
     private fun importMovedTypeInFormerSamePackage(
         ps: ParsedSources,
         changes: MutableList<RenameChange>,
         oldPackage: String,
         newPackage: String,
-        newSimpleName: String,
+        newSimpleNames: Set<String>,
         movedFilePath: String?,
     ) {
         if (oldPackage == newPackage) return
@@ -662,7 +699,7 @@ object MoveClassRewriter {
             if (!isInPackage(sourceFile.content, oldPackage)) continue
             val idx = changes.indexOfFirst { it.filePath == path }
             val current = if (idx >= 0) changes[idx].after else sourceFile.content
-            val updated = addMissingImportsForSiblings(current, newPackage, setOf(newSimpleName))
+            val updated = addMissingImportsForSiblings(current, newPackage, newSimpleNames)
             if (updated == current) continue
             val original = if (idx >= 0) changes[idx].before else sourceFile.content
             if (idx >= 0) changes[idx] = RenameChange(path, original, updated) else changes.add(RenameChange(path, original, updated))
@@ -961,5 +998,41 @@ object MoveClassRewriter {
                 changes[filePath] = RenameChange(filePath, originalContent, updatedContent)
             }
         }
+    }
+
+    /**
+     * Map-keyed twin of [importMovedTypeInFormerSamePackage], for [runBatchedMoves]'s shared changes
+     * map. [updateTopLevelImportsInConsumersMap] only rewrites an *existing* import; a former
+     * same-package caller that referenced the moved class or one of its co-located top-level
+     * functions/properties unqualified has no import to rewrite at all, and is otherwise left with a
+     * silently broken reference — the exact same gap the single-move paths had.
+     *
+     * Returns the paths it touched, so the caller can attribute a brand-new same-package import to
+     * this move's own result — the later attribution loop only recognizes a file as "relevant" to a
+     * move when it already contained the *old* import string, which a same-package caller (needing a
+     * new import, not a rewritten one) never had.
+     */
+    private fun importMovedTypeInFormerSamePackageMap(
+        ps: ParsedSources,
+        changes: MutableMap<String, RenameChange>,
+        oldPackage: String,
+        newPackage: String,
+        newSimpleNames: Set<String>,
+        movedFilePath: String?,
+    ): Set<String> {
+        if (oldPackage == newPackage) return emptySet()
+        val touched = mutableSetOf<String>()
+        for (sourceFile in ps.sources) {
+            val path = resolveOriginalPath(sourceFile, ps.sourceRoots)
+            if (path == movedFilePath) continue
+            val current = changes[path]?.after ?: sourceFile.printAll()
+            if (!isInPackage(current, oldPackage)) continue
+            val updated = addMissingImportsForSiblings(current, newPackage, newSimpleNames)
+            if (updated == current) continue
+            val original = changes[path]?.before ?: sourceFile.printAll()
+            changes[path] = RenameChange(path, original, updated)
+            touched.add(path)
+        }
+        return touched
     }
 }
