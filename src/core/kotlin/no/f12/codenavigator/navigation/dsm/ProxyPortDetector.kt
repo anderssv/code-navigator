@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation.dsm
 
+import no.f12.codenavigator.navigation.types.AnnotationName
 import no.f12.codenavigator.navigation.types.ClassName
 
 /**
@@ -11,6 +12,16 @@ import no.f12.codenavigator.navigation.types.ClassName
  * this, such an interface has zero implementors and can never form an inversion boundary — the
  * interface itself just gets classified as an adapter (it extends a real framework type), collapsing
  * "port" and "the adapter that implements it" into one class instead of a real port/adapter pair.
+ *
+ * MicroProfile Rest Client (`@RegisterRestClient`) is the same pattern from the *client* side: a
+ * project-owned interface describing an outbound HTTP call, implemented by a runtime-generated proxy.
+ * There's no common supertype to detect it by (any plain interface can carry the annotation) — worse,
+ * it's frequently also `@Path`-annotated, the exact annotation that otherwise marks a *server-side*
+ * JAX-RS resource as a driving adapter (`AdapterReason.FRAMEWORK_ENTRY_POINT_ANNOTATION`). Detecting
+ * `@RegisterRestClient` here, before that check runs, resolves the ambiguity: `RingGraphBuilder`
+ * already excludes anything ProxyPortDetector claims from the adapter-finding set, so a Rest Client
+ * interface becomes a real port with a synthetic proxy adapter instead of being misclassified as the
+ * adapter itself, merely because it happens to share `@Path` with the server-side pattern.
  *
  * A detected interface gets a synthetic implementor injected into the ring graph, standing in for
  * the proxy cnav can never see directly — named `<Interface>$GeneratedProxy` and always labeled as
@@ -39,14 +50,22 @@ object ProxyPortDetector {
         "io.quarkus.hibernate.reactive.panache.PanacheRepositoryBase",
     ).map { ClassName(it) }.toSet()
 
+    private val PROXY_GENERATING_ANNOTATIONS = setOf(
+        "org.eclipse.microprofile.rest.client.inject.RegisterRestClient",
+    )
+
     /** Returns port -> synthetic proxy implementor name. */
     fun detect(
         interfaces: Set<ClassName>,
         implementedBy: Map<ClassName, Set<ClassName>>,
         signatureTypes: Map<ClassName, Set<ClassName>>,
+        classAnnotations: Map<ClassName, Set<AnnotationName>> = emptyMap(),
     ): Map<ClassName, ClassName> =
         interfaces
             .filter { implementedBy[it].orEmpty().isEmpty() }
-            .filter { signatureTypes[it].orEmpty().any { type -> type in PROXY_GENERATING_SUPERTYPES } }
+            .filter { iface ->
+                signatureTypes[iface].orEmpty().any { type -> type in PROXY_GENERATING_SUPERTYPES } ||
+                    classAnnotations[iface].orEmpty().any { it.value in PROXY_GENERATING_ANNOTATIONS }
+            }
             .associateWith { ClassName("${it.value}$PROXY_SUFFIX") }
 }

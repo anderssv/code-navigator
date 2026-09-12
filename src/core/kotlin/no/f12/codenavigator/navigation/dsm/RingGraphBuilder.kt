@@ -47,7 +47,7 @@ object RingGraphBuilder {
         // role is "it extends a framework type", collapsing port and adapter into one undetectable
         // class. Reassign it: the interface becomes a real port, and a synthetic proxy class (never a
         // real compiled class) stands in as the adapter that implements it.
-        val proxyPorts = ProxyPortDetector.detect(base.interfaces, base.implementedBy, signatureTypes)
+        val proxyPorts = ProxyPortDetector.detect(base.interfaces, base.implementedBy, signatureTypes, classAnnotations)
         val syntheticProxies = proxyPorts.values.toSet()
         val adapterFindings = findings.filterKeys { it !in proxyPorts.keys }
 

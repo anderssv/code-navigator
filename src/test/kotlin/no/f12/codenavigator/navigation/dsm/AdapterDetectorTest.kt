@@ -214,6 +214,49 @@ class AdapterDetectorTest {
     }
 
     @Test
+    fun `a Quarkus reactive messaging emitter is a real framework signal`() {
+        // A real, reproducible case: a class holding a field of type
+        // io.smallrye.reactive.messaging.MutinyEmitter and genuinely calling send/sendAndForget on it
+        // (a real Kafka/AMQP publish) had no signal to be classified by at all -- neither
+        // FRAMEWORK_PACKAGES nor any exclusion list mentioned io.smallrye, so a class that performs a
+        // real outbound message send was silently invisible to adapter classification.
+        val service = ClassName("com.app.fights.FightService")
+        val emitterField = ClassName("com.app.fights.schema.Fight")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, emitterField),
+            projectDeps = emptyList(),
+            externalDeps = listOf(dep(service.value, "io.smallrye.reactive.messaging.MutinyEmitter")),
+        )
+
+        assertEquals(AdapterReason.FRAMEWORK_TYPE, findings[service]?.reason, "a reactive messaging emitter genuinely publishes messages -- real I/O")
+    }
+
+    @Test
+    fun `an Avro generated schema value class is not a sink adapter`() {
+        // A real, reproducible case: org.apache.avro.specific.SpecificRecordBase/SpecificRecordBuilderBase
+        // (the supertype of every Avro-codegen'd class) and org.apache.avro.message.* (the in-class
+        // convenience encoder/decoder every generated class carries as static fields) carry no I/O of
+        // their own -- the class is a pure wire-format value object, structurally identical to a
+        // protobuf-generated message (already excluded via com.google.protobuf.). The actual I/O
+        // boundary is the surrounding messaging/Kafka connector, a separate package.
+        val service = ClassName("com.app.polls.PollService")
+        val schemaClass = ClassName("com.app.fights.schema.Fight")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, schemaClass),
+            projectDeps = listOf(dep(service.value, schemaClass.value)),
+            externalDeps = listOf(
+                dep(schemaClass.value, "org.apache.avro.specific.SpecificRecordBase"),
+                dep(schemaClass.value, "org.apache.avro.message.BinaryMessageEncoder"),
+                dep(schemaClass.value, "org.apache.avro.message.BinaryMessageDecoder"),
+            ),
+        )
+
+        assertEquals(null, findings[schemaClass], "an Avro-generated schema class is a pure value object, same category as a protobuf-generated message")
+    }
+
+    @Test
     fun `a class whose only external reference is a logging library is not a sink adapter`() {
         val service = ClassName("com.app.polls.PollService")
         val retryHelper = ClassName("com.app.RetryKt")
@@ -228,6 +271,25 @@ class AdapterDetectorTest {
         )
 
         assertEquals(null, findings[retryHelper], "logging is ubiquitous and treated as a reliable no-op for boundary-detection purposes, not an I/O signal")
+    }
+
+    @Test
+    fun `Quarkus's own logging facade does not outrank the real reason a class is an adapter`() {
+        // A real, reproducible case: io.quarkus.logging.Log matched the bare "io.quarkus" framework
+        // prefix (nothing in LOGGING_PACKAGES excluded it), so a class whose ONLY other dependency is
+        // a project interface (invisible to externalDeps, since it's project-internal) got classified
+        // as FRAMEWORK_TYPE with "io.quarkus.logging.Log" as evidence -- a misleading reason that made
+        // it look like logging caused the classification, when the class doing real work (dispatching
+        // to a REST client port) has no other external signal to report at all.
+        val service = ClassName("com.app.fights.HeroClient")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service),
+            projectDeps = emptyList(),
+            externalDeps = listOf(dep(service.value, "io.quarkus.logging.Log")),
+        )
+
+        assertEquals(null, findings[service], "Quarkus's own logging facade should be excluded the same way org.slf4j is")
     }
 
     @Test
@@ -348,6 +410,46 @@ class AdapterDetectorTest {
     }
 
     @Test
+    fun `a predicate over a JAX-RS exception type is not a sink adapter`() {
+        // A real, reproducible case: a stateless Predicate<Throwable> inspecting an exception's HTTP
+        // status code (e.g. "is this a 404?") references jakarta.ws.rs.WebApplicationException purely
+        // as a value/marker type -- it performs no I/O of its own, unlike a real jakarta.ws.rs client
+        // type (WebTarget, Client). Deliberately narrow: jakarta.ws.rs itself stays a real signal
+        // elsewhere (WebTarget, Client), this excludes only the exception type.
+        val service = ClassName("com.app.polls.PollService")
+        val predicate = ClassName("com.app.client.Is404Exception")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, predicate),
+            projectDeps = listOf(dep(service.value, predicate.value)),
+            externalDeps = listOf(dep(predicate.value, "jakarta.ws.rs.WebApplicationException")),
+        )
+
+        assertEquals(null, findings[predicate], "WebApplicationException is inspected as a value, not used to perform I/O")
+    }
+
+    @Test
+    fun `reading the status off a JAX-RS Response is not a sink adapter`() {
+        // Same shape one hop further: after excluding WebApplicationException, a class reading
+        // response.getStatus() off jakarta.ws.rs.core.Response -- obtained purely from an exception,
+        // never constructed or sent -- still isn't performing I/O. Response/Response.Builder are
+        // value/builder objects (closer to JsonNode than to ObjectMapper): the actual HTTP write
+        // happens later, inside the JAX-RS runtime, not through this type directly. A resource class
+        // that genuinely answers requests is already flagged via other signals (its @Path annotation,
+        // or a real client's WebTarget/Client), so this exclusion doesn't hide those.
+        val service = ClassName("com.app.polls.PollService")
+        val predicate = ClassName("com.app.client.Is404Exception")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, predicate),
+            projectDeps = listOf(dep(service.value, predicate.value)),
+            externalDeps = listOf(dep(predicate.value, "jakarta.ws.rs.core.Response")),
+        )
+
+        assertEquals(null, findings[predicate], "Response is read as a value here, not constructed or sent")
+    }
+
+    @Test
     fun `a data class whose only field type is Jackson JsonNode is not a sink adapter`() {
         val service = ClassName("com.app.polls.PollService")
         val dto = ClassName("com.app.dto.SessionAndPublicKey")
@@ -401,6 +503,27 @@ class AdapterDetectorTest {
         )
 
         assertEquals(AdapterReason.SINK_WITH_EXTERNAL_CALLS, findings[poolWrapper]?.reason, "GenericObjectPool is the actual pooled-resource lifecycle manager, a real signal unlike its config class")
+    }
+
+    @Test
+    fun `a class whose only external reference is protobuf generated message metadata is not a sink adapter`() {
+        // A real, reproducible case: a protoc-generated *OrBuilder interface / file-descriptor holder
+        // (com.google.protobuf.MessageOrBuilder, com.google.protobuf.GeneratedFile) carries no I/O of
+        // its own -- it's pure message-shape/schema metadata. The actual gRPC transport lives in a
+        // separate io.grpc./io.quarkus.grpc. package, which stays a real, uncovered signal.
+        val service = ClassName("com.app.fights.FightService")
+        val generatedProto = ClassName("com.app.grpc.LocationOrBuilder")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, generatedProto),
+            projectDeps = listOf(dep(service.value, generatedProto.value)),
+            externalDeps = listOf(
+                dep(generatedProto.value, "com.google.protobuf.MessageOrBuilder"),
+                dep(generatedProto.value, "com.google.protobuf.GeneratedFile"),
+            ),
+        )
+
+        assertEquals(null, findings[generatedProto], "protobuf's own generated message/descriptor types carry no I/O; the real gRPC transport is a separate package")
     }
 
     @Test
@@ -469,6 +592,25 @@ class AdapterDetectorTest {
         )
 
         assertEquals(AdapterReason.SINK_WITH_EXTERNAL_CALLS, findings[fileWatcher]?.reason, "java.nio.file is real filesystem I/O and should still count as an adapter signal")
+    }
+
+    @Test
+    fun `java-nio-ByteBuffer usage alone is not a sink adapter`() {
+        // A real, reproducible case: Avro-generated toByteBuffer()/fromByteBuffer() helper methods
+        // reference java.nio.ByteBuffer -- a pure in-memory byte container, not an I/O channel. Real
+        // I/O happens via a java.nio.channels.* channel reading/writing the buffer's bytes elsewhere;
+        // ByteBuffer itself never touches a file, socket, or any external resource. Deliberately
+        // narrow (exact match): java.nio.file.* / java.nio.channels.* stay real signals.
+        val service = ClassName("com.app.polls.PollService")
+        val schemaClass = ClassName("com.app.fights.schema.Fight")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, schemaClass),
+            projectDeps = listOf(dep(service.value, schemaClass.value)),
+            externalDeps = listOf(dep(schemaClass.value, "java.nio.ByteBuffer")),
+        )
+
+        assertEquals(null, findings[schemaClass], "ByteBuffer is a pure in-memory container, no I/O of its own")
     }
 
     @Test

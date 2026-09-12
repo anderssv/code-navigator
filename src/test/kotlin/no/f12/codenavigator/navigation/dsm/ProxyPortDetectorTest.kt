@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation.dsm
 
+import no.f12.codenavigator.navigation.types.AnnotationName
 import no.f12.codenavigator.navigation.types.ClassName
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -68,6 +69,41 @@ class ProxyPortDetectorTest {
             interfaces = emptySet(),
             implementedBy = emptyMap(),
             signatureTypes = mapOf(cls to setOf(ClassName("org.springframework.data.jpa.repository.JpaRepository"))),
+        )
+
+        assertEquals(emptySet(), proxyPorts.keys)
+    }
+
+    @Test
+    fun `a MicroProfile Rest Client interface with no compiled implementor is a proxy port`() {
+        // A real, reproducible case: MicroProfile Rest Client (Quarkus/Helidon/Open Liberty) generates
+        // a runtime proxy implementor for an @RegisterRestClient interface, exactly like Spring Data
+        // does for a repository -- but there is no common supertype to detect it by (any plain interface
+        // can carry this annotation), so it needs its own annotation-based check rather than the
+        // supertype-based one above.
+        val client = ClassName("com.app.HeroRestClient")
+
+        val proxyPorts = ProxyPortDetector.detect(
+            interfaces = setOf(client),
+            implementedBy = emptyMap(),
+            signatureTypes = emptyMap(),
+            classAnnotations = mapOf(client to setOf(AnnotationName("org.eclipse.microprofile.rest.client.inject.RegisterRestClient"))),
+        )
+
+        assertEquals(setOf(client), proxyPorts.keys)
+        assertEquals(ClassName("com.app.HeroRestClient\$GeneratedProxy"), proxyPorts[client])
+    }
+
+    @Test
+    fun `a MicroProfile Rest Client interface with a real compiled implementor is not a proxy port`() {
+        val client = ClassName("com.app.HeroRestClient")
+        val impl = ClassName("com.app.HeroRestClientImpl")
+
+        val proxyPorts = ProxyPortDetector.detect(
+            interfaces = setOf(client),
+            implementedBy = mapOf(client to setOf(impl)),
+            signatureTypes = emptyMap(),
+            classAnnotations = mapOf(client to setOf(AnnotationName("org.eclipse.microprofile.rest.client.inject.RegisterRestClient"))),
         )
 
         assertEquals(emptySet(), proxyPorts.keys)

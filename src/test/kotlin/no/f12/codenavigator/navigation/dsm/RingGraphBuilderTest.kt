@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation.dsm
 
+import no.f12.codenavigator.navigation.types.AnnotationName
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.types.PackageName
 import kotlin.test.Test
@@ -159,5 +160,36 @@ class RingGraphBuilderTest {
         assertEquals(AdapterReason.FRAMEWORK_GENERATED_PROXY, graph.adapterReasons[proxy])
         assertEquals(setOf(proxy), graph.implementedBy[repository])
         assertTrue(proxy in graph.classes)
+    }
+
+    @Test
+    fun `a MicroProfile Rest Client interface is a port with a synthetic proxy, not a framework entry point adapter, despite sharing the Path annotation with server resources`() {
+        // A real, reproducible conflict: @Path marks a JAX-RS server resource as a driving adapter
+        // (AdapterReason.FRAMEWORK_ENTRY_POINT_ANNOTATION) -- but a MicroProfile Rest Client interface
+        // is frequently ALSO @Path-annotated, describing an outbound HTTP call rather than an inbound
+        // one. Without ProxyPortDetector recognizing @RegisterRestClient first, the interface itself
+        // would be misclassified as the adapter (matching the entry-point annotation), instead of a
+        // real port with a synthetic proxy implementor standing in for the framework-generated client.
+        val client = ClassName("com.app.HeroRestClient")
+        val consumer = ClassName("com.app.HeroClient")
+
+        val graph = RingGraphBuilder.build(
+            projectClasses = setOf(client, consumer),
+            projectDeps = listOf(dep(consumer.value, client.value)),
+            externalDeps = emptyList(),
+            classKinds = mapOf(client to ClassKind.INTERFACE),
+            supertypes = emptyList(),
+            classAnnotations = mapOf(
+                client to setOf(
+                    AnnotationName("jakarta.ws.rs.Path"),
+                    AnnotationName("org.eclipse.microprofile.rest.client.inject.RegisterRestClient"),
+                ),
+            ),
+        )
+
+        val proxy = ClassName("com.app.HeroRestClient\$GeneratedProxy")
+        assertEquals(setOf(proxy), graph.ioClasses, "the client interface itself is a port, not the adapter")
+        assertEquals(AdapterReason.FRAMEWORK_GENERATED_PROXY, graph.adapterReasons[proxy])
+        assertEquals(setOf(proxy), graph.implementedBy[client])
     }
 }

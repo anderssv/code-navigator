@@ -124,12 +124,14 @@ object AdapterDetector {
         (NON_ADAPTER_SIGNAL_PACKAGES + extraValuePackages).none { prefix -> type.value.startsWith(prefix) }
 
     private fun isFrameworkType(type: ClassName, extraFrameworkPackages: Set<String>): Boolean {
-        // Value libraries and logging are a carve-out that beats even a broad framework prefix
-        // (e.g. bare "javax."): javax.xml.datatype is JAXB's pure date value type, no I/O of its
-        // own, but it would otherwise match "javax." — the same broad prefix that correctly covers
-        // javax.net.ssl (TLS), javax.xml.parsers (XML parsing), and javax.security.auth
-        // (certificates) elsewhere in real code. Narrowing "javax." itself risks silently losing
-        // those real signals; excluding known non-I/O types first is safer and more precise.
+        // Value libraries, logging, and exact-match value types are a carve-out that beats even a
+        // broad framework prefix (e.g. bare "javax."): javax.xml.datatype is JAXB's pure date value
+        // type, no I/O of its own, but it would otherwise match "javax." — the same broad prefix that
+        // correctly covers javax.net.ssl (TLS), javax.xml.parsers (XML parsing), and
+        // javax.security.auth (certificates) elsewhere in real code. Narrowing "javax." itself risks
+        // silently losing those real signals; excluding known non-I/O types first is safer and more
+        // precise.
+        if (type.value in EXACT_VALUE_TYPES) return false
         if ((VALUE_LIBRARY_PACKAGES + LOGGING_PACKAGES).any { type.value.startsWith(it) }) return false
         return (FRAMEWORK_PACKAGES + extraFrameworkPackages).any { prefix -> type.value.startsWith(prefix) }
     }
@@ -156,6 +158,21 @@ object AdapterDetector {
         "java.io.Serializable",
         "com.fasterxml.jackson.databind.JsonNode",
         "org.apache.commons.pool2.impl.GenericObjectPoolConfig",
+        // jakarta.ws.rs.WebApplicationException: a pure exception/value type inspected for its status
+        // code (e.g. "is this a 404?") -- no I/O of its own, unlike a real jakarta.ws.rs client type
+        // (WebTarget, Client), which stay real signals.
+        "jakarta.ws.rs.WebApplicationException",
+        "javax.ws.rs.WebApplicationException",
+        // jakarta.ws.rs.core.Response: a value/builder object (closer to JsonNode than to
+        // ObjectMapper) -- the actual HTTP write happens later, inside the JAX-RS runtime, not
+        // through this type directly. A resource class that genuinely answers requests is already
+        // flagged via other signals (its @Path annotation, or a real client's WebTarget/Client).
+        "jakarta.ws.rs.core.Response",
+        "javax.ws.rs.core.Response",
+        // java.nio.ByteBuffer: a pure in-memory byte container, no I/O of its own -- real I/O happens
+        // via a java.nio.channels.* channel reading/writing it elsewhere. java.nio.file./
+        // java.nio.channels. stay real signals; this is narrower than either.
+        "java.nio.ByteBuffer",
     )
 
     // Pure value/DSL libraries: types that carry data or build markup, with no I/O of their own.
@@ -182,6 +199,17 @@ object AdapterDetector {
         // stays uncovered and so still counts as a real signal.
         "io.opentelemetry.api.",
         "io.opentelemetry.context.",
+        // Protobuf's generated message/descriptor infrastructure (*OrBuilder interfaces, the
+        // per-.proto GeneratedFile descriptor holder) is pure message-shape/schema metadata with no
+        // I/O of its own -- the actual gRPC transport lives in a separate io.grpc./io.quarkus.grpc.
+        // package, which stays a real, uncovered signal.
+        "com.google.protobuf.",
+        // Avro's generated-schema infrastructure (SpecificRecordBase/SpecificRecordBuilderBase, the
+        // per-class BinaryMessageEncoder/Decoder every generated record carries as static
+        // convenience fields) is pure wire-format value/codec metadata, no I/O of its own --
+        // structurally the same category as the protobuf case above. The actual I/O boundary is the
+        // surrounding messaging/Kafka connector (a separate package), which stays a real signal.
+        "org.apache.avro.",
     )
 
     // Logging is used everywhere and, for the purposes of adapter classification, is treated as a
@@ -191,6 +219,12 @@ object AdapterDetector {
     private val LOGGING_PACKAGES = setOf(
         "org.slf4j.",
         "net.logstash.logback.",
+        // Quarkus's own logging facade (io.quarkus.logging.Log) -- without this, it fell through to
+        // the bare "io.quarkus" framework prefix and outranked the actual reason a class was an
+        // adapter, since a logging call is often the only body-level reference visible when the real
+        // dependency is on a project-internal port interface (invisible to externalDeps).
+        "io.quarkus.logging.",
+        "org.jboss.logging.",
     )
 
     private val NON_ADAPTER_SIGNAL_PACKAGES = STDLIB_PACKAGES + VALUE_LIBRARY_PACKAGES + LOGGING_PACKAGES + EXACT_VALUE_TYPES
@@ -221,5 +255,9 @@ object AdapterDetector {
         "com.zaxxer.hikari",
         "org.eclipse.microprofile",
         "io.grpc", "net.devh.boot.grpc",
+        // Quarkus/SmallRye reactive messaging (MutinyEmitter, @Channel/@Incoming consumers) is the
+        // Kafka/AMQP publish-subscribe boundary -- a class holding one of these and genuinely calling
+        // send/sendAndForget performs real outbound I/O.
+        "io.smallrye.reactive.messaging",
     )
 }
