@@ -6,9 +6,34 @@ import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistry
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.types.SourceSet
 
+/**
+ * Which kind of caller a [TestCouplingViolation] was found in. [TEST] is the original TTTD check
+ * (a test calling a port directly instead of through the domain service it's testing); [ADAPTER]
+ * generalizes the same machinery one layer over — a driving adapter (a route/controller, not a
+ * service-tier class) calling a port *write* method directly, meaning the use-case orchestration
+ * that write implies has nowhere to live but the adapter itself. The dependency graph a class
+ * *does* have never shows this — cnavRings would call this same edge a completely healthy adapter
+ * calling a port. Only the fact that no service-tier class sits between them reveals it.
+ */
+enum class CouplingSubjectKind {
+    TEST,
+    ADAPTER,
+}
+
 data class TestCouplingConfig(
     val ports: Regex,
     val exclude: Regex? = null,
+    val subjects: Set<CouplingSubjectKind> = setOf(CouplingSubjectKind.TEST),
+    /**
+     * Candidate driving-adapter classes for [CouplingSubjectKind.ADAPTER] — precomputed by the
+     * orchestrator from `cnavRings`' own classification (adapters minus service-tier minus
+     * framework-generated proxies), not derived here. [TestCouplingBuilder.analyze] further
+     * narrows this to exclude classes that implement one of [ports] themselves (a port's own
+     * implementor calling its own interface isn't the shape this check is for).
+     */
+    val candidateAdapterClasses: Set<ClassName> = emptySet(),
+    val writeMethods: Set<String> = emptySet(),
+    val readMethods: Set<String> = emptySet(),
 )
 
 data class TestCouplingViolation(
@@ -16,6 +41,7 @@ data class TestCouplingViolation(
     val testMethod: String,
     val portInterface: ClassName,
     val portMethod: MethodRef,
+    val subjectKind: CouplingSubjectKind = CouplingSubjectKind.TEST,
 )
 
 data class TestCouplingResult(
@@ -25,9 +51,20 @@ data class TestCouplingResult(
     val portInterfaces: Set<ClassName> = emptySet(),
     val testClassCallTargets: Map<ClassName, Map<ClassName, Int>> = emptyMap(),
 ) {
-    /** [violations] excluding ones from adapter tests — adapter tests are expected to call ports directly, so their "violations" aren't real TTTD problems. This is what every formatter (text/detail/LLM) reports. */
+    /**
+     * [violations] excluding ones from adapter *tests* — adapter tests are expected to call ports
+     * directly, so their "violations" aren't real TTTD problems. This exclusion only ever applied
+     * to [CouplingSubjectKind.TEST] violations; [CouplingSubjectKind.ADAPTER] violations have no
+     * equivalent "expected to call the port directly" carve-out (that's the whole point of the
+     * check), so they're always actionable. This is what every formatter (text/detail/LLM) reports.
+     */
     val actionableViolations: List<TestCouplingViolation>
-        get() = violations.filter { verdictFor(it.testClass) != TestCouplingVerdict.ADAPTER_TEST }
+        get() = violations.filter { v ->
+            when (v.subjectKind) {
+                CouplingSubjectKind.TEST -> verdictFor(v.testClass) != TestCouplingVerdict.ADAPTER_TEST
+                CouplingSubjectKind.ADAPTER -> true
+            }
+        }
 
     fun verdictFor(testClass: ClassName): TestCouplingVerdict {
         if (isAdapterTest(testClass)) return TestCouplingVerdict.ADAPTER_TEST
@@ -110,39 +147,66 @@ object TestCouplingBuilder {
             interfaceRegistry.implementorsOf(iface).map { it.className }
         }.toSet()
 
+        // A port's own implementor calling its own interface isn't the shape this check is for —
+        // exclude it from the adapter-subject candidate set (the caller here has to be a *different*
+        // class reaching directly into the port, not the port's own implementation).
+        val adapterClasses: Set<ClassName> = config.candidateAdapterClasses - portImplementors
+
         val violations = mutableListOf<TestCouplingViolation>()
         val nonPortCalls = mutableMapOf<ClassName, Int>()
         val testClassCallTargets = mutableMapOf<ClassName, MutableMap<ClassName, Int>>()
 
         callGraph.forEachEdge { caller, callee ->
-            if (callGraph.sourceSetOf(caller.className) != SourceSet.TEST) return@forEachEdge
-            val effectiveTestClass = outerClassName(caller.className)
-            if (!callGraph.hasTestAnnotations(effectiveTestClass)) return@forEachEdge
-            if (config.exclude != null && config.exclude.containsMatchIn(effectiveTestClass.value)) return@forEachEdge
+            val callerClass = outerClassName(caller.className)
+            if (config.exclude != null && config.exclude.containsMatchIn(callerClass.value)) return@forEachEdge
             if (isAssertionLibraryCall(callee.className)) return@forEachEdge
 
-            // Track all call targets per (outer) test class
-            testClassCallTargets
-                .getOrPut(effectiveTestClass) { mutableMapOf() }
-                .merge(callee.className, 1) { a, b -> a + b }
+            val callerSourceSet = callGraph.sourceSetOf(caller.className)
+            val isTestSubject = CouplingSubjectKind.TEST in config.subjects &&
+                callerSourceSet == SourceSet.TEST && callGraph.hasTestAnnotations(callerClass)
+            val isAdapterSubject = CouplingSubjectKind.ADAPTER in config.subjects &&
+                callerSourceSet != SourceSet.TEST && callerClass in adapterClasses
 
-            val portInterface = resolvePortInterface(callee, portMethods, interfaceRegistry)
+            if (isTestSubject) {
+                // Track all call targets per (outer) test class — used by the adapter-test heuristic below.
+                testClassCallTargets
+                    .getOrPut(callerClass) { mutableMapOf() }
+                    .merge(callee.className, 1) { a, b -> a + b }
 
-            if (portInterface != null) {
-                violations.add(
-                    TestCouplingViolation(
-                        testClass = effectiveTestClass,
-                        testMethod = caller.methodName,
-                        portInterface = portInterface,
-                        portMethod = callee,
+                val portInterface = resolvePortInterface(callee, portMethods, interfaceRegistry)
+                if (portInterface != null) {
+                    violations.add(
+                        TestCouplingViolation(
+                            testClass = callerClass,
+                            testMethod = caller.methodName,
+                            portInterface = portInterface,
+                            portMethod = callee,
+                            subjectKind = CouplingSubjectKind.TEST,
+                        )
                     )
-                )
-            } else {
-                nonPortCalls[effectiveTestClass] = (nonPortCalls[effectiveTestClass] ?: 0) + 1
+                } else {
+                    nonPortCalls[callerClass] = (nonPortCalls[callerClass] ?: 0) + 1
+                }
+            }
+
+            if (isAdapterSubject) {
+                val portInterface = resolvePortInterface(callee, portMethods, interfaceRegistry)
+                if (portInterface != null && PortMethodClassifier.isWrite(portInterface, callee.methodName, config.writeMethods, config.readMethods)) {
+                    violations.add(
+                        TestCouplingViolation(
+                            testClass = callerClass,
+                            testMethod = caller.methodName,
+                            portInterface = portInterface,
+                            portMethod = callee,
+                            subjectKind = CouplingSubjectKind.ADAPTER,
+                        )
+                    )
+                }
             }
         }
 
         return TestCouplingResult(
+
             violations = violations,
             testClassNonPortCalls = nonPortCalls,
             portImplementors = portImplementors,

@@ -8,6 +8,7 @@ import no.f12.codenavigator.navigation.testcoupling.TestCouplingGuidance
 import no.f12.codenavigator.navigation.testcoupling.TestCouplingOrchestrator
 import no.f12.codenavigator.navigation.testcoupling.TestCouplingTaskConfig
 import org.apache.maven.plugin.AbstractMojo
+import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
 import org.apache.maven.plugins.annotations.Mojo
@@ -38,6 +39,21 @@ class TestCouplingMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "subject")
+    private var subject: String? = null
+
+    @Parameter(property = "write-methods")
+    private var writeMethods: String? = null
+
+    @Parameter(property = "read-methods")
+    private var readMethods: String? = null
+
+    @Parameter(property = "fail-on-violation")
+    private var failOnViolation: String? = null
+
+    @Parameter(property = "max-violations")
+    private var maxViolations: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -54,7 +70,7 @@ class TestCouplingMojo : AbstractMojo() {
         val cacheDir = File(project.build.directory, "cnav")
         val reportFile = File(cacheDir, "skipped-files.txt")
 
-        val output = TestCouplingOrchestrator.run(config, taggedDirs, cacheDir, reportFile)
+        val output = TestCouplingOrchestrator.run(config, taggedDirs, cacheDir, reportFile, project.basedir)
 
         output.skippedFileWarning?.let { log.warn(it) }
 
@@ -88,6 +104,12 @@ class TestCouplingMojo : AbstractMojo() {
             config.format,
             guidance,
         ))
+
+        if (config.failOnViolation && result.actionableViolations.size > config.maxViolations) {
+            throw MojoFailureException(
+                "cnav:test-coupling found ${result.actionableViolations.size} violation(s), exceeding --max-violations=${config.maxViolations}",
+            )
+        }
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
@@ -96,5 +118,10 @@ class TestCouplingMojo : AbstractMojo() {
         detail?.let { put("detail", it) }
         exclude?.let { put("exclude", it) }
         scope?.let { put("scope", it) }
+        subject?.let { put("subject", it) }
+        writeMethods?.let { put("write-methods", it) }
+        readMethods?.let { put("read-methods", it) }
+        failOnViolation?.let { put("fail-on-violation", it) }
+        maxViolations?.let { put("max-violations", it) }
     }
 }

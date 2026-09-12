@@ -424,6 +424,167 @@ class TestCouplingBuilderTest {
         assertEquals(listOf("com.example.SearchServiceTest"), violatingClasses)
     }
 
+    // --- ADAPTER subject: use-case orchestration hiding in a driving adapter ---
+
+    // [ADAPTER] A route/handler calling a port WRITE method directly is flagged
+    @Test
+    fun adapterCallingPortWriteMethodIsFlagged() {
+        val graph = callGraphWithSourceSets(
+            edges = listOf(
+                method("com.example.AdminRoutesKt\$configureAdminRoutes\$3\$12", "invokeSuspend") to method("com.example.PollsRepository", "updatePoll"),
+            ),
+            testClasses = emptySet(),
+            declaredMethods = mapOf(ClassName("com.example.PollsRepository") to setOf("updatePoll", "getPoll", "archive")),
+        )
+        val interfaceRegistry = interfaceRegistryWith(
+            "com.example.PollsRepository" to listOf("com.example.PollsRepositoryImpl"),
+        )
+        val config = TestCouplingConfig(
+            ports = Regex(".*Repository"),
+            subjects = setOf(CouplingSubjectKind.ADAPTER),
+            candidateAdapterClasses = setOf(ClassName("com.example.AdminRoutesKt")),
+        )
+
+        val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, config)
+
+        assertEquals(1, result.violations.size)
+        val violation = result.violations[0]
+        assertEquals(CouplingSubjectKind.ADAPTER, violation.subjectKind)
+        assertEquals("com.example.AdminRoutesKt", violation.testClass.value, "should be attributed to the outer class, not the compiler-generated lambda/coroutine inner class")
+        assertEquals("updatePoll", violation.portMethod.methodName)
+    }
+
+    // [ADAPTER] A route/handler calling a port READ method directly is not flagged — read-side
+    // pass-through from a handler is idiomatic and flagging it would bury the write-side signal.
+    @Test
+    fun adapterCallingPortReadMethodIsNotFlagged() {
+        val graph = callGraphWithSourceSets(
+            edges = listOf(
+                method("com.example.AdminRoutesKt", "handler") to method("com.example.PollsRepository", "getPoll"),
+            ),
+            testClasses = emptySet(),
+            declaredMethods = mapOf(ClassName("com.example.PollsRepository") to setOf("updatePoll", "getPoll", "archive")),
+        )
+        val interfaceRegistry = interfaceRegistryWith(
+            "com.example.PollsRepository" to listOf("com.example.PollsRepositoryImpl"),
+        )
+        val config = TestCouplingConfig(
+            ports = Regex(".*Repository"),
+            subjects = setOf(CouplingSubjectKind.ADAPTER),
+            candidateAdapterClasses = setOf(ClassName("com.example.AdminRoutesKt")),
+        )
+
+        val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, config)
+
+        assertEquals(0, result.violations.size)
+    }
+
+    // [ADAPTER] A service (not a candidate adapter class) calling a port write method is healthy
+    // and not flagged — the whole point of a service tier is to own exactly this call.
+    @Test
+    fun serviceCallingPortWriteMethodIsNotFlaggedAsAdapterViolation() {
+        val graph = callGraphWithSourceSets(
+            edges = listOf(
+                method("com.example.DateToggleService", "toggle") to method("com.example.PollsRepository", "updatePoll"),
+            ),
+            testClasses = emptySet(),
+            declaredMethods = mapOf(ClassName("com.example.PollsRepository") to setOf("updatePoll", "getPoll", "archive")),
+        )
+        val interfaceRegistry = interfaceRegistryWith(
+            "com.example.PollsRepository" to listOf("com.example.PollsRepositoryImpl"),
+        )
+        val config = TestCouplingConfig(
+            ports = Regex(".*Repository"),
+            subjects = setOf(CouplingSubjectKind.ADAPTER),
+            // DateToggleService is NOT in the candidate adapter set (it's service-tier, per rings) —
+            // this is what the orchestrator's rings-derived candidateAdapterClasses achieves in practice.
+            candidateAdapterClasses = setOf(ClassName("com.example.AdminRoutesKt")),
+        )
+
+        val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, config)
+
+        assertEquals(0, result.violations.size)
+    }
+
+    // [ADAPTER] The healthy/unhealthy contrast for the SAME write method resolves correctly when
+    // both callers are present in one run — this is the strongest evidence the check separates
+    // signal from noise rather than being tuned to one shape.
+    @Test
+    fun sameWriteMethodSeparatesHealthyServiceCallerFromUnhealthyAdapterCaller() {
+        val graph = callGraphWithSourceSets(
+            edges = listOf(
+                method("com.example.DateToggleService", "toggle") to method("com.example.PollsRepository", "updatePoll"),
+                method("com.example.AdminRoutesKt", "handler") to method("com.example.PollsRepository", "updatePoll"),
+            ),
+            testClasses = emptySet(),
+            declaredMethods = mapOf(ClassName("com.example.PollsRepository") to setOf("updatePoll", "getPoll", "archive")),
+        )
+        val interfaceRegistry = interfaceRegistryWith(
+            "com.example.PollsRepository" to listOf("com.example.PollsRepositoryImpl"),
+        )
+        val config = TestCouplingConfig(
+            ports = Regex(".*Repository"),
+            subjects = setOf(CouplingSubjectKind.ADAPTER),
+            candidateAdapterClasses = setOf(ClassName("com.example.AdminRoutesKt")),
+        )
+
+        val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, config)
+
+        assertEquals(1, result.violations.size)
+        assertEquals("com.example.AdminRoutesKt", result.violations[0].testClass.value)
+    }
+
+    // [ADAPTER] A port's own implementor is never itself flagged as an adapter-subject violation,
+    // even if it happens to be listed in candidateAdapterClasses (defense in depth — the orchestrator
+    // shouldn't produce this, but the builder must not rely on that alone).
+    @Test
+    fun portImplementorIsNeverFlaggedAsAdapterSubject() {
+        val graph = callGraphWithSourceSets(
+            edges = listOf(
+                method("com.example.PollsRepositoryImpl", "internalHelper") to method("com.example.PollsRepository", "updatePoll"),
+            ),
+            testClasses = emptySet(),
+            declaredMethods = mapOf(ClassName("com.example.PollsRepository") to setOf("updatePoll", "getPoll", "archive")),
+        )
+        val interfaceRegistry = interfaceRegistryWith(
+            "com.example.PollsRepository" to listOf("com.example.PollsRepositoryImpl"),
+        )
+        val config = TestCouplingConfig(
+            ports = Regex(".*Repository"),
+            subjects = setOf(CouplingSubjectKind.ADAPTER),
+            candidateAdapterClasses = setOf(ClassName("com.example.PollsRepositoryImpl")),
+        )
+
+        val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, config)
+
+        assertEquals(0, result.violations.size)
+    }
+
+    // [ADAPTER] writeMethods/readMethods overrides apply to the adapter subject
+    @Test
+    fun writeMethodOverrideAppliesToAdapterSubject() {
+        val graph = callGraphWithSourceSets(
+            edges = listOf(
+                method("com.example.AdminRoutesKt", "handler") to method("com.example.PollsRepository", "archive"),
+            ),
+            testClasses = emptySet(),
+            declaredMethods = mapOf(ClassName("com.example.PollsRepository") to setOf("updatePoll", "getPoll", "archive")),
+        )
+        val interfaceRegistry = interfaceRegistryWith(
+            "com.example.PollsRepository" to listOf("com.example.PollsRepositoryImpl"),
+        )
+        val config = TestCouplingConfig(
+            ports = Regex(".*Repository"),
+            subjects = setOf(CouplingSubjectKind.ADAPTER),
+            candidateAdapterClasses = setOf(ClassName("com.example.AdminRoutesKt")),
+            writeMethods = setOf("PollsRepository.archive"),
+        )
+
+        val result = TestCouplingBuilder.analyze(graph, interfaceRegistry, config)
+
+        assertEquals(1, result.violations.size, "archive doesn't match the built-in write-verb heuristic, but the override should still flag it")
+    }
+
     // --- Test helpers ---
 
     private fun callGraphWithSourceSets(

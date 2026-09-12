@@ -11,6 +11,11 @@ data class TestCouplingTaskConfig(
     val exclude: Regex?,
     val scope: Scope,
     val format: OutputFormat,
+    val subjects: Set<CouplingSubjectKind>,
+    val writeMethods: Set<String>,
+    val readMethods: Set<String>,
+    val failOnViolation: Boolean,
+    val maxViolations: Int,
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): TestCouplingTaskConfig {
@@ -23,7 +28,20 @@ data class TestCouplingTaskConfig(
                 exclude = excludeString?.let { Regex(it) },
                 scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
                 format = ParamDef.parseFormat(properties),
+                subjects = parseSubjects(TaskRegistry.COUPLING_SUBJECT.parseFrom(properties)),
+                writeMethods = TaskRegistry.WRITE_METHODS.parseFrom(properties).toSet(),
+                readMethods = TaskRegistry.READ_METHODS.parseFrom(properties).toSet(),
+                failOnViolation = TaskRegistry.FAIL_ON_VIOLATION.parseFrom(properties),
+                maxViolations = TaskRegistry.MAX_VIOLATIONS.parseFrom(properties),
             )
+        }
+
+        private fun parseSubjects(value: String?): Set<CouplingSubjectKind> = when (value?.lowercase()) {
+            null, "tests", "test" -> setOf(CouplingSubjectKind.TEST)
+            "adapters", "adapter" -> setOf(CouplingSubjectKind.ADAPTER)
+            "both" -> setOf(CouplingSubjectKind.TEST, CouplingSubjectKind.ADAPTER)
+            else -> error("Invalid --subject '$value'. Must be one of: tests, adapters, both.")
         }
     }
 }
+

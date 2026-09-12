@@ -289,6 +289,9 @@ object TaskRegistry {
     val FROM_PACKAGE = ParamDef("from-package", "<pkg>", "Source package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val TO_PACKAGE = ParamDef("to-package", "<pkg>", "Target package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PORTS = ParamDef("ports", "<regex>", "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val COUPLING_SUBJECT = ParamDef("subject", "tests|adapters|both", "Who's checked for calling a port directly instead of through the domain service that owns it: tests (default, the original TTTD check), adapters (a driving adapter — a route/controller, not a service-tier class — calling a port WRITE method directly, meaning that write's orchestration has nowhere to live but the adapter), or both", flag = false, defaultValue = "tests", enhancePattern = false, type = ParamType.STRING)
+    val WRITE_METHODS = ParamDef("write-methods", "<Iface.method1>,<Iface.method2>", "Force these port methods (simple-interface-name.method, comma-separated) to be treated as writes for --subject=adapters, overriding the name-heuristic (add/update/delete/save/create/insert/remove/finalize/migrate/... prefixes)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
+    val READ_METHODS = ParamDef("read-methods", "<Iface.method1>,<Iface.method2>", "Force these port methods (simple-interface-name.method, comma-separated) to be treated as reads for --subject=adapters, overriding the name-heuristic", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
     val AFFINITY_THRESHOLD = ParamDef("threshold", "<N>", "Max number of consumer domains to still count as single-owner", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
     val RING_MODE = ParamDef("mode", "removed", "REMOVED: cnavRings has no modes. Both former modes (emergent, package) computed topological depth, not hexagonal rings. Passing this now fails with an explanation rather than silently analysing something else.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val BOOTSTRAP_CONFIG = ParamDef("bootstrap-config", "true", "Generate a starting cnav-config.json based on emergent ring analysis — best-effort suggestions meant to be reviewed and tweaked before use", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
@@ -1009,13 +1012,14 @@ object TaskRegistry {
 
     val TEST_COUPLING = TaskDef(
         goal = "test-coupling",
-        description = "Detect tests that bypass domain services by calling port interface methods directly (TTTD violations)",
-        params = FORMAT_PARAMS + listOf(PORTS, DETAIL, EXCLUDE) + SOURCE_SET_PARAMS,
+        description = "Detect callers that bypass domain services by calling port interface methods directly. --subject=tests (default) is the original TTTD check; --subject=adapters checks driving adapters (routes/controllers) for use-case orchestration hiding behind a direct port WRITE call, invisible to cnavRings (an adapter calling a port is exactly what dependency-direction analysis permits)",
+        params = FORMAT_PARAMS + listOf(PORTS, DETAIL, EXCLUDE, COUPLING_SUBJECT, WRITE_METHODS, READ_METHODS, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
             UsageExample(listOf(PORTS to "\".*Repository|.*Client\"")),
             UsageExample(listOf(PORTS to "\".*Repository|.*Client|.*Gateway\"", DETAIL to "true")),
+            UsageExample(listOf(PORTS to "\".*Repository\"", COUPLING_SUBJECT to "adapters")),
         ),
     )
 

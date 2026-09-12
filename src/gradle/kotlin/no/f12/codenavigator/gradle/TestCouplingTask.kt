@@ -35,11 +35,36 @@ abstract class TestCouplingTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
+    @Option(option = "subject", description = "Who's checked for calling a port directly: tests (default), adapters, or both")
+    @get:Internal
+    var subject: String? = null
+
+    @Option(option = "write-methods", description = "Force these port methods (Iface.method, comma-separated) to be treated as writes for --subject=adapters")
+    @get:Internal
+    var writeMethods: String? = null
+
+    @Option(option = "read-methods", description = "Force these port methods (Iface.method, comma-separated) to be treated as reads for --subject=adapters")
+    @get:Internal
+    var readMethods: String? = null
+
+    @Option(option = "fail-on-violation", description = "Fail the build when violations exceed the configured threshold")
+    @get:Internal
+    var failOnViolation: String? = null
+
+    @Option(option = "max-violations", description = "Max allowed violations before failing the build (used with --fail-on-violation)")
+    @get:Internal
+    var maxViolations: String? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         ports?.let { put("ports", it) }
         detail?.let { put("detail", it) }
         exclude?.let { put("exclude", it) }
         scope?.let { put("scope", it) }
+        subject?.let { put("subject", it) }
+        writeMethods?.let { put("write-methods", it) }
+        readMethods?.let { put("read-methods", it) }
+        failOnViolation?.let { put("fail-on-violation", it) }
+        maxViolations?.let { put("max-violations", it) }
     }
 
     @TaskAction
@@ -57,7 +82,7 @@ abstract class TestCouplingTask : CodeNavigatorTask() {
         val cacheDir = File(project.layout.buildDirectory.asFile.get(), "cnav")
         val reportFile = File(cacheDir, "skipped-files.txt")
 
-        val output = TestCouplingOrchestrator.run(config, taggedDirs, cacheDir, reportFile)
+        val output = TestCouplingOrchestrator.run(config, taggedDirs, cacheDir, reportFile, project.projectDir)
 
         output.skippedFileWarning?.let { logger.warn(it) }
 
@@ -91,5 +116,12 @@ abstract class TestCouplingTask : CodeNavigatorTask() {
             config.format,
             guidance,
         ))
+
+        if (config.failOnViolation && result.actionableViolations.size > config.maxViolations) {
+            throw GradleException(
+                "Test coupling check failed: ${result.actionableViolations.size} violation(s) exceed the allowed maximum of ${config.maxViolations}. " +
+                    "See output above for details.",
+            )
+        }
     }
 }

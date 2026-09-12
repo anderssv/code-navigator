@@ -576,7 +576,19 @@ Would need `ConvergeOrchestrator`'s risk-mode entries (per-class) to cross-refer
 
 ---
 
-## Internal code quality
+## Is the inside doing any work? (application-layer health, beyond dependency direction)
+
+Named from field feedback: every existing structural check (`cnavRings`, `cnavCycles`, `cnavBalance`, `cnavStrength`) measures dependency *direction* — a driving adapter calling a port is exactly what hexagonal architecture permits, so all four can report a clean scorecard on a codebase whose application layer is hollow (use-case orchestration living in route handlers instead of domain services). "Zero violations" on those checks is a floor, not a verdict. This section is for checks that measure something direction analysis structurally cannot see.
+
+### The wider family: other "is the inside doing any work?" signals raised alongside the above, not yet implemented
+**FUTURE** | **Value: medium-high (varies per item)** | **Effort: varies** | Source: field-test(greitt, independent LLM code review)
+
+Raised as a possible release theme, not committed to. In the reviewer's own assessed order of tractability:
+- **Domain reads the wall clock directly.** A ring-0/domain class calling `ZonedDateTime.now(...)`/`Instant.now()`/`System.currentTimeMillis()`/`UUID.randomUUID()` as a static call, in a codebase that otherwise threads an injected `Clock`/ID-generator through its services — invisible to every existing check since it's a static call on a type the file already imports for unrelated reasons (field types, etc.), not a constructor-injected dependency `cnavRings` would ever see as a boundary crossing. Assessed by the reviewer as "genuinely easy [to detect from bytecode] and broadly useful" — a bounded, well-known static-method blocklist checked against ring-0 class bytecode, no rings/service-tier plumbing needed. The most tractable item in this family if picked up.
+- **Pass-through services.** A service-tier class whose method body is a single delegating call straight to a port, adding a layer of indirection without absorbing any actual logic — the mirror image of the adapter-coupling check above (there, logic is missing from where it belongs; here, a class exists but is empty ceremony). Detectable via a call-graph shape check (a service method with exactly one outgoing call, straight to a port), but the false-positive risk is real (some pass-through methods are legitimately simple) and wasn't stress-tested against real code the way the adapter-coupling check was.
+- **Policy split across a port boundary.** A domain rule's constants/parameters (e.g. two cutoff thresholds defining an "expiring soon" window) passed *through* a port call rather than being owned entirely on one side, so half the policy lives in the service and half lives in the query/SQL it drives. Assessed by the reviewer as "harder; a signature smell at best" — no concrete detection design proposed, lowest-confidence item in the family.
+
+
 
 ### ~~Separate finding from doing in PSI refactoring operations~~ — DONE (v0.1.113-SNAPSHOT)
 **DONE** | **Value: high** | **Effort: medium** | Source: internal
