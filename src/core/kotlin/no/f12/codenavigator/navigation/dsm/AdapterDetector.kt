@@ -125,13 +125,21 @@ object AdapterDetector {
         "org.jetbrains.annotations.",
     )
 
-    // Exact JDK marker interfaces (not prefixes): implementing them declares eligibility for a JDK
-    // mechanism but performs no I/O of its own — java.io.Serializable is the classic case (a JPA
-    // @MappedSuperclass base entity implementing it, for example, is not thereby an adapter).
-    // Deliberately narrow and exact-match rather than a broad "java.io." prefix, since java.io.File/
-    // java.io.InputStream etc. are real filesystem I/O and must keep counting as adapter signals.
-    private val JDK_MARKER_INTERFACES = setOf(
+    // Exact-match value types (not prefixes): each one is a specific class known to carry no I/O of
+    // its own, even though it comes from a library/package that otherwise legitimately signals an
+    // adapter. Deliberately narrow — the containing package is NOT excluded, since it also contains
+    // real adapter-relevant types this must not mask:
+    //   - java.io.Serializable: a JDK marker interface (implementing it declares eligibility for a
+    //     JDK mechanism, performs no I/O) — java.io.File/InputStream stay real signals.
+    //   - com.fasterxml.jackson.databind.JsonNode: a generic JSON tree value holder — ObjectMapper
+    //     (the actual marshaling engine) stays a real signal.
+    //   - org.apache.commons.pool2.impl.GenericObjectPoolConfig: pure pool-tuning config properties
+    //     (maxTotal, minIdle, timeouts) — GenericObjectPool/PooledObjectFactory (the actual pooled
+    //     resource lifecycle) stay real signals.
+    private val EXACT_VALUE_TYPES = setOf(
         "java.io.Serializable",
+        "com.fasterxml.jackson.databind.JsonNode",
+        "org.apache.commons.pool2.impl.GenericObjectPoolConfig",
     )
 
     // Pure value/DSL libraries: types that carry data or build markup, with no I/O of their own.
@@ -169,7 +177,7 @@ object AdapterDetector {
         "net.logstash.logback.",
     )
 
-    private val NON_ADAPTER_SIGNAL_PACKAGES = STDLIB_PACKAGES + VALUE_LIBRARY_PACKAGES + LOGGING_PACKAGES + JDK_MARKER_INTERFACES
+    private val NON_ADAPTER_SIGNAL_PACKAGES = STDLIB_PACKAGES + VALUE_LIBRARY_PACKAGES + LOGGING_PACKAGES + EXACT_VALUE_TYPES
 
     // A project can extend this list per-project via cnav-config.json's rings.frameworkPackages, for
     // internal/private I/O client libraries that could never belong in a built-in, cross-project list.

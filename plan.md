@@ -155,36 +155,6 @@ First Java/Maven field test of the reworked `cnavRings` (all prior field tests �
 
 **Tests**: `CompositionRootDetectorTest` — 1 new (framework-invoked controller no longer a composition root candidate). `AdapterDetectorTest` — 2 new (project-namespace-collision guard; `java.io.Serializable` exact exclusion). `ProxyPortDetectorTest` (new, 5 cases). `RingGraphBuilderTest` — 1 new (Spring Data repository interface becomes a port with a synthetic proxy adapter).
 
-### `cnavRings` evidence/hint coverage gaps — composition roots and project-class evidence
-~~**ACTIVE**~~ **DONE (v0.1.115-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: design-discussion
-
-Raised directly after the Spring PetClinic field test above: would an agent reading `cnavRings`' output cold (no prior context, none of the debugging done to find the PetClinic bugs) actually have had enough information to act on any of these bugs itself, via the evidence/hint mechanism already built? Audited honestly against what actually happened, the answer was no on two counts:
-
-1. **Composition roots carried no evidence at all** — just a bare class list, no explanation of *why* a class was excluded as an assembler. An agent seeing a controller misclassified as a composition root had no signal to act on, and no config override existed to fix it even if it noticed. Fixed: `CompositionRootDetector.detect` now returns `Map<ClassName, ClassName>` (root → the adapter it wires) instead of a bare `Set`; `RingGraph` carries it as `compositionRootEvidence`; the composition-roots section prints `ApplicationKt (wires: OwnerRepositoryImpl)` and a hint explaining the structural criterion and pointing at the new `rings.notCompositionRoots` config override (mirrors `notAdapters`) for framework entry points cnav hasn't learned to recognize.
-
-2. **The existing violations hint couldn't distinguish "evidence is a real external library" from "evidence is itself a project class."** Both looked identical in the output, but they mean completely different things: the former is a config decision (add to `valuePackages`/`frameworkPackages`/`notAdapters`); the latter — exactly what happened with PetClinic's `org.springframework.samples.petclinic` root-package collision — is a structural classification bug that no config override can fix. The hint now checks `evidence in output.graph.classes` and, when true, explicitly says so and points at filing an issue instead of offering config options that would silently do nothing.
-
-**Tests**: `CompositionRootDetectorTest` — updated for the `Map` return type. `RingConfigOverridesTest` — 2 new (`notCompositionRoots` removes a class, unhonoured-directive reporting). `HexRingFormatterTest` — 3 new (composition-root evidence line, project-class-evidence branch triggers, external-evidence branch does not).
-
-**Validated with fresh subagents, not just self-assessment.** Launched two separate agents (Task tool, `general` subagent, no `task_id` reuse — genuinely fresh context each time) with an explicit instruction set: run the real `cnavRings` command against bass-ra-backend, read only the raw output, and interpret/decide blind — no access to this plan.md, no `cnavHelp`, no prior conversation. This is a meaningfully different (and stronger) validation than reviewing the hint text myself, since I already know what it's supposed to say.
-
-Findings from the first pass:
-- The evidence/hint mechanism worked as intended for real violations — the agent correctly walked the decision tree, correctly proposed exact JSON overrides, and correctly distinguished "config gap" from "real I/O" for several classes it checked against source.
-- It found composition roots had **no evidence at all in that specific run** — not because the fix was missing, but because that run's only composition root was config-forced (`rings.compositionRoots`), and forced roots legitimately carry no structural evidence. The agent understood *that* there was no evidence but not *why* — it had to go read `cnav-config.json` itself to figure out this one was manually declared, and even then the output gave no pointer to *where* to change it.
-- It independently found a **new, real false positive** neither planned nor previously noticed: `io.micrometer.core.instrument.Timer`/`Tag` (Micrometer's core measurement API) — reasoned through correctly from the hint's own stated criterion ("no I/O of its own"), verified against real source, and proposed the exact `valuePackages` fix.
-
-Both were fixed:
-- `(configured)` → `(configured via cnav-config.json's rings.compositionRoots)` — the label itself now names the fix location, since a bare "(configured)" told the agent *that* a decision was made but not *where* to change it.
-- Micrometer's `io.micrometer.core.instrument.` added to `VALUE_LIBRARY_PACKAGES` (same reasoning as `org.slf4j`/`javax.xml.datatype`: the real I/O lives in a separate, uncovered exporter package — `io.micrometer.prometheusmetrics` here — verified this distinction holds in the actual dependency jars before relying on it).
-
-A second fresh agent, run after both fixes, confirmed the `(configured via ...)` label now resolves that ambiguity, and — independently, again — found a *third* new false positive: OpenTelemetry's tracing API (`Tracer`, `Scope`, `OpenTelemetry`, spread across three different `io.opentelemetry.*` sub-packages, found one at a time as each got fixed and the next surfaced) — same "instrumentation wrapper, not the I/O itself" shape as logging and Micrometer. Fixed by excluding the whole `io.opentelemetry.api.` and `io.opentelemetry.context.` packages (the instrumentation API), leaving `io.opentelemetry.exporter.*` uncovered and still a real signal. Violations on bass-ra-backend went 10 → 7 (Micrometer) → 5 (OpenTelemetry, across three follow-up fixes for its sub-packages).
-
-The second agent also raised two things deliberately **not** acted on, since they're genuinely more ambiguous than the pattern above and don't have the same "clearly a separate exporter package exists" structure to lean on:
-- `com.fasterxml.jackson.databind.JsonNode` (a generic JSON tree value type, arguably a value library — but Jackson types are also frequently the intentional marshaling boundary in hex-arch code, unlike a logging/tracing facade that's *never* meant to be the boundary).
-- `org.apache.commons.pool2.impl.GenericObjectPoolConfig` (pool tuning knobs, no I/O of their own — but commons-pool2 backs many different kinds of pooled I/O resources, so a package-wide exclusion risks masking genuine cases).
-
-Also raised, not acted on — a real gap in the hint's *shape*, not a package-list gap: the decision tree only ever offers two outcomes ("classification gap" or "real I/O, add an override") and has no third branch for "this class should itself be an additional composition root" (its example: `AppDependencies`, a DI container that constructs an `HttpClient` — architecturally more like a second, undeclared assembler than a true ring-1 business adapter). Worth a future design pass if it recurs on another codebase; not chased now since it's a structural addition to the hint's logic, not a package-list entry.
-
 
 **DONE** | **Value: high** | **Effort: high** | Source: internal
 

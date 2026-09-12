@@ -52,4 +52,14 @@ class SignatureTypeScannerTest {
 
         assertTrue(ClassName("com.example.domain.User") in types, "return type of findById, got $types")
     }
+
+    @Test
+    fun `a private method's parameter and return type are not signature references`() {
+        val types = typesNamedBy("com.example.adapters.ClassWithPrivateHelper")
+
+        assertFalse(
+            ClassName("java.net.URL") in types,
+            "createInternal() is private -- its return type is never visible to callers, same as a type touched only inside a method body, got $types",
+        )
+    }
 }

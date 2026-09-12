@@ -311,6 +311,62 @@ class AdapterDetectorTest {
     }
 
     @Test
+    fun `a data class whose only field type is Jackson JsonNode is not a sink adapter`() {
+        val service = ClassName("com.app.polls.PollService")
+        val dto = ClassName("com.app.dto.SessionAndPublicKey")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, dto),
+            projectDeps = listOf(dep(service.value, dto.value)),
+            externalDeps = listOf(dep(dto.value, "com.fasterxml.jackson.databind.JsonNode")),
+        )
+
+        assertEquals(null, findings[dto], "JsonNode is a generic JSON tree value holder, not I/O itself — unlike ObjectMapper, the actual marshaling engine")
+    }
+
+    @Test
+    fun `Jackson ObjectMapper still counts as a real signal, unlike JsonNode`() {
+        val service = ClassName("com.app.polls.PollService")
+        val diContainer = ClassName("com.app.di.AppDependencies")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, diContainer),
+            projectDeps = listOf(dep(service.value, diContainer.value)),
+            externalDeps = listOf(dep(diContainer.value, "com.fasterxml.jackson.databind.ObjectMapper")),
+        )
+
+        assertEquals(AdapterReason.SINK_WITH_EXTERNAL_CALLS, findings[diContainer]?.reason, "ObjectMapper is the actual JSON marshaling engine, a real signal unlike the generic JsonNode tree type")
+    }
+
+    @Test
+    fun `a class whose only external reference is commons-pool2 GenericObjectPoolConfig is not a sink adapter`() {
+        val service = ClassName("com.app.polls.PollService")
+        val poolDefaults = ClassName("com.app.cache.RedisPoolDefaultsKt")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, poolDefaults),
+            projectDeps = listOf(dep(service.value, poolDefaults.value)),
+            externalDeps = listOf(dep(poolDefaults.value, "org.apache.commons.pool2.impl.GenericObjectPoolConfig")),
+        )
+
+        assertEquals(null, findings[poolDefaults], "GenericObjectPoolConfig only carries pool-tuning properties (maxTotal, minIdle, timeouts), no I/O of its own")
+    }
+
+    @Test
+    fun `a real commons-pool2 pool type still counts as a real signal, unlike its config class`() {
+        val service = ClassName("com.app.polls.PollService")
+        val poolWrapper = ClassName("com.app.cache.ConnectionPool")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, poolWrapper),
+            projectDeps = listOf(dep(service.value, poolWrapper.value)),
+            externalDeps = listOf(dep(poolWrapper.value, "org.apache.commons.pool2.impl.GenericObjectPool")),
+        )
+
+        assertEquals(AdapterReason.SINK_WITH_EXTERNAL_CALLS, findings[poolWrapper]?.reason, "GenericObjectPool is the actual pooled-resource lifecycle manager, a real signal unlike its config class")
+    }
+
+    @Test
     fun `a class whose only external references are pure value or DSL libraries is not a sink adapter`() {
         val service = ClassName("com.app.polls.PollService")
         val dateHelper = ClassName("com.app.polls.calendar.DateFormattingKt")

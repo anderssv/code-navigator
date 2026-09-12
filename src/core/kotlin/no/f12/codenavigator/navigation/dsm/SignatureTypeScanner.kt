@@ -13,7 +13,11 @@ import java.io.File
 
 /**
  * Collects the types each class names in a *signature* position — supertypes, field types, method
- * parameter and return types — and deliberately never visits method bodies.
+ * parameter and return types — and deliberately never visits method bodies. Private fields and
+ * methods are excluded too: a private member's type is never visible to callers of the class, so
+ * it carries the same weight as a type touched only inside a method body, not a real signature
+ * exposure (e.g. a private factory method building a framework-typed object as an internal
+ * implementation detail of an otherwise plain composition-root-style class).
  *
  * The flat dependency graph (`PackageDependency`) can't answer "does this class traffic in framework
  * types, or merely touch one internally?", because it carries no edge position. Rather than widen that
@@ -57,11 +61,13 @@ private class SignatureCollector : ClassVisitor(Opcodes.ASM9) {
     }
 
     override fun visitField(access: Int, name: String, descriptor: String, signature: String?, value: Any?): FieldVisitor? {
+        if (access and Opcodes.ACC_PRIVATE != 0) return null
         addDescriptorType(descriptor)
         return null
     }
 
     override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): MethodVisitor? {
+        if (access and Opcodes.ACC_PRIVATE != 0) return null
         Type.getArgumentTypes(descriptor).forEach { addType(it) }
         addType(Type.getReturnType(descriptor))
         exceptions?.forEach { add(it) }
