@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.115
 
 ### Changed (breaking)
 - `cnavRings` now detects hexagonal rings from dependency inversions rather than topological depth. A ring
