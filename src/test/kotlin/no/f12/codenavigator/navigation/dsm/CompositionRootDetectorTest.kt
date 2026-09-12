@@ -68,4 +68,26 @@ class CompositionRootDetectorTest {
 
         assertEquals(emptySet(), roots)
     }
+
+    @Test
+    fun `a framework-invoked controller that reaches an adapter is not a composition root`() {
+        // A Spring MVC controller: nothing in the compiled bytecode calls it (the framework invokes
+        // it reflectively via annotation-based routing), so it looks exactly like a true composition
+        // root by "unreferenced + reaches an adapter" alone. But the controller is itself already an
+        // adapter (it directly names a framework type in its own signature, e.g. org.springframework.ui.Model) —
+        // a composition root is a plain assembler, never itself framework-driven, so an already-classified
+        // adapter must never also become a composition root.
+        val controller = ClassName("com.app.web.OwnerController")
+        val repository = ClassName("com.app.infra.OwnerRepository")
+
+        val graph = RingGraph(
+            classes = setOf(controller, repository),
+            ioClasses = setOf(controller, repository),
+            dependsOn = mapOf(controller to setOf(repository)),
+        )
+
+        val roots = CompositionRootDetector.detect(graph)
+
+        assertEquals(emptySet(), roots, "an already-classified adapter must not also become a composition root")
+    }
 }

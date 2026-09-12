@@ -83,6 +83,26 @@ class AdapterDetectorTest {
     }
 
     @Test
+    fun `a project class referencing another project class is not a framework signal, even when the project's own root package matches a framework prefix`() {
+        // A real, reproducible case: org.springframework.samples.petclinic (the official Spring Boot
+        // sample app) is rooted under "org.springframework" -- the same bare prefix used to detect
+        // real Spring framework usage. Without excluding project-internal types first, any class in
+        // this project referencing any OTHER class in this project self-matches the framework prefix,
+        // since both FQCNs start with "org.springframework" regardless of which class is doing the I/O.
+        val owner = ClassName("org.springframework.samples.petclinic.owner.Owner")
+        val pet = ClassName("org.springframework.samples.petclinic.owner.Pet")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(owner, pet),
+            projectDeps = listOf(dep(owner.value, pet.value)),
+            externalDeps = emptyList(),
+            signatureTypes = mapOf(owner to setOf(pet)),
+        )
+
+        assertEquals(null, findings[owner], "Pet is a project class, not a real Spring framework type -- referencing it must not classify Owner as an adapter")
+    }
+
+    @Test
     fun `a framework reference outranks a topological signal`() {
         val routes = ClassName("com.app.web.PollRoutesKt")
         val service = ClassName("com.app.polls.PollService")
@@ -187,6 +207,20 @@ class AdapterDetectorTest {
         )
 
         assertEquals(AdapterReason.FRAMEWORK_TYPE, findings[repo]?.reason)
+    }
+
+    @Test
+    fun `a class whose only external reference is java-io-Serializable is not a sink adapter`() {
+        val service = ClassName("com.app.polls.PollService")
+        val baseEntity = ClassName("com.app.model.BaseEntity")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, baseEntity),
+            projectDeps = listOf(dep(service.value, baseEntity.value)),
+            externalDeps = listOf(dep(baseEntity.value, "java.io.Serializable")),
+        )
+
+        assertEquals(null, findings[baseEntity], "java.io.Serializable is a pure marker interface with no I/O of its own, unlike a real java.io.* I/O type")
     }
 
     @Test

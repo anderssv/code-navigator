@@ -4,6 +4,7 @@ import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.types.PackageName
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class RingGraphBuilderTest {
 
@@ -137,5 +138,26 @@ class RingGraphBuilderTest {
         assertEquals(setOf(client), graph.ioClasses)
         assertEquals(AdapterReason.FRAMEWORK_TYPE, graph.adapterReasons[client])
         assertEquals(ClassName("com.acme.internalqueue.QueueClient"), graph.adapterEvidence[client])
+    }
+
+    @Test
+    fun `a Spring Data repository interface with no compiled implementor becomes a port with a synthetic proxy adapter`() {
+        val repository = ClassName("com.app.OwnerRepository")
+        val service = ClassName("com.app.OwnerService")
+
+        val graph = RingGraphBuilder.build(
+            projectClasses = setOf(repository, service),
+            projectDeps = listOf(dep(service.value, repository.value)),
+            externalDeps = emptyList(),
+            classKinds = mapOf(repository to ClassKind.INTERFACE),
+            supertypes = emptyList(),
+            signatureTypes = mapOf(repository to setOf(ClassName("org.springframework.data.jpa.repository.JpaRepository"))),
+        )
+
+        val proxy = ClassName("com.app.OwnerRepository\$GeneratedProxy")
+        assertEquals(setOf(proxy), graph.ioClasses, "the interface itself is a port, not the adapter")
+        assertEquals(AdapterReason.FRAMEWORK_GENERATED_PROXY, graph.adapterReasons[proxy])
+        assertEquals(setOf(proxy), graph.implementedBy[repository])
+        assertTrue(proxy in graph.classes)
     }
 }

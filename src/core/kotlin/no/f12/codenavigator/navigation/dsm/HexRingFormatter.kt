@@ -69,6 +69,7 @@ object HexRingFormatter {
         AdapterReason.FRAMEWORK_TYPE -> "references a framework type internally"
         AdapterReason.SINK_WITH_EXTERNAL_CALLS -> "calls a library, calls nothing in the project"
         AdapterReason.UNCALLED_ENTRY_POINT -> "calls a library, nothing in the project calls it"
+        AdapterReason.FRAMEWORK_GENERATED_PROXY -> "synthetic — framework-generated implementation, not a compiled class"
     }
 
     private fun StringBuilder.appendCompositionRoots(output: HexRingsOutput) {

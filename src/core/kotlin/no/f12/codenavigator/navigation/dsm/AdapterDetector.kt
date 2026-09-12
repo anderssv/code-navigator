@@ -43,19 +43,26 @@ object AdapterDetector {
         extraFrameworkPackages: Set<String> = emptySet(),
     ): Map<ClassName, AdapterFinding> =
         projectClasses
-            .mapNotNull { cls -> frameworkFindingFor(cls, externalDeps, signatureTypes, extraFrameworkPackages)?.let { cls to it } }
+            .mapNotNull { cls -> frameworkFindingFor(cls, projectClasses, externalDeps, signatureTypes, extraFrameworkPackages)?.let { cls to it } }
             .toMap()
 
     private fun frameworkFindingFor(
         cls: ClassName,
+        projectClasses: Set<ClassName>,
         externalDeps: List<PackageDependency>,
         signatureTypes: Map<ClassName, Set<ClassName>>,
         extraFrameworkPackages: Set<String>,
     ): AdapterFinding? {
-        signatureTypes[cls].orEmpty().firstOrNull { isFrameworkType(it, extraFrameworkPackages) }?.let {
+        // signatureTypes carries every type named in a signature position, project-internal or not
+        // (that's what makes it useful elsewhere) — but a framework signal must be a real external
+        // type. Without this filter, a project whose own root package happens to collide with a
+        // framework prefix (e.g. org.springframework.samples.petclinic, nested under the exact
+        // prefix used to detect real Spring usage) would have every class self-match "framework"
+        // merely by referencing another class in the same project.
+        signatureTypes[cls].orEmpty().filter { it !in projectClasses }.firstOrNull { isFrameworkType(it, extraFrameworkPackages) }?.let {
             return AdapterFinding(AdapterReason.FRAMEWORK_SIGNATURE, it)
         }
-        externalDeps.firstOrNull { it.sourceClass == cls && isFrameworkType(it.targetClass, extraFrameworkPackages) }?.let {
+        externalDeps.firstOrNull { it.sourceClass == cls && it.targetClass !in projectClasses && isFrameworkType(it.targetClass, extraFrameworkPackages) }?.let {
             return AdapterFinding(AdapterReason.FRAMEWORK_TYPE, it.targetClass)
         }
         return null
@@ -71,7 +78,7 @@ object AdapterDetector {
         extraValuePackages: Set<String>,
         extraFrameworkPackages: Set<String>,
     ): AdapterFinding? {
-        frameworkFindingFor(cls, externalDeps, signatureTypes, extraFrameworkPackages)?.let { return it }
+        frameworkFindingFor(cls, projectClasses, externalDeps, signatureTypes, extraFrameworkPackages)?.let { return it }
 
         // Every class references String and Intrinsics; counting those as "talks to a library" would
         // make every leaf an adapter. The topological signals only mean anything for real libraries.
@@ -118,6 +125,15 @@ object AdapterDetector {
         "org.jetbrains.annotations.",
     )
 
+    // Exact JDK marker interfaces (not prefixes): implementing them declares eligibility for a JDK
+    // mechanism but performs no I/O of its own — java.io.Serializable is the classic case (a JPA
+    // @MappedSuperclass base entity implementing it, for example, is not thereby an adapter).
+    // Deliberately narrow and exact-match rather than a broad "java.io." prefix, since java.io.File/
+    // java.io.InputStream etc. are real filesystem I/O and must keep counting as adapter signals.
+    private val JDK_MARKER_INTERFACES = setOf(
+        "java.io.Serializable",
+    )
+
     // Pure value/DSL libraries: types that carry data or build markup, with no I/O of their own.
     // A class that only touches these (dates, HTML tag builders, serialization annotations) is not
     // an adapter just because it "talks to a library" — the SINK_WITH_EXTERNAL_CALLS signal is meant
@@ -142,7 +158,7 @@ object AdapterDetector {
         "net.logstash.logback.",
     )
 
-    private val NON_ADAPTER_SIGNAL_PACKAGES = STDLIB_PACKAGES + VALUE_LIBRARY_PACKAGES + LOGGING_PACKAGES
+    private val NON_ADAPTER_SIGNAL_PACKAGES = STDLIB_PACKAGES + VALUE_LIBRARY_PACKAGES + LOGGING_PACKAGES + JDK_MARKER_INTERFACES
 
     // A project can extend this list per-project via cnav-config.json's rings.frameworkPackages, for
     // internal/private I/O client libraries that could never belong in a built-in, cross-project list.
