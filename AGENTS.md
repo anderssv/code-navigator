@@ -221,6 +221,7 @@ Gradle gets this for every task from one central hook (`CodeNavigatorTask.buildO
 6. `mise exec -- ./gradlew publishPlugins`
 7. Bump to `X.Y.(Z+1)-SNAPSHOT` in `build.gradle.kts` and `pom.xml`
 8. `git commit -am "Bump to X.Y.Z-SNAPSHOT"` && `git push && git push --tags`
+9. `gh release create vX.Y.Z --title "vX.Y.Z" --notes-from-tag` (or pass `--notes` with the CHANGELOG.md section for this version if `--notes-from-tag` doesn't produce a useful body — the tag itself carries no message)
 
 Requires GPG key + Sonatype credentials in `~/.m2/settings.xml` (server id `central`).
 
