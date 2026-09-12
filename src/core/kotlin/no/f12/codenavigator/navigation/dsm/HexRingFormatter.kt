@@ -33,6 +33,8 @@ object HexRingFormatter {
 
         appendCompositionRoots(output)
         appendViolations(output)
+        appendDomainServiceViolations(output)
+        appendPortBypassViolations(output)
         appendNotices(output)
     }
 
@@ -46,11 +48,14 @@ object HexRingFormatter {
             }
             appendLine(label)
             byRing.getValue(ring).sortedBy { it.value }.forEach { cls ->
-                appendLine("  ${cls.value}${adapterNote(output, cls)}")
+                appendLine("  ${cls.value}${adapterNote(output, cls)}${serviceTierNote(output, cls)}")
             }
             appendLine()
         }
     }
+
+    private fun serviceTierNote(output: HexRingsOutput, cls: ClassName): String =
+        if (cls in output.serviceTier) "  [service tier]" else ""
 
     private fun adapterNote(output: HexRingsOutput, cls: ClassName): String {
         val reason = output.graph.adapterReasons[cls] ?: return ""
@@ -130,6 +135,33 @@ object HexRingFormatter {
         return "$pkg."
     }
 
+    private fun StringBuilder.appendDomainServiceViolations(output: HexRingsOutput) {
+        val violations = output.domainServiceViolations
+        if (violations.isEmpty()) return
+
+        appendLine()
+        appendLine("Domain \u2192 service violations (${violations.size}) — a domain class depends directly")
+        appendLine("on a port or adapter, or on another class that does (service tier):")
+        violations.forEach { appendLine("  ${it.sourceClass.value} -> ${it.targetClass.value}") }
+        appendLine()
+        appendLine("Fix: service can depend on domain; domain must never depend back on service.")
+        appendLine("Pass the needed value in as a parameter, or move the shared logic into the domain.")
+    }
+
+    private fun StringBuilder.appendPortBypassViolations(output: HexRingsOutput) {
+        val violations = output.portBypassViolations
+        if (violations.isEmpty()) return
+
+        appendLine()
+        appendLine("Port bypass violations (${violations.size}) — calls a concrete adapter directly")
+        appendLine("instead of through the port it implements:")
+        violations.forEach {
+            appendLine("  ${it.sourceClass.value} -> ${it.targetClass.value} (bypasses ${it.bypassedPort.value})")
+        }
+        appendLine()
+        appendLine("Fix: depend on the port interface instead of the concrete adapter type.")
+    }
+
     private fun StringBuilder.appendNotices(output: HexRingsOutput) {
         output.unexpectedRingCount?.let {
             appendLine()
@@ -189,6 +221,22 @@ object HexRingFormatter {
         output.unhonoured.forEachIndexed { index, d ->
             val comma = if (index == output.unhonoured.size - 1) "" else ","
             appendLine("    {\"kind\": \"${d.kind.name}\", \"pattern\": \"${d.pattern}\"}$comma")
+        }
+        appendLine("  ],")
+        appendLine("  \"serviceTier\": ${jsonArray(output.serviceTier.map { it.value })},")
+        appendLine("  \"domainServiceViolations\": [")
+        output.domainServiceViolations.forEachIndexed { index, v ->
+            val comma = if (index == output.domainServiceViolations.size - 1) "" else ","
+            appendLine("    {\"source\": \"${v.sourceClass.value}\", \"target\": \"${v.targetClass.value}\"}$comma")
+        }
+        appendLine("  ],")
+        appendLine("  \"portBypassViolations\": [")
+        output.portBypassViolations.forEachIndexed { index, v ->
+            val comma = if (index == output.portBypassViolations.size - 1) "" else ","
+            appendLine(
+                "    {\"source\": \"${v.sourceClass.value}\", \"target\": \"${v.targetClass.value}\", " +
+                    "\"bypassedPort\": \"${v.bypassedPort.value}\"}$comma",
+            )
         }
         appendLine("  ]")
         append("}")

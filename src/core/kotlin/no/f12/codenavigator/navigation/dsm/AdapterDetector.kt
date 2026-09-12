@@ -100,8 +100,16 @@ object AdapterDetector {
     private fun isLibraryType(type: ClassName, extraValuePackages: Set<String>): Boolean =
         (NON_ADAPTER_SIGNAL_PACKAGES + extraValuePackages).none { prefix -> type.value.startsWith(prefix) }
 
-    private fun isFrameworkType(type: ClassName, extraFrameworkPackages: Set<String>): Boolean =
-        (FRAMEWORK_PACKAGES + extraFrameworkPackages).any { prefix -> type.value.startsWith(prefix) }
+    private fun isFrameworkType(type: ClassName, extraFrameworkPackages: Set<String>): Boolean {
+        // Value libraries and logging are a carve-out that beats even a broad framework prefix
+        // (e.g. bare "javax."): javax.xml.datatype is JAXB's pure date value type, no I/O of its
+        // own, but it would otherwise match "javax." — the same broad prefix that correctly covers
+        // javax.net.ssl (TLS), javax.xml.parsers (XML parsing), and javax.security.auth
+        // (certificates) elsewhere in real code. Narrowing "javax." itself risks silently losing
+        // those real signals; excluding known non-I/O types first is safer and more precise.
+        if ((VALUE_LIBRARY_PACKAGES + LOGGING_PACKAGES).any { type.value.startsWith(it) }) return false
+        return (FRAMEWORK_PACKAGES + extraFrameworkPackages).any { prefix -> type.value.startsWith(prefix) }
+    }
 
     private val STDLIB_PACKAGES = setOf(
         "java.lang.", "java.util.", "java.math.", "java.time.", "java.text.",
@@ -122,9 +130,19 @@ object AdapterDetector {
         "kotlinx.html.",
         "kotlinx.serialization.",
         "kotlinx.collections.immutable.",
+        "javax.xml.datatype.",
     )
 
-    private val NON_ADAPTER_SIGNAL_PACKAGES = STDLIB_PACKAGES + VALUE_LIBRARY_PACKAGES
+    // Logging is used everywhere and, for the purposes of adapter classification, is treated as a
+    // reliable no-op: it can technically write somewhere eventually, but the probability of it
+    // being what actually distinguishes an adapter from a leaf class is close to zero, and
+    // treating "calls a logger" as an I/O signal would flag almost every class in a codebase.
+    private val LOGGING_PACKAGES = setOf(
+        "org.slf4j.",
+        "net.logstash.logback.",
+    )
+
+    private val NON_ADAPTER_SIGNAL_PACKAGES = STDLIB_PACKAGES + VALUE_LIBRARY_PACKAGES + LOGGING_PACKAGES
 
     // A project can extend this list per-project via cnav-config.json's rings.frameworkPackages, for
     // internal/private I/O client libraries that could never belong in a built-in, cross-project list.

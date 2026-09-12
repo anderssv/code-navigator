@@ -634,4 +634,29 @@ class ScopeTest {
     fun `matchesSourceSet returns false for TEST with MAIN`() {
         assertFalse(Scope.TEST.matchesSourceSet(SourceSet.MAIN))
     }
+
+    @Test
+    fun `isSameFileFacadeOf is true for a class and its Kt facade`() {
+        val cls = ClassName("com.app.OtpStatusSearchService")
+        val facade = ClassName("com.app.OtpStatusSearchServiceKt")
+
+        assertTrue(cls.isSameFileFacadeOf(facade))
+        assertTrue(facade.isSameFileFacadeOf(cls))
+    }
+
+    @Test
+    fun `isSameFileFacadeOf is false for unrelated classes`() {
+        val a = ClassName("com.app.Foo")
+        val b = ClassName("com.app.Bar")
+
+        assertFalse(a.isSameFileFacadeOf(b))
+    }
+
+    @Test
+    fun `isSameFileFacadeOf is false for a class and an unrelated Kt facade in the same package`() {
+        val a = ClassName("com.app.Foo")
+        val unrelatedFacade = ClassName("com.app.BarKt")
+
+        assertFalse(a.isSameFileFacadeOf(unrelatedFacade))
+    }
 }

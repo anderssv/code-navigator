@@ -62,4 +62,41 @@ class RingConfigOverridesTest {
             result.unhonoured.sortedBy { it.kind.name },
         )
     }
+
+    @Test
+    fun `a configured serviceTier pattern marks a matching class as service tier`() {
+        val retryKt = ClassName("com.app.RetryKt")
+
+        val result = RingConfigOverrides.applyServiceTier(
+            serviceTier = emptySet(),
+            classes = setOf(retryKt, renderer),
+            config = RingsConfig(serviceTier = listOf("com.app.RetryKt")),
+        )
+
+        assertEquals(setOf(retryKt), result.serviceTier)
+    }
+
+    @Test
+    fun `a notServiceTier pattern removes a class from the detected service tier`() {
+        val retryKt = ClassName("com.app.RetryKt")
+
+        val result = RingConfigOverrides.applyServiceTier(
+            serviceTier = setOf(retryKt),
+            classes = setOf(retryKt, renderer),
+            config = RingsConfig(notServiceTier = listOf("com.app.RetryKt")),
+        )
+
+        assertEquals(emptySet(), result.serviceTier)
+    }
+
+    @Test
+    fun `a serviceTier directive that matches no class is reported as unhonoured`() {
+        val result = RingConfigOverrides.applyServiceTier(
+            serviceTier = emptySet(),
+            classes = setOf(renderer),
+            config = RingsConfig(serviceTier = listOf("com.app.Gone")),
+        )
+
+        assertEquals(listOf(UnhonouredDirective(DirectiveKind.SERVICE_TIER, "com.app.Gone")), result.unhonoured)
+    }
 }

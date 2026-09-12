@@ -18,6 +18,9 @@ data class HexRingsOutput(
     val testInvolvement: TestInvolvement.Counts?,
     val skippedFileWarning: String?,
     val modulesOfClass: Map<ClassName, Set<String>> = emptyMap(),
+    val serviceTier: Set<ClassName> = emptySet(),
+    val domainServiceViolations: List<DomainServiceViolation> = emptyList(),
+    val portBypassViolations: List<PortBypassViolation> = emptyList(),
 ) {
     /**
      * Null when no `rings.expected` pin is configured. Otherwise the pinned count, whenever it
@@ -126,14 +129,22 @@ object RingsOrchestrator {
 
         val layering = InversionRingDetector.detect(overridden.graph)
 
+        val strippedGraph = overridden.graph.withoutCompositionRoots()
+        val rawServiceTier = ServiceTierDetector.detect(strippedGraph)
+        val serviceTierOverride = RingConfigOverrides.applyServiceTier(rawServiceTier, strippedGraph.classes, config)
+        val serviceTier = serviceTierOverride.serviceTier
+
         return HexRingsOutput(
             layering = layering,
             graph = overridden.graph,
-            unhonoured = overridden.unhonoured,
+            unhonoured = overridden.unhonoured + serviceTierOverride.unhonoured,
             expectedRingCount = config.expectedRingCount,
             testInvolvement = testInvolvement(scope, taggedDirs, layering),
             skippedFileWarning = skippedFileWarning,
             modulesOfClass = mutatedModulesOfClass,
+            serviceTier = serviceTier,
+            domainServiceViolations = ServiceTierDetector.domainServiceViolations(strippedGraph, serviceTier),
+            portBypassViolations = ServiceTierDetector.portBypassViolations(strippedGraph),
         )
     }
 

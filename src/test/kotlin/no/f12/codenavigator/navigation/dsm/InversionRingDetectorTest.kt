@@ -183,6 +183,28 @@ class InversionRingDetectorTest {
     }
 
     @Test
+    fun `a class and its own Kt file facade are not a violation even across rings`() {
+        val port = ClassName("com.app.polls.PollsRepository")
+        val impl = ClassName("com.app.infra.PollsRepositoryImpl")
+        val implFacade = ClassName("com.app.infra.PollsRepositoryImplKt")
+
+        val graph = RingGraph(
+            classes = setOf(port, impl, implFacade),
+            interfaces = setOf(port),
+            implementedBy = mapOf(port to setOf(impl)),
+            ioClasses = setOf(impl),
+            dependsOn = mapOf(
+                impl to setOf(port),
+                implFacade to setOf(impl),
+            ),
+        )
+
+        val layering = InversionRingDetector.detect(graph)
+
+        assertEquals(emptyList(), layering.violations, "implFacade -> impl is the same Kotlin file, not a real dependency")
+    }
+
+    @Test
     fun `two classes in the same ring depending on each other is not a violation`() {
         val port = ClassName("com.app.polls.PollsRepository")
         val impl = ClassName("com.app.infra.PollsRepositoryImpl")

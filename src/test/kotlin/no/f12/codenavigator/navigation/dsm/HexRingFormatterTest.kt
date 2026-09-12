@@ -18,6 +18,9 @@ class HexRingFormatterTest {
         graph: RingGraph = RingGraph(classes = setOf(poll, port, impl)),
         unhonoured: List<UnhonouredDirective> = emptyList(),
         expectedRingCount: Int? = null,
+        serviceTier: Set<ClassName> = emptySet(),
+        domainServiceViolations: List<DomainServiceViolation> = emptyList(),
+        portBypassViolations: List<PortBypassViolation> = emptyList(),
     ) = HexRingsOutput(
         layering = layering,
         graph = graph,
@@ -25,6 +28,9 @@ class HexRingFormatterTest {
         expectedRingCount = expectedRingCount,
         testInvolvement = null,
         skippedFileWarning = null,
+        serviceTier = serviceTier,
+        domainServiceViolations = domainServiceViolations,
+        portBypassViolations = portBypassViolations,
     )
 
     @Test
@@ -100,5 +106,48 @@ class HexRingFormatterTest {
         val text = HexRingFormatter.format(output(layering, expectedRingCount = 2), OutputFormat.TEXT)
 
         assertFalse(text.contains("expected 2"))
+    }
+
+    @Test
+    fun `marks a service-tier class in the ring listing`() {
+        val service = ClassName("com.app.polls.PollService")
+        val layering = RingLayering(2, RingDiagnosis.LAYERED, mapOf(poll to 0, service to 0, impl to 1))
+        val graph = RingGraph(classes = setOf(poll, service, impl))
+
+        val text = HexRingFormatter.format(output(layering, graph = graph, serviceTier = setOf(service)), OutputFormat.TEXT)
+
+        assertContains(text, "com.app.polls.PollService")
+        assertContains(text, "service tier")
+    }
+
+    @Test
+    fun `reports a domain class depending on a service-tier class as a violation`() {
+        val service = ClassName("com.app.polls.PollService")
+        val layering = RingLayering(2, RingDiagnosis.LAYERED, mapOf(poll to 0, service to 0, impl to 1))
+
+        val text = HexRingFormatter.format(
+            output(layering, domainServiceViolations = listOf(DomainServiceViolation(poll, service))),
+            OutputFormat.TEXT,
+        )
+
+        assertContains(text, "com.app.domain.Poll")
+        assertContains(text, "com.app.polls.PollService")
+        assertContains(text, "Domain")
+    }
+
+    @Test
+    fun `reports a port bypass violation with the port that was skipped`() {
+        val service = ClassName("com.app.polls.PollService")
+        val layering = RingLayering(2, RingDiagnosis.LAYERED, mapOf(poll to 0, service to 0, impl to 1))
+
+        val text = HexRingFormatter.format(
+            output(layering, portBypassViolations = listOf(PortBypassViolation(service, impl, port))),
+            OutputFormat.TEXT,
+        )
+
+        assertContains(text, "com.app.polls.PollService")
+        assertContains(text, "com.app.infra.SqlPollsRepository")
+        assertContains(text, "com.app.polls.PollsRepository")
+        assertContains(text, "bypass")
     }
 }

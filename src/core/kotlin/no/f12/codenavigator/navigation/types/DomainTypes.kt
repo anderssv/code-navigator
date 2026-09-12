@@ -82,6 +82,15 @@ value class ClassName(val value: String) : Comparable<ClassName> {
         return simple.endsWith("Kt") && !simple.endsWith("\$Kt") && '$' !in simple
     }
 
+    /**
+     * True when this class and [other] are the two compiled halves of the same Kotlin file — a
+     * class `Foo` and its file's top-level facade `FooKt` (e.g. a private top-level logger
+     * declared alongside the class it names: `private val log = LoggerFactory.getLogger(Foo::class.java)`).
+     * Not an architectural dependency between two classes — a compiler artifact of one file.
+     */
+    fun isSameFileFacadeOf(other: ClassName): Boolean =
+        value == "${other.value}Kt" || other.value == "${value}Kt"
+
     fun isSynthetic(): Boolean =
         TRAILING_NUMERIC_SEGMENT.containsMatchIn(value) ||
             LAMBDA_PATTERN.containsMatchIn(value)

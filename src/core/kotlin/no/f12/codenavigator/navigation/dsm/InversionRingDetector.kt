@@ -84,6 +84,7 @@ object InversionRingDetector {
     private fun outwardViolations(graph: RingGraph, rings: Map<ClassName, Int>): List<ClassRingViolation> =
         graph.dependsOn.entries
             .flatMap { (source, targets) -> targets.map { source to it } }
+            .filterNot { (source, target) -> source.isSameFileFacadeOf(target) }
             .mapNotNull { (source, target) ->
                 val sourceRing = rings[source] ?: return@mapNotNull null
                 val targetRing = rings[target] ?: return@mapNotNull null

@@ -129,6 +129,51 @@ class AdapterDetectorTest {
     }
 
     @Test
+    fun `a class whose only external reference is javax-xml-datatype is not a sink adapter`() {
+        val service = ClassName("com.app.polls.PollService")
+        val errorResponse = ClassName("no.bankid.ra.ErrorResponse")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, errorResponse),
+            projectDeps = listOf(dep(service.value, errorResponse.value)),
+            externalDeps = listOf(dep(errorResponse.value, "javax.xml.datatype.XMLGregorianCalendar")),
+        )
+
+        assertEquals(null, findings[errorResponse], "javax.xml.datatype is JAXB's pure value type for dates, not I/O — a bare 'javax.' prefix in FRAMEWORK_PACKAGES was too broad")
+    }
+
+    @Test
+    fun `javax-sql still counts as a real framework signal, unlike javax-xml-datatype`() {
+        val service = ClassName("com.app.polls.PollService")
+        val dataSource = ClassName("com.app.infra.PooledDataSource")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, dataSource),
+            projectDeps = listOf(dep(service.value, dataSource.value)),
+            externalDeps = listOf(dep(dataSource.value, "javax.sql.DataSource")),
+        )
+
+        assertEquals(AdapterReason.FRAMEWORK_TYPE, findings[dataSource]?.reason, "javax.sql is real JDBC I/O and should still count as a framework signal")
+    }
+
+    @Test
+    fun `a class whose only external reference is a logging library is not a sink adapter`() {
+        val service = ClassName("com.app.polls.PollService")
+        val retryHelper = ClassName("com.app.RetryKt")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, retryHelper),
+            projectDeps = listOf(dep(service.value, retryHelper.value)),
+            externalDeps = listOf(
+                dep(retryHelper.value, "org.slf4j.Logger"),
+                dep(retryHelper.value, "net.logstash.logback.argument.StructuredArguments"),
+            ),
+        )
+
+        assertEquals(null, findings[retryHelper], "logging is ubiquitous and treated as a reliable no-op for boundary-detection purposes, not an I/O signal")
+    }
+
+    @Test
     fun `a standard library reference does not mask a real framework reference`() {
         val repo = ClassName("com.app.infra.PollsRepositoryImpl")
 
