@@ -9,6 +9,7 @@ enum class AdapterReason {
     SINK_WITH_EXTERNAL_CALLS,
     UNCALLED_ENTRY_POINT,
     FRAMEWORK_GENERATED_PROXY,
+    FRAMEWORK_ENTRY_POINT_ANNOTATION,
 }
 
 data class RingGraph(

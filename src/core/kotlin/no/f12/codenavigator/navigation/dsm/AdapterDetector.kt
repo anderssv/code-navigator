@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation.dsm
 
+import no.f12.codenavigator.navigation.types.AnnotationName
 import no.f12.codenavigator.navigation.types.ClassName
 
 /**
@@ -23,10 +24,11 @@ object AdapterDetector {
         compositionRoots: Set<ClassName> = emptySet(),
         extraValuePackages: Set<String> = emptySet(),
         extraFrameworkPackages: Set<String> = emptySet(),
+        classAnnotations: Map<ClassName, Set<AnnotationName>> = emptyMap(),
     ): Map<ClassName, AdapterFinding> =
         projectClasses
             .mapNotNull { cls ->
-                findingFor(cls, projectClasses, projectDeps, externalDeps, signatureTypes, compositionRoots, extraValuePackages, extraFrameworkPackages)
+                findingFor(cls, projectClasses, projectDeps, externalDeps, signatureTypes, compositionRoots, extraValuePackages, extraFrameworkPackages, classAnnotations)
                     ?.let { cls to it }
             }
             .toMap()
@@ -41,9 +43,10 @@ object AdapterDetector {
         externalDeps: List<PackageDependency>,
         signatureTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
         extraFrameworkPackages: Set<String> = emptySet(),
+        classAnnotations: Map<ClassName, Set<AnnotationName>> = emptyMap(),
     ): Map<ClassName, AdapterFinding> =
         projectClasses
-            .mapNotNull { cls -> frameworkFindingFor(cls, projectClasses, externalDeps, signatureTypes, extraFrameworkPackages)?.let { cls to it } }
+            .mapNotNull { cls -> frameworkFindingFor(cls, projectClasses, externalDeps, signatureTypes, extraFrameworkPackages, classAnnotations)?.let { cls to it } }
             .toMap()
 
     private fun frameworkFindingFor(
@@ -52,7 +55,18 @@ object AdapterDetector {
         externalDeps: List<PackageDependency>,
         signatureTypes: Map<ClassName, Set<ClassName>>,
         extraFrameworkPackages: Set<String>,
+        classAnnotations: Map<ClassName, Set<AnnotationName>>,
     ): AdapterFinding? {
+        // A known framework entry-point annotation (@RestController, @Controller, JAX-RS @Path) is
+        // checked first and independent of everything else: it's a direct, unambiguous signal that the
+        // framework dispatches to this class via reflection, regardless of whether its fields/parameters/
+        // return types happen to be project classes. Without this, a controller whose signature is
+        // entirely project DTOs and services is invisible to every other check, and — since nothing in
+        // the project's own bytecode calls it — looks structurally identical to a composition root
+        // instead of the driving adapter it actually is.
+        classAnnotations[cls].orEmpty().firstOrNull { it.value in ENTRY_POINT_ANNOTATIONS }?.let {
+            return AdapterFinding(AdapterReason.FRAMEWORK_ENTRY_POINT_ANNOTATION, ClassName(it.value))
+        }
         // signatureTypes carries every type named in a signature position, project-internal or not
         // (that's what makes it useful elsewhere) — but a framework signal must be a real external
         // type. Without this filter, a project whose own root package happens to collide with a
@@ -77,8 +91,10 @@ object AdapterDetector {
         compositionRoots: Set<ClassName>,
         extraValuePackages: Set<String>,
         extraFrameworkPackages: Set<String>,
+        classAnnotations: Map<ClassName, Set<AnnotationName>>,
     ): AdapterFinding? {
-        frameworkFindingFor(cls, projectClasses, externalDeps, signatureTypes, extraFrameworkPackages)?.let { return it }
+        frameworkFindingFor(cls, projectClasses, externalDeps, signatureTypes, extraFrameworkPackages, classAnnotations)?.let { return it }
+
 
         // Every class references String and Intrinsics; counting those as "talks to a library" would
         // make every leaf an adapter. The topological signals only mean anything for real libraries.
@@ -181,6 +197,21 @@ object AdapterDetector {
 
     // A project can extend this list per-project via cnav-config.json's rings.frameworkPackages, for
     // internal/private I/O client libraries that could never belong in a built-in, cross-project list.
+    // Class-level annotations that mark a class as a framework entry point regardless of what its
+    // signature looks like — the framework dispatches to these via reflection (an HTTP router, a
+    // JAX-RS resource locator), so nothing in the project's own bytecode ever calls them and their
+    // fields/parameters/return types are frequently all project classes (DTOs, services), invisible
+    // to every other signal. Deliberately narrow: only annotations that exist *specifically* to mark
+    // an HTTP/RPC entry point. Generic stereotypes like @Component/@Service/@Bean are excluded on
+    // purpose — those mark ordinary dependency-injected beans, the overwhelming majority of which are
+    // domain/service code, not adapters.
+    private val ENTRY_POINT_ANNOTATIONS = setOf(
+        "org.springframework.web.bind.annotation.RestController",
+        "org.springframework.stereotype.Controller",
+        "jakarta.ws.rs.Path",
+        "javax.ws.rs.Path",
+    )
+
     private val FRAMEWORK_PACKAGES = setOf(
         "io.ktor", "org.springframework", "jakarta.", "javax.",
         "org.jetbrains.exposed", "org.hibernate",

@@ -4,6 +4,7 @@ import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.bytecode.SourceSetResolver
 import no.f12.codenavigator.navigation.bytecode.scanProjectClasses
 import no.f12.codenavigator.navigation.bytecode.modulesOfClass
+import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
 import no.f12.codenavigator.navigation.types.AnalysisWorkspace
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.types.Scope
@@ -104,6 +105,7 @@ object RingsOrchestrator {
         val mutatedModulesOfClass = PlanMutator.applyToClassMap(modulesOfClass, plan)
         val classKinds = PlanMutator.applyToClassMap(ClassTypeCollector.collect(classDirectories), plan)
         val signatureTypes = PlanMutator.applyToClassMap(SignatureTypeScanner.scan(classDirectories), plan)
+        val classAnnotations = PlanMutator.applyToClassMap(AnnotationExtractor.scanAll(classDirectories).classAnnotations, plan)
         val supertypes = PlanMutator.applyToSupertypes(
             DsmDependencyExtractor.extractStructuralSupertypes(classDirectories, projectClasses),
             plan,
@@ -123,6 +125,7 @@ object RingsOrchestrator {
                     },
                 extraValuePackages = config.valuePackages.toSet(),
                 extraFrameworkPackages = config.frameworkPackages.toSet(),
+                classAnnotations = classAnnotations,
             ),
             config,
         )

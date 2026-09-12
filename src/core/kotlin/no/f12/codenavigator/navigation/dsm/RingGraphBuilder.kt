@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation.dsm
 
+import no.f12.codenavigator.navigation.types.AnnotationName
 import no.f12.codenavigator.navigation.types.ClassName
 
 object RingGraphBuilder {
@@ -14,6 +15,7 @@ object RingGraphBuilder {
         configuredCompositionRoots: Set<ClassName> = emptySet(),
         extraValuePackages: Set<String> = emptySet(),
         extraFrameworkPackages: Set<String> = emptySet(),
+        classAnnotations: Map<ClassName, Set<AnnotationName>> = emptyMap(),
     ): RingGraph {
         val base = RingGraph(
             classes = projectClasses,
@@ -32,12 +34,12 @@ object RingGraphBuilder {
         // Staged on purpose: the topological adapter rules need to know the composition roots, and root
         // detection needs to know what an adapter is. The framework pass depends on neither, so it goes
         // first and breaks the cycle.
-        val frameworkAdapters = AdapterDetector.detectFrameworkAdapters(projectClasses, externalDeps, signatureTypes, extraFrameworkPackages)
+        val frameworkAdapters = AdapterDetector.detectFrameworkAdapters(projectClasses, externalDeps, signatureTypes, extraFrameworkPackages, classAnnotations)
         val detectedRoots = CompositionRootDetector.detect(base.copy(ioClasses = frameworkAdapters.keys))
         val compositionRoots = configuredCompositionRoots + detectedRoots.keys
 
         val findings = AdapterDetector.detect(
-            projectClasses, projectDeps, externalDeps, signatureTypes, compositionRoots, extraValuePackages, extraFrameworkPackages,
+            projectClasses, projectDeps, externalDeps, signatureTypes, compositionRoots, extraValuePackages, extraFrameworkPackages, classAnnotations,
         )
 
         // Ports Spring Data/Panache generate a proxy implementor for at runtime have zero compiled

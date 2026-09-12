@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation.dsm
 
+import no.f12.codenavigator.navigation.types.AnnotationName
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.types.PackageName
 import kotlin.test.Test
@@ -80,6 +81,42 @@ class AdapterDetectorTest {
 
         assertEquals(AdapterReason.FRAMEWORK_SIGNATURE, findings[renderer]?.reason)
         assertEquals(AdapterReason.FRAMEWORK_TYPE, findings[helper]?.reason)
+    }
+
+    @Test
+    fun `a Spring REST controller is a framework entry point even with no framework type in its signature`() {
+        // A real, reproducible case: a Spring MVC/REST controller whose fields, parameters and return
+        // types are all project classes (services, request/response DTOs) has nothing for
+        // SignatureTypeScanner or the topological rules to catch -- @RestController/@RequestMapping
+        // are annotations, which that scanner deliberately never visits. Without a dedicated check, a
+        // controller like this is invisible to every existing signal, and worse: since nothing in the
+        // project's own bytecode calls it (the framework dispatches to it via reflection), it looks
+        // structurally identical to a composition root instead of the driving adapter it actually is.
+        val controller = ClassName("com.app.web.ArticleController")
+        val service = ClassName("com.app.domain.ArticleService")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(controller, service),
+            projectDeps = listOf(dep(controller.value, service.value)),
+            externalDeps = emptyList(),
+            classAnnotations = mapOf(controller to setOf(AnnotationName("org.springframework.web.bind.annotation.RestController"))),
+        )
+
+        assertEquals(AdapterReason.FRAMEWORK_ENTRY_POINT_ANNOTATION, findings[controller]?.reason)
+    }
+
+    @Test
+    fun `a plain class annotated with an unrelated marker is not a framework entry point`() {
+        val plain = ClassName("com.app.domain.ArticleValidator")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(plain),
+            projectDeps = emptyList(),
+            externalDeps = emptyList(),
+            classAnnotations = mapOf(plain to setOf(AnnotationName("org.springframework.stereotype.Component"))),
+        )
+
+        assertNull(findings[plain], "@Component is the generic stereotype most domain/service beans carry -- treating it as an entry-point signal would misclassify ordinary business logic")
     }
 
     @Test
