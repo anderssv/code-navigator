@@ -6,6 +6,7 @@ enum class DirectiveKind {
     ADAPTER,
     NOT_ADAPTER,
     COMPOSITION_ROOT,
+    NOT_COMPOSITION_ROOT,
     SERVICE_TIER,
     NOT_SERVICE_TIER,
 }
@@ -31,6 +32,7 @@ object RingConfigOverrides {
         val forcedAdapters = graph.classes.matching(config.adapters)
         val excludedAdapters = graph.classes.matching(config.notAdapters)
         val forcedRoots = graph.classes.matching(config.compositionRoots)
+        val excludedRoots = graph.classes.matching(config.notCompositionRoots)
 
         return RingOverrideResult(
             graph = graph.copy(
@@ -38,7 +40,8 @@ object RingConfigOverrides {
                 adapterReasons = graph.adapterReasons +
                     forcedAdapters.associateWith { AdapterReason.CONFIGURED } -
                     excludedAdapters,
-                compositionRoots = graph.compositionRoots + forcedRoots,
+                compositionRoots = graph.compositionRoots + forcedRoots - excludedRoots,
+                compositionRootEvidence = graph.compositionRootEvidence - excludedRoots,
             ),
             unhonoured = unmatched(graph, config),
         )
@@ -73,6 +76,7 @@ object RingConfigOverrides {
             DirectiveKind.ADAPTER to config.adapters,
             DirectiveKind.NOT_ADAPTER to config.notAdapters,
             DirectiveKind.COMPOSITION_ROOT to config.compositionRoots,
+            DirectiveKind.NOT_COMPOSITION_ROOT to config.notCompositionRoots,
         ).flatMap { (kind, patterns) ->
             patterns
                 .filterNot { pattern -> graph.classes.any { RingsConfig.matchesGlob(it.value, pattern) } }

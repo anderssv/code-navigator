@@ -155,9 +155,18 @@ First Java/Maven field test of the reworked `cnavRings` (all prior field tests �
 
 **Tests**: `CompositionRootDetectorTest` — 1 new (framework-invoked controller no longer a composition root candidate). `AdapterDetectorTest` — 2 new (project-namespace-collision guard; `java.io.Serializable` exact exclusion). `ProxyPortDetectorTest` (new, 5 cases). `RingGraphBuilderTest` — 1 new (Spring Data repository interface becomes a port with a synthetic proxy adapter).
 
+### `cnavRings` evidence/hint coverage gaps — composition roots and project-class evidence
+~~**ACTIVE**~~ **DONE (v0.1.115-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: design-discussion
+
+Raised directly after the Spring PetClinic field test above: would an agent reading `cnavRings`' output cold (no prior context, none of the debugging done to find the PetClinic bugs) actually have had enough information to act on any of these bugs itself, via the evidence/hint mechanism already built? Audited honestly against what actually happened, the answer was no on two counts:
+
+1. **Composition roots carried no evidence at all** — just a bare class list, no explanation of *why* a class was excluded as an assembler. An agent seeing a controller misclassified as a composition root had no signal to act on, and no config override existed to fix it even if it noticed. Fixed: `CompositionRootDetector.detect` now returns `Map<ClassName, ClassName>` (root → the adapter it wires) instead of a bare `Set`; `RingGraph` carries it as `compositionRootEvidence`; the composition-roots section prints `ApplicationKt (wires: OwnerRepositoryImpl)` and a hint explaining the structural criterion and pointing at the new `rings.notCompositionRoots` config override (mirrors `notAdapters`) for framework entry points cnav hasn't learned to recognize.
+
+2. **The existing violations hint couldn't distinguish "evidence is a real external library" from "evidence is itself a project class."** Both looked identical in the output, but they mean completely different things: the former is a config decision (add to `valuePackages`/`frameworkPackages`/`notAdapters`); the latter — exactly what happened with PetClinic's `org.springframework.samples.petclinic` root-package collision — is a structural classification bug that no config override can fix. The hint now checks `evidence in output.graph.classes` and, when true, explicitly says so and points at filing an issue instead of offering config options that would silently do nothing.
+
+**Tests**: `CompositionRootDetectorTest` — updated for the `Map` return type. `RingConfigOverridesTest` — 2 new (`notCompositionRoots` removes a class, unhonoured-directive reporting). `HexRingFormatterTest` — 3 new (composition-root evidence line, project-class-evidence branch triggers, external-evidence branch does not).
 
 
-## Multi-module support
 
 ### ~~Full workspace analysis — automatically include real project dependencies~~ — DONE (v0.1.113-SNAPSHOT)
 **DONE** | **Value: high** | **Effort: high** | Source: internal

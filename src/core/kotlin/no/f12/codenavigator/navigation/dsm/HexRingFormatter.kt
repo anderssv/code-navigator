@@ -76,7 +76,23 @@ object HexRingFormatter {
         val roots = output.graph.compositionRoots
         if (roots.isEmpty()) return
         appendLine("Composition roots (excluded — an assembler is not a ring):")
-        roots.sortedBy { it.value }.forEach { appendLine("  ${it.value}") }
+        roots.sortedBy { it.value }.forEach {
+            val evidence = output.graph.compositionRootEvidence[it]?.let { wired -> " (wires: ${wired.value})" } ?: ""
+            appendLine("  ${it.value}$evidence")
+        }
+
+        val structuralRoots = roots.filter { it in output.graph.compositionRootEvidence }
+        if (structuralRoots.isNotEmpty()) {
+            appendLine()
+            appendLine("A composition root above is detected structurally as: nothing in the project")
+            appendLine("calls it, and it wires something already classified as an adapter (shown after")
+            appendLine("\"wires:\"). If one of these doesn't look like a real assembler — e.g. it's an")
+            appendLine("entry point some framework invokes reflectively (a scheduled job, a message")
+            appendLine("listener, a CLI command) that cnav hasn't learned to recognize as an adapter —")
+            appendLine("add it to `cnav-config.json`'s `rings.notCompositionRoots` to remove it from this")
+            appendLine("list, and consider filing an issue upstream if the framework/annotation is common")
+            appendLine("enough to teach cnav generally.")
+        }
         appendLine()
     }
 
@@ -110,24 +126,36 @@ object HexRingFormatter {
             appendLine("listing). Example from this run:")
             appendLine("  ${exampleClass.value} was classified because of ${exampleEvidence.value}.")
             appendLine()
-            appendLine("- If that type is a general-purpose library with no I/O of its own (dates,")
-            appendLine("  serialization annotations, an HTML DSL — not a DB/HTTP/file/queue client),")
-            appendLine("  this is likely a code-navigator classification gap, not a real violation:")
-            appendLine("    - Running against code-navigator's own source: add the package prefix to")
-            appendLine("      AdapterDetector.kt's VALUE_LIBRARY_PACKAGES.")
-            appendLine("    - Running against any other project: use the cnav-config.json override below")
-            appendLine("      now, and consider filing an issue upstream — a source fix helps every")
-            appendLine("      project, a config override only fixes this one.")
-            appendLine("- If it's real, project-specific I/O behavior, add a cnav-config.json override")
-            appendLine("  instead of ignoring the violation:")
-            appendLine()
-            appendLine("""    { "rings": { "notAdapters": ["${exampleClass.value}"] } }""")
-            appendLine("      — this one class is not an adapter, regardless of what it references.")
-            appendLine("""    { "rings": { "valuePackages": ["${packagePrefixOf(exampleEvidence)}"] } }""")
-            appendLine("      — this whole package is a pure value/DSL library, never an I/O signal.")
-            appendLine("""    { "rings": { "frameworkPackages": ["${packagePrefixOf(exampleEvidence)}"] } }""")
-            appendLine("      — this whole package IS an I/O library (an internal client cnav can't know")
-            appendLine("        about), so referencing it should always mean adapter.")
+
+            if (exampleEvidence in output.graph.classes) {
+                appendLine("That evidence is itself a project class, not an external library reference —")
+                appendLine("this is a much stronger signal than a package-list gap: it usually means a")
+                appendLine("structural bug in classification, not a per-project config decision. The known")
+                appendLine("cause: the project's own root package coincidentally collides with a built-in")
+                appendLine("framework/library prefix (e.g. a project rooted under \"org.springframework\" —")
+                appendLine("the exact prefix used to detect real Spring usage — makes every class referencing")
+                appendLine("another project class self-match it). File this upstream with the example above;")
+                appendLine("a `cnav-config.json` override cannot fix a classification bug like this one.")
+            } else {
+                appendLine("- If that type is a general-purpose library with no I/O of its own (dates,")
+                appendLine("  serialization annotations, an HTML DSL — not a DB/HTTP/file/queue client),")
+                appendLine("  this is likely a code-navigator classification gap, not a real violation:")
+                appendLine("    - Running against code-navigator's own source: add the package prefix to")
+                appendLine("      AdapterDetector.kt's VALUE_LIBRARY_PACKAGES.")
+                appendLine("    - Running against any other project: use the cnav-config.json override below")
+                appendLine("      now, and consider filing an issue upstream — a source fix helps every")
+                appendLine("      project, a config override only fixes this one.")
+                appendLine("- If it's real, project-specific I/O behavior, add a cnav-config.json override")
+                appendLine("  instead of ignoring the violation:")
+                appendLine()
+                appendLine("""    { "rings": { "notAdapters": ["${exampleClass.value}"] } }""")
+                appendLine("      — this one class is not an adapter, regardless of what it references.")
+                appendLine("""    { "rings": { "valuePackages": ["${packagePrefixOf(exampleEvidence)}"] } }""")
+                appendLine("      — this whole package is a pure value/DSL library, never an I/O signal.")
+                appendLine("""    { "rings": { "frameworkPackages": ["${packagePrefixOf(exampleEvidence)}"] } }""")
+                appendLine("      — this whole package IS an I/O library (an internal client cnav can't know")
+                appendLine("        about), so referencing it should always mean adapter.")
+            }
         }
     }
 
@@ -192,7 +220,14 @@ object HexRingFormatter {
         appendLine("  \"ringCount\": ${output.layering.ringCount},")
         appendLine("  \"diagnosis\": \"${output.layering.diagnosis.name}\",")
         output.expectedRingCount?.let { appendLine("  \"expectedRingCount\": $it,") }
-        appendLine("  \"compositionRoots\": ${jsonArray(output.graph.compositionRoots.map { it.value })},")
+        appendLine("  \"compositionRoots\": [")
+        val roots = output.graph.compositionRoots.sortedBy { it.value }
+        roots.forEachIndexed { index, cls ->
+            val comma = if (index == roots.size - 1) "" else ","
+            val wires = output.graph.compositionRootEvidence[cls]?.let { ""","wires":"${it.value}"""" } ?: ""
+            appendLine("    {\"class\": \"${cls.value}\"$wires}$comma")
+        }
+        appendLine("  ],")
         appendLine("  \"rings\": {")
         val byRing = output.layering.rings.entries.groupBy({ it.value }, { it.key })
         byRing.keys.sorted().forEachIndexed { index, ring ->

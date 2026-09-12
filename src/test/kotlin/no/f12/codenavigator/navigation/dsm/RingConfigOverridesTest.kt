@@ -64,6 +64,28 @@ class RingConfigOverridesTest {
     }
 
     @Test
+    fun `a notCompositionRoots pattern removes a class from the detected composition roots`() {
+        val root = ClassName("com.app.web.OwnerController")
+        val graphWithRoot = graph.copy(
+            classes = graph.classes + root,
+            compositionRoots = setOf(root),
+            compositionRootEvidence = mapOf(root to impl),
+        )
+
+        val result = RingConfigOverrides.apply(graphWithRoot, RingsConfig(notCompositionRoots = listOf("com.app.web.OwnerController")))
+
+        assertEquals(emptySet(), result.graph.compositionRoots)
+        assertEquals(null, result.graph.compositionRootEvidence[root])
+    }
+
+    @Test
+    fun `a notCompositionRoots directive that matches no class is reported as unhonoured`() {
+        val result = RingConfigOverrides.apply(graph, RingsConfig(notCompositionRoots = listOf("com.app.Gone")))
+
+        assertEquals(listOf(UnhonouredDirective(DirectiveKind.NOT_COMPOSITION_ROOT, "com.app.Gone")), result.unhonoured)
+    }
+
+    @Test
     fun `a configured serviceTier pattern marks a matching class as service tier`() {
         val retryKt = ClassName("com.app.RetryKt")
 

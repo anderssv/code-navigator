@@ -6,6 +6,7 @@ import java.io.File
 data class RingsConfig(
     val expectedRingCount: Int? = null,
     val compositionRoots: List<String> = emptyList(),
+    val notCompositionRoots: List<String> = emptyList(),
     val adapters: List<String> = emptyList(),
     val notAdapters: List<String> = emptyList(),
     val valuePackages: List<String> = emptyList(),
@@ -35,6 +36,7 @@ data class RingsConfig(
                 expectedRingCount = (rings["expected"] as? String)?.toIntOrNull()
                     ?: (rings["expected"] as? Number)?.toInt(),
                 compositionRoots = stringList(rings["compositionRoots"]),
+                notCompositionRoots = stringList(rings["notCompositionRoots"]),
                 adapters = stringList(rings["adapters"]),
                 notAdapters = stringList(rings["notAdapters"]),
                 valuePackages = stringList(rings["valuePackages"]),

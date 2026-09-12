@@ -33,8 +33,8 @@ object RingGraphBuilder {
         // detection needs to know what an adapter is. The framework pass depends on neither, so it goes
         // first and breaks the cycle.
         val frameworkAdapters = AdapterDetector.detectFrameworkAdapters(projectClasses, externalDeps, signatureTypes, extraFrameworkPackages)
-        val compositionRoots = configuredCompositionRoots +
-            CompositionRootDetector.detect(base.copy(ioClasses = frameworkAdapters.keys))
+        val detectedRoots = CompositionRootDetector.detect(base.copy(ioClasses = frameworkAdapters.keys))
+        val compositionRoots = configuredCompositionRoots + detectedRoots.keys
 
         val findings = AdapterDetector.detect(
             projectClasses, projectDeps, externalDeps, signatureTypes, compositionRoots, extraValuePackages, extraFrameworkPackages,
@@ -57,6 +57,7 @@ object RingGraphBuilder {
                 syntheticProxies.associateWith { AdapterReason.FRAMEWORK_GENERATED_PROXY },
             adapterEvidence = adapterFindings.mapNotNull { (cls, finding) -> finding.evidence?.let { cls to it } }.toMap(),
             compositionRoots = compositionRoots,
+            compositionRootEvidence = detectedRoots,
         )
     }
 }

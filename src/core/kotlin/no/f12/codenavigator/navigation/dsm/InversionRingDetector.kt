@@ -19,6 +19,7 @@ data class RingGraph(
     val adapterReasons: Map<ClassName, AdapterReason> = emptyMap(),
     val adapterEvidence: Map<ClassName, ClassName> = emptyMap(),
     val compositionRoots: Set<ClassName> = emptySet(),
+    val compositionRootEvidence: Map<ClassName, ClassName> = emptyMap(),
     val dependsOn: Map<ClassName, Set<ClassName>> = emptyMap(),
 ) {
     fun withoutCompositionRoots(): RingGraph {

@@ -80,6 +80,25 @@ class HexRingFormatterTest {
     }
 
     @Test
+    fun `explains why a class was classified as a composition root`() {
+        val layering = RingLayering(
+            ringCount = 2,
+            diagnosis = RingDiagnosis.LAYERED,
+            rings = mapOf(poll to 0, port to 0, impl to 1),
+        )
+        val graph = RingGraph(
+            classes = setOf(poll, port, impl, root),
+            ioClasses = setOf(impl),
+            compositionRoots = setOf(root),
+            compositionRootEvidence = mapOf(root to impl),
+        )
+
+        val text = HexRingFormatter.format(output(layering, graph = graph), OutputFormat.TEXT)
+
+        assertContains(text, "com.app.ApplicationKt (wires: com.app.infra.SqlPollsRepository)")
+    }
+
+    @Test
     fun `warns about a directive that could not be honoured`() {
         val layering = RingLayering(1, RingDiagnosis.NO_INVERSION_BOUNDARY, mapOf(poll to 0))
         val unhonoured = listOf(UnhonouredDirective(DirectiveKind.ADAPTER, "com.app.gone.*"))
@@ -149,5 +168,47 @@ class HexRingFormatterTest {
         assertContains(text, "com.app.infra.SqlPollsRepository")
         assertContains(text, "com.app.polls.PollsRepository")
         assertContains(text, "bypass")
+    }
+
+    @Test
+    fun `flags evidence that is itself a project class as a likely structural bug, not a config decision`() {
+        val layering = RingLayering(
+            ringCount = 2,
+            diagnosis = RingDiagnosis.LAYERED,
+            rings = mapOf(poll to 0, impl to 1),
+            violations = listOf(ClassRingViolation(poll, impl, 0, 1, RingViolationType.OUTWARD)),
+        )
+        // impl's "evidence" is poll -- a project class, not a real external library reference.
+        val graph = RingGraph(
+            classes = setOf(poll, impl),
+            ioClasses = setOf(impl),
+            adapterReasons = mapOf(impl to AdapterReason.FRAMEWORK_TYPE),
+            adapterEvidence = mapOf(impl to poll),
+        )
+
+        val text = HexRingFormatter.format(output(layering, graph = graph), OutputFormat.TEXT)
+
+        assertContains(text, "project class")
+        assertContains(text, "structural")
+    }
+
+    @Test
+    fun `does not flag evidence that is a real external type as a structural bug`() {
+        val layering = RingLayering(
+            ringCount = 2,
+            diagnosis = RingDiagnosis.LAYERED,
+            rings = mapOf(poll to 0, impl to 1),
+            violations = listOf(ClassRingViolation(poll, impl, 0, 1, RingViolationType.OUTWARD)),
+        )
+        val graph = RingGraph(
+            classes = setOf(poll, impl),
+            ioClasses = setOf(impl),
+            adapterReasons = mapOf(impl to AdapterReason.FRAMEWORK_TYPE),
+            adapterEvidence = mapOf(impl to ClassName("org.jetbrains.exposed.sql.Table")),
+        )
+
+        val text = HexRingFormatter.format(output(layering, graph = graph), OutputFormat.TEXT)
+
+        assertFalse(text.contains("structural"))
     }
 }

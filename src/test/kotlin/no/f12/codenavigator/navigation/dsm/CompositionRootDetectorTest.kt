@@ -23,7 +23,7 @@ class CompositionRootDetectorTest {
 
         val roots = CompositionRootDetector.detect(graph)
 
-        assertEquals(setOf(root), roots)
+        assertEquals(mapOf(root to impl), roots)
     }
 
     @Test
@@ -43,7 +43,7 @@ class CompositionRootDetectorTest {
 
         val roots = CompositionRootDetector.detect(graph)
 
-        assertEquals(emptySet(), roots)
+        assertEquals(emptyMap(), roots)
     }
 
     @Test
@@ -59,14 +59,14 @@ class CompositionRootDetectorTest {
 
         val roots = CompositionRootDetector.detect(graph)
 
-        assertEquals(emptySet(), roots)
+        assertEquals(emptyMap(), roots)
     }
 
     @Test
     fun `a codebase with no classes has no composition roots`() {
         val roots = CompositionRootDetector.detect(RingGraph(classes = emptySet()))
 
-        assertEquals(emptySet(), roots)
+        assertEquals(emptyMap(), roots)
     }
 
     @Test
@@ -88,6 +88,6 @@ class CompositionRootDetectorTest {
 
         val roots = CompositionRootDetector.detect(graph)
 
-        assertEquals(emptySet(), roots, "an already-classified adapter must not also become a composition root")
+        assertEquals(emptyMap(), roots, "an already-classified adapter must not also become a composition root")
     }
 }
