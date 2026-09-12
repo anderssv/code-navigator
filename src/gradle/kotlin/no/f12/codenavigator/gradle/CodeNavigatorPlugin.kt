@@ -146,6 +146,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "size" to SizeTask::class.java,
             "duplicates" to DuplicatesTask::class.java,
             "test-coupling" to TestCouplingTask::class.java,
+            "ambient" to AmbientTask::class.java,
             "rename-param" to RenameParamTask::class.java,
             "rename-method" to RenameMethodTask::class.java,
             "move-class" to MoveClassTask::class.java,

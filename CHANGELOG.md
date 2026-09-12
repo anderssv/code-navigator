@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.117
+
+### Added
+- `cnavAmbient` — detects domain (ring-0) classes reading ambient, nondeterministic input directly from the platform: the wall clock (`Instant.now()`, `System.currentTimeMillis()`), randomness (`UUID.randomUUID()`, `Math.random()`), the environment (`System.getenv()`), or the filesystem/network. Like `cnavTestCoupling --subject=adapters`, this is something true about the inside that no dependency edge reveals: the call is a *static* call on a type the file already imports for its own field declarations, not a constructor-injected dependency, so `cnavRings` and every other direction check see nothing. The class looks pure from the outside and is untestable without freezing global state. Reported with exact `file:line` from the bytecode line-number table.
+  - The exemption is keyed on the method **descriptor**, not on arity: `LocalDate.now()` and `LocalDate.now(clock)` differ only in descriptor, so a check keyed on (owner, name) alone would flag precisely the projects that already inject a clock. A zone overload (`ZonedDateTime.now(APP_ZONE)` — the shape found in the field) is still reported: a zone changes *which* wall clock is read, not whether one is read.
+  - Reads the project's own convention before judging: classes holding or receiving a `Clock` are counted, and when no class anywhere injects one, CLOCK findings are reported as advisory (a design choice the project has made everywhere) rather than as drift. RANDOM/ENV/IO findings stand on their own regardless.
+  - Findings in default arguments and initializers (`val at: Instant = Instant.now()`) are listed separately — the most common hit and usually the cheapest fix.
+  - Subjects default to ring 0 as `cnavRings` computes it, with `--domain=<regex>` for projects where no layered hexagon can be derived (reported explicitly rather than silently checking every class). `--categories=clock,random,env,io` narrows the check; `--detail`, `--exclude`, and the `--fail-on-violation`/`--max-violations` CI gate work as on the other structural checks.
+
 ## 0.1.116
 
 ### Added

@@ -521,6 +521,8 @@ On ra-backend the top duplicate blocks were all JAXB-generated `.java` under `no
 
 ---
 
+---
+
 ## Find-usages output quality
 **FUTURE** | **Value: medium** | **Effort: medium** | Source: field-test(v0.1.72)
 
@@ -580,13 +582,34 @@ Would need `ConvergeOrchestrator`'s risk-mode entries (per-class) to cross-refer
 
 Named from field feedback: every existing structural check (`cnavRings`, `cnavCycles`, `cnavBalance`, `cnavStrength`) measures dependency *direction* — a driving adapter calling a port is exactly what hexagonal architecture permits, so all four can report a clean scorecard on a codebase whose application layer is hollow (use-case orchestration living in route handlers instead of domain services). "Zero violations" on those checks is a floor, not a verdict. This section is for checks that measure something direction analysis structurally cannot see.
 
-### The wider family: other "is the inside doing any work?" signals raised alongside the above, not yet implemented
-**FUTURE** | **Value: medium-high (varies per item)** | **Effort: varies** | Source: field-test(greitt, independent LLM code review)
+### Pass-through services
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: field-test(greitt, independent LLM code review) + design review
 
-Raised as a possible release theme, not committed to. In the reviewer's own assessed order of tractability:
-- **Domain reads the wall clock directly.** A ring-0/domain class calling `ZonedDateTime.now(...)`/`Instant.now()`/`System.currentTimeMillis()`/`UUID.randomUUID()` as a static call, in a codebase that otherwise threads an injected `Clock`/ID-generator through its services — invisible to every existing check since it's a static call on a type the file already imports for unrelated reasons (field types, etc.), not a constructor-injected dependency `cnavRings` would ever see as a boundary crossing. Assessed by the reviewer as "genuinely easy [to detect from bytecode] and broadly useful" — a bounded, well-known static-method blocklist checked against ring-0 class bytecode, no rings/service-tier plumbing needed. The most tractable item in this family if picked up.
-- **Pass-through services.** A service-tier class whose method body is a single delegating call straight to a port, adding a layer of indirection without absorbing any actual logic — the mirror image of the adapter-coupling check above (there, logic is missing from where it belongs; here, a class exists but is empty ceremony). Detectable via a call-graph shape check (a service method with exactly one outgoing call, straight to a port), but the false-positive risk is real (some pass-through methods are legitimately simple) and wasn't stress-tested against real code the way the adapter-coupling check was.
-- **Policy split across a port boundary.** A domain rule's constants/parameters (e.g. two cutoff thresholds defining an "expiring soon" window) passed *through* a port call rather than being owned entirely on one side, so half the policy lives in the service and half lives in the query/SQL it drives. Assessed by the reviewer as "harder; a signature smell at best" — no concrete detection design proposed, lowest-confidence item in the family.
+A service-tier class that adds a layer of indirection without absorbing any logic — the mirror image of the adapter-coupling check above (there, logic is missing from where it belongs; here, a class exists but is empty ceremony).
+
+**The originally proposed predicate — "a service method with exactly one outgoing call" — does not survive Kotlin bytecode.** Measured against this repo's own compiled classes:
+- `CallGraphBuilder.build` is a textbook one-line delegate (`= buildTagged(dirs.map { ... })`) and compiles to **~20 invoke instructions** — the inline `map` is inlined into the body. Any pass-through using `let`/`map`/`require`/`also` is a false *negative*.
+- Every public method with non-null params emits `Intrinsics.checkNotNullParameter`, so the naive count is 2, not 1.
+- `CallGraph` callee sets also carry synthetic `<field:...>` and `<class-literal>` refs, and are `Set`s — repeat calls collapse.
+- Across 1,766 real named methods here, **229 (13%) are single-call-and-branchless and 90 (5%) delegate to a project-internal type**. On any real app that's ~100 raw candidates before port filtering. Per-method flagging is noise — confirming the false-positive risk originally flagged.
+
+What makes it defensible is moving the unit of judgment from method to **class**:
+- **Subjects**: `HexRingsOutput.serviceTier` minus port implementors — reuse `TestCouplingOrchestrator.driveAdapterCandidates` verbatim, it already computes this shape.
+- **Per method**: after a noise filter (`kotlin.jvm.internal.*`, `CollectionsKt`, `StringsKt`, iterator machinery, field/class-literal refs), all remaining calls resolve to ports via the existing `resolvePortInterface`; branch count 0; no field writes.
+- **Class predicate**: a pure pass-through class has `WMC == methodCount` (zero branches anywhere) and touches no field but the port. Both numbers already exist — `MethodComplexityAnalyzer` and `FieldAccessAnalyzer`. Report only classes with ratio ≥ 0.8 and ≥ 3 methods.
+- **Weight writes only**, reusing `PortMethodClassifier` — read-side pass-through is idiomatic, as that file already argues.
+- **Strongest corroborator**: descriptor identity between the service method and the port method it calls (same args in, same return out, untouched = ceremony). Needs the descriptor-aware scan from the ambient-input check above, which is why that one goes first.
+
+Ship as a **report only** — never wire it to `--fail-on-violation`.
+
+### ~~Policy split across a port boundary~~ — not pursuing
+**REJECTED** | Source: field-test(greitt, independent LLM code review) + design review
+
+A domain rule's constants/parameters (e.g. two cutoff thresholds defining an "expiring soon" window) passed *through* a port call rather than being owned on one side, so half the policy lives in the service and half in the query/SQL it drives.
+
+Assessed and dropped: this isn't a harder version of the two checks above, it's a different kind of problem. The rule lives half in a SQL string the analyzer cannot interpret. The only bytecode-visible fragment is "constants pushed directly as arguments to a port call", detectable without real dataflow only when the push is literal and immediate (LDC/BIPUSH/GETSTATIC then invoke) — a local variable or any computation defeats it. And even a clean detection is mostly true-but-uninteresting: page sizes, limits and ids are passed to ports constantly.
+
+If the signal is ever wanted, attach it as *evidence* on a finding already being reported ("this port call receives 2 literal constants" on a pass-through or adapter-coupling violation) rather than as a task of its own.
 
 
 

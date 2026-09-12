@@ -52,7 +52,7 @@ class FileSizeScannerTest {
         val result = FileSizeScanner.scan(listOf(testProjectSrc), over = 30)
 
         assertTrue(result.all { it.lines > 30 })
-        assertEquals(5, result.size)
+        assertEquals(6, result.size)
     }
 
     @Test

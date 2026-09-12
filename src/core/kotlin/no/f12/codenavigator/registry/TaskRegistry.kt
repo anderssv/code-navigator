@@ -295,6 +295,8 @@ object TaskRegistry {
     val AFFINITY_THRESHOLD = ParamDef("threshold", "<N>", "Max number of consumer domains to still count as single-owner", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
     val RING_MODE = ParamDef("mode", "removed", "REMOVED: cnavRings has no modes. Both former modes (emergent, package) computed topological depth, not hexagonal rings. Passing this now fails with an explanation rather than silently analysing something else.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val BOOTSTRAP_CONFIG = ParamDef("bootstrap-config", "true", "Generate a starting cnav-config.json based on emergent ring analysis — best-effort suggestions meant to be reviewed and tweaked before use", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
+    val DOMAIN = ParamDef("domain", "<regex>", "Regex naming the domain classes to check. Default: ring 0 as cnavRings computes it — pass this when cnavRings cannot produce a layered hexagon for the project (e.g. \"\\\\.domain\\\\.|\\\\.model\\\\.\")", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val AMBIENT_CATEGORIES = ParamDef("categories", "clock,random,env,io", "Which kinds of ambient input to check for (comma-separated). Default: all four", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
     val CONVERGE_MODE = ParamDef("mode", "intersect|risk", "Analysis mode: intersect (default, cross-references cycles/rings/change-coupling for a ranked ACT NOW/LATENT/MISSING ABSTRACTION list) or risk (change-frequency x complexity x coupling ranking)", flag = false, defaultValue = "intersect", enhancePattern = false, type = ParamType.STRING)
 
     val FORMAT_PARAMS = listOf(FORMAT)
@@ -1023,6 +1025,19 @@ object TaskRegistry {
         ),
     )
 
+    val AMBIENT = TaskDef(
+        goal = "ambient",
+        description = "Detect domain (ring-0) classes reading ambient input directly: the wall clock (Instant.now()), randomness (UUID.randomUUID()), the environment (System.getenv()) or the filesystem/network. Invisible to cnavRings and every other direction check — it is a static call on an already-imported type, not a dependency edge",
+        params = FORMAT_PARAMS + listOf(DOMAIN, AMBIENT_CATEGORIES, DETAIL, EXCLUDE, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + SOURCE_SET_PARAMS,
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(AMBIENT_CATEGORIES to "clock")),
+            UsageExample(listOf(DOMAIN to "\"\\\\.domain\\\\.\"", DETAIL to "true")),
+        ),
+    )
+
     val REPORT = TaskDef(
         goal = "report",
         description = "Consolidated codebase health report: metrics, cycles, rings, move-suggest, cohesion, dead code",
@@ -1093,6 +1108,7 @@ object TaskRegistry {
         SIZE,
         DUPLICATES,
         TEST_COUPLING,
+        AMBIENT,
         RENAME_PARAM_TASK,
         RENAME_METHOD_TASK,
         MOVE_CLASS_TASK,

@@ -1,5 +1,38 @@
 # Plan — Completed
 
+### ~~Ambient input in the domain: wall clock, randomness, environment~~ — DONE (v0.1.117-SNAPSHOT)
+~~**ACTIVE**~~ **DONE** | **Value: high** | **Effort: low** | Source: field-test(greitt, independent LLM code review) + design review
+
+A ring-0/domain class reading a nondeterministic value straight from the platform — `Instant.now()`, `LocalDate.now()`, `System.currentTimeMillis()`, `UUID.randomUUID()`, `Math.random()`, `System.getenv(...)` — in a codebase that otherwise threads an injected `Clock`/ID-generator through its services. Invisible to every existing check: it's a static call on a type the file already imports for unrelated reasons (field types, etc.), not a constructor-injected dependency `cnavRings` would ever see as a boundary crossing.
+
+Confirmed live instance (greitt, feedback #3): `PollDomain.kt:226` calls `ZonedDateTime.now(APP_ZONE)` inside an aggregate method, in a codebase that threads an injected `Clock` through every service. Note the shape — a `ZoneId` overload, not the zero-arg one — which is exactly why the rule keys on "descriptor contains `Ljava/time/Clock;`" rather than on arity.
+
+**Build it as one check with categories (CLOCK / RANDOM / ENV / IO), not a clock-only task** — same scanner, same blocklist mechanism, same subject selection, roughly four times the value for the same effort.
+
+**Do not build this on `CallGraph`.** `MethodRef` (`relations/callgraph/CallGraphBuilder.kt`) is `(className, methodName)` only — the descriptor is discarded at `visitMethodInsn`. That makes `LocalDate.now()` (the violation) and `LocalDate.now(clock)` (the *correct* injected form) the same edge, so a call-graph implementation would flag precisely the codebases already doing the right thing. Needs a dedicated descriptor-aware ASM scan.
+
+Design:
+- **Scanner**: new, sized like `classmetrics/MethodComplexityAnalyzer` (~80 lines). Record `(owner, name, descriptor, line)` for blocklist hits; `visitLineNumber` gives exact `file:line`, which none of the direction checks can offer.
+- **Rule**: blocklisted `(owner, name)` with a **zero-arg descriptor** → violation. Descriptor containing `Ljava/time/Clock;` → clean. `ZoneId`-only overloads are still violations (still the wall clock).
+- **Blocklist** (bounded, well-known): `java.time.{Instant,LocalDate,LocalDateTime,LocalTime,ZonedDateTime,OffsetDateTime,Year,YearMonth}.now`, `System.currentTimeMillis/nanoTime`, `new java.util.Date()`, `Calendar.getInstance`, `UUID.randomUUID`, `Math.random`, `new java.util.Random()`, `kotlin.random.Random$Default`, `kotlinx.datetime.Clock$System.now`, `System.getenv/getProperty`.
+- **Subjects**: ring 0 from `RingLayering.rings` (`dsm/InversionRingDetector.kt`), with a `--domain=<regex>` fallback mirroring `--ports=` for projects whose `RingDiagnosis` isn't `LAYERED`.
+- **Calibration** — this is what keeps it from being a lint rule people switch off: scan fields/ctor params for `Ljava/time/Clock;` (reuse `deadcode/FieldExtractor` / `dsm/SignatureTypeScanner`). If N > 0, report violations against the project's *own* established convention. If N == 0, downgrade to advisory ("no clock injection anywhere — that's a design choice, not drift").
+
+Known limits to state in the task guidance: Kotlin inline functions are inlined into the caller, so a `now()` written in an inline helper is attributed to the domain class that called it; default constructor args (`val at: Instant = Instant.now()`) land in `<init>`/`$default` — genuine findings, but they deserve their own bucket since they're the most common hit and the cheapest fix.
+
+Build this **first** in the family: it's the cheapest and most precise, and it builds the descriptor-aware scan that the pass-through check below also needs.
+
+**Implemented** as `cnavAmbient` / `cnav:ambient` (`navigation/ambient/`):
+- `AmbientBlocklist` — the signal list and the descriptor rule. `AmbientSignal.exemptDescriptorMarker` (`Ljava/time/Clock;`) is what makes the check safe on a project that already injects a clock; `requiredDescriptor` narrows the constructors that are only ambient in their no-arg form (`Date()` vs `Date(millis)`). `member = "*"` covers wholly-ambient types (`java.nio.file.Files`).
+- `AmbientCallScanner` — one descriptor-aware ASM pass (the call graph could not be reused: `MethodRef` discards the descriptor). Same pass collects the clock-injection evidence (fields and constructor params typed `Clock`), so the convention calibration costs no extra walk.
+- `AmbientBuilder` — resolution: subject filtering (lambdas/inner classes attributed to their top-level owner), category filter, exclude regex, `METHOD_BODY` vs `INITIALIZER` split, and `ClockConvention` (INJECTED/ABSENT) driving `actionable`.
+- `AmbientOrchestrator` — ring-0 subjects from `RingsOrchestrator`, `--domain` fallback, and an explicit `subjectsUnavailable` result rather than silently checking every class when no hexagon can be derived.
+- `AmbientFormatter` (TEXT/DETAIL/LLM/JSON) + `AmbientGuidance`, registered in `TaskRegistry` with `DOMAIN`/`AMBIENT_CATEGORIES`, plus the Gradle task, Maven mojo and `cnavHelp` section.
+
+Verified end-to-end through the Gradle plugin against a hexagonal fixture: ring-0 subjects derived from `cnavRings`, `Instant.now()` and `ZonedDateTime.now(ZoneId)` both reported with exact `file:line`, `now(clock)` in the adapter correctly not reported, clock-injection evidence picked up. 34 tests across blocklist/scanner/builder/formatter/config/guidance/orchestrator, the scanner and orchestrator ones against real Kotlin compiler output (`test-project/.../variants/ambient/`).
+
+
+
 ### `cnavRings` rebuilt on dependency inversions instead of topological depth
 ~~**ACTIVE**~~ **DONE (unreleased)** | **Value: high** | **Effort: high** | Source: field-test(greitt)
 
