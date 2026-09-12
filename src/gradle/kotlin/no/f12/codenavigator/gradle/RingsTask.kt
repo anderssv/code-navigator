@@ -3,10 +3,8 @@ package no.f12.codenavigator.gradle
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.ParamDef
-import no.f12.codenavigator.navigation.dsm.EmergentRingFormatter
-import no.f12.codenavigator.navigation.dsm.EmergentRingsOutput
-import no.f12.codenavigator.navigation.dsm.PackageRingsOutput
-import no.f12.codenavigator.navigation.dsm.RingFormatter
+import no.f12.codenavigator.navigation.dsm.HexRingFormatter
+import no.f12.codenavigator.navigation.dsm.HexRingsOutput
 import no.f12.codenavigator.navigation.dsm.RingsAnalysis
 import no.f12.codenavigator.navigation.dsm.RingsOrchestrator
 import no.f12.codenavigator.navigation.types.Scope
@@ -25,7 +23,7 @@ abstract class RingsTask : WorkspaceAnalysisTask() {
     @get:Internal
     var scope: String? = null
 
-    @Option(option = "mode", description = "Analysis mode: emergent (default, class-level ring detection) or package (package-level by topological depth)")
+    @Option(option = "mode", description = "Removed: cnavRings no longer has modes")
     @get:Internal
     var mode: String? = null
 
@@ -54,21 +52,25 @@ abstract class RingsTask : WorkspaceAnalysisTask() {
         val extension = project.codeNavigatorExtension()
         val props = extension.resolveProperties(TaskRegistry.RINGS.enhanceProperties(buildOptionsMap()))
 
+        require(props["mode"] == null) {
+            "cnavRings no longer has a --mode option. It now detects hexagonal rings from dependency " +
+                "inversions; the old emergent/package modes were both topological depth, which is a " +
+                "different measurement. Remove --mode from the invocation."
+        }
+
         val format = ParamDef.parseFormat(props)
         val scopeVal = Scope.parse(props["scope"])
-        val modeVal = props["mode"] ?: "emergent"
         val bootstrap = props["bootstrap-config"] == "true"
         val failOnViolationVal = TaskRegistry.FAIL_ON_VIOLATION.parseFrom(props)
         val maxViolationsVal = TaskRegistry.MAX_VIOLATIONS.parseFrom(props)
 
         val workspace = resolveAnalysisWorkspace()
         val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        val analysis = RingsOrchestrator.run(workspace, scopeVal, modeVal, bootstrap, loadPlanSteps(), project.projectDir, reportFile)
+        val analysis = RingsOrchestrator.run(workspace, scopeVal, bootstrap, loadPlanSteps(), project.projectDir, reportFile)
 
         val (output, violationCount) = when (analysis) {
-            is RingsAnalysis.Bootstrap -> analysis.hintsConfigJson to 0
-            is RingsAnalysis.Package -> renderPackage(analysis.output, format)
-            is RingsAnalysis.Emergent -> renderEmergent(analysis.output, format)
+            is RingsAnalysis.Bootstrap -> analysis.configJson to 0
+            is RingsAnalysis.Hexagonal -> render(analysis.output, format)
         }
 
         logger.quiet(OutputWrapper.wrap(output, format))
@@ -78,21 +80,8 @@ abstract class RingsTask : WorkspaceAnalysisTask() {
         }
     }
 
-    private fun renderPackage(output: PackageRingsOutput, format: OutputFormat): Pair<String, Int> {
+    private fun render(output: HexRingsOutput, format: OutputFormat): Pair<String, Int> {
         output.skippedFileWarning?.let { logger.warn(it) }
-        val rings = when (format) {
-            OutputFormat.JSON -> RingFormatter.formatJson(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE, moduleLabels = output.moduleLabels)
-            else -> RingFormatter.format(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE, format = format, moduleLabels = output.moduleLabels)
-        }
-        return rings to output.assignment.reportableViolations.size
-    }
-
-    private fun renderEmergent(output: EmergentRingsOutput, format: OutputFormat): Pair<String, Int> {
-        output.skippedFileWarning?.let { logger.warn(it) }
-        val rings = when (format) {
-            OutputFormat.JSON -> EmergentRingFormatter.formatJson(output.result, output.ringNames, hasHints = output.hasHints, testInvolvement = output.testInvolvement, modulesOfClass = output.modulesOfClass)
-            else -> EmergentRingFormatter.format(output.result, output.ringNames, hasHints = output.hasHints, format = format, testInvolvement = output.testInvolvement, modulesOfClass = output.modulesOfClass)
-        }
-        return rings to output.result.violations.size
+        return HexRingFormatter.format(output, format) to output.layering.violations.size
     }
 }

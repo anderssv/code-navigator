@@ -63,6 +63,26 @@ object PlanMutator {
         return current
     }
 
+    /** Applies class moves to supertype relations, so a simulated move keeps port/adapter links intact. */
+    fun applyToSupertypes(supertypes: List<StructuralSupertypeInfo>, plan: List<PlanStep>): List<StructuralSupertypeInfo> {
+        if (plan.isEmpty()) return supertypes
+        return supertypes.map {
+            StructuralSupertypeInfo(renamed(it.sourceClass, plan), renamed(it.supertypeClass, plan))
+        }
+    }
+
+    private fun renamed(className: ClassName, plan: List<PlanStep>): ClassName =
+        plan.fold(className) { current, step ->
+            when (step) {
+                is PlanStep.Move ->
+                    if (current == step.classToMove) {
+                        ClassName("${step.targetPackage}.${current.simpleName()}")
+                    } else {
+                        current
+                    }
+            }
+        }
+
     fun parseJson(jsonString: String): List<PlanStep> {
         val steps = mutableListOf<PlanStep>()
         val objectPattern = Regex("""\{[^}]+\}""")

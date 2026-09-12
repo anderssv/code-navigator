@@ -8,6 +8,19 @@ Items grouped by functional area. Each item has:
 
 ## Bugs
 
+### `cnavMoveClass --from-file`: parameter mismatch accepted, rewrote 67 files, reported success
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(greitt)
+
+A `cnavMoveClass --from-file` invocation with a wrong parameter (the correct one is `--to-package`) did not fail. Instead it:
+1. created a package directory named after a *class*, rather than rejecting the mismatch;
+2. rewrote symbols that were not declared in the moved file at all;
+3. reported success, so the 67-file blast radius was only discovered afterwards.
+
+Three separate fixes, each independently valuable:
+- **Reject the mismatch.** A `--from-file`/target-parameter combination that doesn't type-check as a package should be a hard error before any file is touched. A target that looks like a class name (last segment capitalised, matches a declared type) is almost certainly a mistake.
+- **Never rewrite a symbol absent from the moved file.** The rewriter must scope symbol rewriting to declarations actually in the file being moved. This is the dangerous half: it silently edited unrelated code.
+- **Blast-radius guard.** A refactor touching an order of magnitude more files than the request implies should require confirmation or `--force`, and the count should be reported up front. Ties into the existing `withZeroChangeWarning` reporting.
+
 ### `cnavMovePackage`/`cnavExecutePlan`: per-class errors silently swallowed when total changes is zero
 ~~**ACTIVE**~~ **DONE (v0.1.114-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(bass-self-service, [PR #1461](https://github.com/techcloud0/bass-self-service/pull/1461))
 

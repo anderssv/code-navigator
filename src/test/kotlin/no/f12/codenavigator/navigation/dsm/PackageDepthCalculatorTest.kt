@@ -6,7 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class RingDetectorTest {
+class PackageDepthCalculatorTest {
 
     @Test
     fun `package with no outgoing deps to other project packages is ring 0`() {

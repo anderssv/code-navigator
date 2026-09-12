@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Changed (breaking)
+- `cnavRings` now detects hexagonal rings from dependency inversions rather than topological depth. A ring
+  boundary is a port (an interface owned by the inside, implemented by a class that does I/O), so the ring
+  count is emergent. Code with no inversion reports a single ring and explains why.
+- Violations are OUTWARD only. Two classes in the same ring are peers, not a violation.
+- Composition roots are excluded from ring assignment entirely.
+- `--mode` removed from `cnavRings` / `cnav:rings`; passing it fails with an explanation. Both former modes
+  computed topological depth, not rings.
+- `cnav-config.json`: `ringNames` and `hints` are rejected with a message. Use the new `rings` section
+  (`expected`, `compositionRoots`, `adapters`, `notAdapters`). Directives are absolute, and a directive
+  matching no class is reported rather than silently ignored.
+- `cnavReport` and `cnavConverge` now report the same rings and violations as `cnavRings`.
+
+### Added
+- Adapter classification reports *why* a class is an adapter (`FRAMEWORK_SIGNATURE`, `FRAMEWORK_TYPE`,
+  `SINK_WITH_EXTERNAL_CALLS`, `UNCALLED_ENTRY_POINT`, `CONFIGURED`), so a surprising classification is
+  debuggable.
+- A framework type named in a *signature* (supertype, field, parameter, return) is a stronger adapter
+  signal than one touched only inside a method body, and is reported separately.
+- `UNCALLED_ENTRY_POINT` now requires the class to be wired by a composition root. A class nothing
+  references at all is no longer classified as an adapter — that is dead code, not a driving adapter.
+- `rings.expected` pins the ring count and reports when detection disagrees.
+- `--bootstrap-config` generates the new `rings` config section.
+
+
+## Unreleased
+
 ### Fixed: `cnavDead` false positive on companion-object `const val` holders
 
 Classes that hold `const val` declarations inside a `companion object` (e.g. `class Foo { companion object { const val X = "x" } }`) were still flagged `HIGH` confidence dead code after the 0.1.113 fix, because `ConstValHolderDetector` only checked a class's own `KmClass.properties`, not its companion's. The companion class file (`Foo$Companion.class`) was detected correctly, but the outer class `Foo` — the one actually flagged dead — was not. Now when a companion class is detected as a const-val holder, the outer class is also registered as one.

@@ -2,10 +2,8 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.OutputWrapper
-import no.f12.codenavigator.navigation.dsm.EmergentRingFormatter
-import no.f12.codenavigator.navigation.dsm.EmergentRingsOutput
-import no.f12.codenavigator.navigation.dsm.PackageRingsOutput
-import no.f12.codenavigator.navigation.dsm.RingFormatter
+import no.f12.codenavigator.navigation.dsm.HexRingFormatter
+import no.f12.codenavigator.navigation.dsm.HexRingsOutput
 import no.f12.codenavigator.navigation.dsm.RingsAnalysis
 import no.f12.codenavigator.navigation.dsm.RingsOrchestrator
 import no.f12.codenavigator.navigation.types.Scope
@@ -54,7 +52,11 @@ class RingsMojo : AbstractMojo() {
         val props = TaskRegistry.RINGS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
         val outputFormat = ParamDef.parseFormat(props)
         val scopeFilter = Scope.parse(props["scope"])
-        val modeVal = props["mode"] ?: "emergent"
+        require(props["mode"] == null) {
+            "cnav:rings no longer has a mode option. It now detects hexagonal rings from dependency " +
+                "inversions; the old emergent/package modes were both topological depth, which is a " +
+                "different measurement. Remove -Dmode from the invocation."
+        }
         val bootstrap = props["bootstrap-config"] == "true"
         val failOnViolationVal = TaskRegistry.FAIL_ON_VIOLATION.parseFrom(props)
         val maxViolationsVal = TaskRegistry.MAX_VIOLATIONS.parseFrom(props)
@@ -68,12 +70,11 @@ class RingsMojo : AbstractMojo() {
         }
 
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
-        val analysis = RingsOrchestrator.run(taggedDirs, scopeFilter, modeVal, bootstrap, loadPlanSteps(planFile), project.basedir, reportFile)
+        val analysis = RingsOrchestrator.run(taggedDirs, scopeFilter, bootstrap, loadPlanSteps(planFile), project.basedir, reportFile)
 
         val (output, violationCount) = when (analysis) {
-            is RingsAnalysis.Bootstrap -> analysis.hintsConfigJson to 0
-            is RingsAnalysis.Package -> renderPackage(analysis.output, outputFormat)
-            is RingsAnalysis.Emergent -> renderEmergent(analysis.output, outputFormat)
+            is RingsAnalysis.Bootstrap -> analysis.configJson to 0
+            is RingsAnalysis.Hexagonal -> render(analysis.output, outputFormat)
         }
 
         println(OutputWrapper.wrap(output, outputFormat))
@@ -83,22 +84,9 @@ class RingsMojo : AbstractMojo() {
         }
     }
 
-    private fun renderPackage(output: PackageRingsOutput, format: OutputFormat): Pair<String, Int> {
+    private fun render(output: HexRingsOutput, format: OutputFormat): Pair<String, Int> {
         output.skippedFileWarning?.let { log.warn(it) }
-        val rings = when (format) {
-            OutputFormat.JSON -> RingFormatter.formatJson(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE)
-            else -> RingFormatter.format(output.assignment, configNotice = RingFormatter.PACKAGE_MODE_NOTICE, format = format)
-        }
-        return rings to output.assignment.reportableViolations.size
-    }
-
-    private fun renderEmergent(output: EmergentRingsOutput, format: OutputFormat): Pair<String, Int> {
-        output.skippedFileWarning?.let { log.warn(it) }
-        val rings = when (format) {
-            OutputFormat.JSON -> EmergentRingFormatter.formatJson(output.result, output.ringNames, hasHints = output.hasHints, testInvolvement = output.testInvolvement)
-            else -> EmergentRingFormatter.format(output.result, output.ringNames, hasHints = output.hasHints, format = format, testInvolvement = output.testInvolvement)
-        }
-        return rings to output.result.violations.size
+        return HexRingFormatter.format(output, format) to output.layering.violations.size
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
