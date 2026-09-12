@@ -118,6 +118,8 @@ object RingsOrchestrator {
                     .flatMapTo(mutableSetOf()) { pattern ->
                         mutatedClasses.filter { RingsConfig.matchesGlob(it.value, pattern) }
                     },
+                extraValuePackages = config.valuePackages.toSet(),
+                extraFrameworkPackages = config.frameworkPackages.toSet(),
             ),
             config,
         )

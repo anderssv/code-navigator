@@ -25,9 +25,11 @@
   references at all is no longer classified as an adapter — that is dead code, not a driving adapter.
 - `rings.expected` pins the ring count and reports when detection disagrees.
 - `--bootstrap-config` generates the new `rings` config section.
+- Adapter classification carries *evidence* — the specific external type that triggered a `FRAMEWORK_SIGNATURE`/`FRAMEWORK_TYPE`/`SINK_WITH_EXTERNAL_CALLS`/`UNCALLED_ENTRY_POINT` finding (e.g. `[names a framework type in its signature — io.ktor.server.application.ApplicationCall]`) — printed in TEXT/LLM and as an `"evidence"` field in JSON. Lets a reader judge whether a classification is a real I/O signal or a cnav package-list gap without re-deriving it from bytecode. The violations section now includes a concrete, worked-example hint (using the run's own first evidenced violation, with copy-pasteable JSON) for both remediation paths: a `cnav-config.json` override (project-specific) or a source-level fix to `AdapterDetector.kt` (general-purpose library, benefits every project) — explicitly distinguishing "running against code-navigator's own source" from "running against any other project," since only one of those makes a source fix possible.
+- `cnav-config.json`'s `rings` section gains `valuePackages`/`frameworkPackages` — project-local extensions to the built-in package-prefix lists used to classify adapters, for libraries too niche or too project-specific (an internal I/O client, a niche ID-generation library) to belong in cnav's built-in lists.
 
-
-## Unreleased
+### Fixed
+- Field-tested `cnavRings`' new adapter detection against a real Kotlin/Ktor codebase (greitt): `SINK_WITH_EXTERNAL_CALLS` was flagging pure value/DSL library usage as an I/O adapter signal — a class referencing `kotlinx.datetime`, `kotlinx.html`, or `kotlinx.serialization` types (dates, HTML tag builders, serialization annotations) with no other project calls was misclassified as an adapter, when these carry no I/O of their own. Also missing from the core-JDK stdlib exclusion list: `java.security.` (hashing/crypto) and `java.nio.charset.` (encoding) — both non-I/O, unlike `java.nio.file.` which is real filesystem I/O and correctly still counts. On greitt's production code this cut violation count from 68 to 15, with the remainder verified legitimate (JDBC/env config loading, `jakarta.validation`, real file resolution, a genuine 3rd-party QR library, serialization codecs).
 
 ### Fixed: `cnavDead` false positive on companion-object `const val` holders
 

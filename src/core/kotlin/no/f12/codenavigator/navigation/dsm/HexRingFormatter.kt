@@ -52,8 +52,11 @@ object HexRingFormatter {
         }
     }
 
-    private fun adapterNote(output: HexRingsOutput, cls: ClassName): String =
-        output.graph.adapterReasons[cls]?.let { "  [${reasonLabel(it)}]" } ?: ""
+    private fun adapterNote(output: HexRingsOutput, cls: ClassName): String {
+        val reason = output.graph.adapterReasons[cls] ?: return ""
+        val evidence = output.graph.adapterEvidence[cls]?.let { " — ${it.value}" } ?: ""
+        return "  [${reasonLabel(reason)}$evidence]"
+    }
 
     private fun reasonLabel(reason: AdapterReason): String = when (reason) {
         AdapterReason.CONFIGURED -> "configured as adapter"
@@ -90,6 +93,41 @@ object HexRingFormatter {
         appendLine()
         appendLine("Fix: invert the dependency — put an interface in the inner ring and have the")
         appendLine("outer class implement it.")
+
+        val evidencedTargets = violations.map { it.targetClass }.distinct()
+            .mapNotNull { cls -> output.graph.adapterEvidence[cls]?.let { cls to it } }
+        if (evidencedTargets.isNotEmpty()) {
+            val (exampleClass, exampleEvidence) = evidencedTargets.first()
+            appendLine()
+            appendLine("If a target above looks miscategorized, check its evidence: the exact external")
+            appendLine("type that triggered classification (the `[reason — evidence]` note in the ring")
+            appendLine("listing). Example from this run:")
+            appendLine("  ${exampleClass.value} was classified because of ${exampleEvidence.value}.")
+            appendLine()
+            appendLine("- If that type is a general-purpose library with no I/O of its own (dates,")
+            appendLine("  serialization annotations, an HTML DSL — not a DB/HTTP/file/queue client),")
+            appendLine("  this is likely a code-navigator classification gap, not a real violation:")
+            appendLine("    - Running against code-navigator's own source: add the package prefix to")
+            appendLine("      AdapterDetector.kt's VALUE_LIBRARY_PACKAGES.")
+            appendLine("    - Running against any other project: use the cnav-config.json override below")
+            appendLine("      now, and consider filing an issue upstream — a source fix helps every")
+            appendLine("      project, a config override only fixes this one.")
+            appendLine("- If it's real, project-specific I/O behavior, add a cnav-config.json override")
+            appendLine("  instead of ignoring the violation:")
+            appendLine()
+            appendLine("""    { "rings": { "notAdapters": ["${exampleClass.value}"] } }""")
+            appendLine("      — this one class is not an adapter, regardless of what it references.")
+            appendLine("""    { "rings": { "valuePackages": ["${packagePrefixOf(exampleEvidence)}"] } }""")
+            appendLine("      — this whole package is a pure value/DSL library, never an I/O signal.")
+            appendLine("""    { "rings": { "frameworkPackages": ["${packagePrefixOf(exampleEvidence)}"] } }""")
+            appendLine("      — this whole package IS an I/O library (an internal client cnav can't know")
+            appendLine("        about), so referencing it should always mean adapter.")
+        }
+    }
+
+    private fun packagePrefixOf(type: ClassName): String {
+        val pkg = type.value.substringBeforeLast('.', missingDelimiterValue = type.value)
+        return "$pkg."
     }
 
     private fun StringBuilder.appendNotices(output: HexRingsOutput) {
@@ -133,7 +171,8 @@ object HexRingFormatter {
         val adapters = output.graph.adapterReasons.entries.sortedBy { it.key.value }
         adapters.forEachIndexed { index, (cls, reason) ->
             val comma = if (index == adapters.size - 1) "" else ","
-            appendLine("    \"${cls.value}\": \"${reason.name}\"$comma")
+            val evidence = output.graph.adapterEvidence[cls]?.let { ""","evidence":"${it.value}"""" } ?: ""
+            appendLine("    \"${cls.value}\": {\"reason\": \"${reason.name}\"$evidence}$comma")
         }
         appendLine("  },")
         appendLine("  \"violations\": [")

@@ -29,6 +29,7 @@ class RingGraphBuilderTest {
 
         assertEquals(setOf(impl), graph.ioClasses)
         assertEquals(mapOf(impl to AdapterReason.FRAMEWORK_TYPE), graph.adapterReasons)
+        assertEquals(mapOf(impl to ClassName("org.jetbrains.exposed.sql.Table")), graph.adapterEvidence)
     }
 
     @Test
@@ -100,5 +101,41 @@ class RingGraphBuilderTest {
         )
 
         assertEquals(setOf(detectedRoot, configuredRoot), graph.compositionRoots)
+    }
+
+    @Test
+    fun `extraValuePackages suppresses a sink classification for a configured package prefix`() {
+        val service = ClassName("com.app.polls.PollService")
+        val idGen = ClassName("com.app.domain.PollId")
+
+        val graph = RingGraphBuilder.build(
+            projectClasses = setOf(service, idGen),
+            projectDeps = listOf(dep(service.value, idGen.value)),
+            externalDeps = listOf(dep(idGen.value, "io.viascom.nanoid.NanoId")),
+            classKinds = emptyMap(),
+            supertypes = emptyList(),
+            extraValuePackages = setOf("io.viascom.nanoid."),
+        )
+
+        assertEquals(emptySet(), graph.ioClasses)
+    }
+
+    @Test
+    fun `extraFrameworkPackages classifies a configured package prefix as a framework adapter`() {
+        val service = ClassName("com.app.polls.PollService")
+        val client = ClassName("com.app.infra.InternalQueueClient")
+
+        val graph = RingGraphBuilder.build(
+            projectClasses = setOf(service, client),
+            projectDeps = listOf(dep(service.value, client.value)),
+            externalDeps = listOf(dep(client.value, "com.acme.internalqueue.QueueClient")),
+            classKinds = emptyMap(),
+            supertypes = emptyList(),
+            extraFrameworkPackages = setOf("com.acme.internalqueue."),
+        )
+
+        assertEquals(setOf(client), graph.ioClasses)
+        assertEquals(AdapterReason.FRAMEWORK_TYPE, graph.adapterReasons[client])
+        assertEquals(ClassName("com.acme.internalqueue.QueueClient"), graph.adapterEvidence[client])
     }
 }

@@ -22,7 +22,9 @@ class RingsConfigTest {
                 "expected": 3,
                 "compositionRoots": ["com.app.ApplicationKt"],
                 "adapters": ["com.app.web.*"],
-                "notAdapters": ["com.app.domain.*"]
+                "notAdapters": ["com.app.domain.*"],
+                "valuePackages": ["io.viascom.nanoid."],
+                "frameworkPackages": ["com.acme.internalqueue."]
               }
             }
         """.trimIndent()
@@ -33,6 +35,8 @@ class RingsConfigTest {
         assertEquals(listOf("com.app.ApplicationKt"), config.compositionRoots)
         assertEquals(listOf("com.app.web.*"), config.adapters)
         assertEquals(listOf("com.app.domain.*"), config.notAdapters)
+        assertEquals(listOf("io.viascom.nanoid."), config.valuePackages)
+        assertEquals(listOf("com.acme.internalqueue."), config.frameworkPackages)
     }
 
     @Test

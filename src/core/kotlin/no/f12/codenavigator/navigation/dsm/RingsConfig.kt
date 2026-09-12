@@ -8,6 +8,8 @@ data class RingsConfig(
     val compositionRoots: List<String> = emptyList(),
     val adapters: List<String> = emptyList(),
     val notAdapters: List<String> = emptyList(),
+    val valuePackages: List<String> = emptyList(),
+    val frameworkPackages: List<String> = emptyList(),
 ) {
     companion object {
         private const val CONFIG_FILE_NAME = "cnav-config.json"
@@ -33,6 +35,8 @@ data class RingsConfig(
                 compositionRoots = stringList(rings["compositionRoots"]),
                 adapters = stringList(rings["adapters"]),
                 notAdapters = stringList(rings["notAdapters"]),
+                valuePackages = stringList(rings["valuePackages"]),
+                frameworkPackages = stringList(rings["frameworkPackages"]),
             )
         }
 

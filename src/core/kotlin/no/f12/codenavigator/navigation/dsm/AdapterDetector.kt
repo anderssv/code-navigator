@@ -2,6 +2,17 @@ package no.f12.codenavigator.navigation.dsm
 
 import no.f12.codenavigator.navigation.types.ClassName
 
+/**
+ * [evidence] is the specific external type that triggered [reason], when there is one to point at
+ * (absent for [AdapterReason.CONFIGURED], which comes from a cnav-config.json override rather than
+ * a class reference). Surfacing it lets a reader judge whether a classification is a genuine I/O
+ * signal or a gap in cnav's built-in package lists, without re-deriving it from bytecode by hand.
+ */
+data class AdapterFinding(
+    val reason: AdapterReason,
+    val evidence: ClassName? = null,
+)
+
 object AdapterDetector {
 
     fun detect(
@@ -10,10 +21,12 @@ object AdapterDetector {
         externalDeps: List<PackageDependency>,
         signatureTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
         compositionRoots: Set<ClassName> = emptySet(),
-    ): Map<ClassName, AdapterReason> =
+        extraValuePackages: Set<String> = emptySet(),
+        extraFrameworkPackages: Set<String> = emptySet(),
+    ): Map<ClassName, AdapterFinding> =
         projectClasses
             .mapNotNull { cls ->
-                reasonFor(cls, projectClasses, projectDeps, externalDeps, signatureTypes, compositionRoots)
+                findingFor(cls, projectClasses, projectDeps, externalDeps, signatureTypes, compositionRoots, extraValuePackages, extraFrameworkPackages)
                     ?.let { cls to it }
             }
             .toMap()
@@ -27,35 +40,43 @@ object AdapterDetector {
         projectClasses: Set<ClassName>,
         externalDeps: List<PackageDependency>,
         signatureTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
-    ): Map<ClassName, AdapterReason> =
+        extraFrameworkPackages: Set<String> = emptySet(),
+    ): Map<ClassName, AdapterFinding> =
         projectClasses
-            .mapNotNull { cls -> frameworkReasonFor(cls, externalDeps, signatureTypes)?.let { cls to it } }
+            .mapNotNull { cls -> frameworkFindingFor(cls, externalDeps, signatureTypes, extraFrameworkPackages)?.let { cls to it } }
             .toMap()
 
-    private fun frameworkReasonFor(
+    private fun frameworkFindingFor(
         cls: ClassName,
         externalDeps: List<PackageDependency>,
         signatureTypes: Map<ClassName, Set<ClassName>>,
-    ): AdapterReason? {
-        if (signatureTypes[cls].orEmpty().any { isFrameworkType(it) }) return AdapterReason.FRAMEWORK_SIGNATURE
-        if (externalDeps.any { it.sourceClass == cls && isFrameworkType(it.targetClass) }) return AdapterReason.FRAMEWORK_TYPE
+        extraFrameworkPackages: Set<String>,
+    ): AdapterFinding? {
+        signatureTypes[cls].orEmpty().firstOrNull { isFrameworkType(it, extraFrameworkPackages) }?.let {
+            return AdapterFinding(AdapterReason.FRAMEWORK_SIGNATURE, it)
+        }
+        externalDeps.firstOrNull { it.sourceClass == cls && isFrameworkType(it.targetClass, extraFrameworkPackages) }?.let {
+            return AdapterFinding(AdapterReason.FRAMEWORK_TYPE, it.targetClass)
+        }
         return null
     }
 
-    private fun reasonFor(
+    private fun findingFor(
         cls: ClassName,
         projectClasses: Set<ClassName>,
         projectDeps: List<PackageDependency>,
         externalDeps: List<PackageDependency>,
         signatureTypes: Map<ClassName, Set<ClassName>>,
         compositionRoots: Set<ClassName>,
-    ): AdapterReason? {
-        frameworkReasonFor(cls, externalDeps, signatureTypes)?.let { return it }
+        extraValuePackages: Set<String>,
+        extraFrameworkPackages: Set<String>,
+    ): AdapterFinding? {
+        frameworkFindingFor(cls, externalDeps, signatureTypes, extraFrameworkPackages)?.let { return it }
 
         // Every class references String and Intrinsics; counting those as "talks to a library" would
         // make every leaf an adapter. The topological signals only mean anything for real libraries.
         val external = externalDeps.filter { it.sourceClass == cls }.map { it.targetClass }
-        if (external.none { isLibraryType(it) }) return null
+        val libraryEvidence = external.firstOrNull { isLibraryType(it, extraValuePackages) } ?: return null
 
         val callers = projectDeps
             .filter { it.targetClass == cls && it.sourceClass != cls }
@@ -66,28 +87,47 @@ object AdapterDetector {
         // it. Without that wiring it is simply unreferenced — dead code or a test fixture, not an
         // adapter — which is why "no callers at all" deliberately falls through to null.
         if (callers.isNotEmpty() && callers.all { it in compositionRoots }) {
-            return AdapterReason.UNCALLED_ENTRY_POINT
+            return AdapterFinding(AdapterReason.UNCALLED_ENTRY_POINT, libraryEvidence)
         }
         if (callers.isEmpty()) return null
 
         val outgoing = projectDeps.filter { it.sourceClass == cls && it.targetClass != cls && it.targetClass in projectClasses }
-        if (outgoing.isEmpty()) return AdapterReason.SINK_WITH_EXTERNAL_CALLS
+        if (outgoing.isEmpty()) return AdapterFinding(AdapterReason.SINK_WITH_EXTERNAL_CALLS, libraryEvidence)
 
         return null
     }
 
-    private fun isLibraryType(type: ClassName): Boolean =
-        STDLIB_PACKAGES.none { prefix -> type.value.startsWith(prefix) }
+    private fun isLibraryType(type: ClassName, extraValuePackages: Set<String>): Boolean =
+        (NON_ADAPTER_SIGNAL_PACKAGES + extraValuePackages).none { prefix -> type.value.startsWith(prefix) }
 
-    private fun isFrameworkType(type: ClassName): Boolean =
-        FRAMEWORK_PACKAGES.any { prefix -> type.value.startsWith(prefix) }
+    private fun isFrameworkType(type: ClassName, extraFrameworkPackages: Set<String>): Boolean =
+        (FRAMEWORK_PACKAGES + extraFrameworkPackages).any { prefix -> type.value.startsWith(prefix) }
 
     private val STDLIB_PACKAGES = setOf(
         "java.lang.", "java.util.", "java.math.", "java.time.", "java.text.",
+        "java.security.", "java.nio.charset.",
         "kotlin.", "kotlinx.coroutines.",
         "org.jetbrains.annotations.",
     )
 
+    // Pure value/DSL libraries: types that carry data or build markup, with no I/O of their own.
+    // A class that only touches these (dates, HTML tag builders, serialization annotations) is not
+    // an adapter just because it "talks to a library" — the SINK_WITH_EXTERNAL_CALLS signal is meant
+    // to catch classes wrapping real infrastructure (a DB client, a cache client), not a leaf value
+    // type or a markup helper. Framework/infra libraries stay covered separately via FRAMEWORK_PACKAGES.
+    // A project can extend this list per-project via cnav-config.json's rings.valuePackages, for
+    // libraries too niche or project-specific to belong in this built-in list.
+    private val VALUE_LIBRARY_PACKAGES = setOf(
+        "kotlinx.datetime.",
+        "kotlinx.html.",
+        "kotlinx.serialization.",
+        "kotlinx.collections.immutable.",
+    )
+
+    private val NON_ADAPTER_SIGNAL_PACKAGES = STDLIB_PACKAGES + VALUE_LIBRARY_PACKAGES
+
+    // A project can extend this list per-project via cnav-config.json's rings.frameworkPackages, for
+    // internal/private I/O client libraries that could never belong in a built-in, cross-project list.
     private val FRAMEWORK_PACKAGES = setOf(
         "io.ktor", "org.springframework", "jakarta.", "javax.",
         "org.jetbrains.exposed", "org.hibernate",

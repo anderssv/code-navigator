@@ -12,6 +12,8 @@ object RingGraphBuilder {
         supertypes: List<StructuralSupertypeInfo>,
         signatureTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
         configuredCompositionRoots: Set<ClassName> = emptySet(),
+        extraValuePackages: Set<String> = emptySet(),
+        extraFrameworkPackages: Set<String> = emptySet(),
     ): RingGraph {
         val base = RingGraph(
             classes = projectClasses,
@@ -30,17 +32,18 @@ object RingGraphBuilder {
         // Staged on purpose: the topological adapter rules need to know the composition roots, and root
         // detection needs to know what an adapter is. The framework pass depends on neither, so it goes
         // first and breaks the cycle.
-        val frameworkAdapters = AdapterDetector.detectFrameworkAdapters(projectClasses, externalDeps, signatureTypes)
+        val frameworkAdapters = AdapterDetector.detectFrameworkAdapters(projectClasses, externalDeps, signatureTypes, extraFrameworkPackages)
         val compositionRoots = configuredCompositionRoots +
             CompositionRootDetector.detect(base.copy(ioClasses = frameworkAdapters.keys))
 
-        val adapterReasons = AdapterDetector.detect(
-            projectClasses, projectDeps, externalDeps, signatureTypes, compositionRoots,
+        val findings = AdapterDetector.detect(
+            projectClasses, projectDeps, externalDeps, signatureTypes, compositionRoots, extraValuePackages, extraFrameworkPackages,
         )
 
         return base.copy(
-            ioClasses = adapterReasons.keys,
-            adapterReasons = adapterReasons,
+            ioClasses = findings.keys,
+            adapterReasons = findings.mapValues { (_, finding) -> finding.reason },
+            adapterEvidence = findings.mapNotNull { (cls, finding) -> finding.evidence?.let { cls to it } }.toMap(),
             compositionRoots = compositionRoots,
         )
     }

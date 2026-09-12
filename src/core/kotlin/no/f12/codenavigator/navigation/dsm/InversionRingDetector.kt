@@ -16,6 +16,7 @@ data class RingGraph(
     val implementedBy: Map<ClassName, Set<ClassName>> = emptyMap(),
     val ioClasses: Set<ClassName> = emptySet(),
     val adapterReasons: Map<ClassName, AdapterReason> = emptyMap(),
+    val adapterEvidence: Map<ClassName, ClassName> = emptyMap(),
     val compositionRoots: Set<ClassName> = emptySet(),
     val dependsOn: Map<ClassName, Set<ClassName>> = emptyMap(),
 ) {
