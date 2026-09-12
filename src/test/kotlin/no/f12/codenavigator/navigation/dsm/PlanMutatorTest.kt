@@ -114,4 +114,19 @@ class PlanMutatorTest {
         assertEquals(ClassName("api.Dto"), step.classToMove)
         assertEquals(PackageName("service"), step.targetPackage)
     }
+
+    @Test
+    fun `applies class moves to supertype relations`() {
+        val plan = listOf(PlanStep.Move(ClassName("infra.PollsRepositoryImpl"), PackageName("adapters.db")))
+        val supertypes = listOf(
+            StructuralSupertypeInfo(ClassName("infra.PollsRepositoryImpl"), ClassName("domain.PollsRepository")),
+        )
+
+        val mutated = PlanMutator.applyToSupertypes(supertypes, plan)
+
+        assertEquals(
+            listOf(StructuralSupertypeInfo(ClassName("adapters.db.PollsRepositoryImpl"), ClassName("domain.PollsRepository"))),
+            mutated,
+        )
+    }
 }

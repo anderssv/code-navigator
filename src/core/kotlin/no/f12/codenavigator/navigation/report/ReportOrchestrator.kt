@@ -17,8 +17,9 @@ import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
 import no.f12.codenavigator.navigation.dsm.MoveSuggestOrchestrator
 import no.f12.codenavigator.navigation.dsm.MoveSuggestionResult
 import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
-import no.f12.codenavigator.navigation.dsm.RingAssignment
-import no.f12.codenavigator.navigation.dsm.RingDetector
+import no.f12.codenavigator.navigation.dsm.HexRingsOutput
+import no.f12.codenavigator.navigation.dsm.RingsConfig
+import no.f12.codenavigator.navigation.dsm.RingsOrchestrator
 import no.f12.codenavigator.navigation.metrics.MetricsBuilder
 import no.f12.codenavigator.navigation.metrics.MetricsResult
 import no.f12.codenavigator.navigation.rank.TypeRanker
@@ -32,7 +33,7 @@ data class ReportData(
     val metrics: MetricsResult,
     val cycles: List<CycleDetail>,
     val displayPrefix: PackageName,
-    val rings: RingAssignment,
+    val rings: HexRingsOutput,
     /** Null when there are no move suggestions (result absent or empty). */
     val moveSuggestions: MoveSuggestionResult?,
     /** Null when cohesion couldn't be computed (e.g. too few packages). */
@@ -57,6 +58,7 @@ object ReportOrchestrator {
         commits: List<GitCommit>,
         cacheDir: File,
         reportFile: File,
+        projectDir: File? = null,
     ): ReportData {
         val graphResult = CallGraphCache.getOrBuild(File(cacheDir, "call-graph.cache"), classDirectories)
         val skippedFileWarning = SkippedFileReporter.report(graphResult.skippedFiles, reportFile)
@@ -106,8 +108,16 @@ object ReportOrchestrator {
 
         val cycleDetails = CycleDetector.enrich(cycles, matrix)
 
-        val ringDeps = DsmDependencyExtractor.extract(classDirectories, projectClasses, packageFilter = null, includeExternal = false, filterTargets = true)
-        val ringResult = RingDetector.detect(ringDeps.data)
+        val ringResult = RingsOrchestrator.analyse(
+            classDirectories = classDirectories,
+            projectClasses = projectClasses,
+            taggedDirs = emptyList(),
+            scope = config.scope,
+            plan = emptyList(),
+            config = projectDir?.let { RingsConfig.loadFromDirectory(it) } ?: RingsConfig(),
+            reportFile = reportFile,
+            modulesOfClass = emptyMap(),
+        )
 
         val moveOutput = MoveSuggestOrchestrator.run(config.moveSuggest, classDirectories, reportFile)
         val moveSuggestions = moveOutput.result?.takeIf { it.suggestions.isNotEmpty() }

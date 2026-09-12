@@ -1,26 +1,48 @@
 # Plan — Completed
 
-## ~~--fail-on-violation / --max-violations invisible in agent help~~ — ALREADY DONE (verified 0.1.113-SNAPSHOT)
+### `cnavRings` rebuilt on dependency inversions instead of topological depth
+~~**ACTIVE**~~ **DONE (unreleased)** | **Value: high** | **Effort: high** | Source: field-test(greitt)
 
-Field feedback (v0.1.113) reported the CI-gate flags on `cnavCycles`/`cnavRings` weren't discoverable in help. On inspection they already are: the params are in the `TaskDef.params` lists, and both help surfaces render them without any special-casing — `cnavAgentHelp` shows them on the per-task reference lines, in the global parameter list (with tasks + defaults), and in a dedicated "CI Enforcement" section with runnable examples; `cnavHelp` shows them as per-task option lines with descriptions/defaults plus usage examples. The CI-gate feature and its help wiring both landed 2026-07-05 (commits c410bd4 + d566e65), before the feedback was triaged — the tester's build predated them. No code change; verified live in a scratch project against the published snapshot.
+**ROOT CAUSE**: both former `--mode` values computed the same thing — longest path on the SCC DAG
+(`RingDetector.assignRingsOnDAG` and `ClassRingClassifier.computeSccRing` were the identical algorithm).
+Depth conflates "how far from the domain" with "how much this thing assembles", so a repository impl and
+the application entry point landed in different rings despite both being the edge, and the composition
+root — an assembler that is supposed to depend on everything — was ranked outermost, which is a category
+error. `defaultRingNames()` encoded that mistake literally, as a 7-rung ladder ending in "composition-root".
 
-## ~~cnavRenameMethod: "no changes needed" indistinguishable from "not found"~~ — DONE (field-test ra-backend, v0.1.113)
+**Fix**: `InversionRingDetector` derives rings by peeling inversion boundaries. A boundary is a port — an
+interface owned by the inside, implemented by a class that does I/O — so the ring count is emergent rather
+than declared, and code with no inversion anywhere reports one ring and says why instead of inventing a
+ladder. Violations are OUTWARD only; same-ring edges are peers (this removes the coordinator/collaborator
+noise that was training users to write silencing overrides). Composition roots are excluded from ring
+assignment entirely rather than exempted after the fact.
 
-An empty rename result printed a generic "No changes needed", hiding three very different situations. Added `RenameMethodRewriter.diagnoseNoChanges(classesRoots, className, methodName)` backed by `RenameLocationFinder.inspectMethod` (bytecode): it tells apart (1) class not in bytecode → "not found, check the FQN / build", (2) method declared in bytecode but no `.kt` declaration to edit → "generated (JAXB/protobuf/data-class) or in a .java source; rename at origin", (3) method genuinely absent → "no method X found" plus a Levenshtein did-you-mean over the class's real declared methods and the full method list. Wired into both the Gradle task and the Maven mojo (the mojo now also passes `classesRoots` to the rewriter, which it previously omitted — so Maven rename gets bytecode-backed call-site/override-family analysis too). 4 unit tests + live-verified all three branches. Full suite green, Maven compiles.
+Supporting pieces: `AdapterDetector` (framework-type, plus two threshold-free topological shapes, each
+carrying an `AdapterReason` the report prints), `CompositionRootDetector`, `RingGraphBuilder`,
+`RingConfigOverrides` (directives are absolute and an unmatched directive is reported, not silently
+no-opped), `RingsConfig` (`rings.expected` pin, `compositionRoots`, `adapters`, `notAdapters`).
+`cnavReport` and `cnavConverge` were migrated onto the same analysis so every task agrees on what a
+violation is. `RingDetector` became `PackageDepthCalculator` — depth is still the right input for
+`cnavBalance`/`cnavTypeAffinity` distance, it just isn't hexagonal rings.
 
-## ~~cnavMoveClass destination-collision: silent overwrite + orphaned source~~ — DONE (field-test greitt, v0.1.113)
+**BREAKING**: `--mode` removed (fails with an explanation). `cnav-config.json` `ringNames`/`hints` rejected
+with a message pointing at the `rings` section.
 
-Moving a class into a package that already held a *different* file of the same name silently overwrote the existing declaration (data loss) — `targetFileWarnings` detected the collision but warned-and-continued. Replaced that with `destinationCollisionError`: when the computed destination file already exists and isn't the source, the move is a hard stop — an error result with **no writes** (destination preserved, source not deleted), telling the agent to merge manually or pick a different name/package. Wired into all four write paths: single `moveClass`, `moveKtFacade`, `moveMultiClassFile`, and the batch `moveBatch` (colliding moves are excluded before their consumer edits are computed, so consumers aren't repointed at a move that won't happen). This supersedes the earlier warn-only "merge detection" behavior. Live-verified: destination class untouched, source preserved, clear error. Unit test + full suite green, Maven compiles.
+**Adapter classification** is staged, because the topological rules need composition roots and root
+detection needs to know what an adapter is. The framework pass depends on neither, so it runs first and
+breaks the cycle: framework adapters → composition roots → topological adapters.
 
-## ~~cnavChangeSignature~~ — DONE (v0.1.96)
+`SignatureTypeScanner` is a separate ASM pass (never visits method bodies) returning the types each class
+names in a signature position — supertypes, field types, method parameters and return types. It exists so
+`PackageDependency`, the shared currency of DSM/cycles/balance/affinity, did not have to grow an
+edge-position field. `FRAMEWORK_SIGNATURE` (names a framework type in its signature) outranks
+`FRAMEWORK_TYPE` (touches one only inside a method body), which is the distinction between a renderer
+taking an `ApplicationCall` and a helper that merely constructs one.
 
-PSI-based method signature refactoring: add, remove, or reorder parameters. Rewrites declaration and all call sites. Positional args reordered; named args preserved. New params require defaults for existing call sites (inserted as arguments, not Kotlin default values). Preview mode supported. 8 tests.
-
-## ~~cnavLayerCheck removed~~ — DONE (v0.1.97)
-
-Removed `cnavLayerCheck` (config-driven linear layer conformance). Superseded by `cnavRings` which auto-detects hexagonal architecture rings from the dependency graph without requiring configuration.
-
-## ~~MoveClass / file operations~~ — DONE (v0.1.89)
+`UNCALLED_ENTRY_POINT` requires the class to be wired by a composition root — nothing in the application
+calls it, but the root does, so the framework drives it. A class nothing references *at all* is no longer
+an adapter: that is dead code or a test fixture. The original rule had this backwards, since a correctly
+wired driving adapter does have a caller (the root).
 
 ### `cnavMoveClass`: handle files with multiple class declarations
 

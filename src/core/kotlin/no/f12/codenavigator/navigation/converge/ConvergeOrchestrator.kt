@@ -10,7 +10,8 @@ import no.f12.codenavigator.navigation.complexity.ClassComplexityAnalyzer
 import no.f12.codenavigator.navigation.dsm.CycleDetector
 import no.f12.codenavigator.navigation.dsm.DsmDependencyExtractor
 import no.f12.codenavigator.navigation.dsm.DsmMatrixBuilder
-import no.f12.codenavigator.navigation.dsm.RingDetector
+import no.f12.codenavigator.navigation.dsm.RingsConfig
+import no.f12.codenavigator.navigation.dsm.RingsOrchestrator
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
 import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.types.Scope
@@ -88,7 +89,7 @@ object ConvergeOrchestrator {
         val skippedFileWarning = SkippedFileReporter.report(extractResult.skippedFiles, reportFile)
         // Excluded packages (e.g. a DI composition root or shared test infrastructure) are dropped from
         // the dependency graph before cycle/ring detection, not just hidden from the final edge list —
-        // RingDetector already auto-excludes packages it detects as composition roots (3+ rings touched),
+        // The ring analysis already excludes composition roots it detects (an assembler is not a ring),
         // but --exclude lets a user manually back that up for a hub the heuristic doesn't catch, or for
         // test-only wiring (e.g. a shared test context) that isn't a composition root at all.
         val deps = extractResult.data.filter { dep ->
@@ -96,15 +97,29 @@ object ConvergeOrchestrator {
                 (!config.exclude.containsMatchIn(dep.sourcePackage.value) && !config.exclude.containsMatchIn(dep.targetPackage.value))
         }
 
-        // Full depth (no truncation) so package granularity matches RingDetector's, which is also untruncated.
+        // Full depth (no truncation) so package granularity matches the ring analysis, also untruncated.
         val matrix = DsmMatrixBuilder.build(deps, PackageName(""), Int.MAX_VALUE)
         val adjacency = CycleDetector.adjacencyMapFrom(matrix)
         val cycles = CycleDetector.findCycles(adjacency)
         val cycleDetails = CycleDetector.enrich(cycles, matrix)
         val cyclePairs = cycleDetails.flatMap { it.edges }.map { normalize(it.from, it.to) }.toSet()
 
-        val ringAssignment = RingDetector.detect(deps)
-        val ringPairs = ringAssignment.reportableViolations.map { normalize(it.sourcePackage, it.targetPackage) }.toSet()
+        val ringOutput = RingsOrchestrator.analyse(
+            classDirectories = classDirectories,
+            projectClasses = projectClasses,
+            taggedDirs = emptyList(),
+            scope = Scope.ALL,
+            plan = emptyList(),
+            config = RingsConfig(),
+            reportFile = reportFile,
+            modulesOfClass = emptyMap(),
+        )
+        // Ring violations are class-level now; converge ranks package pairs, so lift them.
+        val ringPairs = ringOutput.layering.violations
+            .map { it.sourceClass.packageName() to it.targetClass.packageName() }
+            .filter { (source, target) -> source != target }
+            .map { (source, target) -> normalize(source, target) }
+            .toSet()
 
         val structuralPairs = cyclePairs + ringPairs
 

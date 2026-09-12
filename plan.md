@@ -8,6 +8,19 @@ Items grouped by functional area. Each item has:
 
 ## Bugs
 
+### `cnavMoveClass --from-file`: parameter mismatch accepted, rewrote 67 files, reported success
+**ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(greitt)
+
+A `cnavMoveClass --from-file` invocation with a wrong parameter (the correct one is `--to-package`) did not fail. Instead it:
+1. created a package directory named after a *class*, rather than rejecting the mismatch;
+2. rewrote symbols that were not declared in the moved file at all;
+3. reported success, so the 67-file blast radius was only discovered afterwards.
+
+Three separate fixes, each independently valuable:
+- **Reject the mismatch.** A `--from-file`/target-parameter combination that doesn't type-check as a package should be a hard error before any file is touched. A target that looks like a class name (last segment capitalised, matches a declared type) is almost certainly a mistake.
+- **Never rewrite a symbol absent from the moved file.** The rewriter must scope symbol rewriting to declarations actually in the file being moved. This is the dangerous half: it silently edited unrelated code.
+- **Blast-radius guard.** A refactor touching an order of magnitude more files than the request implies should require confirmation or `--force`, and the count should be reported up front. Ties into the existing `withZeroChangeWarning` reporting.
+
 ### `cnavMovePackage`/`cnavExecutePlan`: per-class errors silently swallowed when total changes is zero
 ~~**ACTIVE**~~ **DONE (v0.1.114-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(bass-self-service, [PR #1461](https://github.com/techcloud0/bass-self-service/pull/1461))
 
@@ -71,6 +84,36 @@ All ~111 `logger.lifecycle(...)` result-emitting calls across Gradle tasks chang
 **Wiring**: `DeadCodeOrchestrator` scans `constValHolders` via `ConstValHolderDetector.scanAll(classDirectories)` and threads it through `DeadCodeQuery`/`DeadCodeFinder.find()` to `ConfidenceScorer.score()`, same shape as `inlineMethods`/`delegationMethods`/`bridgeMethods`.
 
 **Tests**: `ConstValHolderDetectorTest` (new, mirrors `InlineMethodDetectorTest`, real compiled fixtures in `ConstValFixtures.kt` — pure holder, nested holder, mixed holder+function, no-const-vals-at-all), `ConfidenceScorerTest` (two new cases: const-val-holder class downgrades to LOW, downgrade does not apply to methods), `DeadCodeFinderTest` (two new end-to-end cases), `LlmFormatterTest` updated for the new NOTE text.
+
+### `cnavRings`' `SINK_WITH_EXTERNAL_CALLS` misclassified pure value/DSL library usage as an I/O adapter
+~~**ACTIVE**~~ **DONE (v0.1.115-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(greitt)
+
+**Context**: field-testing the new dependency-inversion-based `cnavRings` (see "Derive cnavRings from dependency inversions" above/`plan-completed.md`) against greitt's real production code. First run against `--scope=prod` reported **68 violations**, most of them clearly wrong — e.g. `CalendarComponentsKt (ring 0) -> CalendarTypesKt (ring 2)`, where `CalendarTypesKt` is a pure date-calculation file with zero I/O.
+
+**ROOT CAUSE**: `AdapterDetector`'s `SINK_WITH_EXTERNAL_CALLS` rule classifies a class as an adapter when it (a) has callers, (b) references *any* non-stdlib external type, and (c) makes zero calls to other project classes. The `isLibraryType` check excluding "talks to a library" false positives only excluded a narrow stdlib list (`java.lang.`, `java.util.`, `java.math.`, `java.time.`, `java.text.`, `kotlin.`). Two categories of real, common code fell outside it and got misclassified:
+1. **Pure value/DSL libraries** — `kotlinx.datetime` (dates), `kotlinx.html` (HTML tag builders), `kotlinx.serialization` (annotations) carry data or build markup with no I/O of their own, but aren't "stdlib" either.
+2. **Core JDK packages missing from the stdlib list** — `java.security.MessageDigest` (hashing) and `java.nio.charset.Charset` (encoding) are pure computation, not I/O, but weren't excluded.
+
+**Fix**: added `VALUE_LIBRARY_PACKAGES` (`kotlinx.datetime.`, `kotlinx.html.`, `kotlinx.serialization.`, `kotlinx.collections.immutable.`) alongside `STDLIB_PACKAGES` (now also including `java.security.` and `java.nio.charset.` — deliberately *not* `java.nio.` broadly, since `java.nio.file.*` is real filesystem I/O and should keep counting as an adapter signal). Both feed into a combined `NON_ADAPTER_SIGNAL_PACKAGES` exclusion set used by `isLibraryType`.
+
+**Result on greitt** (`--scope=prod`): violations dropped from 68 to **15**, and every remaining one was manually verified legitimate — JDBC/env config loading (`ApplicationConfig`), `jakarta.validation` (`ValidationService`/`HtmlConstraints`), real filesystem resource resolution (`ResourceLocation` via `CssUtilsKt`/`ResourceUtilsKt`), a genuine third-party QR library (`QrCodeGenerator` via `com.google.zxing`), and `kotlinx.serialization` codec classes. One known remaining edge case left as-is: `PollId` (a value class) is still classified as an adapter because its `generate()` factory calls a random-ID-generation library (`io.viascom.nanoid`) — genuinely ambiguous (is calling a library to produce a domain identity value "I/O"?) and not generalizable the way the date/HTML/serialization cases were, so left for a future report if it recurs elsewhere.
+
+**Tests**: `AdapterDetectorTest` — 4 new cases (value/DSL library usage is not a sink; a real infra client like Redis/Jedis still counts even alongside value-library usage; core JDK crypto/hashing/encoding is not a sink; `java.nio.file` is still a real I/O signal, distinguishing it from `java.nio.charset`).
+
+### `cnavRings` adapter evidence + `cnav-config.json` package-list extensions
+~~**ACTIVE**~~ **DONE (v0.1.115-SNAPSHOT)** | **Value: high** | **Effort: medium** | Source: internal (follow-up to the field-test above)
+
+Follow-up to the `SINK_WITH_EXTERNAL_CALLS` false-positive fix above: fixing that specific case required manually reading source and `javap`-ing bytecode to find *which* external type triggered each misclassification — the tool itself threw that evidence away. Two additions close the loop so this diagnosis is self-service going forward:
+
+1. **Evidence on every adapter finding.** `AdapterDetector.detect`/`detectFrameworkAdapters` now return `Map<ClassName, AdapterFinding>` (`AdapterFinding(reason, evidence: ClassName?)`) instead of a bare `AdapterReason` — `evidence` is the specific external type responsible (absent only for `CONFIGURED`, which comes from a config override, not a class reference). `RingGraph` carries it in a new `adapterEvidence: Map<ClassName, ClassName>` field (kept separate from `adapterReasons` deliberately, so the many existing call sites/tests constructing `Map<ClassName, AdapterReason>` directly — `RingConfigOverrides`, most of `RingGraphBuilderTest` — needed no changes). `HexRingFormatter` prints it in TEXT/LLM (`[names a framework type in its signature — io.ktor.server.application.ApplicationCall]`) and as a JSON `"evidence"` field.
+
+   The violations hint went through a second pass after an initial version proved too vague to actually act on ("consider proposing a fix" with no worked example or JSON syntax, and no distinction between "running inside code-navigator's own repo" vs "running in an arbitrary downstream project" — the two situations imply completely different actions). The revised hint uses the run's own first evidenced violation as a concrete worked example, spells out the decision with copy-pasteable JSON for all three override shapes (`notAdapters`/`valuePackages`/`frameworkPackages`), and explicitly branches on repo context: inside code-navigator's own source, add the prefix to `AdapterDetector.kt` directly; anywhere else, use the config override now and consider filing an issue upstream separately.
+
+2. **`cnav-config.json` `rings.valuePackages`/`rings.frameworkPackages`** — project-local extensions to `AdapterDetector`'s built-in `VALUE_LIBRARY_PACKAGES`/`FRAMEWORK_PACKAGES` prefix lists, for libraries too niche or too project-specific to ever belong in a built-in, cross-project list (an internal I/O client, a one-off ID-generation library). This is the mechanism that resolves the `PollId`/`io.viascom.nanoid` edge case left open above — greitt's `cnav-config.json` now carries `"valuePackages": ["io.viascom.nanoid."]` and `PollId` correctly drops out of the adapter set, without waiting on (or requiring) a source-level judgment call about whether nanoid belongs in the built-in list. If a `valuePackages`/`frameworkPackages` entry recurs across multiple field-tested projects, that's the promotion signal for moving it into the hardcoded lists.
+
+**Verified end-to-end on greitt**: evidence prints correctly for every reason variant (`FRAMEWORK_SIGNATURE`/`FRAMEWORK_TYPE`/`SINK_WITH_EXTERNAL_CALLS` all show their triggering type in both TEXT and JSON); adding `valuePackages: ["io.viascom.nanoid."]` to `cnav-config.json` dropped violations from 15 to 12, removing exactly the three `PollId`-related edges; `web.plugins.FileWatcher` still correctly shows `SINK_WITH_EXTERNAL_CALLS — java.nio.file.Path`, confirming the file/charset distinction from the fix above continues to hold under the new evidence-carrying code path.
+
+**Tests**: `AdapterDetectorTest` — evidence assertions added to existing cases plus 2 new (`extraValuePackages` suppresses a sink classification for a configured prefix, `extraFrameworkPackages` classifies a configured prefix as a framework adapter). `RingGraphBuilderTest` — 2 new (same two behaviors, wired through the full builder) plus evidence assertions added to the existing framework-package case. `RingsConfigTest` — `valuePackages`/`frameworkPackages` round-trip through `fromJson`.
 
 ---
 
@@ -187,7 +230,7 @@ One file, three top-level sections, sharing one location (`cnav-config.json` at 
 }
 ```
 
-**`rings` (hints/overrides/ringNames)** — **DONE**, predates this item. Fully implemented in `RingsHintsConfig` (loaded via `RingsHintsConfig.loadFromDirectory`), wired into `EmergentRingDetector`/`ClassRingClassifier`. `hints` sets a **minimum ring** by glob pattern on the simple class name (`Kt`/`Test` suffixes stripped) — never demotes, `actualRing = max(rawRing, hintMinimum)`. `overrides` (FQCN → ring name) take precedence over hints. `ringNames` sets display labels; order determines ring number (first = innermost). `cnavRings --bootstrap-config` generates a starting file from emergent detection. Covered by `RingsHintsConfigTest`.
+**`rings` (hints/overrides/ringNames)** — **SUPERSEDED** (v0.1.115-SNAPSHOT). This whole model is gone: `cnavRings` now derives rings from dependency inversions rather than a package/hint-based ladder, so `RingsHintsConfig`, `hints`, and `ringNames` no longer exist — `cnav-config.json` rejects them outright with a message pointing at the new `rings` section (`expected`, `compositionRoots`, `adapters`, `notAdapters`). See "Derive cnavRings from dependency inversions" in `plan-completed.md`.
 
 **`defaults`** — **DONE** (v0.1.112). New `CnavConfig.loadDefaults`/`applyDefaults` in core (`no.f12.codenavigator.config`) reads the `defaults` object as string values and merges it under a task's properties map — **any param name for any task works generically**, since it's just a key/value merge before `ParamDef.parseFrom(properties)` runs; there's no per-task allowlist, unmatched keys are silently ignored exactly like an unrecognized CLI flag. Precedence: explicit CLI options > `cnav-config.json` defaults > a task's own hardcoded `ParamDef` default.
 - **Gradle**: wired once, centrally, in `CodeNavigatorTask.buildOptionsMap()` — covers **every** Gradle task automatically, no per-task changes needed.
@@ -200,7 +243,7 @@ One file, three top-level sections, sharing one location (`cnav-config.json` at 
 
 **`modules`** — **NOT CURRENTLY NEEDED**: Gradle workspace discovery is automatic from the real project dependency graph; unrelated siblings are excluded without configuration. Add include/exclude overrides only if field use finds legitimate exceptions.
 
-**Deferred cleanup**: literally merging `RingsHintsConfig` and `CnavConfig` into one parser (instead of two independent readers of the same file) was skipped to avoid risk to the already-tested rings-hints code path. Low priority — revisit only if the two ever need to share more logic than "read the same file."
+**Deferred cleanup**: N/A — `RingsHintsConfig` no longer exists (see the `rings` entry above); this cleanup item is moot.
 
 ---
 
@@ -383,10 +426,10 @@ Suggests moving ports into domain packages. Algorithm optimizes for proximity wi
 
 Suggestions like "move `MenuItemTest` to `web.components`" are confusing. Default to excluding test classes.
 
-### `cnavRings`: external protocol classes misclassified
-**FUTURE** | **Value: low** | **Effort: low** | Source: field-test(bass-ra, v0.1.97)
+### ~~`cnavRings`: external protocol classes misclassified~~ — SUPERSEDED
+**SUPERSEDED** | Source: field-test(bass-ra, v0.1.97)
 
-External protocol Java classes placed in Ring 0. Fix: filter classes in packages not matching project root package.
+Referred to the old package-depth ring ladder ("Ring 0" numbering by project-root-package proximity), which no longer exists — `cnavRings` now derives rings from dependency inversions, not package position. Framework/library classes are handled by `AdapterDetector`'s `FRAMEWORK_TYPE`/`FRAMEWORK_SIGNATURE` classification instead.
 
 ### `cnavBalance` volatility values lack context
 **LOW** | **Value: medium** | **Effort: low** | Source: internal(v0.1.83) + field-test(greitt, v0.1.113)
@@ -430,10 +473,10 @@ When `scope=prod` filtering has no effect, explain why.
 
 Every refactor op — even a clean rename with full call-site coverage — ends its output with "Automated refactoring is not always fully accurate … compile to verify." Good advice, but unconditional noise. Make it conditional: warn only when the rewriter actually hit an ambiguous case — a heuristic fallback / unresolved reference, dynamic dispatch, reflection, or the new non-Kotlin-reference warning. Now tractable because the K1 resolution work makes "did we resolve everything?" a known quantity: a fully-resolved rename could instead report "all N call sites updated" (see [[Make the move/rename rewriter type-safe (semantic resolution)]]).
 
-### `cnavRings` warns about ringNames coverage even when none are configured
-**LOW** | **Value: low** | **Effort: low** | Source: field-test(ra-backend, v0.1.113)
+### ~~`cnavRings` warns about ringNames coverage even when none are configured~~ — SUPERSEDED
+**SUPERSEDED** | Source: field-test(ra-backend, v0.1.113)
 
-With 10 rings detected and no `cnav-config.json` present, output printed `Warning: ringNames covers 4 rings but rings up to 8 were detected — rings 4–8 will use default names`. When the user has supplied no `ringNames` at all, default names (`Ring 4`, …) are the expected behavior — nothing to warn about. Fire the warning only when a *user-supplied* `ringNames` list is shorter than the detected ring count, not for the built-in defaults.
+`ringNames` no longer exists — `cnavRings` derives rings from dependency inversions and reports a ring count emergently, not from a user-declared name ladder.
 
 ### `cnavConverge --mode=risk` includes complexity=0 classes
 **LOW** | **Value: low** | **Effort: low** | Source: field-test(ra-backend, v0.1.113)

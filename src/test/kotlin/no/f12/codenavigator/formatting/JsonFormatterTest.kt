@@ -47,12 +47,9 @@ import no.f12.codenavigator.navigation.dsm.PackageDistanceResult
 import no.f12.codenavigator.navigation.dsm.IntegrationStrength
 import no.f12.codenavigator.navigation.dsm.PackageStrengthEntry
 import no.f12.codenavigator.navigation.dsm.StrengthResult
-import no.f12.codenavigator.navigation.dsm.RingAssignment
 import no.f12.codenavigator.navigation.dsm.RingViolation
 import no.f12.codenavigator.navigation.dsm.RingViolationType
-import no.f12.codenavigator.navigation.dsm.ClassRingAssignment
 import no.f12.codenavigator.navigation.dsm.ClassRingViolation
-import no.f12.codenavigator.navigation.dsm.PackageRingSummary
 import no.f12.codenavigator.navigation.classmetrics.ClassCohesionVerdict
 import no.f12.codenavigator.navigation.classmetrics.ClassMetricsResult
 import no.f12.codenavigator.navigation.annotation.AnnotationMatch
@@ -98,7 +95,6 @@ import no.f12.codenavigator.navigation.dsm.CyclesFormatter
 import no.f12.codenavigator.navigation.deadcode.DeadCodeFormatter
 import no.f12.codenavigator.navigation.dsm.DsmFormatter
 import no.f12.codenavigator.analysis.DuplicateFormatter
-import no.f12.codenavigator.navigation.dsm.EmergentRingFormatter
 import no.f12.codenavigator.analysis.FileSizeFormatter
 import no.f12.codenavigator.analysis.HotspotFormatter
 import no.f12.codenavigator.navigation.relations.implementors.InterfaceFormatter
@@ -108,7 +104,6 @@ import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDistanceFormatter
 import no.f12.codenavigator.analysis.PackageVolatilityFormatter
 import no.f12.codenavigator.navigation.rank.RankFormatter
-import no.f12.codenavigator.navigation.dsm.RingFormatter
 import no.f12.codenavigator.navigation.dsm.StrengthFormatter
 import no.f12.codenavigator.navigation.stringconstant.StringConstantFormatter
 import no.f12.codenavigator.navigation.symbol.SymbolTableFormatter
@@ -1479,112 +1474,6 @@ class JsonFormatterTest {
     }
 
     // === Rings formatting (package mode) ===
-
-    @Test
-    fun `formatRings includes ring assignments with names and composition root flag`() {
-        val assignment = RingAssignment(
-            rings = mapOf(PackageName("com.app.domain") to 0, PackageName("com.app.web") to 1),
-            compositionRoots = setOf(PackageName("com.app.web")),
-            violations = emptyList(),
-        )
-
-        val result = RingFormatter.formatJson(assignment, ringNames = mapOf(0 to "domain", 1 to "adapter"))
-
-        assertTrue(result.contains("\"package\":\"com.app.domain\",\"ring\":0,\"ringName\":\"domain\",\"isCompositionRoot\":false"))
-        assertTrue(result.contains("\"package\":\"com.app.web\",\"ring\":1,\"ringName\":\"adapter\",\"isCompositionRoot\":true"))
-    }
-
-    @Test
-    fun `formatRings excludes violations touching composition roots`() {
-        val assignment = RingAssignment(
-            rings = mapOf(PackageName("a") to 0, PackageName("b") to 1, PackageName("c") to 1),
-            compositionRoots = setOf(PackageName("c")),
-            violations = listOf(
-                RingViolation(PackageName("a"), PackageName("b"), 0, 1, RingViolationType.OUTWARD),
-                RingViolation(PackageName("c"), PackageName("b"), 1, 1, RingViolationType.PEER),
-            ),
-        )
-
-        val result = RingFormatter.formatJson(assignment)
-
-        assertTrue(result.contains("\"sourcePackage\":\"a\",\"targetPackage\":\"b\""), "Should keep non-composition-root violation, got: $result")
-        assertTrue(!result.contains("\"sourcePackage\":\"c\""), "Should drop violation touching a composition root, got: $result")
-    }
-
-    @Test
-    fun `formatRings includes configNotice when provided and omits it when null`() {
-        val assignment = RingAssignment(rings = emptyMap(), compositionRoots = emptySet(), violations = emptyList())
-
-        val withNotice = RingFormatter.formatJson(assignment, configNotice = "package mode notice")
-        val withoutNotice = RingFormatter.formatJson(assignment)
-
-        assertTrue(withNotice.contains("\"configNotice\":\"package mode notice\""))
-        assertTrue(!withoutNotice.contains("configNotice"))
-    }
-
-    // === Rings formatting (emergent mode) ===
-
-    @Test
-    fun `formatEmergentRings includes class rings with names`() {
-        val result = ClassRingAssignment(
-            classRings = mapOf(ClassName("com.app.domain.Order") to 0, ClassName("com.app.web.Controller") to 1),
-            packageSummary = emptyMap(),
-            violations = emptyList(),
-        )
-
-        val json = EmergentRingFormatter.formatJson(result, ringNames = mapOf(0 to "domain", 1 to "adapter"))
-
-        assertTrue(json.contains("\"className\":\"com.app.domain.Order\",\"ring\":0,\"ringName\":\"domain\""))
-        assertTrue(json.contains("\"className\":\"com.app.web.Controller\",\"ring\":1,\"ringName\":\"adapter\""))
-    }
-
-    @Test
-    fun `formatEmergentRings includes only mixed-ring packages`() {
-        val result = ClassRingAssignment(
-            classRings = emptyMap(),
-            packageSummary = mapOf(
-                PackageName("com.app.feature") to PackageRingSummary(
-                    classesByRing = mapOf(0 to listOf(ClassName("com.app.feature.Domain")), 1 to listOf(ClassName("com.app.feature.Adapter"))),
-                ),
-                PackageName("com.app.pure") to PackageRingSummary(classesByRing = mapOf(0 to listOf(ClassName("com.app.pure.Value")))),
-            ),
-            violations = emptyList(),
-        )
-
-        val json = EmergentRingFormatter.formatJson(result)
-
-        assertTrue(json.contains("\"package\":\"com.app.feature\""), "Should include mixed-ring package, got: $json")
-        assertTrue(!json.contains("\"package\":\"com.app.pure\""), "Should exclude single-ring package, got: $json")
-    }
-
-    @Test
-    fun `formatEmergentRings includes violations and hintsApplied flag`() {
-        val result = ClassRingAssignment(
-            classRings = emptyMap(),
-            packageSummary = emptyMap(),
-            violations = listOf(
-                ClassRingViolation(ClassName("com.app.web.Controller"), ClassName("com.app.domain.Order"), 1, 0, RingViolationType.OUTWARD),
-            ),
-        )
-
-        val json = EmergentRingFormatter.formatJson(result, hasHints = true)
-
-        assertTrue(json.contains("\"sourceClass\":\"com.app.web.Controller\",\"targetClass\":\"com.app.domain.Order\",\"sourceRing\":1,\"targetRing\":0"))
-        assertTrue(json.contains("\"hintsApplied\":true"))
-    }
-
-    @Test
-    fun `formatEmergentRings includes testInvolvement when provided and omits when null`() {
-        val result = ClassRingAssignment(classRings = emptyMap(), packageSummary = emptyMap(), violations = emptyList())
-
-        val withCounts = EmergentRingFormatter.formatJson(result, testInvolvement = TestInvolvement.Counts(testInvolved = 2, total = 5))
-        val withoutCounts = EmergentRingFormatter.formatJson(result)
-
-        assertTrue(withCounts.contains("\"testInvolvement\":{\"testInvolved\":2,\"total\":5}"))
-        assertTrue(!withoutCounts.contains("testInvolvement"))
-    }
-
-    // === Class metrics formatting ===
 
     @Test
     fun `formatClassMetrics returns empty array for no results`() {

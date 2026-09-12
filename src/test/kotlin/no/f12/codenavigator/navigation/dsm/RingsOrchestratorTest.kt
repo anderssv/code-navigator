@@ -47,68 +47,69 @@ class RingsOrchestratorTest {
     }
 
     @Test
-    fun `package mode detects no violations for a simple layering`() {
+    fun `runs the hexagonal pipeline over project and external dependencies from a single extraction`() {
         val analysis = RingsOrchestrator.run(
-            taggedDirs, Scope.ALL, mode = "package", bootstrap = false,
+            taggedDirs, Scope.ALL, bootstrap = false,
             plan = emptyList(), projectDir = projectDir, reportFile = reportFile,
         )
 
-        val output = (analysis as RingsAnalysis.Package).output
-        assertNull(output.skippedFileWarning)
+        val output = (analysis as RingsAnalysis.Hexagonal).output
+        assertTrue(ClassName("com.example.domain.Controller") in output.layering.rings)
+        assertTrue(ClassName("com.example.domain.Service") in output.layering.rings)
     }
 
     @Test
-    fun `emergent mode splits project vs external dependencies from a single extraction`() {
+    fun `reports no inversion boundary when the code defines no ports`() {
         val analysis = RingsOrchestrator.run(
-            taggedDirs, Scope.ALL, mode = "emergent", bootstrap = false,
+            taggedDirs, Scope.ALL, bootstrap = false,
             plan = emptyList(), projectDir = projectDir, reportFile = reportFile,
         )
 
-        val output = (analysis as RingsAnalysis.Emergent).output
-        assertNull(output.skippedFileWarning)
-        assertTrue(ClassName("com.example.domain.Controller") in output.result.classRings)
-        assertTrue(ClassName("com.example.domain.Service") in output.result.classRings)
+        val output = (analysis as RingsAnalysis.Hexagonal).output
+        assertEquals(RingDiagnosis.NO_INVERSION_BOUNDARY, output.layering.diagnosis)
+        assertEquals(1, output.layering.ringCount)
     }
 
     @Test
-    fun `emergent mode plan-file move renames the moved class in the ring assignment`() {
+    fun `plan-file move renames the moved class in the ring assignment`() {
         val plan = listOf(PlanStep.Move(ClassName("com.example.domain.Service"), PackageName("com.example.moved")))
 
         val analysis = RingsOrchestrator.run(
-            taggedDirs, Scope.ALL, mode = "emergent", bootstrap = false,
+            taggedDirs, Scope.ALL, bootstrap = false,
             plan = plan, projectDir = projectDir, reportFile = reportFile,
         )
 
-        val output = (analysis as RingsAnalysis.Emergent).output
-        assertTrue(ClassName("com.example.moved.Service") in output.result.classRings, "Moved class should appear under its new FQCN")
-        assertFalse(ClassName("com.example.domain.Service") in output.result.classRings, "Old FQCN should be gone after the simulated move")
+        val output = (analysis as RingsAnalysis.Hexagonal).output
+        assertTrue(ClassName("com.example.moved.Service") in output.layering.rings, "Moved class should appear under its new FQCN")
+        assertFalse(ClassName("com.example.domain.Service") in output.layering.rings, "Old FQCN should be gone after the simulated move")
     }
 
     @Test
-    fun `emergent mode retains module provenance after a simulated move`() {
+    fun `retains module provenance after a simulated move`() {
         val service = ClassName("com.example.domain.Service")
-        val movedService = ClassName("com.example.moved.Service")
+        val modules = mapOf(service to setOf("app"))
         val plan = listOf(PlanStep.Move(service, PackageName("com.example.moved")))
 
         val analysis = RingsOrchestrator.run(
-            taggedDirs, Scope.ALL, mode = "emergent", bootstrap = false,
+            taggedDirs, Scope.ALL, bootstrap = false,
             plan = plan, projectDir = projectDir, reportFile = reportFile,
-            modulesOfClass = mapOf(service to setOf(":core")),
+            modulesOfClass = modules,
         )
 
-        val output = (analysis as RingsAnalysis.Emergent).output
-        assertEquals(setOf(":core"), output.modulesOfClass[movedService])
-        assertFalse(service in output.modulesOfClass)
+        val output = (analysis as RingsAnalysis.Hexagonal).output
+        assertEquals(setOf("app"), output.modulesOfClass[ClassName("com.example.moved.Service")])
+        assertNull(output.modulesOfClass[service])
     }
 
     @Test
-    fun `bootstrap mode returns hints config JSON without applying a plan`() {
+    fun `bootstrap returns a config that parses back into a rings config`() {
         val analysis = RingsOrchestrator.run(
-            taggedDirs, Scope.ALL, mode = "emergent", bootstrap = true,
+            taggedDirs, Scope.ALL, bootstrap = true,
             plan = emptyList(), projectDir = projectDir, reportFile = reportFile,
         )
 
-        val json = (analysis as RingsAnalysis.Bootstrap).hintsConfigJson
-        assertTrue(json.isNotBlank())
+        val json = (analysis as RingsAnalysis.Bootstrap).configJson
+
+        assertEquals(1, RingsConfig.fromJson(json).expectedRingCount)
     }
 }

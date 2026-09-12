@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+### Changed (breaking)
+- `cnavRings` now detects hexagonal rings from dependency inversions rather than topological depth. A ring
+  boundary is a port (an interface owned by the inside, implemented by a class that does I/O), so the ring
+  count is emergent. Code with no inversion reports a single ring and explains why.
+- Violations are OUTWARD only. Two classes in the same ring are peers, not a violation.
+- Composition roots are excluded from ring assignment entirely.
+- `--mode` removed from `cnavRings` / `cnav:rings`; passing it fails with an explanation. Both former modes
+  computed topological depth, not rings.
+- `cnav-config.json`: `ringNames` and `hints` are rejected with a message. Use the new `rings` section
+  (`expected`, `compositionRoots`, `adapters`, `notAdapters`). Directives are absolute, and a directive
+  matching no class is reported rather than silently ignored.
+- `cnavReport` and `cnavConverge` now report the same rings and violations as `cnavRings`.
+
+### Added
+- Adapter classification reports *why* a class is an adapter (`FRAMEWORK_SIGNATURE`, `FRAMEWORK_TYPE`,
+  `SINK_WITH_EXTERNAL_CALLS`, `UNCALLED_ENTRY_POINT`, `CONFIGURED`), so a surprising classification is
+  debuggable.
+- A framework type named in a *signature* (supertype, field, parameter, return) is a stronger adapter
+  signal than one touched only inside a method body, and is reported separately.
+- `UNCALLED_ENTRY_POINT` now requires the class to be wired by a composition root. A class nothing
+  references at all is no longer classified as an adapter — that is dead code, not a driving adapter.
+- `rings.expected` pins the ring count and reports when detection disagrees.
+- `--bootstrap-config` generates the new `rings` config section.
+- Adapter classification carries *evidence* — the specific external type that triggered a `FRAMEWORK_SIGNATURE`/`FRAMEWORK_TYPE`/`SINK_WITH_EXTERNAL_CALLS`/`UNCALLED_ENTRY_POINT` finding (e.g. `[names a framework type in its signature — io.ktor.server.application.ApplicationCall]`) — printed in TEXT/LLM and as an `"evidence"` field in JSON. Lets a reader judge whether a classification is a real I/O signal or a cnav package-list gap without re-deriving it from bytecode. The violations section now includes a concrete, worked-example hint (using the run's own first evidenced violation, with copy-pasteable JSON) for both remediation paths: a `cnav-config.json` override (project-specific) or a source-level fix to `AdapterDetector.kt` (general-purpose library, benefits every project) — explicitly distinguishing "running against code-navigator's own source" from "running against any other project," since only one of those makes a source fix possible.
+- `cnav-config.json`'s `rings` section gains `valuePackages`/`frameworkPackages` — project-local extensions to the built-in package-prefix lists used to classify adapters, for libraries too niche or too project-specific (an internal I/O client, a niche ID-generation library) to belong in cnav's built-in lists.
+
+### Fixed
+- Field-tested `cnavRings`' new adapter detection against a real Kotlin/Ktor codebase (greitt): `SINK_WITH_EXTERNAL_CALLS` was flagging pure value/DSL library usage as an I/O adapter signal — a class referencing `kotlinx.datetime`, `kotlinx.html`, or `kotlinx.serialization` types (dates, HTML tag builders, serialization annotations) with no other project calls was misclassified as an adapter, when these carry no I/O of their own. Also missing from the core-JDK stdlib exclusion list: `java.security.` (hashing/crypto) and `java.nio.charset.` (encoding) — both non-I/O, unlike `java.nio.file.` which is real filesystem I/O and correctly still counts. On greitt's production code this cut violation count from 68 to 15, with the remainder verified legitimate (JDBC/env config loading, `jakarta.validation`, real file resolution, a genuine 3rd-party QR library, serialization codecs).
+
 ### Fixed: `cnavDead` false positive on companion-object `const val` holders
 
 Classes that hold `const val` declarations inside a `companion object` (e.g. `class Foo { companion object { const val X = "x" } }`) were still flagged `HIGH` confidence dead code after the 0.1.113 fix, because `ConstValHolderDetector` only checked a class's own `KmClass.properties`, not its companion's. The companion class file (`Foo$Companion.class`) was detected correctly, but the outer class `Foo` — the one actually flagged dead — was not. Now when a companion class is detected as a const-val holder, the outer class is also registered as one.

@@ -290,7 +290,7 @@ object TaskRegistry {
     val TO_PACKAGE = ParamDef("to-package", "<pkg>", "Target package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PORTS = ParamDef("ports", "<regex>", "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val AFFINITY_THRESHOLD = ParamDef("threshold", "<N>", "Max number of consumer domains to still count as single-owner", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
-    val RING_MODE = ParamDef("mode", "emergent|package", "Analysis mode: emergent (default, assigns rings per class based on import shape — best for package-by-feature) or package (assigns rings per package by topological depth)", flag = false, defaultValue = "emergent", enhancePattern = false, type = ParamType.STRING)
+    val RING_MODE = ParamDef("mode", "removed", "REMOVED: cnavRings has no modes. Both former modes (emergent, package) computed topological depth, not hexagonal rings. Passing this now fails with an explanation rather than silently analysing something else.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val BOOTSTRAP_CONFIG = ParamDef("bootstrap-config", "true", "Generate a starting cnav-config.json based on emergent ring analysis — best-effort suggestions meant to be reviewed and tweaked before use", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val CONVERGE_MODE = ParamDef("mode", "intersect|risk", "Analysis mode: intersect (default, cross-references cycles/rings/change-coupling for a ranked ACT NOW/LATENT/MISSING ABSTRACTION list) or risk (change-frequency x complexity x coupling ranking)", flag = false, defaultValue = "intersect", enhancePattern = false, type = ParamType.STRING)
 
@@ -823,13 +823,13 @@ object TaskRegistry {
 
     val RINGS = TaskDef(
         goal = "rings",
-        description = "Auto-detect hexagonal architecture rings and report violations. Use --mode=emergent for class-level ring detection based on import shapes. Supports --fail-on-violation for CI gating.",
+        description = "Detect hexagonal architecture rings and report violations. Rings are derived from dependency inversions (a port implemented by a class that does I/O), so the ring count is emergent, not fixed — code with no inversion anywhere reports a single ring and says so. Violations are inner classes reaching outward across a boundary; same-ring edges are peers, not violations. Composition roots are excluded. Supports --fail-on-violation for CI gating.",
         params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE, BOOTSTRAP_CONFIG, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
             UsageExample(emptyList()),
-            UsageExample(listOf(RING_MODE to "emergent")),
+            UsageExample(listOf(BOOTSTRAP_CONFIG to "true")),
             UsageExample(listOf(FAIL_ON_VIOLATION to "true", MAX_VIOLATIONS to "0")),
         ),
     )
