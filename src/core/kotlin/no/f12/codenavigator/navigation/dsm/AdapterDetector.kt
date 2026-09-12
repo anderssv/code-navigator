@@ -147,6 +147,17 @@ object AdapterDetector {
         "kotlinx.serialization.",
         "kotlinx.collections.immutable.",
         "javax.xml.datatype.",
+        // Micrometer's core measurement API (Timer, Tag, Meter, Counter, Gauge, MeterRegistry) records
+        // in-memory only — the actual I/O (scraping, pushing) happens in a separate concrete registry/
+        // exporter package (io.micrometer.prometheusmetrics, io.micrometer.registry.otlp, etc.), which
+        // stays uncovered and so still counts as a real signal.
+        "io.micrometer.core.instrument.",
+        // Same reasoning as logging: OpenTelemetry's instrumentation API (spans, metrics, baggage,
+        // context propagation) wraps a call for observability — it's instrumentation, not the I/O
+        // itself. The actual export happens in a separate io.opentelemetry.exporter.* package, which
+        // stays uncovered and so still counts as a real signal.
+        "io.opentelemetry.api.",
+        "io.opentelemetry.context.",
     )
 
     // Logging is used everywhere and, for the purposes of adapter classification, is treated as a

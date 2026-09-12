@@ -99,6 +99,26 @@ class HexRingFormatterTest {
     }
 
     @Test
+    fun `labels a config-forced composition root distinctly from a structurally detected one`() {
+        val layering = RingLayering(
+            ringCount = 2,
+            diagnosis = RingDiagnosis.LAYERED,
+            rings = mapOf(poll to 0, port to 0, impl to 1),
+        )
+        // root has no compositionRootEvidence entry -- it came from cnav-config.json's
+        // rings.compositionRoots, not structural detection.
+        val graph = RingGraph(
+            classes = setOf(poll, port, impl, root),
+            ioClasses = setOf(impl),
+            compositionRoots = setOf(root),
+        )
+
+        val text = HexRingFormatter.format(output(layering, graph = graph), OutputFormat.TEXT)
+
+        assertContains(text, "com.app.ApplicationKt (configured via cnav-config.json's rings.compositionRoots)")
+    }
+
+    @Test
     fun `warns about a directive that could not be honoured`() {
         val layering = RingLayering(1, RingDiagnosis.NO_INVERSION_BOUNDARY, mapOf(poll to 0))
         val unhonoured = listOf(UnhonouredDirective(DirectiveKind.ADAPTER, "com.app.gone.*"))

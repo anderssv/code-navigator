@@ -166,9 +166,26 @@ Raised directly after the Spring PetClinic field test above: would an agent read
 
 **Tests**: `CompositionRootDetectorTest` — updated for the `Map` return type. `RingConfigOverridesTest` — 2 new (`notCompositionRoots` removes a class, unhonoured-directive reporting). `HexRingFormatterTest` — 3 new (composition-root evidence line, project-class-evidence branch triggers, external-evidence branch does not).
 
+**Validated with fresh subagents, not just self-assessment.** Launched two separate agents (Task tool, `general` subagent, no `task_id` reuse — genuinely fresh context each time) with an explicit instruction set: run the real `cnavRings` command against bass-ra-backend, read only the raw output, and interpret/decide blind — no access to this plan.md, no `cnavHelp`, no prior conversation. This is a meaningfully different (and stronger) validation than reviewing the hint text myself, since I already know what it's supposed to say.
+
+Findings from the first pass:
+- The evidence/hint mechanism worked as intended for real violations — the agent correctly walked the decision tree, correctly proposed exact JSON overrides, and correctly distinguished "config gap" from "real I/O" for several classes it checked against source.
+- It found composition roots had **no evidence at all in that specific run** — not because the fix was missing, but because that run's only composition root was config-forced (`rings.compositionRoots`), and forced roots legitimately carry no structural evidence. The agent understood *that* there was no evidence but not *why* — it had to go read `cnav-config.json` itself to figure out this one was manually declared, and even then the output gave no pointer to *where* to change it.
+- It independently found a **new, real false positive** neither planned nor previously noticed: `io.micrometer.core.instrument.Timer`/`Tag` (Micrometer's core measurement API) — reasoned through correctly from the hint's own stated criterion ("no I/O of its own"), verified against real source, and proposed the exact `valuePackages` fix.
+
+Both were fixed:
+- `(configured)` → `(configured via cnav-config.json's rings.compositionRoots)` — the label itself now names the fix location, since a bare "(configured)" told the agent *that* a decision was made but not *where* to change it.
+- Micrometer's `io.micrometer.core.instrument.` added to `VALUE_LIBRARY_PACKAGES` (same reasoning as `org.slf4j`/`javax.xml.datatype`: the real I/O lives in a separate, uncovered exporter package — `io.micrometer.prometheusmetrics` here — verified this distinction holds in the actual dependency jars before relying on it).
+
+A second fresh agent, run after both fixes, confirmed the `(configured via ...)` label now resolves that ambiguity, and — independently, again — found a *third* new false positive: OpenTelemetry's tracing API (`Tracer`, `Scope`, `OpenTelemetry`, spread across three different `io.opentelemetry.*` sub-packages, found one at a time as each got fixed and the next surfaced) — same "instrumentation wrapper, not the I/O itself" shape as logging and Micrometer. Fixed by excluding the whole `io.opentelemetry.api.` and `io.opentelemetry.context.` packages (the instrumentation API), leaving `io.opentelemetry.exporter.*` uncovered and still a real signal. Violations on bass-ra-backend went 10 → 7 (Micrometer) → 5 (OpenTelemetry, across three follow-up fixes for its sub-packages).
+
+The second agent also raised two things deliberately **not** acted on, since they're genuinely more ambiguous than the pattern above and don't have the same "clearly a separate exporter package exists" structure to lean on:
+- `com.fasterxml.jackson.databind.JsonNode` (a generic JSON tree value type, arguably a value library — but Jackson types are also frequently the intentional marshaling boundary in hex-arch code, unlike a logging/tracing facade that's *never* meant to be the boundary).
+- `org.apache.commons.pool2.impl.GenericObjectPoolConfig` (pool tuning knobs, no I/O of their own — but commons-pool2 backs many different kinds of pooled I/O resources, so a package-wide exclusion risks masking genuine cases).
+
+Also raised, not acted on — a real gap in the hint's *shape*, not a package-list gap: the decision tree only ever offers two outcomes ("classification gap" or "real I/O, add an override") and has no third branch for "this class should itself be an additional composition root" (its example: `AppDependencies`, a DI container that constructs an `HttpClient` — architecturally more like a second, undeclared assembler than a true ring-1 business adapter). Worth a future design pass if it recurs on another codebase; not chased now since it's a structural addition to the hint's logic, not a package-list entry.
 
 
-### ~~Full workspace analysis — automatically include real project dependencies~~ — DONE (v0.1.113-SNAPSHOT)
 **DONE** | **Value: high** | **Effort: high** | Source: internal
 
 Module discovery is automatic input resolution, not a task parameter — no `--multi-module` flag, no per-task `ParamDef`. Invoking a task on a leaf analyzes that project plus real transitive project dependencies; invoking on an aggregator/root analyzes its whole source subtree. Unrelated sibling/hierarchy modules are excluded.

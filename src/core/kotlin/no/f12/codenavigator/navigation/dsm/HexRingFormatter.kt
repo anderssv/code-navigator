@@ -77,8 +77,9 @@ object HexRingFormatter {
         if (roots.isEmpty()) return
         appendLine("Composition roots (excluded — an assembler is not a ring):")
         roots.sortedBy { it.value }.forEach {
-            val evidence = output.graph.compositionRootEvidence[it]?.let { wired -> " (wires: ${wired.value})" } ?: ""
-            appendLine("  ${it.value}$evidence")
+            val note = output.graph.compositionRootEvidence[it]?.let { wired -> " (wires: ${wired.value})" }
+                ?: " (configured via cnav-config.json's rings.compositionRoots)"
+            appendLine("  ${it.value}$note")
         }
 
         val structuralRoots = roots.filter { it in output.graph.compositionRootEvidence }

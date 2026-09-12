@@ -194,6 +194,93 @@ class AdapterDetectorTest {
     }
 
     @Test
+    fun `a class whose only external reference is the Micrometer core measurement API is not a sink adapter`() {
+        val service = ClassName("com.app.polls.PollService")
+        val timerHelper = ClassName("com.app.metrics.TimerHelpersKt")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, timerHelper),
+            projectDeps = listOf(dep(service.value, timerHelper.value)),
+            externalDeps = listOf(dep(timerHelper.value, "io.micrometer.core.instrument.Timer")),
+        )
+
+        assertEquals(null, findings[timerHelper], "Timer/Tag/Meter/MeterRegistry are Micrometer's in-memory measurement API — the actual I/O happens in a separate concrete registry/exporter package (e.g. io.micrometer.prometheusmetrics), not here")
+    }
+
+    @Test
+    fun `a Micrometer exporter package still counts as a real signal, unlike the core measurement API`() {
+        val service = ClassName("com.app.polls.PollService")
+        val registry = ClassName("com.app.metrics.MetricsConfig")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, registry),
+            projectDeps = listOf(dep(service.value, registry.value)),
+            externalDeps = listOf(dep(registry.value, "io.micrometer.prometheusmetrics.PrometheusMeterRegistry")),
+        )
+
+        assertEquals(AdapterReason.SINK_WITH_EXTERNAL_CALLS, findings[registry]?.reason, "the Prometheus exporter is a separate, real I/O-adjacent package from the core measurement API, and stays a signal")
+    }
+
+    @Test
+    fun `a class whose only external reference is OpenTelemetry tracing is not a sink adapter`() {
+        val service = ClassName("com.app.polls.PollService")
+        val tracingHelper = ClassName("com.app.cache.RedisTracingKt")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, tracingHelper),
+            projectDeps = listOf(dep(service.value, tracingHelper.value)),
+            externalDeps = listOf(
+                dep(tracingHelper.value, "io.opentelemetry.api.trace.Tracer"),
+                dep(tracingHelper.value, "io.opentelemetry.api.GlobalOpenTelemetry"),
+            ),
+        )
+
+        assertEquals(null, findings[tracingHelper], "OpenTelemetry's tracing API wraps calls with spans — it's instrumentation, not I/O itself, same shape as a logging facade")
+    }
+
+    @Test
+    fun `a class whose only external reference is OpenTelemetry context Scope is not a sink adapter`() {
+        val service = ClassName("com.app.polls.PollService")
+        val tracingHelper = ClassName("com.app.cache.RedisTracingKt")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, tracingHelper),
+            projectDeps = listOf(dep(service.value, tracingHelper.value)),
+            externalDeps = listOf(dep(tracingHelper.value, "io.opentelemetry.context.Scope")),
+        )
+
+        assertEquals(null, findings[tracingHelper], "Scope (returned by span.makeCurrent(), closed to end the span) is the same instrumentation API as Tracer, just a different OpenTelemetry sub-package")
+    }
+
+    @Test
+    fun `a class referencing the base OpenTelemetry api interface is not a sink adapter`() {
+        val service = ClassName("com.app.polls.PollService")
+        val tracingHelper = ClassName("com.app.cache.RedisTracingKt")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, tracingHelper),
+            projectDeps = listOf(dep(service.value, tracingHelper.value)),
+            externalDeps = listOf(dep(tracingHelper.value, "io.opentelemetry.api.OpenTelemetry")),
+        )
+
+        assertEquals(null, findings[tracingHelper], "the whole io.opentelemetry.api package is the instrumentation API (spans, metrics, baggage, context) — distinct from io.opentelemetry.exporter.*, which stays a real signal")
+    }
+
+    @Test
+    fun `an OpenTelemetry exporter package still counts as a real signal`() {
+        val service = ClassName("com.app.polls.PollService")
+        val exporterConfig = ClassName("com.app.observability.OtlpExporterConfig")
+
+        val findings = AdapterDetector.detect(
+            projectClasses = setOf(service, exporterConfig),
+            projectDeps = listOf(dep(service.value, exporterConfig.value)),
+            externalDeps = listOf(dep(exporterConfig.value, "io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter")),
+        )
+
+        assertEquals(AdapterReason.SINK_WITH_EXTERNAL_CALLS, findings[exporterConfig]?.reason, "the OTLP exporter sends spans over HTTP — real I/O, unlike the api package")
+    }
+
+    @Test
     fun `a standard library reference does not mask a real framework reference`() {
         val repo = ClassName("com.app.infra.PollsRepositoryImpl")
 
