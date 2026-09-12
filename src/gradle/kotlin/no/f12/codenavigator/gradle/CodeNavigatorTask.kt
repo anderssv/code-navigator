@@ -11,8 +11,10 @@ import org.gradle.api.GradleException
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.options.Option
 import java.io.File
+import org.gradle.work.DisableCachingByDefault
 
 /** Base for read-only analyses that can resolve a single- or multi-module [AnalysisWorkspace]. */
+@DisableCachingByDefault(because = "Abstract base for analysis tasks that produce console output only")
 abstract class WorkspaceAnalysisTask : CodeNavigatorTask() {
     final override fun taskOptionsMap(): Map<String, String?> = buildMap {
         putAll(analysisOptionsMap())
@@ -26,6 +28,7 @@ abstract class WorkspaceAnalysisTask : CodeNavigatorTask() {
  * Provides shared options (format, plan-file), a helper to build the options map
  * that Config.parse() methods expect, and detection of legacy -P property usage.
  */
+@DisableCachingByDefault(because = "Abstract base for analysis tasks that produce console output only")
 abstract class CodeNavigatorTask : DefaultTask() {
 
     @Option(option = "format", description = "Output format: text, json, llm, or diff")
