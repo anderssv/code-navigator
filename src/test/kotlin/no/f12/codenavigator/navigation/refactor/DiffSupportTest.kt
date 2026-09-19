@@ -3,6 +3,7 @@ package no.f12.codenavigator.navigation.refactor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertContains
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DiffSupportTest {
@@ -126,5 +127,46 @@ class DiffSupportTest {
 
         assertContains(combined, "--- a/A.kt")
         assertContains(combined, "--- a/B.kt")
+    }
+
+    // Field report (greitt, v0.1.116): `--- a//Users/...` — the path was already absolute.
+    @Test
+    fun `an absolute file path does not double the separator after the a and b prefixes`() {
+        val diff = computeUnifiedDiff("/Users/me/src/Foo.kt", "one\n", "two\n")
+
+        assertContains(diff, "--- a/Users/me/src/Foo.kt")
+        assertContains(diff, "+++ b/Users/me/src/Foo.kt")
+        assertFalse(diff.contains("a//"))
+        assertFalse(diff.contains("b//"))
+    }
+
+    @Test
+    fun `a file that also moved names the old path on one side and the new path on the other`() {
+        val diff = computeUnifiedDiff(
+            "/src/polls/PollDomainTest.kt",
+            "/src/polls/model/PollDomainTest.kt",
+            "package polls\n",
+            "package polls.model\n",
+        )
+
+        assertContains(diff, "--- a/src/polls/PollDomainTest.kt")
+        assertContains(diff, "+++ b/src/polls/model/PollDomainTest.kt")
+    }
+
+    @Test
+    fun `formatChangesAsUnifiedDiff applies the rename mapping to the moved file only`() {
+        val changes = listOf(
+            RenameChange("/src/polls/PollDomainTest.kt", "package polls\n", "package polls.model\n"),
+            RenameChange("/src/web/Caller.kt", "import polls.PollDomain\n", "import polls.model.PollDomain\n"),
+        )
+
+        val diff = formatChangesAsUnifiedDiff(
+            changes,
+            renamedPaths = mapOf("/src/polls/PollDomainTest.kt" to "/src/polls/model/PollDomainTest.kt"),
+        )
+
+        assertContains(diff, "+++ b/src/polls/model/PollDomainTest.kt")
+        assertContains(diff, "--- a/src/web/Caller.kt")
+        assertContains(diff, "+++ b/src/web/Caller.kt")
     }
 }

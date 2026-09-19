@@ -31,6 +31,7 @@ object HexRingFormatter {
             }
         }
 
+        appendAdapterReasonSummary(output)
         appendCompositionRoots(output)
         appendViolations(output)
         appendDomainServiceViolations(output)
@@ -54,6 +55,40 @@ object HexRingFormatter {
         }
     }
 
+    /**
+     * Histogram of *why* classes were classified as adapters, with the external types that drove
+     * each reason. Without it the ring listing reads as one flat verdict: a field report found 35 of
+     * 43 adapters classified by one reason and 13 of those by a single parameter type, which took a
+     * shell pipeline to see. Knowing one type dominates is what tells you whether "adapter" here
+     * means "does I/O" or just "takes a framework handle".
+     */
+    private fun StringBuilder.appendAdapterReasonSummary(output: HexRingsOutput) {
+        val reasons = output.graph.adapterReasons
+        if (reasons.isEmpty()) return
+
+        appendLine("Why these are adapters (${reasons.size} class${if (reasons.size == 1) "" else "es"}):")
+        reasons.entries
+            .groupBy({ it.value }, { it.key })
+            .entries
+            .sortedWith(compareByDescending<Map.Entry<AdapterReason, List<ClassName>>> { it.value.size }.thenBy { it.key.name })
+            .forEach { (reason, classes) ->
+                appendLine("  ${classes.size.toString().padStart(3)}  ${reasonLabel(reason)}")
+                classes
+                    .mapNotNull { output.graph.adapterEvidence[it] }
+                    .groupingBy { it.value }
+                    .eachCount()
+                    .entries
+                    .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+                    .take(EVIDENCE_HISTOGRAM_LIMIT)
+                    .forEach { (evidence, count) ->
+                        appendLine("       ${count.toString().padStart(3)}  $evidence")
+                    }
+            }
+        appendLine()
+    }
+
+    private const val EVIDENCE_HISTOGRAM_LIMIT = 5
+
     private fun serviceTierNote(output: HexRingsOutput, cls: ClassName): String =
         if (cls in output.serviceTier) "  [service tier]" else ""
 
@@ -71,6 +106,7 @@ object HexRingFormatter {
         AdapterReason.UNCALLED_ENTRY_POINT -> "calls a library, nothing in the project calls it"
         AdapterReason.FRAMEWORK_GENERATED_PROXY -> "synthetic — framework-generated implementation, not a compiled class"
         AdapterReason.FRAMEWORK_ENTRY_POINT_ANNOTATION -> "annotated as a framework entry point"
+        AdapterReason.PORT_IMPLEMENTATION -> "implements the same port as an adapter"
     }
 
     private fun StringBuilder.appendCompositionRoots(output: HexRingsOutput) {

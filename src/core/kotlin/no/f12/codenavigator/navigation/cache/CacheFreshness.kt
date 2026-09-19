@@ -4,6 +4,14 @@ import java.io.File
 
 object CacheFreshness {
 
+    /**
+     * Directories are checked alongside class files because a *deleted* class leaves no mtime behind:
+     * every surviving file is still older than the cache, so a file-only check calls the cache fresh
+     * and keeps serving classes that no longer exist. Removing an entry does bump its containing
+     * directory's mtime, which is the only cheap signal that a deletion happened. Field-verified
+     * failure: a test class deleted after a `cnavTestAlignment` violation kept failing the gate,
+     * un-greenable until the cache was wiped by hand.
+     */
     fun isFresh(cacheFile: File, classDirectories: List<File>): Boolean {
         if (!cacheFile.exists()) return false
 
@@ -13,7 +21,7 @@ object CacheFreshness {
             .filter { it.exists() }
             .flatMap { dir ->
                 dir.walkTopDown()
-                    .filter { it.isFile && it.extension == "class" }
+                    .filter { it.isDirectory || (it.isFile && it.extension == "class") }
                     .toList()
             }
             .all { it.lastModified() <= cacheLastModified }

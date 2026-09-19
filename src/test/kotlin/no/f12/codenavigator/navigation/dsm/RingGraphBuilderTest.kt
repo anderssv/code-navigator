@@ -192,4 +192,95 @@ class RingGraphBuilderTest {
         assertEquals(AdapterReason.FRAMEWORK_GENERATED_PROXY, graph.adapterReasons[proxy])
         assertEquals(setOf(proxy), graph.implementedBy[client])
     }
+
+    // --- PORT_IMPLEMENTATION: a port implementation is classified with the adapter it stands in for.
+    // greitt (the project that prompted this) has exactly one port with two implementors, so it cannot
+    // exercise the over-reach risk at all. These cover it directly.
+
+    private val port = ClassName("com.app.notification.EmailClient")
+    private val realAdapter = ClassName("com.app.notification.ResendEmailClient")
+    private val inMemory = ClassName("com.app.notification.FakeEmailClient")
+    private val service = ClassName("com.app.notification.NotificationService")
+
+    private fun portGraph(
+        implementors: List<ClassName> = listOf(realAdapter, inMemory),
+        classKinds: Map<ClassName, ClassKind> = mapOf(port to ClassKind.INTERFACE),
+        programmedTo: Boolean = true,
+    ) = RingGraphBuilder.build(
+        projectClasses = setOf(port, service) + implementors,
+        projectDeps = buildList {
+            if (programmedTo) add(dep(service.value, port.value))
+            implementors.forEach { add(dep(it.value, port.value)) }
+        },
+        externalDeps = listOf(dep(realAdapter.value, "io.ktor.client.HttpClient")),
+        classKinds = classKinds,
+        supertypes = implementors.map { StructuralSupertypeInfo(it, port) },
+    )
+
+    @Test
+    fun `an implementation with no I O of its own is classified with the adapter implementing the same port`() {
+        val graph = portGraph()
+
+        assertEquals(AdapterReason.PORT_IMPLEMENTATION, graph.adapterReasons[inMemory])
+        assertEquals(port, graph.adapterEvidence[inMemory], "evidence should name the port")
+        assertTrue(inMemory in graph.ioClasses)
+    }
+
+    @Test
+    fun `the adapter that carries the real evidence keeps its own reason`() {
+        val graph = portGraph()
+
+        assertEquals(AdapterReason.FRAMEWORK_TYPE, graph.adapterReasons[realAdapter])
+    }
+
+    // Over-reach guard 1: a domain interface is programmed to by every service, so the
+    // "someone depends on the interface" condition does not protect it. Value types are excluded
+    // outright — a data class is never an adapter, whatever it implements.
+    @Test
+    fun `a data class implementing the same interface as an adapter stays put`() {
+        val dayPoll = ClassName("com.app.model.DayPoll")
+        val timePoll = ClassName("com.app.model.TimePoll")
+        val pollPort = ClassName("com.app.model.Poll")
+        val user = ClassName("com.app.polls.PollService")
+
+        val graph = RingGraphBuilder.build(
+            projectClasses = setOf(pollPort, dayPoll, timePoll, user),
+            projectDeps = listOf(dep(user.value, pollPort.value), dep(dayPoll.value, pollPort.value), dep(timePoll.value, pollPort.value)),
+            externalDeps = listOf(dep(dayPoll.value, "io.ktor.client.HttpClient")),
+            classKinds = mapOf(
+                pollPort to ClassKind.INTERFACE,
+                dayPoll to ClassKind.DATA_CLASS,
+                timePoll to ClassKind.DATA_CLASS,
+            ),
+            supertypes = listOf(StructuralSupertypeInfo(dayPoll, pollPort), StructuralSupertypeInfo(timePoll, pollPort)),
+        )
+
+        assertEquals(null, graph.adapterReasons[timePoll], "a data class was dragged out by a sibling's framework reference")
+    }
+
+    // Over-reach guard 2: nothing programs to the interface, so it is a marker/utility interface
+    // rather than a port — its implementors do not share a boundary.
+    @Test
+    fun `an interface nobody depends on does not propagate adapter classification`() {
+        val graph = portGraph(programmedTo = false)
+
+        assertEquals(null, graph.adapterReasons[inMemory])
+    }
+
+    @Test
+    fun `an implementation that has its own adapter evidence keeps that reason rather than the port one`() {
+        val secondAdapter = ClassName("com.app.notification.SmtpEmailClient")
+        val graph = RingGraphBuilder.build(
+            projectClasses = setOf(port, service, realAdapter, secondAdapter),
+            projectDeps = listOf(dep(service.value, port.value), dep(realAdapter.value, port.value), dep(secondAdapter.value, port.value)),
+            externalDeps = listOf(
+                dep(realAdapter.value, "io.ktor.client.HttpClient"),
+                dep(secondAdapter.value, "org.jetbrains.exposed.sql.Table"),
+            ),
+            classKinds = mapOf(port to ClassKind.INTERFACE),
+            supertypes = listOf(StructuralSupertypeInfo(realAdapter, port), StructuralSupertypeInfo(secondAdapter, port)),
+        )
+
+        assertEquals(AdapterReason.FRAMEWORK_TYPE, graph.adapterReasons[secondAdapter])
+    }
 }

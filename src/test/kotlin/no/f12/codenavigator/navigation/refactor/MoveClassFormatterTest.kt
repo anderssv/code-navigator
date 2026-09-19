@@ -176,4 +176,34 @@ class MoveClassFormatterTest {
         assertTrue(output.contains("move+rename"), "Should indicate move+rename. Output:\n$output")
         assertTrue(output.contains("com.example.domain.AccountService"), "Should mention full target. Output:\n$output")
     }
+
+    // Field report (greitt, v0.1.116): nothing in the output said the file had been relocated, so a
+    // follow-up `git mv` was attempted on an already-moved file.
+    @Test
+    fun `applied output states the destination path of the moved file`() {
+        val output = MoveClassFormatter.format(singleChange, appliedConfig)
+
+        assertTrue(
+            output.contains("file moved: /src/main/kotlin/com/example/services/UserService.kt -> /src/main/kotlin/com/example/domain/UserService.kt"),
+            "Should state where the file went. Output:\n$output",
+        )
+    }
+
+    @Test
+    fun `preview output says the file will move rather than that it did`() {
+        val output = MoveClassFormatter.format(singleChange, previewConfig)
+
+        assertTrue(output.contains("file moves:"), "Output:\n$output")
+        assertTrue(!output.contains("file moved:"), "Output:\n$output")
+    }
+
+    @Test
+    fun `LLM diff names the new path on the plus side for the moved file`() {
+        val output = MoveClassFormatter.format(multipleChanges, appliedConfig.copy(format = OutputFormat.LLM))
+
+        assertTrue(output.contains("--- a/src/main/kotlin/com/example/services/UserService.kt"), "Output:\n$output")
+        assertTrue(output.contains("+++ b/src/main/kotlin/com/example/domain/UserService.kt"), "Output:\n$output")
+        assertTrue(output.contains("--- a/src/main/kotlin/com/example/api/Controller.kt"), "Output:\n$output")
+        assertTrue(output.contains("+++ b/src/main/kotlin/com/example/api/Controller.kt"), "Output:\n$output")
+    }
 }

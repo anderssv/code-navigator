@@ -10,6 +10,7 @@ enum class AdapterReason {
     UNCALLED_ENTRY_POINT,
     FRAMEWORK_GENERATED_PROXY,
     FRAMEWORK_ENTRY_POINT_ANNOTATION,
+    PORT_IMPLEMENTATION,
 }
 
 data class RingGraph(

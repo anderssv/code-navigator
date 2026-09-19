@@ -6,6 +6,7 @@ import no.f12.codenavigator.navigation.dsm.MoveSuggestConfig
 import no.f12.codenavigator.navigation.dsm.MoveSuggestOrchestrator
 import no.f12.codenavigator.navigation.dsm.PackageHealthExtractor
 import no.f12.codenavigator.navigation.dsm.PlanMutator
+import no.f12.codenavigator.navigation.types.SourceSet
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
@@ -64,7 +65,11 @@ class MoveSuggestMojo : AbstractMojo() {
             dependencies = PlanMutator.apply(extraction.dependencies, plan, dropSamePackageEdges = false),
             projectClasses = PlanMutator.applyToClassSet(extraction.projectClasses, plan),
         )
-        val output = MoveSuggestOrchestrator.fromExtraction(mutatedExtraction, config)
+        val output = MoveSuggestOrchestrator.fromExtraction(
+            mutatedExtraction,
+            config,
+            taggedDirs.filter { it.second == SourceSet.TEST }.map { it.first },
+        )
 
         output.skippedFileWarning?.let { log.warn(it) }
         DsmOutputFormatter.format(output, config.format)?.let { println(it) }

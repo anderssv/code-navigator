@@ -4,12 +4,9 @@ import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
-import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
-import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
 import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDepsConfig
-import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.dsm.PackageDepsOrchestrator
 import org.apache.maven.plugin.AbstractMojo
 import org.apache.maven.plugins.annotations.Execute
 import org.apache.maven.plugins.annotations.LifecyclePhase
@@ -47,49 +44,29 @@ class PackageDepsMojo : AbstractMojo() {
         val config = PackageDepsConfig.parse(TaskRegistry.PACKAGE_DEPS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
-        val classDirectories = filteredDirs.map { it.first }
-
-        if (classDirectories.isEmpty() || classDirectories.none { it.exists() }) {
+        if (taggedDirs.none { config.scope.matchesSourceSet(it.second) && it.first.exists() }) {
             log.warn("Classes directory does not exist — run 'mvn compile' first.")
             return
         }
 
-        val result = CallGraphCache.getOrBuild(File(project.build.directory, "cnav/call-graph.cache"), classDirectories)
-        val reportFile = File(project.build.directory, "cnav/skipped-files.txt")
-        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { log.warn(it) }
-        val graph = result.data
+        val cacheDir = File(project.build.directory, "cnav")
+        val output = PackageDepsOrchestrator.run(config, taggedDirs, cacheDir, File(cacheDir, "skipped-files.txt"))
+        output.skippedFileWarning?.let { log.warn(it) }
 
-        val filter: ((MethodRef) -> Boolean)? =
-            if (config.projectOnly) graph.projectClassFilter() else null
-
-        val deps = PackageDependencyBuilder.build(graph, filter)
-
-        val packages = if (config.packagePattern != null) {
-            val matches = deps.findPackages(config.packagePattern)
-            if (matches.isEmpty()) {
-                println(OutputWrapper.emptyResult(config.format, "No packages found matching '${config.packagePattern}'"))
-                return
-            }
-            matches
-        } else {
-            val all = deps.allPackages()
-            if (all.isEmpty()) {
-                val packageCount = graph.projectClasses().map { it.packageName() }.distinct().size
-                val hints = PackageDependencyFormatter.noResultsHints(packageCount)
-                println(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
-                return
-            }
-            all
+        if (output.emptyMessage != null) {
+            println(OutputWrapper.emptyResult(config.format, output.emptyMessage, output.emptyHints))
+            return
         }
 
-        println(OutputWrapper.formatAndWrap(config.format) { format ->
-    when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> PackageDependencyFormatter.format(deps, packages, config.reverse)
-        OutputFormat.JSON -> PackageDependencyFormatter.formatJson(deps, packages, config.reverse)
-        OutputFormat.LLM -> PackageDependencyFormatter.formatLlm(deps, packages, config.reverse)
-    }
-})
+        println(
+            OutputWrapper.formatAndWrap(config.format) { format ->
+                when (format) {
+                    OutputFormat.TEXT, OutputFormat.DIFF -> PackageDependencyFormatter.format(output.deps, output.packages, config.reverse)
+                    OutputFormat.JSON -> PackageDependencyFormatter.formatJson(output.deps, output.packages, config.reverse)
+                    OutputFormat.LLM -> PackageDependencyFormatter.formatLlm(output.deps, output.packages, config.reverse)
+                }
+            },
+        )
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {

@@ -60,7 +60,10 @@ object ReportOrchestrator {
         reportFile: File,
         projectDir: File? = null,
     ): ReportData {
-        val graphResult = CallGraphCache.getOrBuild(File(cacheDir, "call-graph.cache"), classDirectories)
+        // Scope-specific cache file: `classDirectories` is already narrowed by config.scope, and
+        // CacheFreshness only compares timestamps — sharing one file with the full-project tasks
+        // would let a --scope=prod report read back a graph that still holds the test classes.
+        val graphResult = CallGraphCache.getOrBuild(CallGraphCache.cacheFileFor(cacheDir, config.scope), classDirectories)
         val skippedFileWarning = SkippedFileReporter.report(graphResult.skippedFiles, reportFile)
         val graph = graphResult.data
 

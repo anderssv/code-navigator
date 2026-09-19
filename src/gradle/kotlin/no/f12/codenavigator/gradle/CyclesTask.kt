@@ -37,9 +37,9 @@ abstract class CyclesTask : WorkspaceAnalysisTask() {
     @get:Internal
     var scope: String? = null
 
-    @Option(option = "fail-on-violation", description = "Fail the build when cycle count exceeds --max-cycles")
+    @Option(option = "fail-on-violation", description = "Fail the build when cycle count exceeds --max-cycles (--no-fail-on-violation switches it back off)")
     @get:Internal
-    var failOnViolation: String? = null
+    var failOnViolation: Boolean? = null
 
     @Option(option = "max-cycles", description = "Max allowed cycles before failing the build (used with --fail-on-violation)")
     @get:Internal
@@ -51,7 +51,7 @@ abstract class CyclesTask : WorkspaceAnalysisTask() {
         dsmDepth?.let { put("dsm-depth", it) }
         rootPackage?.let { put("root-package", it) }
         scope?.let { put("scope", it) }
-        failOnViolation?.let { put("fail-on-violation", it) }
+        failOnViolation?.let { put("fail-on-violation", it.toString()) }
         maxCycles?.let { put("max-cycles", it) }
     }
 

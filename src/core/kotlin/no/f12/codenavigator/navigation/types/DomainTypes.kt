@@ -190,6 +190,16 @@ value class PackageName(val value: String) : Comparable<PackageName> {
 
     fun startsWith(prefix: PackageName): Boolean = value.startsWith(prefix.value)
 
+    /** `a.b.c` is a descendant of `a.b`, but not of `a.bc` — segment boundaries are respected. */
+    fun isDescendantOf(other: PackageName): Boolean =
+        other.isNotEmpty() && value.startsWith("${other.value}.")
+
+    fun isAncestorOf(other: PackageName): Boolean = other.isDescendantOf(this)
+
+    /** True when the two packages are the same, or one nests inside the other. */
+    fun isNestedWith(other: PackageName): Boolean =
+        this == other || isDescendantOf(other) || isAncestorOf(other)
+
     fun truncate(rootPrefix: PackageName, depth: Int): PackageName {
         val stripped = if (rootPrefix.isNotEmpty() && value.startsWith("${rootPrefix.value}.")) {
             value.removePrefix("${rootPrefix.value}.")

@@ -38,9 +38,9 @@ abstract class AmbientTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
-    @Option(option = "fail-on-violation", description = "Fail the build when findings exceed the configured threshold")
+    @Option(option = "fail-on-violation", description = "Fail the build when findings exceed the configured threshold (--no-fail-on-violation switches it back off)")
     @get:Internal
-    var failOnViolation: String? = null
+    var failOnViolation: Boolean? = null
 
     @Option(option = "max-violations", description = "Max allowed findings before failing the build (used with --fail-on-violation)")
     @get:Internal
@@ -52,7 +52,7 @@ abstract class AmbientTask : CodeNavigatorTask() {
         detail?.let { put("detail", it) }
         exclude?.let { put("exclude", it) }
         scope?.let { put("scope", it) }
-        failOnViolation?.let { put("fail-on-violation", it) }
+        failOnViolation?.let { put("fail-on-violation", it.toString()) }
         maxViolations?.let { put("max-violations", it) }
     }
 

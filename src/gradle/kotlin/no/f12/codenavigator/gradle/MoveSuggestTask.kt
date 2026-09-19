@@ -6,6 +6,7 @@ import no.f12.codenavigator.navigation.dsm.MoveSuggestConfig
 import no.f12.codenavigator.navigation.dsm.MoveSuggestOrchestrator
 import no.f12.codenavigator.navigation.dsm.PackageHealthExtractor
 import no.f12.codenavigator.navigation.dsm.PlanMutator
+import no.f12.codenavigator.navigation.types.Scope
 
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
@@ -55,7 +56,11 @@ abstract class MoveSuggestTask : WorkspaceAnalysisTask() {
             dependencies = applyPlan(extraction.dependencies, dropSamePackageEdges = false),
             projectClasses = PlanMutator.applyToClassSet(extraction.projectClasses, loadPlanSteps()),
         )
-        val output = MoveSuggestOrchestrator.fromExtraction(mutatedExtraction, config)
+        val output = MoveSuggestOrchestrator.fromExtraction(
+            mutatedExtraction,
+            config,
+            workspace.classDirectories(Scope.TEST),
+        )
 
         output.skippedFileWarning?.let { logger.warn(it) }
         DsmOutputFormatter.format(output, config.format)?.let { logger.quiet(it) }

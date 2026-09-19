@@ -175,8 +175,12 @@ class MoveSuggesterTest {
 
     @Test
     fun `class with high fan-out to 4 packages is NOT suppressed`() {
+        // Two edges to com.b, one each to the rest: still 4 distinct target packages (under the
+        // composition-root threshold of 5), but the winning package now clears the minimum-evidence
+        // floor, so this tests the composition-root rule rather than the single-edge floor.
         val deps = listOf(
             PackageDependency(PackageName("com.a"), PackageName("com.b"), ClassName("com.a.RegularService"), ClassName("com.b.X")),
+            PackageDependency(PackageName("com.a"), PackageName("com.b"), ClassName("com.a.RegularService"), ClassName("com.b.X2")),
             PackageDependency(PackageName("com.a"), PackageName("com.c"), ClassName("com.a.RegularService"), ClassName("com.c.Y")),
             PackageDependency(PackageName("com.a"), PackageName("com.d"), ClassName("com.a.RegularService"), ClassName("com.d.Z")),
             PackageDependency(PackageName("com.a"), PackageName("com.e"), ClassName("com.a.RegularService"), ClassName("com.e.W")),
@@ -424,5 +428,112 @@ class MoveSuggesterTest {
             result.suggestions.none { it.className == facadeClass },
             "Mixed-receiver facade should not be suppressed; jwt receiver boosts own package enough to cancel domain gravity",
         )
+    }
+
+    // Field report (greitt, v0.1.116): every service in `polls` was told to move into `polls.model`,
+    // its own pure-domain sub-package. Gravity counted child-package edges as "elsewhere", which is
+    // exactly what layering produces — and following the advice converges on one giant package.
+    @Test
+    fun `edges into a child package do not pull a class out of its own package`() {
+        val deps = listOf(
+            PackageDependency(PackageName("polls"), PackageName("polls"), ClassName("polls.UserPollsService"), ClassName("polls.PollsRepository")),
+            PackageDependency(PackageName("polls"), PackageName("polls.model"), ClassName("polls.UserPollsService"), ClassName("polls.model.Poll")),
+            PackageDependency(PackageName("polls"), PackageName("polls.model"), ClassName("polls.UserPollsService"), ClassName("polls.model.Slot")),
+            PackageDependency(PackageName("polls"), PackageName("polls.model"), ClassName("polls.UserPollsService"), ClassName("polls.model.Response")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        assertTrue(result.suggestions.isEmpty(), "suggested moving a service into its own sub-package: ${result.suggestions}")
+    }
+
+    @Test
+    fun `a parent package is never proposed as a destination`() {
+        val deps = listOf(
+            PackageDependency(PackageName("polls.model"), PackageName("polls"), ClassName("polls.model.Poll"), ClassName("polls.Helper")),
+            PackageDependency(PackageName("polls.model"), PackageName("polls"), ClassName("polls.model.Poll"), ClassName("polls.Other")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        assertTrue(result.suggestions.isEmpty(), "suggested moving a class up into its parent package: ${result.suggestions}")
+    }
+
+    @Test
+    fun `an unrelated package is still proposed when a child package is also referenced`() {
+        val deps = listOf(
+            PackageDependency(PackageName("polls"), PackageName("polls.model"), ClassName("polls.Stray"), ClassName("polls.model.Poll")),
+            PackageDependency(PackageName("polls"), PackageName("web"), ClassName("polls.Stray"), ClassName("web.A")),
+            PackageDependency(PackageName("polls"), PackageName("web"), ClassName("polls.Stray"), ClassName("web.B")),
+            PackageDependency(PackageName("polls"), PackageName("web"), ClassName("polls.Stray"), ClassName("web.C")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        assertEquals(1, result.suggestions.size)
+        assertEquals(PackageName("web"), result.suggestions.single().suggestedPackage)
+        assertEquals(1, result.suggestions.single().edgesToCurrent, "child-package edge should count as own")
+    }
+
+    // Field report: `PollsRepository -> polls.model` at confidence=1.00, own=0. A port interface
+    // naming its domain types cannot be scored by where its references land.
+    @Test
+    fun `a port interface with no same-package edges is not suggested for a move`() {
+        val deps = listOf(
+            PackageDependency(PackageName("ports"), PackageName("domain"), ClassName("ports.PollsRepository"), ClassName("domain.Poll")),
+            PackageDependency(PackageName("ports"), PackageName("domain"), ClassName("ports.PollsRepository"), ClassName("domain.Slot")),
+        )
+        val supertypes = listOf(
+            StructuralSupertypeInfo(ClassName("infra.ExposedPollsRepository"), ClassName("ports.PollsRepository")),
+        )
+
+        val result = MoveSuggester.suggest(deps, supertypes)
+
+        assertTrue(
+            result.suggestions.none { it.className == ClassName("ports.PollsRepository") },
+            "suggested moving a port interface into the package it names: ${result.suggestions}",
+        )
+    }
+
+    @Test
+    fun `test classes are excluded as move subjects`() {
+        val deps = listOf(
+            PackageDependency(PackageName("polls"), PackageName("fixtures"), ClassName("polls.UserPollsServiceTest"), ClassName("fixtures.PollMother")),
+            PackageDependency(PackageName("polls"), PackageName("fixtures"), ClassName("polls.UserPollsServiceTest"), ClassName("fixtures.SlotMother")),
+        )
+
+        val withTests = MoveSuggester.suggest(deps)
+        val withoutTests = MoveSuggester.suggest(deps, testClasses = setOf(ClassName("polls.UserPollsServiceTest")))
+
+        assertEquals(1, withTests.suggestions.size, "precondition: gravity does suggest moving the test")
+        assertTrue(withoutTests.suggestions.isEmpty())
+    }
+
+    // Field verification (greitt, 0.1.118-SNAPSHOT): `ParticipantFormComponentsKt -> kotlinx.html`.
+    // Extension-function receiver gravity can point at a library package, which is never somewhere a
+    // class can actually move to.
+    @Test
+    fun `a library package is never proposed as a destination`() {
+        val deps = listOf(
+            PackageDependency(PackageName("web"), PackageName("kotlinx.html"), ClassName("web.FormComponentsKt"), ClassName("kotlinx.html.DIV")),
+            PackageDependency(PackageName("web"), PackageName("kotlinx.html"), ClassName("web.FormComponentsKt"), ClassName("kotlinx.html.INPUT")),
+            PackageDependency(PackageName("web"), PackageName("kotlinx.html"), ClassName("web.FormComponentsKt"), ClassName("kotlinx.html.SPAN")),
+        )
+
+        val result = MoveSuggester.suggest(deps, projectClasses = setOf(ClassName("web.FormComponentsKt")))
+
+        assertTrue(result.suggestions.isEmpty(), "proposed moving a class into a library package: ${result.suggestions}")
+    }
+
+    // Same run: every --scope=test suggestion came out at own=0 target=1 confidence=1.00.
+    @Test
+    fun `a single edge to another package is not enough evidence to suggest a move`() {
+        val deps = listOf(
+            PackageDependency(PackageName("polls"), PackageName("time"), ClassName("polls.AuthTokenServiceTest"), ClassName("time.Clock")),
+        )
+
+        val result = MoveSuggester.suggest(deps)
+
+        assertTrue(result.suggestions.isEmpty(), "suggested a move on one edge at confidence 1.00: ${result.suggestions}")
     }
 }

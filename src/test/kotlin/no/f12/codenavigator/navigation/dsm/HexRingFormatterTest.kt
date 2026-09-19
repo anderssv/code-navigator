@@ -231,4 +231,48 @@ class HexRingFormatterTest {
 
         assertFalse(text.contains("structural"))
     }
+
+    // Field report (greitt, v0.1.116): 35 of 43 adapters shared one reason and 13 of those one
+    // parameter type — invisible in the flat listing without a shell pipeline.
+    @Test
+    fun `summarises why classes were classified as adapters, with the dominant evidence types`() {
+        val routesA = ClassName("com.app.web.AdminRoutes")
+        val routesB = ClassName("com.app.web.ParticipantRoutes")
+        val routingContext = ClassName("io.ktor.server.routing.RoutingContext")
+        val layering = RingLayering(
+            ringCount = 2,
+            diagnosis = RingDiagnosis.LAYERED,
+            rings = mapOf(poll to 0, routesA to 1, routesB to 1, impl to 1),
+        )
+        val graph = RingGraph(
+            classes = setOf(poll, routesA, routesB, impl),
+            ioClasses = setOf(routesA, routesB, impl),
+            adapterReasons = mapOf(
+                routesA to AdapterReason.FRAMEWORK_SIGNATURE,
+                routesB to AdapterReason.FRAMEWORK_SIGNATURE,
+                impl to AdapterReason.SINK_WITH_EXTERNAL_CALLS,
+            ),
+            adapterEvidence = mapOf(routesA to routingContext, routesB to routingContext),
+        )
+
+        val text = HexRingFormatter.format(output(layering, graph = graph), OutputFormat.TEXT)
+
+        assertContains(text, "Why these are adapters (3 classes):")
+        assertContains(text, "2  names a framework type in its signature")
+        assertContains(text, "2  io.ktor.server.routing.RoutingContext")
+        assertContains(text, "1  calls a library, calls nothing in the project")
+    }
+
+    @Test
+    fun `omits the adapter summary when nothing was classified as an adapter`() {
+        val layering = RingLayering(
+            ringCount = 1,
+            diagnosis = RingDiagnosis.LAYERED,
+            rings = mapOf(poll to 0),
+        )
+
+        val text = HexRingFormatter.format(output(layering), OutputFormat.TEXT)
+
+        assertFalse(text.contains("Why these are adapters"))
+    }
 }

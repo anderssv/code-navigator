@@ -83,10 +83,34 @@ class InversionRingsIntegrationTest {
         assertTrue(adapterRing > portRing, "adapter ring $adapterRing should be outside port ring $portRing")
     }
 
+    // Reversed deliberately (v0.1.118-SNAPSHOT, field report from greitt): this used to assert the
+    // opposite. Every other adapter rule keys on evidence of touching the outside, and an in-memory
+    // implementation trips none of them — so it landed in the service tier while the implementation it
+    // stands in for sat in the adapter ring. Both implement the same port; a port implementation's
+    // ring follows the boundary it implements, not whether it happens to open a socket. Calling it
+    // "service tier" was the wrong half of the asymmetry: it is not a service either.
     @Test
-    fun `the in-memory implementation of the same port is not treated as an adapter`() {
+    fun `an in-memory implementation is classified with the adapter it stands in for`() {
         val output = analyse()
 
-        assertEquals(null, output.graph.adapterReasons[ClassName("com.example.infra.InMemoryUserRepository")])
+        assertEquals(
+            AdapterReason.PORT_IMPLEMENTATION,
+            output.graph.adapterReasons[ClassName("com.example.infra.InMemoryUserRepository")],
+        )
+        assertEquals(
+            ClassName("com.example.domain.UserRepository"),
+            output.graph.adapterEvidence[ClassName("com.example.infra.InMemoryUserRepository")],
+            "evidence should name the port it implements",
+        )
+    }
+
+    @Test
+    fun `an in-memory implementation sits in the same ring as the adapter it stands in for`() {
+        val output = analyse()
+
+        assertEquals(
+            output.layering.rings[ClassName("com.example.adapters.JdbcUserRepository")],
+            output.layering.rings[ClassName("com.example.infra.InMemoryUserRepository")],
+        )
     }
 }

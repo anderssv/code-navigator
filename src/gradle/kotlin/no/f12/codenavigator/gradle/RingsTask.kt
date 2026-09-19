@@ -31,9 +31,9 @@ abstract class RingsTask : WorkspaceAnalysisTask() {
     @get:Internal
     var bootstrapConfig: Boolean? = null
 
-    @Option(option = "fail-on-violation", description = "Fail the build when ring violation count exceeds --max-violations")
+    @Option(option = "fail-on-violation", description = "Fail the build when ring violation count exceeds --max-violations (--no-fail-on-violation switches it back off)")
     @get:Internal
-    var failOnViolation: String? = null
+    var failOnViolation: Boolean? = null
 
     @Option(option = "max-violations", description = "Max allowed ring violations before failing the build (used with --fail-on-violation)")
     @get:Internal
@@ -43,7 +43,7 @@ abstract class RingsTask : WorkspaceAnalysisTask() {
         scope?.let { put("scope", it) }
         mode?.let { put("mode", it) }
         bootstrapConfig?.let { put("bootstrap-config", "true") }
-        failOnViolation?.let { put("fail-on-violation", it) }
+        failOnViolation?.let { put("fail-on-violation", it.toString()) }
         maxViolations?.let { put("max-violations", it) }
     }
 

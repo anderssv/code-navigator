@@ -29,7 +29,25 @@ object MoveClassFormatter {
     }
 
     private fun formatDiff(result: MoveClassResult): String =
-        formatChangesAsUnifiedDiff(result.changes).ifEmpty { "No changes needed." }
+        formatChangesAsUnifiedDiff(result.changes, result.renamedPaths()).ifEmpty { "No changes needed." }
+
+    /**
+     * The file this operation relocated on disk, as old path -> new path. `cnavMoveClass` moves the
+     * file itself, but nothing in the output used to say so — a follow-up `git mv` was attempted on
+     * an already-moved file. Rendered as a summary line and as the diff's `---`/`+++` pair.
+     */
+    private fun MoveClassResult.renamedPaths(): Map<String, String> {
+        val from = movedFilePath ?: return emptyMap()
+        val to = newFilePath ?: return emptyMap()
+        if (from == to) return emptyMap()
+        return mapOf(from to to)
+    }
+
+    private fun StringBuilder.appendFileMoveLine(result: MoveClassResult, preview: Boolean) {
+        val (from, to) = result.renamedPaths().entries.singleOrNull()?.toPair() ?: return
+        val verb = if (preview) "file moves" else "file moved"
+        appendLine("$verb: $from -> $to")
+    }
 
     private fun operationDescription(config: MoveClassConfig): String {
         val isMove = config.fromPackage != config.toPackage
@@ -49,6 +67,7 @@ object MoveClassFormatter {
 
         return buildString {
             appendLine(header)
+            appendFileMoveLine(result, config.preview)
             appendLine()
             for (change in result.changes) {
                 appendLine("--- ${change.filePath}")
@@ -88,11 +107,18 @@ object MoveClassFormatter {
         val mode = if (config.preview) "preview" else "applied"
         val header = "move-class ${operationDescription(config)} ($mode, ${result.changes.size} file${if (result.changes.size != 1) "s" else ""})"
 
+        val renamed = result.renamedPaths()
         return buildString {
             appendLine(header)
+            appendFileMoveLine(result, config.preview)
             appendLine()
             for (change in result.changes) {
-                val diff = computeUnifiedDiff(change.filePath, change.before, change.after)
+                val diff = computeUnifiedDiff(
+                    change.filePath,
+                    renamed[change.filePath] ?: change.filePath,
+                    change.before,
+                    change.after,
+                )
                 if (diff.isNotEmpty()) {
                     appendLine(diff)
                 }
@@ -119,6 +145,7 @@ object MoveClassFormatter {
         val header = "$mode: move-file ${config.fromFile} -> ${config.toPackage} (${result.changes.size} file${if (result.changes.size != 1) "s" else ""})"
         return buildString {
             appendLine(header)
+            appendFileMoveLine(result, config.preview)
             appendLine()
             for (change in result.changes) {
                 appendLine("--- ${change.filePath}")
@@ -148,11 +175,18 @@ object MoveClassFormatter {
         if (result.changes.isEmpty()) return "No changes needed."
         val mode = if (config.preview) "preview" else "applied"
         val header = "move-file ${config.fromFile} -> ${config.toPackage} ($mode, ${result.changes.size} file${if (result.changes.size != 1) "s" else ""})"
+        val renamed = result.renamedPaths()
         return buildString {
             appendLine(header)
+            appendFileMoveLine(result, config.preview)
             appendLine()
             for (change in result.changes) {
-                val diff = computeUnifiedDiff(change.filePath, change.before, change.after)
+                val diff = computeUnifiedDiff(
+                    change.filePath,
+                    renamed[change.filePath] ?: change.filePath,
+                    change.before,
+                    change.after,
+                )
                 if (diff.isNotEmpty()) { appendLine(diff) }
             }
             if (!config.preview) {

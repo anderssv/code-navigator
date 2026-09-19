@@ -648,10 +648,10 @@ class UsageExampleTest {
 class TaskRegistryTest {
 
     @Test
-    fun `contains all 55 goals`() {
+    fun `contains all 56 goals`() {
         val goals = TaskRegistry.ALL_TASKS.map { it.goal }.toSet()
 
-        assertEquals(55, goals.size)
+        assertEquals(56, goals.size)
         assertTrue(goals.contains("find-class"))
         assertTrue(goals.contains("hotspots"))
         assertTrue(goals.contains("complexity"))
@@ -672,6 +672,7 @@ class TaskRegistryTest {
         assertTrue(goals.contains("rename-method"))
         assertTrue(goals.contains("move-class"))
         assertTrue(goals.contains("rename-property"))
+        assertTrue(goals.contains("test-alignment"))
     }
 
     @Test
@@ -682,7 +683,7 @@ class TaskRegistryTest {
             val gradleName = task.taskName(BuildTool.GRADLE)
             assertNotNull(gradleName, "Goal '${task.goal}' should resolve to a Gradle task name")
         }
-        assertEquals(55, registryGoals.size)
+        assertEquals(56, registryGoals.size)
     }
 
     @Test

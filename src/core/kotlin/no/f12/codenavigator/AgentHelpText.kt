@@ -272,6 +272,13 @@ object AgentHelpText {
         appendLine("    → ${u("test-coupling", p("ports", "\".*Repository|.*Client\""))}")
         appendLine("    # Detects tests calling port interface methods directly instead of going through services")
         appendLine()
+        appendLine("  \"Are my tests in the right place?\" / \"Is this test named after what it tests?\"")
+        appendLine("    → ${u("test-alignment")}")
+        appendLine("    # Infers each test's subject from the call graph and cross-checks the FooTest -> Foo")
+        appendLine("    # convention. Do NOT use ${t("move-suggest")} for this — a test's dependency gravity is")
+        appendLine("    # dominated by object mothers and fixtures, so it cannot tell a correctly-placed test")
+        appendLine("    # from a misplaced one. Use ${p("exclude", "\"Journey|EndpointsTest\"")} for tests that span many classes.")
+        appendLine()
         appendLine("  \"What are the most important types?\"  → ${u("rank")}")
         appendLine()
         appendLine("  \"Which files change the most?\"  → ${u("hotspots")}")
@@ -414,8 +421,8 @@ object AgentHelpText {
         appendLine("${t("cycles")} and ${t("rings")} can fail the build once a codebase is clean, so regressions")
         appendLine("are caught before merge instead of drifting back in silently:")
         appendLine()
-        appendLine("  ${u("cycles", p("scope", "prod"), p("fail-on-violation", "true"), p("max-cycles", "0"))}")
-        appendLine("  ${u("rings", p("scope", "prod"), p("fail-on-violation", "true"), p("max-violations", "0"))}")
+        appendLine("  ${u("cycles", p("scope", "prod"), pf("fail-on-violation"), p("max-cycles", "0"))}")
+        appendLine("  ${u("rings", p("scope", "prod"), pf("fail-on-violation"), p("max-violations", "0"))}")
         appendLine()
         appendLine("Raise ${p("max-cycles", "N")}/${p("max-violations", "N")} above 0 to allow a known baseline while")
         appendLine("blocking further regressions, then ratchet the threshold down as violations are fixed.")
@@ -436,6 +443,7 @@ object AgentHelpText {
     private fun generateWorkflow(tool: BuildTool): String = buildString {
         val t = { goal: String -> tool.taskName(goal) }
         val p = { name: String, value: String -> tool.param(name, value) }
+        val pf = { name: String -> tool.paramFlag(name) }
         fun u(goal: String, vararg params: String) = tool.usage(goal, *params)
 
         appendLine("=== code-navigator: Recommended Workflow ===")

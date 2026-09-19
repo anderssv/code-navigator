@@ -4,13 +4,9 @@ import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
-import no.f12.codenavigator.navigation.types.Scope
-import no.f12.codenavigator.navigation.relations.callgraph.CallGraphCache
-import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
-import no.f12.codenavigator.navigation.dsm.PackageDependencyBuilder
 import no.f12.codenavigator.navigation.dsm.PackageDependencyFormatter
 import no.f12.codenavigator.navigation.dsm.PackageDepsConfig
-import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
+import no.f12.codenavigator.navigation.dsm.PackageDepsOrchestrator
 
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
@@ -50,45 +46,28 @@ abstract class PackageDepsTask : CodeNavigatorTask() {
             TaskRegistry.PACKAGE_DEPS.enhanceProperties(buildOptionsMap()),
         )
 
-        val taggedDirs = project.taggedClassDirectories()
-        val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
-        val classDirectories = filteredDirs.map { it.first }
+        val buildDir = project.layout.buildDirectory.asFile.get()
+        val output = PackageDepsOrchestrator.run(
+            config,
+            project.taggedClassDirectories(),
+            File(buildDir, "cnav"),
+            File(buildDir, "cnav/skipped-files.txt"),
+        )
+        output.skippedFileWarning?.let { logger.warn(it) }
 
-        val cacheFile = File(project.layout.buildDirectory.asFile.get(), "cnav/call-graph.cache")
-        val result = CallGraphCache.getOrBuild(cacheFile, classDirectories)
-        val reportFile = File(project.layout.buildDirectory.asFile.get(), "cnav/skipped-files.txt")
-        SkippedFileReporter.report(result.skippedFiles, reportFile)?.let { logger.warn(it) }
-        val graph = result.data
-
-        val filter: ((MethodRef) -> Boolean)? =
-            if (config.projectOnly) graph.projectClassFilter() else null
-
-        val deps = PackageDependencyBuilder.build(graph, filter)
-
-        val packages = if (config.packagePattern != null) {
-            val matches = deps.findPackages(config.packagePattern)
-            if (matches.isEmpty()) {
-                logger.quiet(OutputWrapper.emptyResult(config.format, "No packages found matching '${config.packagePattern}'"))
-                return
-            }
-            matches
-        } else {
-            val all = deps.allPackages()
-            if (all.isEmpty()) {
-                val packageCount = graph.projectClasses().map { it.packageName() }.distinct().size
-                val hints = PackageDependencyFormatter.noResultsHints(packageCount)
-                logger.quiet(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
-                return
-            }
-            all
+        if (output.emptyMessage != null) {
+            logger.quiet(OutputWrapper.emptyResult(config.format, output.emptyMessage, output.emptyHints))
+            return
         }
 
-        logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
-    when (format) {
-        OutputFormat.TEXT, OutputFormat.DIFF -> PackageDependencyFormatter.format(deps, packages, config.reverse)
-        OutputFormat.JSON -> PackageDependencyFormatter.formatJson(deps, packages, config.reverse)
-        OutputFormat.LLM -> PackageDependencyFormatter.formatLlm(deps, packages, config.reverse)
-    }
-})
+        logger.quiet(
+            OutputWrapper.formatAndWrap(config.format) { format ->
+                when (format) {
+                    OutputFormat.TEXT, OutputFormat.DIFF -> PackageDependencyFormatter.format(output.deps, output.packages, config.reverse)
+                    OutputFormat.JSON -> PackageDependencyFormatter.formatJson(output.deps, output.packages, config.reverse)
+                    OutputFormat.LLM -> PackageDependencyFormatter.formatLlm(output.deps, output.packages, config.reverse)
+                }
+            },
+        )
     }
 }

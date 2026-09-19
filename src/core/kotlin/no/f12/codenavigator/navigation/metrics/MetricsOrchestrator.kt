@@ -35,9 +35,13 @@ object MetricsOrchestrator {
         cacheDir: File,
         projectDir: File,
     ): MetricsOutput {
-        val classDirectories = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }.map { it.first }
+        val scopedDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
+        val classDirectories = scopedDirs.map { it.first }
 
-        val graphResult = CallGraphCache.getOrBuild(File(cacheDir, "call-graph.cache"), classDirectories)
+        // Scope-specific cache file + source-set-validating read: the shared `call-graph.cache` is
+        // also written by tasks that scan every source set, and CacheFreshness only compares
+        // timestamps, so a narrowed run would otherwise read the wider graph straight back.
+        val graphResult = CallGraphCache.getOrBuildTagged(CallGraphCache.cacheFileFor(cacheDir, config.scope), scopedDirs)
         val reportFile = File(cacheDir, "skipped-files.txt")
         val skippedFileWarning = SkippedFileReporter.report(graphResult.skippedFiles, reportFile)
         val graph = graphResult.data

@@ -153,6 +153,8 @@ class CallGraph(
 
     fun hasTestAnnotations(className: ClassName): Boolean = className in testAnnotatedClasses
 
+    fun testAnnotatedClasses(): Set<ClassName> = testAnnotatedClasses
+
     fun forEachDeclaredMethod(action: (className: ClassName, methods: Set<String>) -> Unit) {
         declaredMethods.forEach { (className, methods) -> action(className, methods) }
     }

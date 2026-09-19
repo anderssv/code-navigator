@@ -337,6 +337,24 @@ class CallGraphCacheTest {
         assertEquals(SourceSet.TEST, result.data.sourceSetOf(ClassName("com.example.ServiceTest")))
     }
 
+    // Regression: the cache round-trip used to drop testAnnotatedClasses, so cnavTestCoupling's
+    // --subject=tests check silently found nothing whenever the cache was warm.
+    @Test
+    fun `round-trips the set of test-annotated classes`() {
+        val testClass = ClassName("com.example.ServiceTest")
+        val graph = CallGraph(
+            callerToCallees = emptyMap(),
+            sourceFiles = mapOf(testClass to "ServiceTest.kt"),
+            testAnnotatedClasses = setOf(testClass),
+        )
+
+        CallGraphCache.write(cacheFile, graph)
+        val result = CallGraphCache.read(cacheFile)
+
+        assertTrue(result.hasTestAnnotations(testClass))
+        assertFalse(result.hasTestAnnotations(ClassName("com.example.Service")))
+    }
+
     private fun writeClassFile(className: String, targetDir: File = classesDir) {
         val writer = ClassWriter(0)
         writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)

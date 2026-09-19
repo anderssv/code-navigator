@@ -3,6 +3,7 @@ package no.f12.codenavigator.navigation.relations.callgraph
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.cache.FileCache
 import no.f12.codenavigator.navigation.bytecode.ScanResult
+import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.navigation.types.SourceSet
 import java.io.File
 
@@ -13,6 +14,7 @@ object CallGraphCache : FileCache<CallGraph>() {
     private const val LINES_HEADER = "[LINES]"
     private const val SOURCE_SETS_HEADER = "[SOURCE_SETS]"
     private const val DECLARED_METHODS_HEADER = "[DECLARED_METHODS]"
+    private const val TEST_ANNOTATED_HEADER = "[TEST_ANNOTATED]"
 
     override fun write(cacheFile: File, data: CallGraph) {
         writeLines(cacheFile) { writer ->
@@ -61,6 +63,12 @@ object CallGraphCache : FileCache<CallGraph>() {
                 )
                 writer.newLine()
             }
+            writer.write(TEST_ANNOTATED_HEADER)
+            writer.newLine()
+            data.testAnnotatedClasses().forEach { className ->
+                writer.write(className.toString())
+                writer.newLine()
+            }
         }
     }
 
@@ -70,6 +78,7 @@ object CallGraphCache : FileCache<CallGraph>() {
         val lineNumbers = mutableMapOf<MethodRef, Int>()
         val sourceSets = mutableMapOf<ClassName, SourceSet>()
         val declaredMethods = mutableMapOf<ClassName, Set<String>>()
+        val testAnnotatedClasses = mutableSetOf<ClassName>()
 
         var section = ""
         cacheFile.useLines { lines ->
@@ -80,6 +89,7 @@ object CallGraphCache : FileCache<CallGraph>() {
                     line == LINES_HEADER -> section = LINES_HEADER
                     line == SOURCE_SETS_HEADER -> section = SOURCE_SETS_HEADER
                     line == DECLARED_METHODS_HEADER -> section = DECLARED_METHODS_HEADER
+                    line == TEST_ANNOTATED_HEADER -> section = TEST_ANNOTATED_HEADER
                     section == EDGES_HEADER -> {
                         val parts = line.split(FIELD_SEPARATOR)
                         val caller = MethodRef(ClassName(parts[0]), parts[1])
@@ -106,15 +116,24 @@ object CallGraphCache : FileCache<CallGraph>() {
                             declaredMethods[ClassName(parts[0])] = methods
                         }
                     }
+                    section == TEST_ANNOTATED_HEADER -> testAnnotatedClasses.add(ClassName(line))
                 }
             }
         }
 
-        return CallGraph(callerToCallees, sourceFiles, lineNumbers, sourceSets, declaredMethods)
+        return CallGraph(callerToCallees, sourceFiles, lineNumbers, sourceSets, declaredMethods, testAnnotatedClasses)
     }
 
     override fun build(classDirectories: List<File>): ScanResult<CallGraph> =
         CallGraphBuilder.build(classDirectories)
+
+    /**
+     * Cache file to use for a scope-limited scan. [CacheFreshness] only compares timestamps, so a
+     * narrowed scan sharing `call-graph.cache` with the full-project tasks would silently read back
+     * the wider graph. Give each scope its own file instead of invalidating on every scope switch.
+     */
+    fun cacheFileFor(cacheDir: File, scope: Scope): File =
+        File(cacheDir, if (scope == Scope.ALL) "call-graph.cache" else "call-graph-${scope.name.lowercase()}.cache")
 
     fun getOrBuildTagged(
         cacheFile: File,

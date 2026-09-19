@@ -85,6 +85,23 @@ class CacheFreshnessTest {
         assertFalse(CacheFreshness.isFresh(cacheFile, listOf(classesDir, secondDir)))
     }
 
+    // Field-verified (greitt, 0.1.118-SNAPSHOT): deleting a class left every surviving file older
+    // than the cache, so the cache stayed "fresh" and kept serving the deleted class. A gate that
+    // fired could not be turned green again without wiping build/cnav by hand.
+    @Test
+    fun `deleting a class file makes the cache stale`() {
+        writeClassFile("com/example/Deleted")
+        writeClassFile("com/example/Kept")
+        cacheFile.parentFile?.mkdirs()
+        cacheFile.writeText("cached")
+        assertTrue(CacheFreshness.isFresh(cacheFile, listOf(classesDir)), "precondition: cache starts fresh")
+        Thread.sleep(50)
+
+        File(classesDir, "com/example/Deleted.class").delete()
+
+        assertFalse(CacheFreshness.isFresh(cacheFile, listOf(classesDir)))
+    }
+
     private fun writeClassFile(className: String, targetDir: File = classesDir) {
         val writer = ClassWriter(0)
         writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, className, null, "java/lang/Object", null)

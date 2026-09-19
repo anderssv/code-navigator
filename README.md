@@ -25,7 +25,7 @@ That's it. The agent will install the plugin, run the help task, and set up its 
 **Gradle** (`build.gradle.kts`):
 ```kotlin
 plugins {
-    id("no.f12.code-navigator") version "0.1.117"
+    id("no.f12.code-navigator") version "0.1.118"
 }
 ```
 
@@ -36,7 +36,7 @@ plugins {
         <plugin>
             <groupId>no.f12</groupId>
             <artifactId>code-navigator-maven-plugin</artifactId>
-            <version>0.1.117</version>
+            <version>0.1.118</version>
         </plugin>
     </plugins>
 </build>
@@ -91,7 +91,11 @@ All tasks support `--format=json` / `-Dformat=json` and `--llm` / `-Dllm=true` f
 | `cnavCohesion` / `cnav:cohesion` | Package cohesion scoring (internal vs external edges) |
 | `cnavMoveSuggest` / `cnav:move-suggest` | Suggest misplaced classes based on dependency gravity |
 | `cnavWhyDepends` / `cnav:why-depends` | Explain why one package depends on another (class-level edges) |
-| `cnavLayerCheck` / `cnav:layer-check` | Architecture conformance check (hexagonal layers) |
+| `cnavRings` / `cnav:rings` | Hexagonal rings derived from dependency inversions, with per-class reasons |
+| **Design checks** (requires compilation) | |
+| `cnavTestCoupling` / `cnav:test-coupling` | Callers bypassing domain services by calling ports directly |
+| `cnavTestAlignment` / `cnav:test-alignment` | Tests sitting with, and named after, the class they test |
+| `cnavAmbient` / `cnav:ambient` | Domain classes reading the clock, randomness, env or I/O directly |
 | **Git activity analysis** (no compilation needed) | |
 | `cnavHotspots` / `cnav:hotspots` | Files ranked by change frequency |
 | `cnavCoupling` / `cnav:coupling` | Files that change together (temporal coupling) |

@@ -1,5 +1,255 @@
 # Plan — Completed
 
+### ~~`cnavPackageDeps --scope` silently ignored — poisoned by the shared call-graph cache~~ — DONE (v0.1.118)
+~~**ACTIVE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(greitt, v0.1.116)
+
+`cnavPackageDeps --scope=prod` reported test-only source sets (`fakes`, `junit`, `testutil`) as both
+sources and targets, while `cnavCycles --scope=prod` and `cnavRings --scope=prod` on the same build
+correctly excluded them. `polls -> fakes` nearly got filed as a production architecture violation.
+
+**ROOT CAUSE**: the task *did* filter class directories by scope, but then called
+`CallGraphCache.getOrBuild(buildDir/cnav/call-graph.cache, scopedDirs)`. `CacheFreshness` only
+compares timestamps — it never checks that the cached graph was built from the requested directory
+set. `cnavRank` and `cnavComplexity` write the *full* tagged graph to that same path, so any earlier
+run of either left a graph containing test classes that a later `--scope=prod` run read straight back
+as fresh. `cnavCycles`/`cnavRings` don't use the call-graph cache at all, which is exactly why the
+filter appeared to work there and not here.
+
+**Fix**: new `PackageDepsOrchestrator` (Gradle + Maven now share one pipeline, per the orchestrator
+rule). It uses `getOrBuildTagged`, whose `hasMatchingSourceSets` guard rebuilds when the cached source
+sets don't match the requested ones, and `CallGraphCache.cacheFileFor(cacheDir, scope)` so each scope
+keeps its own cache file instead of thrashing one shared one. `MetricsOrchestrator` and `ReportOrchestrator` had the same
+`getOrBuild`-with-scoped-dirs shape and are fixed the same way: Metrics uses `getOrBuildTagged` with a
+scope-specific file, Report (which only receives pre-scoped plain directories) gets the scope-specific
+file name.
+
+### ~~Cache never evicted deleted classes — a CI gate that fired could not be turned green~~ — DONE (v0.1.118)
+~~**ACTIVE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(greitt, v0.1.118-SNAPSHOT)
+
+`CacheFreshness.isFresh` compared every `.class` file's mtime against the cache file's. A *deleted*
+class leaves no mtime behind — every surviving file is still older than the cache — so the cache stayed
+"fresh" and kept serving classes that no longer existed. Adding classes invalidated correctly (96 → 99
+was picked up immediately); removing them never did.
+
+Found by deleting two probe test classes after a `cnavTestAlignment` run: `./gradlew testClasses`
+removed the `.class` files, but cnav kept reporting `2 violation(s) ... in 99 test class(es)` until
+`build/cnav` was wiped by hand. This is the worst failure mode a gate can have — a developer fixes the
+violation by deleting or renaming the class and the build stays red with no way to turn it green.
+Affects **every** task that reads the call graph, not just the new one.
+
+**Fix**: the freshness scan now includes directory mtimes. Removing an entry bumps its containing
+directory's mtime, which is the only cheap signal that a deletion happened. Verified by reverting the
+fix and watching the new test fail.
+
+### ~~Call-graph cache round-trip dropped `testAnnotatedClasses`, silently disabling `cnavTestCoupling --subject=tests`~~ — DONE (v0.1.118)
+~~**ACTIVE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: internal (found while building `cnavTestAlignment`)
+
+`CallGraphCache.write`/`read` persisted edges, sources, lines, source sets and declared methods, but
+not `testAnnotatedClasses`. `TestCouplingBuilder` gates the whole `--subject=tests` check on
+`callGraph.hasTestAnnotations(callerClass)`, so on any warm cache — i.e. every run after the first —
+that predicate was false for every class and the check quietly found nothing. Fixed with a
+`[TEST_ANNOTATED]` cache section plus a round-trip regression test.
+
+### ~~`cnavDuplicates`: half the output was import blocks~~ — DONE (v0.1.118)
+~~**ACTIVE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(greitt, v0.1.116)
+
+14 of 29 blocks under `--scope=prod` were two files importing the same Ktor symbols. Not actionable,
+and it buried the real findings badly enough that a stale conclusion in the project's own docs
+("cnavDuplicates finds the only two production duplicates") went unnoticed across re-runs — including
+a 93-token body duplicate. `DuplicateScanner` now drops `package`/`import` declaration lines before
+tokenizing. No flag: import-header duplication is never a finding.
+
+### ~~`cnavMoveClass`: diff named the old path on both sides, and said nothing about the file having moved~~ — DONE (v0.1.118)
+~~**ACTIVE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: medium** | **Effort: low** | Source: field-test(greitt, v0.1.116)
+
+Three things, all in one report:
+- The unified diff printed `--- a//Users/...` / `+++ b//Users/...` — same path both sides, doubled
+  slash. `computeUnifiedDiff` now takes an old and a new path (git rename form) and no longer doubles
+  the separator on an absolute path.
+- Nothing in the output stated the destination, so a follow-up `git mv` was attempted on a file cnav
+  had already moved. TEXT and LLM output now carry a `file moved: <old> -> <new>` line (`file moves:`
+  under `--preview`).
+- The moved file kept its now-same-package imports. `removeSamePackageImports` strips them, keeping
+  aliased (`as`) and nested-class imports, which still bind a name.
+
+### ~~`cnavMoveSuggest`: gravity had no notion of package containment~~ — DONE (v0.1.118)
+~~**ACTIVE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: high** | **Effort: medium** | Source: field-test(greitt, v0.1.116)
+
+7 of 22 suggestions on greitt proposed moving a class into its own child package — every service in
+`polls`, plus the `PollsRepository` port, all told to move to `polls.model`. That layout (services
+plus port in `polls`, pure domain in `polls/model`) is one cnav's own ring analysis endorses: ring 1
+and ring 0 respectively, every edge inward, zero violations.
+
+The metric could not get it right. "More edges to another package than to my own" is exactly what
+layering produces — a service package that orchestrates a domain child will always have more edges to
+the child than within itself. The advice also didn't converge: follow it and `polls.model` absorbs the
+services, re-run and a new majority-elsewhere class appears. Its fixed point is one giant package.
+
+**Fix**: `PackageName.isNestedWith` — edges into an ancestor or descendant package now count toward
+the `own` total, and a nested package is never proposed as a destination.
+
+Two related suppressions landed with it:
+- **Test classes are no longer move subjects** unless `--scope=test`. Object mothers live in the
+  subject's model package, so every test's gravity points at the data package regardless of what it
+  tests; three correctly-placed tests were flagged in the reported run while the one genuinely
+  misplaced test (`PollDomainTest`) did not appear at all. `cnavTestAlignment` is the check that
+  actually answers this question.
+- **A supertype with no same-package edges is not suggested.** `PollsRepository -> polls.model` came
+  out at `confidence=1.00, own=0`: a port interface's references *are* its signature, so scoring it by
+  where they land can only ever conclude "move me to whoever I name."
+
+Two more found by the verification run and fixed with it:
+- **A library package is never a destination.** `ParticipantFormComponentsKt -> kotlinx.html` — the
+  extension-function receiver rule adds gravity toward the receiver's package without checking it
+  holds project classes.
+- **A single edge is not evidence.** Every `--scope=test` suggestion came out `own=0 target=1
+  confidence=1.00`; one edge divides into certainty and reads as authority, which is the exact
+  complaint the report made about the confidence numbers. Suggestions now need at least 2 edges to the
+  winning package.
+
+Still open after the fixes, and an instance of [[`cnavMoveSuggest`: hexagonal architecture awareness]]:
+the two highest-confidence remaining suggestions on greitt (`ResponseNotFoundException` /
+`PollNotFoundException -> errors`, 0.80 / 0.57) are driven by the structural-supertype weight and
+contradict a convention the project documents in KDoc — the subclasses are deliberately co-located
+with the repositories that throw them. Gravity cannot see a documented convention. Several others sit
+at `own=0`, i.e. driven by absence of same-package edges rather than positive evidence of belonging
+elsewhere. `cnavMoveSuggest` output is advisory-grade, not gate-grade, and the help text should
+probably say so.
+
+### ~~`cnavTestAlignment` — does every test sit with, and get named after, the class it tests?~~ — DONE (v0.1.118)
+~~**ACTIVE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: high** | **Effort: medium** | Source: field-test(greitt, v0.1.116)
+
+The strongest evidence for building this came with the request: three genuine defects were found on
+greitt by a hand-rolled naming pass, fixed, and **both `cnavMoveSuggest` and `cnavCycles` produced
+byte-identical output before and after** — no dependency metric registered either the defect or the
+repair. One of the three (two different test classes both named `DateFormattingTest`) is not a
+dependency fact at all, so no dependency metric could ever see it.
+
+New task. Infers each test's subject from the call graph — the production class it drives through the
+most *distinct* methods, which sees same-package calls that imports cannot — and cross-checks that
+against the `FooTest -> Foo` convention. Three finding kinds, reported separately because they have
+different fixes: `package` (both signals agree on a subject in another package → `cnavMoveClass`),
+`name` (the signals disagree, or nothing by that name exists → `cnavRenameClass`), `duplicate` (two
+test classes share a simple name). A package move is only ever proposed where name and call gravity
+agree, and `--exclude=<regex>` drops the tests that legitimately span many classes (endpoint tests
+living with their feature slice, journey/E2E tests) — without that opt-out the check would be ignored.
+`--fail-on-violation` / `--max-violations` make it a ratchetable CI gate.
+
+**Tuned after field verification on greitt (0.1.118-SNAPSHOT).** The first cut flagged 40 of 96 test
+classes — 42% of the repo, all in the name bucket, of which 11 of the 15 checked were verified false
+positives. Same structural failure the report identified for `cnavMoveSuggest`: a test of extension
+functions necessarily drives the receiver type through more distinct methods than the facade under
+test, and asserting is calling, so call gravity is a weak subject signal on its own. Three changes:
+- The name check no longer fires when the named subject sits in the test's **own package**. There the
+  placement and the name are both already right and the call gravity is fixture traffic. Killed 11 of
+  the 15.
+- Fakes, mothers, builders and fixtures are excluded from subject ranking by name (a production
+  fallback fake lives in `src/main`, so source set alone doesn't exclude it). Fixes
+  `EmailVerificationServiceTest -> FakeEmailClient`, and improves the package check's recall.
+- "Named after nothing that exists" is now an **advisory** list, not a violation, and
+  `--fail-on-violation` counts `violationCount` (package + name + duplicate) rather than everything.
+  A behaviour-named test (`TimezoneRoundTripTest`) is a legitimate convention and a genuinely misnamed
+  test looks identical from here — worth showing, never worth failing a build over. That bucket alone
+  was 25 of the 40.
+The package and duplicate kinds were verified precise on the same run: zero false positives, and both
+confirmed to fire correctly against deliberately-introduced defects.
+
+### ~~`cnavRings`: print the adapter-reason histogram alongside the listing~~ — DONE (v0.1.118)
+~~**ACTIVE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: medium** | **Effort: low** | Source: field-test(greitt, v0.1.116)
+
+On greitt, ring 2 was 43 classes; 35 shared one reason ("names a framework type in its signature") and
+13 of those the same type (`io.ktor.server.routing.RoutingContext`). Correct by the stated rule, but it
+means "adapter" conflates *does I/O* with *takes a framework handle* — and it took a shell pipeline to
+see that one parameter type drove a third of the ring. TEXT output now prints a "Why these are
+adapters" histogram: count per reason, with the top evidence types under each. JSON already carried
+the per-class reason and evidence, so no result-shape change was needed.
+
+### ~~`--fail-on-violation` is now a real flag (BREAKING)~~ — DONE (v0.1.118)
+~~**PARKED**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: medium** | **Effort: low** | Source: field-test(greitt, v0.1.118-SNAPSHOT)
+
+`--fail-on-violation` used to require `=true`; the bare flag failed with "No argument was provided for
+command-line option". Gradle's `@Option` is either a boolean flag (bare, rejects `=true`) or a
+value-taking option — never both, so this could not be fixed compatibly.
+
+**Breaking change, taken deliberately** (few enough users to absorb it): the Gradle option is now a
+`Boolean?`, so `--fail-on-violation` works bare and **`--fail-on-violation=true` is now rejected**
+("Command-line option '--fail-on-violation' does not take an argument"). Any CI gate using the old
+form must drop the `=true`. Affects `cnavCycles`, `cnavRings`, `cnavAmbient`, `cnavTestCoupling` and
+`cnavTestAlignment`.
+
+The property is nullable rather than defaulting to `false` so an unset flag leaves a
+`cnav-config.json` default alone, and the param stays `ParamType.BOOLEAN` rather than
+`ParamType.FLAG` so Gradle's generated `--no-fail-on-violation` can switch such a default back off —
+`FLAG`'s presence-means-true parse would read `--no-` as on.
+
+Maven is unaffected: `-Dfail-on-violation` and `-Dfail-on-violation=true` both still work.
+
+Verified against real Gradle in a scratch project (unit tests cannot cover Gradle's own option
+parsing): bare flag arms the gate and it fails; `--no-fail-on-violation` disarms it; raising
+`--max-violations` above the finding count passes; `=true` is rejected.
+
+### ~~Help text called every default-less parameter "(required)"~~ — DONE (v0.1.118)
+~~**ACTIVE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: low** | **Effort: low** | Source: field-test(greitt, v0.1.118-SNAPSHOT)
+
+`cnavHelp` inferred required-ness from "has no default", so pure filters like `--exclude` were rendered
+`(required)` on every task carrying them. Added `ParamDef.optional` and set it on 26 params that are pure
+filters or toggles (`--exclude`, `--package`, `--detail`, `--domain`, `--categories`,
+`--exclude-annotated`, `--plan-file`, `--format`, …) — absent means "no filter", never an error. The
+genuinely required ones (`--pattern`, `--ports`, `--from`/`--to`, the rename targets,
+`--from-package`/`--to-package`) keep their "(required)" label. Also fixed: `--max-violations` read "Max allowed *ring* violations", a string shared
+with `cnavTestCoupling`, `cnavAmbient` and now `cnavTestAlignment`; it is generic now.
+
+### ~~`cnavRings`: a port implementation is classified with the adapter it stands in for~~ — DONE (v0.1.118)
+~~**FUTURE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: medium** | **Effort: low** | Source: field-test(greitt, v0.1.116)
+
+Reported as "cnav has no notion of a fake in `src/main`" — `FakeEmailClient` classified service-tier in
+ring 1 while the real client sat in the adapter ring. The right reading is the opposite: cnav does not
+need a concept of a fake, it needs the two to agree. **A port implementation's ring follows the
+boundary it implements, not whether it happens to open a socket.**
+
+Cause is the *absence* of dependencies, not problematic ones. Every adapter rule keys on evidence of
+touching the outside (framework annotation, framework type in a signature or a body, external calls
+with no project callees). An in-memory or fallback implementation trips none of them, so it fell
+through to the service tier — which was the wrong half of the asymmetry, since it is not a service
+either.
+
+**Fix**: new `AdapterReason.PORT_IMPLEMENTATION`. When an interface has an implementor already
+classified as an adapter, its other implementors are classified with it, evidence naming the port.
+This reuses the definition of a port the ring ladder already has
+(`InversionRingDetector.portsImplementedBy`: an interface implemented by something in the outer ring)
+rather than inventing one, and is guarded by requiring that something outside the implementor set
+depends on the interface — so a marker or utility interface nobody programs to cannot drag all its
+implementors outward because one of them names a framework type.
+
+**Over-reach guards** (greitt has exactly one port with two implementors, so it cannot exercise this
+risk at all — covered by unit tests instead, each verified to fail when its guard is removed):
+1. Something outside the implementor set must depend on the interface, so a marker or utility
+   interface nobody programs to cannot drag its implementors outward.
+2. Value types are excluded outright. Guard 1 alone is *not* enough — a domain interface (`Poll`
+   implemented by `DayPoll`/`TimePoll`) is programmed to by every service, so one implementor that
+   happens to name a framework type would pull its siblings out of ring 0. A data class, record or
+   annotated model is never an adapter, whatever it implements.
+
+**This reverses a previously-tested decision** (`InversionRingsIntegrationTest`, "the in-memory
+implementation of the same port is not treated as an adapter", introduced with `e719b93` with no
+recorded rationale). Ring membership changes for projects with in-memory port implementations, so an
+`expectedRingCount` pin may need updating. Both tests now assert the new behaviour, including that the
+in-memory implementation lands in the *same ring* as its counterpart.
+
+### ~~`cnavMoveSuggest` output is advisory, and said the opposite~~ — DONE (v0.1.118)
+~~**ACTIVE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: medium** | **Effort: low** | Source: field-test(greitt, v0.1.118-SNAPSHOT)
+
+The interpretation line read "High confidence + low own-edges = strong signal" — backwards. An `own=0`
+row has no same-package edges to divide by, so `best / total` rounds toward 1.00 and the weakest rows
+in the output presented as the strongest. That is precisely the "confidence numbers make it look
+authoritative" complaint. Rows are now marked `absence-driven` in TEXT/LLM/JSON, and the interpretation
+says the output is advisory and that gravity cannot see a deliberate convention.
+
+Note: the interpretation line is attached to LLM output only, which is the convention across every
+formatter that has one (`withInterpretation`). TEXT carries the warning in its new `Evidence` column
+instead. Whether TEXT should also carry interpretations is a project-wide question, not specific to
+this task — see [[Interpretation/hint fields in JSON output]].
+
 ### ~~`cnavFindCallers` silently reports "(no callers)" for `inline` functions~~ — DONE (v0.1.117-SNAPSHOT)
 ~~**ACTIVE**~~ **DONE (fixes 1 and 2; fix 3 left open, see plan.md)** | **Value: high** | **Effort: low** | Source: field-test(greitt, v0.1.116, feedback #3)
 

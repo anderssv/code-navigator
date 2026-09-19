@@ -237,7 +237,10 @@ object MoveClassRewriter {
             val movedContent = sharedChanges[move.movedFilePath]?.after
                 ?: ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == move.movedFilePath }?.printAll()
             if (movedContent != null) {
-                val updatedContent = addMissingImportsForSiblings(movedContent, move.oldPackage, siblingNames, packageOverrides)
+                val updatedContent = removeSamePackageImports(
+                    addMissingImportsForSiblings(movedContent, move.oldPackage, siblingNames, packageOverrides),
+                    move.newPackage,
+                )
                 if (updatedContent != movedContent) {
                     val originalContent = sharedChanges[move.movedFilePath]?.before ?: movedContent
                     sharedChanges[move.movedFilePath] = RenameChange(move.movedFilePath, originalContent, updatedContent)
@@ -453,7 +456,10 @@ object MoveClassRewriter {
                 ps.sources.firstOrNull { resolveOriginalPath(it, ps.sourceRoots) == movedFilePath }?.printAll()
             }
             if (movedContent != null) {
-                val updatedContent = addMissingImportsForSiblings(movedContent, oldPackage, siblingNames)
+                val updatedContent = removeSamePackageImports(
+                    addMissingImportsForSiblings(movedContent, oldPackage, siblingNames),
+                    newPackage,
+                )
                 if (updatedContent != movedContent) {
                     val originalContent = if (movedChangeIdx >= 0) changes[movedChangeIdx].before else movedContent
                     if (movedChangeIdx >= 0) {
@@ -873,6 +879,37 @@ object MoveClassRewriter {
      * elsewhere in the same batch, so importing it from [oldPackage] would point at a package
      * that no longer contains it.
      */
+    /**
+     * Drops the moved file's imports that point at its *new* package — they became same-package
+     * references the moment the package declaration changed. Keeps aliased imports (`as`), which
+     * still bind a name, and nested-class imports (`p.Outer.Inner`), which are not implicit.
+     */
+    internal fun removeSamePackageImports(content: String, packageName: String): String {
+        if (packageName.isEmpty()) return content
+        val prefix = "$packageName."
+        val lines = content.lines()
+        val kept = lines.filterNot { line ->
+            val trimmed = line.trim()
+            if (!trimmed.startsWith("import ")) return@filterNot false
+            val spec = trimmed.removePrefix("import ").trim()
+            if (" as " in spec || !spec.startsWith(prefix)) return@filterNot false
+            val rest = spec.removePrefix(prefix)
+            rest == "*" || !rest.contains('.')
+        }
+        if (kept.size == lines.size) return content
+        return collapseBlankLinesAfterPackage(kept).joinToString("\n")
+    }
+
+    /** Removing the whole import block leaves two blank lines under the package declaration. */
+    private fun collapseBlankLinesAfterPackage(lines: List<String>): List<String> {
+        val packageIdx = lines.indexOfFirst { it.trimStart().startsWith("package ") }
+        if (packageIdx < 0) return lines
+        var end = packageIdx + 1
+        while (end < lines.size && lines[end].isBlank()) end++
+        if (end - (packageIdx + 1) <= 1) return lines
+        return lines.subList(0, packageIdx + 1) + listOf("") + lines.subList(end, lines.size)
+    }
+
     internal fun addMissingImportsForSiblings(
         content: String,
         oldPackage: String,

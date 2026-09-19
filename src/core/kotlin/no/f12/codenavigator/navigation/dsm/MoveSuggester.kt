@@ -10,7 +10,14 @@ data class MoveSuggestion(
     val edgesToCurrent: Int,
     val edgesToSuggested: Int,
     val confidence: Double,
-)
+) {
+    /**
+     * No same-package edges at all, so the verdict rests on the *absence* of ties to the current
+     * package rather than on evidence of belonging elsewhere — and `best / total` then rounds toward
+     * 1.00, which reads as certainty. The weakest rows in the output, not the strongest.
+     */
+    val absenceDriven: Boolean get() = edgesToCurrent == 0
+}
 
 data class MoveSuggestionResult(
     val suggestions: List<MoveSuggestion>,
@@ -34,6 +41,13 @@ object MoveSuggester {
     )
 
     private const val COMPOSITION_ROOT_PACKAGE_THRESHOLD = 5
+
+    /**
+     * A single edge to another package is not evidence of anything, but it divides into a confidence
+     * of 1.00 and reads as certainty. Field reports name that specifically: "the confidence numbers
+     * make it look authoritative".
+     */
+    private const val MIN_EVIDENCE_EDGES = 2
     private const val STRUCTURAL_EDGE_WEIGHT = 3
     private const val RECEIVER_EDGE_WEIGHT = 3
 
@@ -44,6 +58,7 @@ object MoveSuggester {
         maxFanIn: Int = Int.MAX_VALUE,
         receiverTypes: Map<ClassName, Set<ClassName>> = emptyMap(),
         projectClasses: Set<ClassName> = emptySet(),
+        testClasses: Set<ClassName> = emptySet(),
     ): MoveSuggestionResult {
         val ubiquitousTargets = dependencies
             .groupBy { it.targetClass }
@@ -52,14 +67,24 @@ object MoveSuggester {
 
         val filteredDeps = dependencies.filter { it.targetClass !in ubiquitousTargets }
 
+        // A library package is never somewhere a class can move to. Extension-function receiver
+        // gravity can otherwise propose destinations like `kotlinx.html`.
+        val projectPackages = projectClasses.map { it.packageName() }.toSet()
+
         val structuralEdgesByClass: Map<ClassName, Map<ClassName, Int>> = structuralSupertypes
             .groupBy { it.sourceClass }
             .mapValues { (_, types) ->
                 types.groupBy { it.supertypeClass }.mapValues { it.value.size * STRUCTURAL_EDGE_WEIGHT }
             }
 
+        // Classes that something else extends or implements. A supertype's outgoing edges are its
+        // signature types, so "it references the domain package" is not evidence about where it
+        // belongs — see [isSignatureOnlySupertype].
+        val supertypes = structuralSupertypes.map { it.supertypeClass }.toSet()
+
         val classes = (filteredDeps.map { it.sourceClass } + structuralEdgesByClass.keys)
             .distinct()
+            .filter { it !in testClasses }
             .map { cls -> cls to cls.packageName() }
 
         val suggestions = classes.mapNotNull { (cls, currentPkg) ->
@@ -93,13 +118,22 @@ object MoveSuggester {
 
             if (isCompositionRoot(cls, outgoing) && structuralEdgesByClass.containsKey(cls).not()) return@mapNotNull null
 
-            val edgesToOwn = edgesByTarget[currentPkg] ?: 0
-            val bestOther = edgesByTarget.filter { it.key != currentPkg }
+            // Edges into a child package are internal, not gravity pulling the class away: a service
+            // package that orchestrates a `model` sub-package will always have more edges to the child
+            // than within itself — that is what layering is. Counting them as "elsewhere" makes every
+            // service in such a package look misplaced, and following the advice converges on one
+            // giant package. Nested targets are therefore folded into the own count and never
+            // proposed as a destination.
+            val edgesToOwn = edgesByTarget.filterKeys { it.isNestedWith(currentPkg) }.values.sum()
+            val bestOther = edgesByTarget
+                .filterKeys { !it.isNestedWith(currentPkg) }
+                .filterKeys { projectPackages.isEmpty() || it in projectPackages }
                 .maxByOrNull { it.value } ?: return@mapNotNull null
 
-            if (bestOther.value > edgesToOwn) {
+            if (bestOther.value > edgesToOwn && bestOther.value >= MIN_EVIDENCE_EDGES) {
                 if (isDriver(cls)) return@mapNotNull null
                 if (isFeatureSliceMember(cls, currentPkg, filteredDeps)) return@mapNotNull null
+                if (isSignatureOnlySupertype(cls, supertypes, edgesToOwn)) return@mapNotNull null
 
                 val callersFromSamePackage = filteredDeps.count { it.targetClass == cls && it.sourcePackage == currentPkg }
                 val total = edgesByTarget.values.sum() + callersFromSamePackage
@@ -128,6 +162,14 @@ object MoveSuggester {
             deps.any { it.sourceClass != cls && it.sourcePackage == pkg && it.targetClass == target }
         }
     }
+
+    /**
+     * A port interface naming its domain types has no same-package edges by nature, so gravity can
+     * only ever conclude "move me to whoever I name" at confidence 1.00. Suppress that: the edges are
+     * the interface's signature, not a statement about where the interface belongs.
+     */
+    private fun isSignatureOnlySupertype(cls: ClassName, supertypes: Set<ClassName>, edgesToOwn: Int): Boolean =
+        edgesToOwn == 0 && cls in supertypes
 
     private fun isCompositionRoot(cls: ClassName, outgoing: List<PackageDependency>): Boolean {
         val simpleName = cls.simpleName()

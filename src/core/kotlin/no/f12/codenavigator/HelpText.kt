@@ -478,6 +478,21 @@ object HelpText {
         appendLine("      ${pd(TaskRegistry.MAX_VIOLATIONS)}")
         examples(TaskRegistry.TEST_COUPLING)
         appendLine()
+        appendLine("  ${t("test-alignment")}")
+        appendLine("    Checks that every test sits with, and is named after, the class it tests. The subject is")
+        appendLine("    inferred from the call graph — the production class the test drives through the most")
+        appendLine("    distinct methods, which sees same-package calls that imports cannot — and cross-checked")
+        appendLine("    against the FooTest -> Foo convention. A package move is only proposed where both signals")
+        appendLine("    agree; where they disagree, the disagreement is the finding. Duplicate test class names")
+        appendLine("    are reported too: they are not a dependency fact, so no dependency metric can see them.")
+        appendLine("    The three finding kinds are reported separately because they have different fixes")
+        appendLine("    (cnavMoveClass, cnavRenameClass, rename by hand).")
+        appendLine("    Parameters:")
+        appendLine("      ${pd(TaskRegistry.EXCLUDE, "Exclude test classes matching this regex — use it for endpoint tests that live with their feature slice and journey/E2E tests that span everything")}")
+        appendLine("      ${pd(TaskRegistry.FAIL_ON_VIOLATION)}")
+        appendLine("      ${pd(TaskRegistry.MAX_VIOLATIONS)}")
+        examples(TaskRegistry.TEST_ALIGNMENT)
+        appendLine()
         appendLine("  ${t("ambient")}")
         appendLine("    Detects domain (ring-0) classes reading ambient input directly: the wall clock")
         appendLine("    (Instant.now(), System.currentTimeMillis()), randomness (UUID.randomUUID()), the")
@@ -742,7 +757,7 @@ object HelpText {
         val effectiveDefault = task?.effectiveDefault(param) ?: param.defaultValue
         val annotation = when {
             effectiveDefault != null -> "(optional, default: $effectiveDefault)"
-            param.flag -> "(optional)"
+            param.flag || param.optional -> "(optional)"
             else -> "(required)"
         }
         val desc = description ?: param.description

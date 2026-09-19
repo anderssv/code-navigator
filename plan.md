@@ -437,11 +437,6 @@ Audit all tasks for `--project-only`/`--scope` support. Add where missing.
 
 Suggests moving ports into domain packages. Algorithm optimizes for proximity without understanding ring boundaries. Could use `cnavRings` to suppress suggestions violating ring boundaries.
 
-### `cnavMoveSuggest`: label/exclude test classes
-**FUTURE** | **Value: low** | **Effort: low** | Source: field-test(greitt)
-
-Suggestions like "move `MenuItemTest` to `web.components`" are confusing. Default to excluding test classes.
-
 ### ~~`cnavRings`: external protocol classes misclassified~~ — SUPERSEDED
 **SUPERSEDED** | Source: field-test(bass-ra, v0.1.97)
 
@@ -620,7 +615,6 @@ A domain rule's constants/parameters (e.g. two cutoff thresholds defining an "ex
 Assessed and dropped: this isn't a harder version of the two checks above, it's a different kind of problem. The rule lives half in a SQL string the analyzer cannot interpret. The only bytecode-visible fragment is "constants pushed directly as arguments to a port call", detectable without real dataflow only when the push is literal and immediate (LDC/BIPUSH/GETSTATIC then invoke) — a local variable or any computation defeats it. And even a clean detection is mostly true-but-uninteresting: page sizes, limits and ids are passed to ports constantly.
 
 If the signal is ever wanted, attach it as *evidence* on a finding already being reported ("this port call receives 2 literal constants" on a pass-through or adapter-coupling violation) rather than as a task of its own.
-
 
 
 ### ~~Separate finding from doing in PSI refactoring operations~~ — DONE (v0.1.113-SNAPSHOT)

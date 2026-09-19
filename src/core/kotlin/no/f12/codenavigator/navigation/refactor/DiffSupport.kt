@@ -31,6 +31,19 @@ fun computeUnifiedDiff(
     before: String,
     after: String,
     contextLines: Int = 3,
+): String = computeUnifiedDiff(filePath, filePath, before, after, contextLines)
+
+/**
+ * Unified diff for a file that also moved: [oldPath] on the `---` side, [newPath] on the `+++` side,
+ * the way git renders a rename. A move that printed the same path on both sides said nothing about
+ * the file having been relocated, which led to a follow-up `git mv` on an already-moved file.
+ */
+fun computeUnifiedDiff(
+    oldPath: String,
+    newPath: String,
+    before: String,
+    after: String,
+    contextLines: Int = 3,
 ): String {
     val beforeLines = before.lines()
     val afterLines = after.lines()
@@ -42,8 +55,8 @@ fun computeUnifiedDiff(
     if (hunks.isEmpty()) return ""
 
     return buildString {
-        appendLine("--- a/$filePath")
-        appendLine("+++ b/$filePath")
+        appendLine("--- ${diffPath("a", oldPath)}")
+        appendLine("+++ ${diffPath("b", newPath)}")
         for (hunk in hunks) {
             appendLine(hunk.header)
             for (line in hunk.lines) {
@@ -52,6 +65,9 @@ fun computeUnifiedDiff(
         }
     }.trimEnd()
 }
+
+/** `a/` + path, without doubling the separator when the path is already absolute. */
+private fun diffPath(side: String, path: String): String = "$side/${path.trimStart('/')}"
 
 internal data class UnifiedHunk(val header: String, val lines: List<String>)
 
@@ -158,10 +174,19 @@ private fun groupIntoHunks(edits: List<Edit>, contextLines: Int): List<UnifiedHu
  * Formats a list of RenameChange as concatenated unified diffs.
  * Raw output with no headers or markers — suitable for `git apply`.
  */
-fun formatChangesAsUnifiedDiff(changes: List<RenameChange>): String {
+fun formatChangesAsUnifiedDiff(
+    changes: List<RenameChange>,
+    /** Old path -> new path, for files this operation also relocated on disk. */
+    renamedPaths: Map<String, String> = emptyMap(),
+): String {
     if (changes.isEmpty()) return ""
     return changes.mapNotNull { change ->
-        val diff = computeUnifiedDiff(change.filePath, change.before, change.after)
+        val diff = computeUnifiedDiff(
+            change.filePath,
+            renamedPaths[change.filePath] ?: change.filePath,
+            change.before,
+            change.after,
+        )
         diff.ifEmpty { null }
     }.joinToString("\n")
 }

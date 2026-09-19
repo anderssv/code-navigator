@@ -68,6 +68,12 @@ data class ParamDef<T>(
     val defaultValue: String?,
     val enhancePattern: Boolean,
     val type: ParamType<T>,
+    /**
+     * Optional despite having no default. Without this, help text infers "required" from a null
+     * default, which is wrong for pure filters like `--exclude` — they narrow results when given and
+     * are simply absent otherwise.
+     */
+    val optional: Boolean = false,
     val deprecated: Boolean = false,
     val deprecatedMessage: String? = null,
 ) {
@@ -205,8 +211,8 @@ object TaskRegistry {
 
     // --- Shared parameter definitions ---
 
-    val FORMAT = ParamDef("format", "json", "Output as machine-readable JSON", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val LLM = ParamDef("llm", "true", "Deprecated: use --format=llm instead", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'llm' is deprecated. Use 'format=llm' instead (Gradle: --format=llm, Maven: -Dformat=llm).")
+    val FORMAT = ParamDef("format", "json", "Output as machine-readable JSON", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val LLM = ParamDef("llm", "true", "Deprecated: use --format=llm instead", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'llm' is deprecated. Use 'format=llm' instead (Gradle: --format=llm, Maven: -Dformat=llm).", optional = true)
     val PATTERN = ParamDef("pattern", "<regex>", "Class/symbol name regex (camelCase-aware: MyService matches com.example.MyService)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
     val CALL_PATTERN = ParamDef("pattern", "<regex>", "Class.method name regex (camelCase-aware: MyService.doWork matches com.example.MyService.doWork)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
     val LEGACY_METHOD = ParamDef("method", "<regex>", "Deprecated: use pattern instead", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'method' is deprecated for find-callers/find-callees. Use 'pattern' instead (Gradle: --pattern=MyClass.myMethod, Maven: -Dpattern=MyClass.myMethod).")
@@ -227,48 +233,54 @@ object TaskRegistry {
 
     // --- Task-specific parameter definitions ---
 
-    val INCLUDETEST = ParamDef("include-test", "true", "Deprecated: test sources are now included by default. Use scope=prod to see only production code.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'include-test' is deprecated. Test sources are now included by default. Use 'scope=prod' to see only production code.")
-    val PACKAGE = ParamDef("package", "<regex>", "Filter packages by regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val REVERSE = ParamDef("reverse", "true", "Show reverse dependencies", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
+    val INCLUDETEST = ParamDef("include-test", "true", "Deprecated: test sources are now included by default. Use scope=prod to see only production code.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'include-test' is deprecated. Test sources are now included by default. Use 'scope=prod' to see only production code.", optional = true)
+    val PACKAGE = ParamDef("package", "<regex>", "Filter packages by regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val REVERSE = ParamDef("reverse", "true", "Show reverse dependencies", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, optional = true)
     val ROOT_PACKAGE = ParamDef("root-package", "<pkg>", "Deprecated: use package-filter instead. Only include packages under this prefix", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'root-package' is deprecated. Results are now automatically limited to classes in the project source sets. Use 'package-filter' to narrow further.")
-    val PACKAGE_FILTER = ParamDef("package-filter", "<pkg>", "Only include packages under this prefix", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val PACKAGE_FILTER = ParamDef("package-filter", "<pkg>", "Only include packages under this prefix", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val MIN_EDGES = ParamDef("min-edges", "<N>", "Minimum total edges (internal+external) to include a package", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
-    val FAIL_ON_VIOLATION = ParamDef("fail-on-violation", "true", "Fail the build when violations exceed the configured threshold", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
+    /**
+     * A flag, not a value-taking option (breaking change in v0.1.118 — it previously required
+     * `=true`). Kept as [ParamType.BOOLEAN] rather than [ParamType.FLAG] so Gradle's generated
+     * `--no-fail-on-violation` can still switch off a `cnav-config.json` default; FLAG's
+     * presence-means-true parse would read that as on.
+     */
+    val FAIL_ON_VIOLATION = ParamDef("fail-on-violation", "", "Fail the build when violations exceed the configured threshold (--no-fail-on-violation switches it back off)", flag = true, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val MAX_CYCLES = ParamDef("max-cycles", "<N>", "Max allowed cycles before failing the build (used with --fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
-    val MAX_VIOLATIONS = ParamDef("max-violations", "<N>", "Max allowed ring violations before failing the build (used with --fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
+    val MAX_VIOLATIONS = ParamDef("max-violations", "<N>", "Max allowed violations before failing the build (used with --fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
     val MAX_FAN_IN = ParamDef("max-fan-in", "<N>", "Exclude ubiquitous types with fan-in above this threshold from move suggestions", flag = false, defaultValue = "10", enhancePattern = false, type = ParamType.INT)
     val MIN_GROUP_SIZE = ParamDef("min-group-size", "<N>", "Minimum number of classes in a structure group", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
     val INCLUDE_EXTERNAL = ParamDef("include-external", "true", "Include dependencies on classes outside the project", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val DSM_DEPTH = ParamDef("dsm-depth", "<N>", "Package grouping depth", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
-    val DSM_HTML = ParamDef("dsm-html", "<path>", "Write interactive HTML matrix to file", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val CYCLES = ParamDef("cycles", "true", "Show only cyclic dependencies with class-level edges", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
-    val CYCLE = ParamDef("cycle", "<pkgA>,<pkgB>", "Show only the cycle between two specific packages", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val OWNER_CLASS = ParamDef("owner-class", "<class>", "Class name or pattern — matches method call and field owners (camelCase-aware: MyService matches com.example.MyService)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
+    val DSM_HTML = ParamDef("dsm-html", "<path>", "Write interactive HTML matrix to file", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val CYCLES = ParamDef("cycles", "true", "Show only cyclic dependencies with class-level edges", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, optional = true)
+    val CYCLE = ParamDef("cycle", "<pkgA>,<pkgB>", "Show only the cycle between two specific packages", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val OWNER_CLASS = ParamDef("owner-class", "<class>", "Class name or pattern — matches method call and field owners (camelCase-aware: MyService matches com.example.MyService)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, optional = true)
     val FIELD = ParamDef("field", "<name>", "Field/property name — also finds getter/setter calls", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val TYPE = ParamDef("type", "<class>", "Find ALL references to a class: calls, fields, casts, signatures (camelCase-aware)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
-    val OUTSIDE_PACKAGE = ParamDef("outside-package", "<pkg>", "Exclude callers inside this package", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val FILTER = ParamDef("filter", "<regex>", "Only show results matching this regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val EXCLUDE = ParamDef("exclude", "<regex>", "Exclude results matching this regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val CLASSES_ONLY = ParamDef("classes-only", "true", "Show only unreferenced classes, skip dead methods", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
-    val EXCLUDE_ANNOTATED = ParamDef("exclude-annotated", "<ann1>,<ann2>", "Exclude classes/methods bearing these annotations (simple names, comma-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
+    val OUTSIDE_PACKAGE = ParamDef("outside-package", "<pkg>", "Exclude callers inside this package", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val FILTER = ParamDef("filter", "<regex>", "Only show results matching this regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val EXCLUDE = ParamDef("exclude", "<regex>", "Exclude results matching this regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val CLASSES_ONLY = ParamDef("classes-only", "true", "Show only unreferenced classes, skip dead methods", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, optional = true)
+    val EXCLUDE_ANNOTATED = ParamDef("exclude-annotated", "<ann1>,<ann2>", "Exclude classes/methods bearing these annotations (simple names, comma-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
     val SCOPE = ParamDef("scope", "all|prod|test", "Filter by source set: all (default), prod (production only), test (test only)", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING)
-    val PLAN_FILE = ParamDef("plan-file", "<path>", "JSON file with refactoring steps (simulates moves for analysis tasks, executes them for execute-plan)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val PLAN_FILE = ParamDef("plan-file", "<path>", "JSON file with refactoring steps (simulates moves for analysis tasks, executes them for execute-plan)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val GROUP_BY = ParamDef("group-by", "none|file", "Group results: none (default, per-reference) or file (collapse to one line per source file with count)", flag = false, defaultValue = "none", enhancePattern = false, type = ParamType.STRING)
     val RAW = ParamDef("raw", "", "Show raw bytecode-level output without collapsing", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val INCLUDE_IMPLS = ParamDef("include-impls", "", "When target is an interface, also search usages of implementors", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
-    val TREAT_AS_DEAD = ParamDef("treat-as-dead", "<name>", "Treat framework-annotated code as potentially dead (all frameworks protected by default). Available: ${FrameworkPresets.availablePresets().sorted().joinToString(", ")}. Use ALL to remove all framework protections.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
-    val BASELINE = ParamDef("baseline", "<path>", "Path to a previous cnavDead JSON output file. Shows diff: removed, remaining, and new dead code since baseline.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val TREAT_AS_DEAD = ParamDef("treat-as-dead", "<name>", "Treat framework-annotated code as potentially dead (all frameworks protected by default). Available: ${FrameworkPresets.availablePresets().sorted().joinToString(", ")}. Use ALL to remove all framework protections.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
+    val BASELINE = ParamDef("baseline", "<path>", "Path to a previous cnavDead JSON output file. Shows diff: removed, remaining, and new dead code since baseline.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val MIN_CONFIDENCE = ParamDef("min-confidence", "high|medium|low", "Only show findings at or above this confidence level (high = strongest removal candidates, low = include framework-invoked maybes). Default: low (show all).", flag = false, defaultValue = "low", enhancePattern = false, type = ParamType.STRING)
     val INCLUDE_SUPPRESSED = ParamDef("include-suppressed", "", "Include findings annotated with @Suppress(\"unused\") (excluded by default)", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
-    val DETAIL = ParamDef("detail", "true", "Show individual call details", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
+    val DETAIL = ParamDef("detail", "true", "Show individual call details", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, optional = true)
     val COLLAPSE_LAMBDAS = ParamDef("collapse-lambdas", "false", "Set false to show lambda classes separately", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
     val MIN_SHARED_REVS = ParamDef("min-shared-revs", "<N>", "Min shared commits", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
     val MIN_COUPLING = ParamDef("min-coupling", "<N>", "Min coupling degree %", flag = false, defaultValue = "30", enhancePattern = false, type = ParamType.INT)
     val MAX_CHANGESET_SIZE = ParamDef("max-changeset-size", "<N>", "Skip commits touching more files", flag = false, defaultValue = "30", enhancePattern = false, type = ParamType.INT)
     val METRICS_TOP = ParamDef("top", "<N>", "Max results per section", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
-    val SECTION = ParamDef("section", "<name>", "Help section: install, workflow, interpretation, schemas, extraction", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val TOPIC = ParamDef("topic", "<name>", "Philosophy topic: hexagonal, tttd, fakes, manual-di", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val JAR = ParamDef("jar", "<path-or-artifact>", "Scan a JAR file instead of project classes. Value: file path or artifact coordinate (group:name)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val SECTION = ParamDef("section", "<name>", "Help section: install, workflow, interpretation, schemas, extraction", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val TOPIC = ParamDef("topic", "<name>", "Philosophy topic: hexagonal, tttd, fakes, manual-di", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val JAR = ParamDef("jar", "<path-or-artifact>", "Scan a JAR file instead of project classes. Value: file path or artifact coordinate (group:name)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val REF = ParamDef("ref", "<git-ref>", "Git ref to compare against (branch, tag, or commit SHA)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val STRING_PATTERN = ParamDef("pattern", "<regex>", "Regex to match against string constant values", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val METHODS = ParamDef("methods", "true", "Deprecated: class, method, and field annotations are all searched by default now", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'methods' is deprecated. All targets (class, method, field) are searched by default now. Use 'target=class,method,field' to filter to specific targets.")
@@ -281,7 +293,7 @@ object TaskRegistry {
     val RENAME_NEW_NAME = ParamDef("new-name", "<name>", "New name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PREVIEW = ParamDef("preview", "true", "Preview changes without writing to source files", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val CHANGE_SIG_PARAMS = ParamDef("params", "<params>", "New parameter list (e.g. \"limit: Int, offset: Int, query: String\")", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val CHANGE_SIG_DEFAULTS = ParamDef("defaults", "<defaults>", "Default values for new params at call sites (e.g. \"query=\\\"\\\"\") comma-separated name=value pairs", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val CHANGE_SIG_DEFAULTS = ParamDef("defaults", "<defaults>", "Default values for new params at call sites (e.g. \"query=\\\"\\\"\") comma-separated name=value pairs", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val MIN_TOKENS = ParamDef("min-tokens", "<N>", "Minimum duplicate token sequence length", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
     val MOVE_FROM = ParamDef("from", "<fqcn>", "Fully qualified class name to move/rename", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MOVE_TO = ParamDef("to", "<fqcn>", "Target fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -290,13 +302,13 @@ object TaskRegistry {
     val TO_PACKAGE = ParamDef("to-package", "<pkg>", "Target package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PORTS = ParamDef("ports", "<regex>", "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val COUPLING_SUBJECT = ParamDef("subject", "tests|adapters|both", "Who's checked for calling a port directly instead of through the domain service that owns it: tests (default, the original TTTD check), adapters (a driving adapter — a route/controller, not a service-tier class — calling a port WRITE method directly, meaning that write's orchestration has nowhere to live but the adapter), or both", flag = false, defaultValue = "tests", enhancePattern = false, type = ParamType.STRING)
-    val WRITE_METHODS = ParamDef("write-methods", "<Iface.method1>,<Iface.method2>", "Force these port methods (simple-interface-name.method, comma-separated) to be treated as writes for --subject=adapters, overriding the name-heuristic (add/update/delete/save/create/insert/remove/finalize/migrate/... prefixes)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
-    val READ_METHODS = ParamDef("read-methods", "<Iface.method1>,<Iface.method2>", "Force these port methods (simple-interface-name.method, comma-separated) to be treated as reads for --subject=adapters, overriding the name-heuristic", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
+    val WRITE_METHODS = ParamDef("write-methods", "<Iface.method1>,<Iface.method2>", "Force these port methods (simple-interface-name.method, comma-separated) to be treated as writes for --subject=adapters, overriding the name-heuristic (add/update/delete/save/create/insert/remove/finalize/migrate/... prefixes)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
+    val READ_METHODS = ParamDef("read-methods", "<Iface.method1>,<Iface.method2>", "Force these port methods (simple-interface-name.method, comma-separated) to be treated as reads for --subject=adapters, overriding the name-heuristic", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
     val AFFINITY_THRESHOLD = ParamDef("threshold", "<N>", "Max number of consumer domains to still count as single-owner", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
     val RING_MODE = ParamDef("mode", "removed", "REMOVED: cnavRings has no modes. Both former modes (emergent, package) computed topological depth, not hexagonal rings. Passing this now fails with an explanation rather than silently analysing something else.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val BOOTSTRAP_CONFIG = ParamDef("bootstrap-config", "true", "Generate a starting cnav-config.json based on emergent ring analysis — best-effort suggestions meant to be reviewed and tweaked before use", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
-    val DOMAIN = ParamDef("domain", "<regex>", "Regex naming the domain classes to check. Default: ring 0 as cnavRings computes it — pass this when cnavRings cannot produce a layered hexagon for the project (e.g. \"\\\\.domain\\\\.|\\\\.model\\\\.\")", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
-    val AMBIENT_CATEGORIES = ParamDef("categories", "clock,random,env,io", "Which kinds of ambient input to check for (comma-separated). Default: all four", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING)
+    val DOMAIN = ParamDef("domain", "<regex>", "Regex naming the domain classes to check. Default: ring 0 as cnavRings computes it — pass this when cnavRings cannot produce a layered hexagon for the project (e.g. \"\\\\.domain\\\\.|\\\\.model\\\\.\")", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val AMBIENT_CATEGORIES = ParamDef("categories", "clock,random,env,io", "Which kinds of ambient input to check for (comma-separated). Default: all four", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
     val CONVERGE_MODE = ParamDef("mode", "intersect|risk", "Analysis mode: intersect (default, cross-references cycles/rings/change-coupling for a ranked ACT NOW/LATENT/MISSING ABSTRACTION list) or risk (change-frequency x complexity x coupling ranking)", flag = false, defaultValue = "intersect", enhancePattern = false, type = ParamType.STRING)
 
     val FORMAT_PARAMS = listOf(FORMAT)
@@ -472,7 +484,7 @@ object TaskRegistry {
         examples = listOf(
             UsageExample(emptyList()),
             UsageExample(listOf(PACKAGE_FILTER to "com.example", DSM_DEPTH to "3")),
-            UsageExample(listOf(FAIL_ON_VIOLATION to "true", MAX_CYCLES to "0")),
+            UsageExample(listOf(FAIL_ON_VIOLATION to null, MAX_CYCLES to "0")),
         ),
     )
 
@@ -772,7 +784,7 @@ object TaskRegistry {
 
     val MOVE_SUGGEST = TaskDef(
         goal = "move-suggest",
-        description = "Suggest misplaced classes based on dependency gravity — classes with more edges to another package than their own",
+        description = "Suggest misplaced classes based on dependency gravity — classes with more edges to another package than their own. Edges into a nested (parent or child) package count as internal, and a nested package is never proposed as a destination: a service package that orchestrates a domain sub-package always references it more than itself, which is what layering is, not misplacement. Test classes are not subjects unless --scope=test — use cnavTestAlignment for test placement, since a test's gravity follows its object mothers, not its subject",
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP, MAX_FAN_IN) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
@@ -835,7 +847,7 @@ object TaskRegistry {
         examples = listOf(
             UsageExample(emptyList()),
             UsageExample(listOf(BOOTSTRAP_CONFIG to "true")),
-            UsageExample(listOf(FAIL_ON_VIOLATION to "true", MAX_VIOLATIONS to "0")),
+            UsageExample(listOf(FAIL_ON_VIOLATION to null, MAX_VIOLATIONS to "0")),
         ),
     )
 
@@ -868,7 +880,7 @@ object TaskRegistry {
 
     val DUPLICATES = TaskDef(
         goal = "duplicates",
-        description = "Detect duplicate code blocks across source files",
+        description = "Detect duplicate code blocks across source files (import/package headers excluded)",
         params = FORMAT_PARAMS + listOf(TOP, MIN_TOKENS, SCOPE),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
@@ -1025,6 +1037,19 @@ object TaskRegistry {
         ),
     )
 
+    val TEST_ALIGNMENT = TaskDef(
+        goal = "test-alignment",
+        description = "Check that every test sits with, and is named after, the class it tests. Infers the subject from the call graph (most distinct methods called, which sees same-package calls that imports cannot) and cross-checks it against the FooTest -> Foo convention; a package move is only proposed where both signals agree. Reports the package delta, the name delta, and duplicate test class names separately — they have different fixes, and no dependency metric can see any of them",
+        params = FORMAT_PARAMS + listOf(EXCLUDE, FAIL_ON_VIOLATION, MAX_VIOLATIONS),
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(emptyList()),
+            UsageExample(listOf(EXCLUDE to "\"Journey|EndpointsTest\"")),
+            UsageExample(listOf(FAIL_ON_VIOLATION to null, MAX_VIOLATIONS to "3")),
+        ),
+    )
+
     val AMBIENT = TaskDef(
         goal = "ambient",
         description = "Detect domain (ring-0) classes reading ambient input directly: the wall clock (Instant.now()), randomness (UUID.randomUUID()), the environment (System.getenv()) or the filesystem/network. Invisible to cnavRings and every other direction check — it is a static call on an already-imported type, not a dependency edge",
@@ -1108,6 +1133,7 @@ object TaskRegistry {
         SIZE,
         DUPLICATES,
         TEST_COUPLING,
+        TEST_ALIGNMENT,
         AMBIENT,
         RENAME_PARAM_TASK,
         RENAME_METHOD_TASK,
