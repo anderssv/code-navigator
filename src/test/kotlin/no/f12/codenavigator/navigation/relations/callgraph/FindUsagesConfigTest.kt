@@ -121,7 +121,16 @@ class FindUsagesConfigTest {
     }
 
     @Test
-    fun `throws when field is specified without owner-class`() {
+    fun `accepts field alone, searching all owners`() {
+        val config = FindUsagesConfig.parse(mapOf("field" to "RATE_LIMIT_PUBLIC"))
+
+        assertEquals("RATE_LIMIT_PUBLIC", config.field)
+        assertNull(config.ownerClass)
+        assertNull(config.type)
+    }
+
+    @Test
+    fun `throws when field is combined with type but no owner-class`() {
         assertFailsWith<IllegalArgumentException> {
             FindUsagesConfig.parse(
                 mapOf(

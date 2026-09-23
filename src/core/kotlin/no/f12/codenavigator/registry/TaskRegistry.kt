@@ -256,7 +256,7 @@ object TaskRegistry {
     val CYCLES = ParamDef("cycles", "true", "Show only cyclic dependencies with class-level edges", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, optional = true)
     val CYCLE = ParamDef("cycle", "<pkgA>,<pkgB>", "Show only the cycle between two specific packages", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val OWNER_CLASS = ParamDef("owner-class", "<class>", "Class name or pattern — matches method call and field owners (camelCase-aware: MyService matches com.example.MyService)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, optional = true)
-    val FIELD = ParamDef("field", "<name>", "Field/property name — also finds getter/setter calls", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val FIELD = ParamDef("field", "<name>", "Field/property name — also finds getter/setter calls. Alone (no owner-class), searches every project class, incl. Kotlin top-level <File>Kt facades", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val TYPE = ParamDef("type", "<class>", "Find ALL references to a class: calls, fields, casts, signatures (camelCase-aware)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
     val OUTSIDE_PACKAGE = ParamDef("outside-package", "<pkg>", "Exclude callers inside this package", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val FILTER = ParamDef("filter", "<regex>", "Only show results matching this regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
@@ -510,6 +510,7 @@ object TaskRegistry {
             UsageExample(listOf(OWNER_CLASS to "kotlinx.datetime.LocalDate", METHOD to "getMonthNumber")),
             UsageExample(listOf(OWNER_CLASS to "kotlinx.datetime.Clock")),
             UsageExample(listOf(OWNER_CLASS to "com.example.Config", FIELD to "timeout")),
+            UsageExample(listOf(FIELD to "RATE_LIMIT_PUBLIC")),
             UsageExample(listOf(TYPE to "kotlinx.datetime.Instant")),
             UsageExample(listOf(TYPE to "kotlinx.datetime.Instant", OUTSIDE_PACKAGE to "com.example.datetime")),
             UsageExample(listOf(TYPE to "com.example.SignatureContext", GROUP_BY to "file")),

@@ -239,6 +239,7 @@ object AgentHelpText {
         appendLine()
         appendLine("  \"Where is field X read or written?\"")
         appendLine("    → ${u("find-usages", p("owner-class", "com.example.Config"), p("field", "timeout"))}")
+        appendLine("    → ${u("find-usages", p("field", "timeout"))}  (owner unknown, e.g. a Kotlin top-level property)")
         appendLine()
         appendLine("  \"Who calls method X?\"")
         appendLine("    → ${u("find-callers", p("pattern", "X"))}")

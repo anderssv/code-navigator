@@ -189,4 +189,19 @@ class FindUsagesOrchestratorTest {
         assertTrue(result.interfaceTypes.contains(ClassName("com.example.Service")))
         assertEquals(1, result.usages.size)
     }
+    @Test
+    fun `field without owner-class finds a top-level property on its file facade`() {
+        val testProjectClasses = File("test-project/build/classes/kotlin/main")
+
+        val config = FindUsagesConfig.parse(mapOf("field" to "RATE_LIMIT_PUBLIC"))
+
+        val result = FindUsagesOrchestrator.run(config, listOf(testProjectClasses to SourceSet.MAIN), cacheDir)
+
+        val owners = result.usages.map { it.targetOwner }.toSet()
+        assertEquals(setOf(ClassName("com.example.variants.toplevel.SharedDefinitionsKt")), owners)
+        assertTrue(
+            result.usages.any { it.callerClass == ClassName("com.example.variants.toplevel.RateLimitConsumer") },
+            "RateLimitConsumer should be reported as a caller, got: ${result.usages}",
+        )
+    }
 }

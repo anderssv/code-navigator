@@ -38,9 +38,9 @@ data class FindUsagesConfig(
             val type = TaskRegistry.TYPE.parseFrom(properties)
             val method = TaskRegistry.METHOD.parseFrom(properties)
             val field = TaskRegistry.FIELD.parseFrom(properties)
-            if (ownerClass == null && type == null) {
+            if (ownerClass == null && type == null && field == null) {
                 throw IllegalArgumentException(
-                    "Missing required property. Provide either 'owner-class' or 'type'.",
+                    "Missing required property. Provide 'owner-class', 'type', or 'field'.",
                 )
             }
             if (field != null && method != null) {
@@ -48,9 +48,9 @@ data class FindUsagesConfig(
                     "Cannot specify both 'field' and 'method'. Use 'field' for property/field usages, 'method' for method call usages.",
                 )
             }
-            if (field != null && ownerClass == null) {
+            if (field != null && ownerClass == null && type != null) {
                 throw IllegalArgumentException(
-                    "The 'field' parameter requires 'owner-class' to identify which class owns the field.",
+                    "The 'field' parameter narrows by 'owner-class', not 'type'. Use 'owner-class', or pass 'field' alone to search every project class.",
                 )
             }
             return FindUsagesConfig(

@@ -35,12 +35,17 @@ object FindUsagesOrchestrator {
             File(cacheDir, "class-index.cache"), classDirectories,
         ).data.map { it.className }
 
-        val resolvedTypes: Set<ClassName> = if (targetType != null) {
-            TypeMatcher.resolve(targetType, allClassNames)
-        } else emptySet()
+        // `--field` alone searches every project class as a potential owner, so a Kotlin top-level
+        // property is found without knowing its synthetic `<File>Kt` facade name. Library owners are
+        // left out: a field named `name` would otherwise match every `getName()` on the classpath.
+        val resolvedTypes: Set<ClassName> = when {
+            targetType != null -> TypeMatcher.resolve(targetType, allClassNames)
+            config.field != null -> allClassNames.toSet()
+            else -> emptySet()
+        }
 
         // Phase 2: Enrich — find interfaces among resolved types, expand with implementors
-        val interfaceRegistry = if (resolvedTypes.isNotEmpty()) {
+        val interfaceRegistry = if (targetType != null && resolvedTypes.isNotEmpty()) {
             InterfaceRegistryCache.getOrBuild(File(cacheDir, "interface-registry.cache"), classDirectories).data
         } else null
 
@@ -55,7 +60,7 @@ object FindUsagesOrchestrator {
 
         // Phase 3: Scan — single pass with resolved class names
         val scanMatcher = if (scanTargets.isNotEmpty()) TypeMatcher.SetMatcher(scanTargets) else null
-        val ownerMatcher = if (config.ownerClass != null) scanMatcher else null
+        val ownerMatcher = if (config.ownerClass != null || config.type == null) scanMatcher else null
         val typeMatcher = if (config.type != null) scanMatcher else null
 
         val result = UsageScanner.scanTagged(taggedDirs, ownerMatcher = ownerMatcher, method = config.method, field = config.field, typeMatcher = typeMatcher)
