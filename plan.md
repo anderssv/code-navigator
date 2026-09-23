@@ -8,6 +8,12 @@ Items grouped by functional area. Each item has:
 
 ## Bugs
 
+### `cnavConverge` (Gradle) reads only the current module's classes, `cnavRings` reads the workspace
+- **Status**: FUTURE
+- **Source**: internal (found while fixing converge/rings disagreement, 0.1.119)
+
+`ConvergeTask` uses `project.taggedClassDirectories()` while `RingsTask` uses `resolveAnalysisWorkspace()`. In a multi-module build the ring-violation half of `cnavConverge` can still disagree with `cnavRings`. Single-module projects are unaffected. Fixing it means giving the git-history `ConvergeTask` the analysis-workspace resolution that the structural tasks use.
+
 ### `cnavMoveClass --from-file`: parameter mismatch accepted, rewrote 67 files, reported success
 **ACTIVE** | **Value: high** | **Effort: medium** | Source: field-test(greitt)
 
