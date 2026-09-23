@@ -35,7 +35,7 @@ object ConvergeOrchestrator {
     ): ConvergeOutput {
         val classDirectories = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }.map { it.first }
         return when (config.mode) {
-            ConvergeMode.INTERSECT -> ConvergeOutput.Intersect(runIntersect(config, classDirectories, commits, reportFile))
+            ConvergeMode.INTERSECT -> ConvergeOutput.Intersect(runIntersect(config, taggedDirs, classDirectories, commits, projectDir, reportFile))
             ConvergeMode.RISK -> ConvergeOutput.Risk(runRisk(config, taggedDirs, classDirectories, commits, projectDir, cacheFile, reportFile))
         }
     }
@@ -78,8 +78,10 @@ object ConvergeOrchestrator {
 
     private fun runIntersect(
         config: ConvergeConfig,
+        taggedDirs: List<Pair<File, SourceSet>>,
         classDirectories: List<File>,
         commits: List<GitCommit>,
+        projectDir: File,
         reportFile: File,
     ): ConvergeIntersectOutput {
         val projectClasses = scanProjectClasses(classDirectories)
@@ -104,13 +106,16 @@ object ConvergeOrchestrator {
         val cycleDetails = CycleDetector.enrich(cycles, matrix)
         val cyclePairs = cycleDetails.flatMap { it.edges }.map { normalize(it.from, it.to) }.toSet()
 
+        // Same classifier AND same project rings config (composition roots, adapter/value-package
+        // overrides) as cnavRings — with a default RingsConfig() here, every violation a project had
+        // corrected via cnav-config.json resurfaced as ACT NOW/LATENT while cnavRings reported none.
         val ringOutput = RingsOrchestrator.analyse(
             classDirectories = classDirectories,
             projectClasses = projectClasses,
-            taggedDirs = emptyList(),
-            scope = Scope.ALL,
+            taggedDirs = taggedDirs,
+            scope = config.scope,
             plan = emptyList(),
-            config = RingsConfig(),
+            config = RingsConfig.loadFromDirectory(projectDir),
             reportFile = reportFile,
             modulesOfClass = emptyMap(),
         )

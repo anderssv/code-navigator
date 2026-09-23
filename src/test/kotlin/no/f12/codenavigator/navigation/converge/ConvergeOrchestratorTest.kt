@@ -4,6 +4,8 @@ import no.f12.codenavigator.analysis.FileChange
 import no.f12.codenavigator.analysis.GitCommit
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.navigation.*
+import no.f12.codenavigator.navigation.dsm.RingsAnalysis
+import no.f12.codenavigator.navigation.dsm.RingsOrchestrator
 import no.f12.codenavigator.navigation.types.PackageName
 import no.f12.codenavigator.navigation.types.Scope
 import no.f12.codenavigator.navigation.types.SourceSet
@@ -180,6 +182,44 @@ class ConvergeOrchestratorTest {
         val output = ConvergeOrchestrator.run(config(mode = ConvergeMode.RISK), taggedDirs, emptyList(), projectDir, cacheFile, reportFile)
 
         assertTrue((output as ConvergeOutput.Risk).output.entries.isEmpty())
+    }
+
+    @Test
+    fun `ring violations honour the project's rings config, agreeing with cnavRings`() {
+        // Real compiler output: test-project has one default ring violation, services -> infra
+        // (AuditService -> EventSender). Declaring AuditService a composition root in cnav-config.json
+        // removes it. cnavRings honours that config, so cnavConverge must too — otherwise it ranks a
+        // violation cnavRings says doesn't exist as ACT NOW.
+        val projectTagged = listOf(File("test-project/build/classes/kotlin/main") to SourceSet.MAIN)
+        val servicesInfra = setOf(PackageName("com.example.services"), PackageName("com.example.infra"))
+        assertTrue(servicesInfra in convergeRingPairs(projectTagged), "fixture must produce a ring violation without config")
+
+        File(projectDir, "cnav-config.json").writeText(
+            """{"rings":{"compositionRoots":["com.example.services.AuditService"]}}""",
+        )
+
+        val converge = convergeRingPairs(projectTagged)
+        assertTrue(servicesInfra !in converge)
+        assertEquals(ringViolationPairs(projectTagged), converge)
+    }
+
+    private fun convergeRingPairs(tagged: List<Pair<File, SourceSet>>): Set<Set<PackageName>> {
+        val output = ConvergeOrchestrator.run(config(), tagged, emptyList(), projectDir, cacheFile, reportFile)
+        return (output as ConvergeOutput.Intersect).output.edges
+            .filter { it.hasRingViolation }
+            .map { setOf(it.source, it.target) }
+            .toSet()
+    }
+
+    private fun ringViolationPairs(tagged: List<Pair<File, SourceSet>>): Set<Set<PackageName>> {
+        val analysis = RingsOrchestrator.run(
+            tagged, Scope.ALL, bootstrap = false,
+            plan = emptyList(), projectDir = projectDir, reportFile = reportFile,
+        ) as RingsAnalysis.Hexagonal
+        return analysis.output.layering.violations
+            .map { setOf(it.sourceClass.packageName(), it.targetClass.packageName()) }
+            .filter { it.size == 2 }
+            .toSet()
     }
 
     @Test
