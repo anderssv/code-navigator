@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.119 (unreleased)
+
+### Fixed
+- `cnavConverge` ignored the project's `cnav-config.json` rings settings (composition roots, adapter and value-package overrides): it called the same `RingsOrchestrator` classifier as `cnavRings`, but with a default `RingsConfig()`. Violations a project had already corrected in config came back as ACT NOW/LATENT while `cnavRings` on the same build reported none. On the reporting project this produced six phantom ring violations, the top one labelled ACT NOW. Intersect mode now loads the project's rings config and passes the real source sets and scope, the same as `cnavRings`.
+- `cnavFindUsages --field=<name>` no longer requires `--owner-class`. Kotlin compiles a top-level `val` onto a synthetic `<File>Kt` class, so you had to know which file declared the property, which is usually what you were trying to find out. With `--field` alone, every project class is searched as the owner (library classes are excluded, so a common name doesn't match every getter on the classpath). This was the one routine case where agents told never to grep reached for grep anyway.
+
 ## 0.1.118
 
 ### Changed (breaking)
