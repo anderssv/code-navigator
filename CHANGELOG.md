@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.119 (unreleased)
+## 0.1.119
 
 ### Fixed
 - `cnavConverge` ignored the project's `cnav-config.json` rings settings (composition roots, adapter and value-package overrides): it called the same `RingsOrchestrator` classifier as `cnavRings`, but with a default `RingsConfig()`. Violations a project had already corrected in config came back as ACT NOW/LATENT while `cnavRings` on the same build reported none. On the reporting project this produced six phantom ring violations, the top one labelled ACT NOW. Intersect mode now loads the project's rings config and passes the real source sets and scope, the same as `cnavRings`.
