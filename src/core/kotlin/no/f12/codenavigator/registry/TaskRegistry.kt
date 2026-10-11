@@ -125,7 +125,9 @@ data class TaskDef(
     val paramDefaultOverrides: Map<String, String> = emptyMap(),
     val aliases: List<String> = emptyList(),
     val examples: List<UsageExample> = emptyList(),
-    /** Short intent phrase for "I want to..." lists (e.g. "Change method parameters"). Only for SOURCE tasks. */
+    /** What the task does to the project; see [TaskKind]. Only MUTATION tasks need [intent]. */
+    val kind: TaskKind = TaskKind.QUERY,
+    /** Short intent phrase for "I want to..." lists (e.g. "Change method parameters"). Required for MUTATION tasks. */
     val intent: String? = null,
     /** Brief explanation of what the task does for summaries (e.g. "add/remove/reorder params, updates call sites"). */
     val intentDetail: String? = null,
@@ -141,6 +143,9 @@ data class TaskDef(
     }
 
     val gradleTaskName: String = goalToGradleTaskName(goal)
+
+    /** Prose documentation for this task; see [TaskDocs]. */
+    val doc: TaskDoc get() = TaskDocs.of(goal)
     val aliasGradleTaskNames: List<String> = aliases.map { goalToGradleTaskName(it) }
 
     fun effectiveDefault(param: ParamDef<*>): String? =
@@ -212,10 +217,10 @@ object TaskRegistry {
     // --- Shared parameter definitions ---
 
     val FORMAT = ParamDef("format", "json", "Output as machine-readable JSON", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
-    val LLM = ParamDef("llm", "true", "Deprecated: use --format=llm instead", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'llm' is deprecated. Use 'format=llm' instead (Gradle: --format=llm, Maven: -Dformat=llm).", optional = true)
+    val LLM = ParamDef("llm", "true", "Deprecated: use format=llm instead", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'llm' is deprecated. Use 'format=llm' instead (Gradle: format=llm, Maven: -Dformat=llm).", optional = true)
     val PATTERN = ParamDef("pattern", "<regex>", "Class/symbol name regex (camelCase-aware: MyService matches com.example.MyService)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
     val CALL_PATTERN = ParamDef("pattern", "<regex>", "Class.method name regex (camelCase-aware: MyService.doWork matches com.example.MyService.doWork)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
-    val LEGACY_METHOD = ParamDef("method", "<regex>", "Deprecated: use pattern instead", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'method' is deprecated for find-callers/find-callees. Use 'pattern' instead (Gradle: --pattern=MyClass.myMethod, Maven: -Dpattern=MyClass.myMethod).")
+    val LEGACY_METHOD = ParamDef("method", "<regex>", "Deprecated: use pattern instead", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'method' is deprecated for find-callers/find-callees. Use 'pattern' instead (Gradle: pattern=MyClass.myMethod, Maven: -Dpattern=MyClass.myMethod).")
     val METHOD = ParamDef("method", "<regex>", "Method name regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth", flag = false, defaultValue = "3", enhancePattern = false, type = ParamType.INT)
     val MAX_IMPLEMENTORS = ParamDef("max-implementors", "<N>", "Max polymorphic implementors to expand per interface call site before collapsing the rest into a '+N more' note", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
@@ -245,9 +250,9 @@ object TaskRegistry {
      * `--no-fail-on-violation` can still switch off a `cnav-config.json` default; FLAG's
      * presence-means-true parse would read that as on.
      */
-    val FAIL_ON_VIOLATION = ParamDef("fail-on-violation", "", "Fail the build when violations exceed the configured threshold (--no-fail-on-violation switches it back off)", flag = true, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
-    val MAX_CYCLES = ParamDef("max-cycles", "<N>", "Max allowed cycles before failing the build (used with --fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
-    val MAX_VIOLATIONS = ParamDef("max-violations", "<N>", "Max allowed violations before failing the build (used with --fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
+    val FAIL_ON_VIOLATION = ParamDef("fail-on-violation", "", "Fail the build when violations exceed the configured threshold (no-fail-on-violation switches it back off)", flag = true, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
+    val MAX_CYCLES = ParamDef("max-cycles", "<N>", "Max allowed cycles before failing the build (used with fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
+    val MAX_VIOLATIONS = ParamDef("max-violations", "<N>", "Max allowed violations before failing the build (used with fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
     val MAX_FAN_IN = ParamDef("max-fan-in", "<N>", "Exclude ubiquitous types with fan-in above this threshold from move suggestions", flag = false, defaultValue = "10", enhancePattern = false, type = ParamType.INT)
     val MIN_GROUP_SIZE = ParamDef("min-group-size", "<N>", "Minimum number of classes in a structure group", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
     val INCLUDE_EXTERNAL = ParamDef("include-external", "true", "Include dependencies on classes outside the project", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
@@ -256,6 +261,7 @@ object TaskRegistry {
     val CYCLES = ParamDef("cycles", "true", "Show only cyclic dependencies with class-level edges", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, optional = true)
     val CYCLE = ParamDef("cycle", "<pkgA>,<pkgB>", "Show only the cycle between two specific packages", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val OWNER_CLASS = ParamDef("owner-class", "<class>", "Class name or pattern — matches method call and field owners (camelCase-aware: MyService matches com.example.MyService)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, optional = true)
+    val DECLARATION_KIND = ParamDef("kind", "all|class|function|property|typealias", "Restrict to a declaration kind: all (default), class (incl. interface/object/enum/annotation), function (incl. constructors), property, typealias", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING)
     val FIELD = ParamDef("field", "<name>", "Field/property name — also finds getter/setter calls. Alone (no owner-class), searches every project class, incl. Kotlin top-level <File>Kt facades", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val TYPE = ParamDef("type", "<class>", "Find ALL references to a class: calls, fields, casts, signatures (camelCase-aware)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
     val OUTSIDE_PACKAGE = ParamDef("outside-package", "<pkg>", "Exclude callers inside this package", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
@@ -269,7 +275,7 @@ object TaskRegistry {
     val RAW = ParamDef("raw", "", "Show raw bytecode-level output without collapsing", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val INCLUDE_IMPLS = ParamDef("include-impls", "", "When target is an interface, also search usages of implementors", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val TREAT_AS_DEAD = ParamDef("treat-as-dead", "<name>", "Treat framework-annotated code as potentially dead (all frameworks protected by default). Available: ${FrameworkPresets.availablePresets().sorted().joinToString(", ")}. Use ALL to remove all framework protections.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
-    val BASELINE = ParamDef("baseline", "<path>", "Path to a previous cnavDead JSON output file. Shows diff: removed, remaining, and new dead code since baseline.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val BASELINE = ParamDef("baseline", "<path>", "Path to a previous dead JSON output file. Shows diff: removed, remaining, and new dead code since baseline.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val MIN_CONFIDENCE = ParamDef("min-confidence", "high|medium|low", "Only show findings at or above this confidence level (high = strongest removal candidates, low = include framework-invoked maybes). Default: low (show all).", flag = false, defaultValue = "low", enhancePattern = false, type = ParamType.STRING)
     val INCLUDE_SUPPRESSED = ParamDef("include-suppressed", "", "Include findings annotated with @Suppress(\"unused\") (excluded by default)", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val DETAIL = ParamDef("detail", "true", "Show individual call details", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, optional = true)
@@ -278,8 +284,9 @@ object TaskRegistry {
     val MIN_COUPLING = ParamDef("min-coupling", "<N>", "Min coupling degree %", flag = false, defaultValue = "30", enhancePattern = false, type = ParamType.INT)
     val MAX_CHANGESET_SIZE = ParamDef("max-changeset-size", "<N>", "Skip commits touching more files", flag = false, defaultValue = "30", enhancePattern = false, type = ParamType.INT)
     val METRICS_TOP = ParamDef("top", "<N>", "Max results per section", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
-    val SECTION = ParamDef("section", "<name>", "Help section: install, workflow, interpretation, schemas, extraction", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val SECTION = ParamDef("section", "<name>", "Help section: install, setup, workflow, questions, interpretation, schemas, extraction, recommendations, refactor, getting-started, skill", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val TOPIC = ParamDef("topic", "<name>", "Philosophy topic: hexagonal, tttd, fakes, manual-di", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val HELP_TASK = ParamDef("task", "<goal>", "Full documentation for one task: parameters, examples, JSON schema, interpretation, caveats", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val JAR = ParamDef("jar", "<path-or-artifact>", "Scan a JAR file instead of project classes. Value: file path or artifact coordinate (group:name)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val REF = ParamDef("ref", "<git-ref>", "Git ref to compare against (branch, tag, or commit SHA)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val STRING_PATTERN = ParamDef("pattern", "<regex>", "Regex to match against string constant values", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -302,12 +309,12 @@ object TaskRegistry {
     val TO_PACKAGE = ParamDef("to-package", "<pkg>", "Target package (dot-separated)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val PORTS = ParamDef("ports", "<regex>", "Regex matching port interface names (hexagonal boundaries that get faked in tests, e.g. .*Repository|.*Client)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val COUPLING_SUBJECT = ParamDef("subject", "tests|adapters|both", "Who's checked for calling a port directly instead of through the domain service that owns it: tests (default, the original TTTD check), adapters (a driving adapter — a route/controller, not a service-tier class — calling a port WRITE method directly, meaning that write's orchestration has nowhere to live but the adapter), or both", flag = false, defaultValue = "tests", enhancePattern = false, type = ParamType.STRING)
-    val WRITE_METHODS = ParamDef("write-methods", "<Iface.method1>,<Iface.method2>", "Force these port methods (simple-interface-name.method, comma-separated) to be treated as writes for --subject=adapters, overriding the name-heuristic (add/update/delete/save/create/insert/remove/finalize/migrate/... prefixes)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
-    val READ_METHODS = ParamDef("read-methods", "<Iface.method1>,<Iface.method2>", "Force these port methods (simple-interface-name.method, comma-separated) to be treated as reads for --subject=adapters, overriding the name-heuristic", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
+    val WRITE_METHODS = ParamDef("write-methods", "<Iface.method1>,<Iface.method2>", "Force these port methods (simple-interface-name.method, comma-separated) to be treated as writes for subject=adapters, overriding the name-heuristic (add/update/delete/save/create/insert/remove/finalize/migrate/... prefixes)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
+    val READ_METHODS = ParamDef("read-methods", "<Iface.method1>,<Iface.method2>", "Force these port methods (simple-interface-name.method, comma-separated) to be treated as reads for subject=adapters, overriding the name-heuristic", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
     val AFFINITY_THRESHOLD = ParamDef("threshold", "<N>", "Max number of consumer domains to still count as single-owner", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
-    val RING_MODE = ParamDef("mode", "removed", "REMOVED: cnavRings has no modes. Both former modes (emergent, package) computed topological depth, not hexagonal rings. Passing this now fails with an explanation rather than silently analysing something else.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val RING_MODE = ParamDef("mode", "removed", "REMOVED: rings has no modes. Both former modes (emergent, package) computed topological depth, not hexagonal rings. Passing this now fails with an explanation rather than silently analysing something else.", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val BOOTSTRAP_CONFIG = ParamDef("bootstrap-config", "true", "Generate a starting cnav-config.json based on emergent ring analysis — best-effort suggestions meant to be reviewed and tweaked before use", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
-    val DOMAIN = ParamDef("domain", "<regex>", "Regex naming the domain classes to check. Default: ring 0 as cnavRings computes it — pass this when cnavRings cannot produce a layered hexagon for the project (e.g. \"\\\\.domain\\\\.|\\\\.model\\\\.\")", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val DOMAIN = ParamDef("domain", "<regex>", "Regex naming the domain classes to check. Default: ring 0 as rings computes it — pass this when rings cannot produce a layered hexagon for the project (e.g. \"\\\\.domain\\\\.|\\\\.model\\\\.\")", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val AMBIENT_CATEGORIES = ParamDef("categories", "clock,random,env,io", "Which kinds of ambient input to check for (comma-separated). Default: all four", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
     val CONVERGE_MODE = ParamDef("mode", "intersect|risk", "Analysis mode: intersect (default, cross-references cycles/rings/change-coupling for a ranked ACT NOW/LATENT/MISSING ABSTRACTION list) or risk (change-frequency x complexity x coupling ranking)", flag = false, defaultValue = "intersect", enhancePattern = false, type = ParamType.STRING)
 
@@ -356,6 +363,20 @@ object TaskRegistry {
             UsageExample(listOf(PATTERN to "\".*Service.*\"")),
             UsageExample(listOf(PATTERN to "\"find.*\"")),
             UsageExample(listOf(PATTERN to "find", JAR to "com.example:my-lib")),
+        ),
+    )
+
+    val FIND_DECLARATION = TaskDef(
+        goal = "find-declaration",
+        description = "Find Kotlin declarations by pattern and report their exact source boundaries (lines, columns, offsets) via the compiler PSI",
+        params = FORMAT_PARAMS + listOf(PATTERN, DECLARATION_KIND) + SOURCE_SET_PARAMS,
+        requiresCompilation = false,
+        category = TaskCategory.SOURCE,
+        examples = listOf(
+            UsageExample(listOf(PATTERN to "OrderService")),
+            UsageExample(listOf(PATTERN to "OrderService.place")),
+            UsageExample(listOf(PATTERN to "\"OrderService\\\\..*\"", DECLARATION_KIND to "function")),
+            UsageExample(listOf(PATTERN to "placeOrder", SCOPE to "prod")),
         ),
     )
 
@@ -477,7 +498,7 @@ object TaskRegistry {
 
     val CYCLE_DETECTION = TaskDef(
         goal = "cycles",
-        description = "Detect dependency cycles using Tarjan's SCC algorithm. Supports --fail-on-violation for CI gating.",
+        description = "Detect dependency cycles using Tarjan's SCC algorithm. Supports fail-on-violation for CI gating.",
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE, FAIL_ON_VIOLATION, MAX_CYCLES) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
@@ -656,8 +677,8 @@ object TaskRegistry {
 
     val HELP = TaskDef(
         goal = "help",
-        description = "Show help text with available tasks",
-        params = emptyList(),
+        description = "List every task and its options; task=<goal> documents one task in full",
+        params = listOf(HELP_TASK),
         requiresCompilation = false,
         category = TaskCategory.HELP,
         examples = listOf(
@@ -668,7 +689,7 @@ object TaskRegistry {
     val AGENT_HELP = TaskDef(
         goal = "agent-help",
         description = "Show workflow guidance for AI coding agents",
-        params = listOf(SECTION, TOPIC),
+        params = listOf(SECTION, TOPIC, HELP_TASK),
         requiresCompilation = false,
         category = TaskCategory.HELP,
         examples = listOf(
@@ -785,7 +806,7 @@ object TaskRegistry {
 
     val MOVE_SUGGEST = TaskDef(
         goal = "move-suggest",
-        description = "Suggest misplaced classes based on dependency gravity — classes with more edges to another package than their own. Edges into a nested (parent or child) package count as internal, and a nested package is never proposed as a destination: a service package that orchestrates a domain sub-package always references it more than itself, which is what layering is, not misplacement. Test classes are not subjects unless --scope=test — use cnavTestAlignment for test placement, since a test's gravity follows its object mothers, not its subject",
+        description = "Suggest misplaced classes based on dependency gravity — classes with more edges to another package than their own. Edges into a nested (parent or child) package count as internal, and a nested package is never proposed as a destination: a service package that orchestrates a domain sub-package always references it more than itself, which is what layering is, not misplacement. Test classes are not subjects unless scope=test — use test-alignment for test placement, since a test's gravity follows its object mothers, not its subject",
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP, MAX_FAN_IN) + SOURCE_SET_PARAMS + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
@@ -841,7 +862,7 @@ object TaskRegistry {
 
     val RINGS = TaskDef(
         goal = "rings",
-        description = "Detect hexagonal architecture rings and report violations. Rings are derived from dependency inversions (a port implemented by a class that does I/O), so the ring count is emergent, not fixed — code with no inversion anywhere reports a single ring and says so. Violations are inner classes reaching outward across a boundary; same-ring edges are peers, not violations. Composition roots are excluded. Supports --fail-on-violation for CI gating.",
+        description = "Detect hexagonal architecture rings and report violations. Rings are derived from dependency inversions (a port implemented by a class that does I/O), so the ring count is emergent, not fixed — code with no inversion anywhere reports a single ring and says so. Violations are inner classes reaching outward across a boundary; same-ring edges are peers, not violations. Composition roots are excluded. Supports fail-on-violation for CI gating.",
         params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE, BOOTSTRAP_CONFIG, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + PLAN_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
@@ -901,6 +922,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, RENAME_PARAM, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        kind = TaskKind.MUTATION,
         intent = "Rename a parameter",
         intentDetail = "updates named-argument call sites",
         examples = listOf(
@@ -915,6 +937,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        kind = TaskKind.MUTATION,
         intent = "Rename a method",
         intentDetail = "updates all call sites incl. interface impls",
         examples = listOf(
@@ -925,10 +948,11 @@ object TaskRegistry {
 
     val MOVE_CLASS_TASK = TaskDef(
         goal = "move-class",
-        description = "Move and/or rename a class (or a whole file with --from-file), updating all references",
+        description = "Move and/or rename a class (or a whole file with from-file), updating all references",
         params = FORMAT_PARAMS + listOf(MOVE_FROM, MOVE_TO, FROM_FILE, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
+        kind = TaskKind.MUTATION,
         intent = "Move/rename a class",
         intentDetail = "rewrites package decl, all imports, same-package refs",
         aliases = listOf("rename-class"),
@@ -946,6 +970,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(FROM_PACKAGE, TO_PACKAGE, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
+        kind = TaskKind.MUTATION,
         intent = "Batch-move every class in a package to a new package",
         intentDetail = "iterates move-class for each class found in the source package",
         examples = listOf(
@@ -960,6 +985,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(FROM_FILE, TO_PACKAGE, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
+        kind = TaskKind.MUTATION,
         intent = "Move a file to another package",
         intentDetail = "updates package declaration + all imports + references",
         examples = listOf(
@@ -974,6 +1000,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_PROPERTY, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
+        kind = TaskKind.MUTATION,
         intent = "Rename a property",
         intentDetail = "updates access sites, constructors, copy() calls",
         examples = listOf(
@@ -988,6 +1015,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, CHANGE_SIG_PARAMS, CHANGE_SIG_DEFAULTS, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
+        kind = TaskKind.MUTATION,
         intent = "Change method parameters",
         intentDetail = "add/remove/reorder params, updates call sites",
         examples = listOf(
@@ -1002,6 +1030,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
+        kind = TaskKind.MUTATION,
         intent = "Safely delete unused code",
         intentDetail = "verifies zero usages via bytecode before deleting",
         examples = listOf(
@@ -1017,6 +1046,7 @@ object TaskRegistry {
         params = FORMAT_PARAMS + listOf(PLAN_FILE, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
+        kind = TaskKind.MUTATION,
         intent = "Execute a sequence of refactoring steps from a plan file",
         intentDetail = "reads plan JSON, applies each move-class step in order",
         examples = listOf(
@@ -1027,7 +1057,7 @@ object TaskRegistry {
 
     val TEST_COUPLING = TaskDef(
         goal = "test-coupling",
-        description = "Detect callers that bypass domain services by calling port interface methods directly. --subject=tests (default) is the original TTTD check; --subject=adapters checks driving adapters (routes/controllers) for use-case orchestration hiding behind a direct port WRITE call, invisible to cnavRings (an adapter calling a port is exactly what dependency-direction analysis permits)",
+        description = "Detect callers that bypass domain services by calling port interface methods directly. subject=tests (default) is the original TTTD check; subject=adapters checks driving adapters (routes/controllers) for use-case orchestration hiding behind a direct port WRITE call, invisible to rings (an adapter calling a port is exactly what dependency-direction analysis permits)",
         params = FORMAT_PARAMS + listOf(PORTS, DETAIL, EXCLUDE, COUPLING_SUBJECT, WRITE_METHODS, READ_METHODS, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
@@ -1053,7 +1083,7 @@ object TaskRegistry {
 
     val AMBIENT = TaskDef(
         goal = "ambient",
-        description = "Detect domain (ring-0) classes reading ambient input directly: the wall clock (Instant.now()), randomness (UUID.randomUUID()), the environment (System.getenv()) or the filesystem/network. Invisible to cnavRings and every other direction check — it is a static call on an already-imported type, not a dependency edge",
+        description = "Detect domain (ring-0) classes reading ambient input directly: the wall clock (Instant.now()), randomness (UUID.randomUUID()), the environment (System.getenv()) or the filesystem/network. Invisible to rings and every other direction check — it is a static call on an already-imported type, not a dependency edge",
         params = FORMAT_PARAMS + listOf(DOMAIN, AMBIENT_CATEGORIES, DETAIL, EXCLUDE, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
@@ -1079,7 +1109,7 @@ object TaskRegistry {
 
     val CONVERGE = TaskDef(
         goal = "converge",
-        description = "Composite architectural signal: intersect mode cross-references cycles/rings/change-coupling into a ranked ACT NOW/LATENT/MISSING ABSTRACTION list; risk mode ranks classes by change-frequency x complexity x coupling. Includes test sources by default (--scope=all); when the result is large it emits an advisory pointing at --scope=prod / --exclude, since manually-wired DI and shared test infrastructure often inflate it with cycles that don't exist in production.",
+        description = "Composite architectural signal: intersect mode cross-references cycles/rings/change-coupling into a ranked ACT NOW/LATENT/MISSING ABSTRACTION list; risk mode ranks classes by change-frequency x complexity x coupling. Includes test sources by default (scope=all); when the result is large it emits an advisory pointing at scope=prod / exclude, since manually-wired DI and shared test infrastructure often inflate it with cycles that don't exist in production.",
         params = FORMAT_PARAMS + listOf(CONVERGE_MODE, PACKAGE_FILTER, EXCLUDE, AFTER, MIN_SHARED_REVS, MIN_COUPLING, MAX_CHANGESET_SIZE, NO_FOLLOW, TOP) + SOURCE_SET_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.COMPOSITE,
@@ -1095,6 +1125,7 @@ object TaskRegistry {
         LIST_CLASSES,
         FIND_CLASS,
         FIND_SYMBOL,
+        FIND_DECLARATION,
         CLASS_DETAIL,
         FIND_CALLERS,
         FIND_CALLEES,
@@ -1150,8 +1181,6 @@ object TaskRegistry {
         CONFIG_HELP,
     )
 
-    /** All SOURCE-category tasks that have refactoring intent metadata. */
-    val REFACTORING_TASKS: List<TaskDef> = ALL_TASKS.filter {
-        it.category == TaskCategory.SOURCE && it.intent != null
-    }
+    /** Every task that rewrites source files. */
+    val REFACTORING_TASKS: List<TaskDef> = ALL_TASKS.filter { it.kind == TaskKind.MUTATION }
 }

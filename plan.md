@@ -285,6 +285,10 @@ Inspired by [Martin](https://github.com/audunstrand/martin) by Audun Fauchald St
 
 **Catalog updated**: `cnavSafeDelete` and `cnavChangeSignature` (steps 3 and 5 below) are already implemented (`SafeDeleteTask`/`SafeDeleteMojo`, `ChangeSignatureTask`/`ChangeSignatureMojo`, both with `*WorkAction` PSI editors) — struck from the remaining work, kept in the order list for context. Nothing else in the full catalog exists yet (confirmed: no `extract-*`, `convert-to-*`, `inline`, `add-named-arguments`, `introduce-parameter-object`, `pull-up-method`, `replace-constructor-with-factory`, or `encapsulate-field` goals registered in `TaskRegistry`).
 
+**Help text is now data-driven** (unreleased after 0.1.119): per-task `TaskDoc` in `TaskDocs.kt`, rendered by `HelpRender`; `cnavAgentHelp` has install / guide / `--task` layers plus a generated `skill` section. Java PSI support for `cnavFindDeclaration` and a `--section=skill` that writes files directly (instead of printing) are the open follow-ups.
+
+**Precursor shipped**: `cnavFindDeclaration` (unreleased after 0.1.119) exposes PSI-exact declaration ranges (lines, columns, offsets, signature) as a read-only search. Every extract-* operation below needs exactly these ranges as input, and an agent can already use them to do a manual extract without text-splitting. Java sources are not covered yet — the embedded compiler ships a Java PSI too, but it is a separate code path.
+
 **Effort key (post-PSI migration):**
 - **Low** = PSI tree walking + text replacement, no type resolution needed.
 - **Medium** = Needs bytecode-guided location finding or cross-file coordination.

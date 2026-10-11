@@ -42,7 +42,7 @@ plugins {
 </build>
 ```
 
-The `cnavAgentHelp` output covers workflows, parameters, JSON schemas, and output tips. You can also use it as the basis for a custom agent skill (e.g. a Claude Code skill or Cursor rule).
+`cnavAgentHelp` is layered: the default output is a short guide with a task directory, `--task=<goal>` documents one task in full (parameters, examples, JSON schema, how to read results), and `--section=<name>` gives workflows, interpretation heuristics, schemas and more. `--section=skill` prints a ready-made Claude Code / Cursor skill file generated from the same data.
 
 ## Why use Code Navigator?
 

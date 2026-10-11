@@ -648,10 +648,10 @@ class UsageExampleTest {
 class TaskRegistryTest {
 
     @Test
-    fun `contains all 56 goals`() {
+    fun `contains all 57 goals`() {
         val goals = TaskRegistry.ALL_TASKS.map { it.goal }.toSet()
 
-        assertEquals(56, goals.size)
+        assertEquals(57, goals.size)
         assertTrue(goals.contains("find-class"))
         assertTrue(goals.contains("hotspots"))
         assertTrue(goals.contains("complexity"))
@@ -673,6 +673,7 @@ class TaskRegistryTest {
         assertTrue(goals.contains("move-class"))
         assertTrue(goals.contains("rename-property"))
         assertTrue(goals.contains("test-alignment"))
+        assertTrue(goals.contains("find-declaration"))
     }
 
     @Test
@@ -683,7 +684,7 @@ class TaskRegistryTest {
             val gradleName = task.taskName(BuildTool.GRADLE)
             assertNotNull(gradleName, "Goal '${task.goal}' should resolve to a Gradle task name")
         }
-        assertEquals(56, registryGoals.size)
+        assertEquals(57, registryGoals.size)
     }
 
     @Test
@@ -821,13 +822,10 @@ class TaskRegistryTest {
     }
 
     @Test
-    fun `help and config-help tasks have no params`() {
-        val noParamGoals = listOf("help", "config-help")
-
-        for (goal in noParamGoals) {
-            val task = TaskRegistry.ALL_TASKS.first { it.goal == goal }
-            assertTrue(task.params.isEmpty(), "Help task '$goal' should have no params")
-        }
+    fun `help tasks take only lookup params, never analysis params`() {
+        assertTrue(TaskRegistry.CONFIG_HELP.params.isEmpty(), "config-help should have no params")
+        assertEquals(listOf("task"), TaskRegistry.HELP.params.map { it.name })
+        assertEquals(listOf("section", "topic", "task"), TaskRegistry.AGENT_HELP.params.map { it.name })
     }
 
     @Test
@@ -1031,6 +1029,8 @@ class TaskRegistryTest {
             "cycles" to ParamType.BOOLEAN,
             "cycle" to ParamType.STRING,
             "owner-class" to ParamType.STRING,
+            "kind" to ParamType.STRING,
+            "task" to ParamType.STRING,
             "field" to ParamType.STRING,
             "type" to ParamType.STRING,
             "outside-package" to ParamType.STRING,

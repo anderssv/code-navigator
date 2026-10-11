@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Help output restructured around per-task documentation data. Every task now has a `TaskDoc` (details, when-to-use questions, result heuristics, JSON schema, caveats, related tasks) in `TaskDocs.kt`, and `cnavHelp`, `cnavAgentHelp`, its sections and the new per-task view are all projections of it, so a task documented once is documented everywhere and a missing schema or heuristic is a test failure instead of silent drift. Before this, 24 of 54 tasks had no JSON schema in the agent help and 11 were never mentioned outside the generated task table.
+  - `cnavAgentHelp` is now three layers: `--section=install` is a short rules-and-pointer snippet for CLAUDE.md/AGENTS.md (no task reference); the default output is a guide of about a third the previous size (rules, which task answers which question, refactoring protocol, a one-line-per-task directory); `--task=<goal>` gives one task in full (parameters, examples, JSON schema, how to read results, caveats, related). New sections: `questions` (every when-to-use question with its command) and `skill` (a Claude Code / Cursor skill file generated from the same data; save as `.claude/skills/code-navigator/SKILL.md`). `interpretation` and `schemas` are generated and now cover every task that documents them.
+  - Output is Markdown throughout (`#`/`##` headings) instead of `=== ===` banners with column padding, and Gradle and Maven renders are tested to differ only in command syntax. Several task and parameter descriptions that hard-coded Gradle spellings (`--fail-on-violation`, `cnavDead`) now name the parameter or goal neutrally.
+  - `TaskDef.kind` (QUERY or MUTATION) replaces the overloaded use of `TaskCategory.SOURCE` to mean "refactoring command"; `TaskRegistry.REFACTORING_TASKS` is every MUTATION task. A read-only source scanner such as `cnavFindDeclaration` no longer needs an `intent` to exist.
+  - `cnavHelp` is now a compact listing: one line per task with its description, one line with its options (optional ones in brackets), about 150 lines for the whole plugin. `cnavHelp --task=<goal>` prints the same full per-task view as the agent help.
+  - The help tests are structural invariants (every task documented, every param in its own task's block, no dangling task names, layer size budgets, Gradle/Maven parity) instead of 150 assertions on wording.
+
+### Added
+- `cnavFindDeclaration` — search Kotlin declarations by pattern and get their exact source boundaries from the compiler's parser: start/end line and column, 0-based character offsets, the line the name sits on, and a signature so overloads can be told apart. Ranges cover the whole declaration (KDoc and annotations through the closing brace), so an agent can replace, extract or read a method or class without splitting on raw text. Same pattern semantics as the other `find-*` tasks (case-insensitive regex, camelCase-aware): an unqualified pattern matches the declaration name, a dotted one (`OrderService.place`, `com\.example\..*`) matches the full dotted name or source path. `--kind=class|function|property|typealias` narrows; `--scope` picks prod/test sources. Needs no compilation — it is a parse, not a resolve — and reuses the isolated PSI worker the refactoring tasks already run in. Kotlin sources only. Prompted by a user suggestion: "a Kotlin parser gives you clean method boundaries, so you don't have to split on raw text".
+
 ## 0.1.119
 
 ### Fixed

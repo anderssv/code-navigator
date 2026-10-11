@@ -99,6 +99,9 @@ class CodeNavigatorPlugin : Plugin<Project> {
                 if (this is ChangeSignatureTask) {
                     psiClasspath.from(psiConfig)
                 }
+                if (this is FindDeclarationTask) {
+                    psiClasspath.from(psiConfig)
+                }
             }
         }
 
@@ -106,6 +109,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "list-classes" to ListClassesTask::class.java,
             "find-class" to FindClassTask::class.java,
             "find-symbol" to FindSymbolTask::class.java,
+            "find-declaration" to FindDeclarationTask::class.java,
             "class-detail" to FindClassDetailTask::class.java,
             "find-callers" to FindCallersTask::class.java,
             "find-callees" to FindCalleesTask::class.java,

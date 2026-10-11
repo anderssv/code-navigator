@@ -10,7 +10,7 @@ import org.gradle.work.DisableCachingByDefault
 @DisableCachingByDefault(because = "Produces console output only")
 abstract class AgentHelpTask : CodeNavigatorTask() {
 
-    @Option(option = "section", description = "Help section: install, workflow, interpretation, schemas, extraction")
+    @Option(option = "section", description = "Help section: install, setup, workflow, questions, interpretation, schemas, extraction, recommendations, refactor, getting-started, skill")
     @get:Internal
     var section: String? = null
 
@@ -18,13 +18,18 @@ abstract class AgentHelpTask : CodeNavigatorTask() {
     @get:Internal
     var topic: String? = null
 
+    @Option(option = "task", description = "Full documentation for one task: parameters, examples, JSON schema, interpretation, caveats")
+    @get:Internal
+    var task: String? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         section?.let { put("section", it) }
         topic?.let { put("topic", it) }
+        task?.let { put("task", it) }
     }
 
     @TaskAction
     fun showAgentHelp() {
-        logger.quiet(AgentHelpText.generate(BuildTool.GRADLE, section, topic))
+        logger.quiet(AgentHelpText.generate(BuildTool.GRADLE, section, topic, task))
     }
 }
