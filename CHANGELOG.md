@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.120
 
 ### Changed
 - Help output restructured around per-task documentation data. Every task now has a `TaskDoc` (details, when-to-use questions, result heuristics, JSON schema, caveats, related tasks) in `TaskDocs.kt`, and `cnavHelp`, `cnavAgentHelp`, its sections and the new per-task view are all projections of it, so a task documented once is documented everywhere and a missing schema or heuristic is a test failure instead of silent drift. Before this, 24 of 54 tasks had no JSON schema in the agent help and 11 were never mentioned outside the generated task table.
