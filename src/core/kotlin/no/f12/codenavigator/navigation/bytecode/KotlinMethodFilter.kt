@@ -24,7 +24,20 @@ object KotlinMethodFilter {
 
     val EXCLUDED_FIELDS = setOf("INSTANCE")
 
-    fun isGenerated(methodName: String, treatLambdaBodyAsGenerated: Boolean = true): Boolean {
+    private val INITIALIZER_METHODS = setOf("<init>", "<clinit>")
+
+    /**
+     * [treatInitializersAsGenerated] is false when the method is in the caller role: a constructor or
+     * static initializer holds real code — property initializers and `init {}` blocks, including those of
+     * anonymous `object :` expressions (compiled into `Outer$fn$1.<init>`) — so a call made from one is a
+     * real call site. As a callee (nothing user-written to show) it stays noise.
+     */
+    fun isGenerated(
+        methodName: String,
+        treatLambdaBodyAsGenerated: Boolean = true,
+        treatInitializersAsGenerated: Boolean = true,
+    ): Boolean {
+        if (!treatInitializersAsGenerated && methodName in INITIALIZER_METHODS) return false
         if (methodName in EXCLUDED_METHODS) return true
         if (methodName.startsWith(SYNTHETIC_PREFIX)) return true
         if (DATA_CLASS_COMPONENT.matches(methodName)) return true

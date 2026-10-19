@@ -117,4 +117,54 @@ class CallTreeOrchestratorTest {
             "expected the lambda-named callee to still be filtered as noise, got children: ${output.trees[0].children.map { it.method.qualifiedName }}",
         )
     }
+
+    @Test
+    fun `finds a caller inside an anonymous object's constructor, with and without filterSynthetic`() {
+        // Registry.register is only called from `object : Handler { override val label = Registry.register(..) }`,
+        // which the compiler emits into AnonymousObjectContext$build$1.<init>. Real compiled fixture, not
+        // synthetic bytecode — the point is what kotlinc actually produces.
+        val realClasses = File("test-project/build/classes/kotlin/main")
+        val realTagged = listOf(realClasses to SourceSet.MAIN)
+        val callerName = "com.example.variants.anonymousobject.AnonymousObjectContext\$build\$1.<init>"
+
+        for (filterSynthetic in listOf(false, true)) {
+            val output = CallTreeOrchestrator.run(
+                config("Registry.register").copy(filterSynthetic = filterSynthetic),
+                realTagged, cacheDir, CallDirection.CALLERS,
+            )
+            val callers = output.trees.flatMap { tree -> tree.children.map { it.method.qualifiedName } }
+            assertTrue(
+                callerName in callers,
+                "filterSynthetic=$filterSynthetic: expected the anonymous-object constructor to be reported as a caller, got: $callers",
+            )
+        }
+    }
+
+    @Test
+    fun `finds callers inside property initializers, init blocks and object initializers with filterSynthetic enabled`() {
+        val realTagged = listOf(File("test-project/build/classes/kotlin/main") to SourceSet.MAIN)
+        val pkg = "com.example.variants.anonymousobject"
+        val expected = mapOf(
+            "InitializerTarget.viaProperty" to "$pkg.InitializerCaller.<init>",
+            "InitializerTarget.viaInitBlock" to "$pkg.InitializerCaller.<init>",
+            "InitializerTarget.viaObject" to "$pkg.InitializerObject.<clinit>",
+        )
+        for ((pattern, caller) in expected) {
+            val output = CallTreeOrchestrator.run(
+                config(pattern).copy(filterSynthetic = true), realTagged, cacheDir, CallDirection.CALLERS,
+            )
+            val callers = output.trees.flatMap { tree -> tree.children.map { it.method.qualifiedName } }
+            assertTrue(caller in callers, "$pattern: expected $caller among callers, got: $callers")
+        }
+    }
+
+    @Test
+    fun `still hides constructors and static initializers as callees with filterSynthetic enabled`() {
+        val realTagged = listOf(File("test-project/build/classes/kotlin/main") to SourceSet.MAIN)
+        val output = CallTreeOrchestrator.run(
+            config("InitializerCaller.<init>").copy(filterSynthetic = true), realTagged, cacheDir, CallDirection.CALLEES,
+        )
+        val callees = output.trees.flatMap { tree -> tree.children.map { it.method.methodName } }
+        assertTrue(callees.none { it == "<init>" || it == "<clinit>" }, "constructors/initializers must stay noise as callees, got: $callees")
+    }
 }

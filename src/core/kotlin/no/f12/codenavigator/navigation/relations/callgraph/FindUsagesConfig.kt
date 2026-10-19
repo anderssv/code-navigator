@@ -29,7 +29,7 @@ data class FindUsagesConfig(
         if (!filterSynthetic) return usages
         // callerMethod is always in the caller role — a $lambda$-named caller (DSL block body)
         // is a real call site, not synthetic noise, so never treat it as generated here.
-        return usages.filter { it.callerMethod == "<field>" || !KotlinMethodFilter.isGenerated(it.callerMethod, treatLambdaBodyAsGenerated = false) }
+        return usages.filter { it.callerMethod == "<field>" || !KotlinMethodFilter.isGenerated(it.callerMethod, treatLambdaBodyAsGenerated = false, treatInitializersAsGenerated = false) }
     }
 
     companion object {

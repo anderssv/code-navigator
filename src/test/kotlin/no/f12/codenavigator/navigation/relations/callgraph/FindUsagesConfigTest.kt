@@ -350,7 +350,7 @@ class FindUsagesConfigTest {
     }
 
     @Test
-    fun `filterSyntheticCallers removes init and clinit`() {
+    fun `filterSyntheticCallers keeps init and clinit callers - initializer and anonymous-object bodies are real code`() {
         val usages = listOf(
             usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "<init>"),
             usageSite("com.example.Caller", SourceSet.MAIN, callerMethod = "<clinit>"),
@@ -360,8 +360,7 @@ class FindUsagesConfigTest {
         val cfg = config(scope = Scope.ALL)
         val filtered = cfg.filterSyntheticCallers(usages)
 
-        assertEquals(1, filtered.size)
-        assertEquals("doWork", filtered[0].callerMethod)
+        assertEquals(listOf("<init>", "<clinit>", "doWork"), filtered.map { it.callerMethod })
     }
 
     @Test

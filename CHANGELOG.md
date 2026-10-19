@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- `cnavFindCallers` and `cnavFindUsages` reported "no callers"/"no usages" for code called only from a constructor or static initializer, because the default `--filter-synthetic=true` treated `<init>`/`<clinit>` as generated noise even in the caller role. Those methods hold real code: property initializers, `init {}` blocks, `object` initializers, and the body of an anonymous `object : Foo { ... }` expression (compiled into `Outer$fn$1.<init>`). Reported from a real run on ra-backend, where a call from an anonymous object inside `SystemContext` was visible in the bytecode but missing from cnav's result. This is the same class of bug as the earlier `$lambda$` caller fix, which only covered `$lambda$` names. Constructors and static initializers are now kept when they are the caller, and still filtered when they are the callee, where there is nothing user-written to show. Workaround on older versions: `--filter-synthetic=false`.
+
 ## 0.1.120
 
 ### Changed

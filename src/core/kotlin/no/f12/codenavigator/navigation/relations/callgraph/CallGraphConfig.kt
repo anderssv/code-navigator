@@ -22,8 +22,9 @@ data class CallGraphConfig(
             if (filterSynthetic) {
                 // Callers of a lambda-DSL body (route/builder blocks) are real call sites, not noise —
                 // only treat $lambda$-named methods as generated when resolving CALLEES.
-                val treatLambdaBodyAsGenerated = direction == CallDirection.CALLEES
-                add { ref: MethodRef -> !ref.isGenerated(treatLambdaBodyAsGenerated) }
+                // Same for constructors/static initializers (anonymous-object and property-initializer bodies).
+                val inCalleeRole = direction == CallDirection.CALLEES
+                add { ref: MethodRef -> !ref.isGenerated(treatLambdaBodyAsGenerated = inCalleeRole, treatInitializersAsGenerated = inCalleeRole) }
             }
             if (scope != Scope.ALL) add { ref: MethodRef -> scope.matchesSourceSet(graph.sourceSetOf(ref.className) ?: SourceSet.MAIN) }
         }
