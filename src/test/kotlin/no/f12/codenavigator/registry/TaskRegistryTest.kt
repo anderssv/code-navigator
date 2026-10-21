@@ -1066,6 +1066,8 @@ class TaskRegistryTest {
             "ports" to ParamType.STRING,
             "subject" to ParamType.STRING,
             "no-compare" to ParamType.FLAG,
+            "compare-with" to ParamType.STRING,
+            "trend" to ParamType.STRING,
             "domain" to ParamType.STRING,
             "categories" to ParamType.LIST_STRING,
             "write-methods" to ParamType.LIST_STRING,

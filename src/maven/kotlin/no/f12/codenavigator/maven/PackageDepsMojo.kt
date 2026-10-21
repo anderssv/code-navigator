@@ -42,6 +42,12 @@ class PackageDepsMojo : AbstractMojo() {
     @Parameter(property = "no-compare")
     private var noCompare: String? = null
 
+    @Parameter(property = "compare-with")
+    private var compareWith: String? = null
+
+    @Parameter(property = "trend")
+    private var trend: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -78,6 +84,8 @@ class PackageDepsMojo : AbstractMojo() {
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         noCompare?.let { put("no-compare", it) }
+        compareWith?.let { put("compare-with", it) }
+        trend?.let { put("trend", it) }
         format?.let { put("format", it) }
         packagePattern?.let { put("package", it) }
         projectOnly?.let { put("project-only", it) }

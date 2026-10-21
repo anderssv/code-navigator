@@ -2,7 +2,9 @@ package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.config.CnavConfig
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.history.HistoryOptions
 import no.f12.codenavigator.history.RunHistory
+import no.f12.codenavigator.history.RunSnapshot
 import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.PlanStep
 import no.f12.codenavigator.navigation.dsm.PackageDependency
@@ -75,13 +77,12 @@ abstract class CodeNavigatorTask : DefaultTask() {
     }
 
     /**
-     * Prints how this analysis moved since its previous run (stored under build/cnav/history), unless
-     * `--no-compare` was given. Call right after the task's own output so it also shows on runs that
-     * go on to fail the build.
+     * Prints how this analysis moved since an earlier run (stored under `<project>/.cnav/history`) and/or its trend,
+     * unless `--no-compare` was given. Call right after the task's own output so it also shows on runs that go on
+     * to fail the build.
      */
-    protected fun reportComparison(task: String, props: Map<String, String?>, metrics: Map<String, Double>, format: OutputFormat) {
-        val cacheDir = File(project.layout.buildDirectory.asFile.get(), "cnav")
-        RunHistory.report(cacheDir, task, RunHistory.fingerprint(props), metrics, format, enabled = RunHistory.enabled(props))
+    protected fun reportComparison(task: String, props: Map<String, String?>, snapshot: RunSnapshot, format: OutputFormat) {
+        RunHistory.report(project.projectDir, task, RunHistory.fingerprint(props), snapshot, format, HistoryOptions.from(props))
             ?.let { logger.quiet(it) }
     }
 

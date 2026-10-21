@@ -1,7 +1,9 @@
 package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.history.HistoryOptions
 import no.f12.codenavigator.history.RunHistory
+import no.f12.codenavigator.history.RunSnapshot
 import no.f12.codenavigator.config.CnavConfig
 import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.PlanStep
@@ -47,12 +49,12 @@ fun MavenProject.applyConfigDefaults(properties: Map<String, String?>): Map<Stri
     CnavConfig.applyDefaults(properties, basedir)
 
 /**
- * Prints how this analysis moved since its previous run (stored under target/cnav/history), unless
- * `-Dno-compare` was given. Call right after the mojo's own output so it also shows on runs that go on
+ * Prints how this analysis moved since an earlier run (stored under `<project>/.cnav/history`) and/or its trend,
+ * unless `-Dno-compare` was given. Call right after the mojo's own output so it also shows on runs that go on
  * to fail the build.
  */
-fun MavenProject.reportComparison(task: String, props: Map<String, String?>, metrics: Map<String, Double>, format: OutputFormat) {
-    RunHistory.report(File(build.directory, "cnav"), task, RunHistory.fingerprint(props), metrics, format, enabled = RunHistory.enabled(props))
+fun MavenProject.reportComparison(task: String, props: Map<String, String?>, snapshot: RunSnapshot, format: OutputFormat) {
+    RunHistory.report(basedir, task, RunHistory.fingerprint(props), snapshot, format, HistoryOptions.from(props))
         ?.let { println(it) }
 }
 

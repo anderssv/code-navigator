@@ -50,6 +50,14 @@ abstract class CyclesTask : WorkspaceAnalysisTask() {
     @get:Internal
     var noCompare: Boolean? = null
 
+    @Option(option = "compare-with", description = "Compare with an older run: a run count (3) or an age (12h, 7d, 2w)")
+    @get:Internal
+    var compareWith: String? = null
+
+    @Option(option = "trend", description = "Also show the trend over windows of this size (e.g. 7d)")
+    @get:Internal
+    var trend: String? = null
+
     override fun analysisOptionsMap(): Map<String, String?> = buildMap {
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
@@ -57,6 +65,8 @@ abstract class CyclesTask : WorkspaceAnalysisTask() {
         rootPackage?.let { put("root-package", it) }
         scope?.let { put("scope", it) }
         noCompare?.let { put("no-compare", "true") }
+        compareWith?.let { put("compare-with", it) }
+        trend?.let { put("trend", it) }
         failOnViolation?.let { put("fail-on-violation", it.toString()) }
         maxCycles?.let { put("max-cycles", it) }
     }

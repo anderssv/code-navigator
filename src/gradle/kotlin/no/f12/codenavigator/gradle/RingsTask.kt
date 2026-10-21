@@ -44,8 +44,18 @@ abstract class RingsTask : WorkspaceAnalysisTask() {
     @get:Internal
     var noCompare: Boolean? = null
 
+    @Option(option = "compare-with", description = "Compare with an older run: a run count (3) or an age (12h, 7d, 2w)")
+    @get:Internal
+    var compareWith: String? = null
+
+    @Option(option = "trend", description = "Also show the trend over windows of this size (e.g. 7d)")
+    @get:Internal
+    var trend: String? = null
+
     override fun analysisOptionsMap(): Map<String, String?> = buildMap {
         noCompare?.let { put("no-compare", "true") }
+        compareWith?.let { put("compare-with", it) }
+        trend?.let { put("trend", it) }
         scope?.let { put("scope", it) }
         mode?.let { put("mode", it) }
         bootstrapConfig?.let { put("bootstrap-config", "true") }

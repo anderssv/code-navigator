@@ -250,7 +250,9 @@ object TaskRegistry {
      * `--no-fail-on-violation` can still switch off a `cnav-config.json` default; FLAG's
      * presence-means-true parse would read that as on.
      */
-    val NO_COMPARE = ParamDef("no-compare", "true", "Don't compare with, or overwrite, the previous run's stored result. By default analysis tasks keep a small snapshot in build/cnav/history and print what changed since last time (e.g. 'cycles 3 → 4 (+1)')", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
+    val NO_COMPARE = ParamDef("no-compare", "true", "Don't compare with, or record to, the run history. By default analysis tasks keep their last 50 runs in .cnav/history and print what changed since the previous run (e.g. 'cycles 3 → 4 (+1)', with the specific cycles or violations that appeared or went away)", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
+    val COMPARE_WITH = ParamDef("compare-with", "<N|age>", "Compare with an older stored run instead of the previous one: a run count (3 = three runs back) or an age (12h, 7d, 2w = the newest run at least that old)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val TREND = ParamDef("trend", "<window>", "Also show the trend: the value now, one window ago and two windows ago (a window of 7d shows now, 7 days ago and 14 days ago)", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val FAIL_ON_VIOLATION = ParamDef("fail-on-violation", "", "Fail the build when violations exceed the configured threshold (no-fail-on-violation switches it back off)", flag = true, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val MAX_CYCLES = ParamDef("max-cycles", "<N>", "Max allowed cycles before failing the build (used with fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
     val MAX_VIOLATIONS = ParamDef("max-violations", "<N>", "Max allowed violations before failing the build (used with fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
@@ -322,7 +324,7 @@ object TaskRegistry {
     val FORMAT_PARAMS = listOf(FORMAT)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
     val PLAN_PARAMS = listOf(PLAN_FILE)
-    val COMPARE_PARAMS = listOf(NO_COMPARE)
+    val COMPARE_PARAMS = listOf(NO_COMPARE, COMPARE_WITH, TREND)
 
     // --- Task definitions ---
 
