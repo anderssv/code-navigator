@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.history.RunHistory
 import no.f12.codenavigator.config.CnavConfig
 import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.PlanStep
@@ -43,6 +45,16 @@ fun loadPlanSteps(planFile: String?): List<PlanStep> =
 /** Merges cnav-config.json's `defaults` section under [properties] — explicit mojo properties always win. See [CnavConfig]. */
 fun MavenProject.applyConfigDefaults(properties: Map<String, String?>): Map<String, String?> =
     CnavConfig.applyDefaults(properties, basedir)
+
+/**
+ * Prints how this analysis moved since its previous run (stored under target/cnav/history), unless
+ * `-Dno-compare` was given. Call right after the mojo's own output so it also shows on runs that go on
+ * to fail the build.
+ */
+fun MavenProject.reportComparison(task: String, props: Map<String, String?>, metrics: Map<String, Double>, format: OutputFormat) {
+    RunHistory.report(File(build.directory, "cnav"), task, RunHistory.fingerprint(props), metrics, format, enabled = RunHistory.enabled(props))
+        ?.let { println(it) }
+}
 
 fun MavenProject.resolveJar(jarValue: String): File {
     if (isArtifactCoordinate(jarValue)) {

@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -54,10 +55,14 @@ class DsmMojo : AbstractMojo() {
     @Parameter(property = "plan-file")
     private var planFile: String? = null
 
+    @Parameter(property = "no-compare")
+    private var noCompare: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = DsmConfig.parse(TaskRegistry.DSM.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val props = TaskRegistry.DSM.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val config = DsmConfig.parse(props)
         config.deprecations().forEach { log.warn(it) }
 
         val taggedDirs = project.taggedClassDirectories()
@@ -78,6 +83,7 @@ class DsmMojo : AbstractMojo() {
             val packageCount = output.projectClasses.map { it.packageName() }.distinct().size
             val hints = DsmFormatter.noResultsHints(packageCount)
             println(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
+            project.reportComparison("dsm", props, RunMetrics.dsm(matrix), config.format)
             return
         }
 
@@ -88,6 +94,7 @@ class DsmMojo : AbstractMojo() {
         OutputFormat.LLM -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCyclesLlm(matrix, config.cycleFilter) else DsmFormatter.formatLlm(matrix)
     }
 })
+        project.reportComparison("dsm", props, RunMetrics.dsm(matrix), config.format)
 
         if (config.htmlPath != null) {
             val htmlFile = File(project.basedir, config.htmlPath)
@@ -98,6 +105,7 @@ class DsmMojo : AbstractMojo() {
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", it) }
         format?.let { put("format", it) }
         rootPackage?.let { put("root-package", it) }
         packageFilter?.let { put("package-filter", it) }

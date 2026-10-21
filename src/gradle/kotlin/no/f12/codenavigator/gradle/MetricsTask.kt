@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -54,7 +55,12 @@ abstract class MetricsTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
+    @Option(option = "no-compare", description = "Don't compare with, or overwrite, the previous run's stored result")
+    @get:Internal
+    var noCompare: Boolean? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", "true") }
         after?.let { put("after", it) }
         top?.let { put("top", it) }
         if (noFollow) put("no-follow", "true")
@@ -91,5 +97,6 @@ abstract class MetricsTask : CodeNavigatorTask() {
         OutputFormat.LLM -> MetricsFormatter.formatLlm(metrics)
     }
 })
+        reportComparison("metrics", props, RunMetrics.metrics(metrics), config.format)
     }
 }

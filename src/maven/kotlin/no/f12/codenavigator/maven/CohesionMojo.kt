@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.formatting.DsmOutputFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.CohesionConfig
@@ -35,10 +36,14 @@ class CohesionMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "no-compare")
+    private var noCompare: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = CohesionConfig.parse(TaskRegistry.COHESION.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val props = TaskRegistry.COHESION.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val config = CohesionConfig.parse(props)
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
@@ -54,9 +59,11 @@ class CohesionMojo : AbstractMojo() {
 
         output.skippedFileWarning?.let { log.warn(it) }
         DsmOutputFormatter.format(output, config.format)?.let { println(it) }
+        project.reportComparison("cohesion", props, RunMetrics.cohesion(output.result), config.format)
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", it) }
         format?.let { put("format", it) }
         packageFilter?.let { put("package-filter", it) }
         top?.let { put("top", it) }

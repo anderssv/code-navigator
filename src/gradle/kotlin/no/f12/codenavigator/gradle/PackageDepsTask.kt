@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -33,7 +34,12 @@ abstract class PackageDepsTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
+    @Option(option = "no-compare", description = "Don't compare with, or overwrite, the previous run's stored result")
+    @get:Internal
+    var noCompare: Boolean? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", "true") }
         pkg?.let { put("package", it) }
         projectOnly?.let { put("project-only", it) }
         reverse?.let { put("reverse", it) }
@@ -42,9 +48,8 @@ abstract class PackageDepsTask : CodeNavigatorTask() {
 
     @TaskAction
     fun showDeps() {
-        val config = PackageDepsConfig.parse(
-            TaskRegistry.PACKAGE_DEPS.enhanceProperties(buildOptionsMap()),
-        )
+        val props = TaskRegistry.PACKAGE_DEPS.enhanceProperties(buildOptionsMap())
+        val config = PackageDepsConfig.parse(props)
 
         val buildDir = project.layout.buildDirectory.asFile.get()
         val output = PackageDepsOrchestrator.run(
@@ -57,6 +62,7 @@ abstract class PackageDepsTask : CodeNavigatorTask() {
 
         if (output.emptyMessage != null) {
             logger.quiet(OutputWrapper.emptyResult(config.format, output.emptyMessage, output.emptyHints))
+            reportComparison("package-deps", props, RunMetrics.packageDeps(output.deps, output.packages), config.format)
             return
         }
 
@@ -69,5 +75,6 @@ abstract class PackageDepsTask : CodeNavigatorTask() {
                 }
             },
         )
+        reportComparison("package-deps", props, RunMetrics.packageDeps(output.deps, output.packages), config.format)
     }
 }

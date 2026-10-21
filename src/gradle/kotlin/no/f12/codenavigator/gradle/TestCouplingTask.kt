@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.BuildTool
@@ -55,7 +56,12 @@ abstract class TestCouplingTask : CodeNavigatorTask() {
     @get:Internal
     var maxViolations: String? = null
 
+    @Option(option = "no-compare", description = "Don't compare with, or overwrite, the previous run's stored result")
+    @get:Internal
+    var noCompare: Boolean? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", "true") }
         ports?.let { put("ports", it) }
         detail?.let { put("detail", it) }
         exclude?.let { put("exclude", it) }
@@ -103,6 +109,7 @@ abstract class TestCouplingTask : CodeNavigatorTask() {
                 config.format,
                 TestCouplingGuidance.GUIDANCE,
             ))
+            reportComparison("test-coupling", properties, RunMetrics.testCoupling(result), config.format)
             return
         }
 
@@ -116,6 +123,7 @@ abstract class TestCouplingTask : CodeNavigatorTask() {
             config.format,
             guidance,
         ))
+        reportComparison("test-coupling", properties, RunMetrics.testCoupling(result), config.format)
 
         if (config.failOnViolation && result.actionableViolations.size > config.maxViolations) {
             throw GradleException(

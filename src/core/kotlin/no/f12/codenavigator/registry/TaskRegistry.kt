@@ -250,6 +250,7 @@ object TaskRegistry {
      * `--no-fail-on-violation` can still switch off a `cnav-config.json` default; FLAG's
      * presence-means-true parse would read that as on.
      */
+    val NO_COMPARE = ParamDef("no-compare", "true", "Don't compare with, or overwrite, the previous run's stored result. By default analysis tasks keep a small snapshot in build/cnav/history and print what changed since last time (e.g. 'cycles 3 → 4 (+1)')", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val FAIL_ON_VIOLATION = ParamDef("fail-on-violation", "", "Fail the build when violations exceed the configured threshold (no-fail-on-violation switches it back off)", flag = true, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
     val MAX_CYCLES = ParamDef("max-cycles", "<N>", "Max allowed cycles before failing the build (used with fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
     val MAX_VIOLATIONS = ParamDef("max-violations", "<N>", "Max allowed violations before failing the build (used with fail-on-violation)", flag = false, defaultValue = "0", enhancePattern = false, type = ParamType.INT)
@@ -321,6 +322,7 @@ object TaskRegistry {
     val FORMAT_PARAMS = listOf(FORMAT)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
     val PLAN_PARAMS = listOf(PLAN_FILE)
+    val COMPARE_PARAMS = listOf(NO_COMPARE)
 
     // --- Task definitions ---
 
@@ -455,7 +457,7 @@ object TaskRegistry {
     val PACKAGE_DEPS = TaskDef(
         goal = "package-deps",
         description = "Show package-level dependencies",
-        params = FORMAT_PARAMS + listOf(PACKAGE, PROJECTONLY, REVERSE) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE, PROJECTONLY, REVERSE) + SOURCE_SET_PARAMS + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavDeps",
@@ -483,7 +485,7 @@ object TaskRegistry {
     val DSM = TaskDef(
         goal = "dsm",
         description = "Generate Dependency Structure Matrix",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE, ROOT_PACKAGE) + SOURCE_SET_PARAMS + PLAN_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, DSM_HTML, CYCLES, CYCLE, ROOT_PACKAGE) + SOURCE_SET_PARAMS + PLAN_PARAMS + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
@@ -499,7 +501,7 @@ object TaskRegistry {
     val CYCLE_DETECTION = TaskDef(
         goal = "cycles",
         description = "Detect dependency cycles using Tarjan's SCC algorithm. Supports fail-on-violation for CI gating.",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE, FAIL_ON_VIOLATION, MAX_CYCLES) + SOURCE_SET_PARAMS + PLAN_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, ROOT_PACKAGE, FAIL_ON_VIOLATION, MAX_CYCLES) + SOURCE_SET_PARAMS + PLAN_PARAMS + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
@@ -554,7 +556,7 @@ object TaskRegistry {
     val DEAD = TaskDef(
         goal = "dead",
         description = "Detect dead code (unreferenced classes and methods)",
-        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, SCOPE, TREAT_AS_DEAD, BASELINE, MIN_CONFIDENCE, INCLUDE_SUPPRESSED),
+        params = FORMAT_PARAMS + listOf(FILTER, EXCLUDE, CLASSES_ONLY, EXCLUDE_ANNOTATED, SCOPE, TREAT_AS_DEAD, BASELINE, MIN_CONFIDENCE, INCLUDE_SUPPRESSED) + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         requiresTestCompilation = true,
@@ -638,7 +640,7 @@ object TaskRegistry {
     val COMPLEXITY = TaskDef(
         goal = "complexity",
         description = "Show fan-in/fan-out complexity per class",
-        params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY, DETAIL, COLLAPSE_LAMBDAS, TOP, SCOPE),
+        params = FORMAT_PARAMS + listOf(PATTERN, PROJECTONLY, DETAIL, COLLAPSE_LAMBDAS, TOP, SCOPE) + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
@@ -665,7 +667,7 @@ object TaskRegistry {
     val METRICS = TaskDef(
         goal = "metrics",
         description = "Quick project health snapshot: classes, packages, fan-in/out, cycles, dead code, hotspots",
-        params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, PACKAGE_FILTER, INCLUDE_EXTERNAL, EXCLUDE_ANNOTATED, TREAT_AS_DEAD, ROOT_PACKAGE) + SOURCE_SET_PARAMS + PLAN_PARAMS,
+        params = FORMAT_PARAMS + listOf(AFTER, METRICS_TOP, NO_FOLLOW, PACKAGE_FILTER, INCLUDE_EXTERNAL, EXCLUDE_ANNOTATED, TREAT_AS_DEAD, ROOT_PACKAGE) + SOURCE_SET_PARAMS + PLAN_PARAMS + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
@@ -778,7 +780,7 @@ object TaskRegistry {
     val STRENGTH = TaskDef(
         goal = "strength",
         description = "Classify integration strength of inter-package dependencies",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP) + SOURCE_SET_PARAMS + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         paramDefaultOverrides = mapOf("top" to "all"),
@@ -792,7 +794,7 @@ object TaskRegistry {
     val COHESION = TaskDef(
         goal = "cohesion",
         description = "Score package cohesion: ratio of internal to total class dependencies per package",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP, MIN_EDGES) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP, MIN_EDGES) + SOURCE_SET_PARAMS + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         paramDefaultOverrides = mapOf("top" to "all"),
@@ -849,7 +851,7 @@ object TaskRegistry {
     val BALANCE = TaskDef(
         goal = "balance",
         description = "Composite balanced coupling analysis: strength × distance × volatility",
-        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP, AFTER, MIN_REVS, NO_FOLLOW) + SOURCE_SET_PARAMS + PLAN_PARAMS,
+        params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, INCLUDE_EXTERNAL, DSM_DEPTH, TOP, AFTER, MIN_REVS, NO_FOLLOW) + SOURCE_SET_PARAMS + PLAN_PARAMS + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.COMPOSITE,
         paramDefaultOverrides = mapOf("top" to "all"),
@@ -863,7 +865,7 @@ object TaskRegistry {
     val RINGS = TaskDef(
         goal = "rings",
         description = "Detect hexagonal architecture rings and report violations. Rings are derived from dependency inversions (a port implemented by a class that does I/O), so the ring count is emergent, not fixed — code with no inversion anywhere reports a single ring and says so. Violations are inner classes reaching outward across a boundary; same-ring edges are peers, not violations. Composition roots are excluded. Supports fail-on-violation for CI gating.",
-        params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE, BOOTSTRAP_CONFIG, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + PLAN_PARAMS,
+        params = FORMAT_PARAMS + SOURCE_SET_PARAMS + listOf(RING_MODE, BOOTSTRAP_CONFIG, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + PLAN_PARAMS + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
@@ -1058,7 +1060,7 @@ object TaskRegistry {
     val TEST_COUPLING = TaskDef(
         goal = "test-coupling",
         description = "Detect callers that bypass domain services by calling port interface methods directly. subject=tests (default) is the original TTTD check; subject=adapters checks driving adapters (routes/controllers) for use-case orchestration hiding behind a direct port WRITE call, invisible to rings (an adapter calling a port is exactly what dependency-direction analysis permits)",
-        params = FORMAT_PARAMS + listOf(PORTS, DETAIL, EXCLUDE, COUPLING_SUBJECT, WRITE_METHODS, READ_METHODS, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + SOURCE_SET_PARAMS,
+        params = FORMAT_PARAMS + listOf(PORTS, DETAIL, EXCLUDE, COUPLING_SUBJECT, WRITE_METHODS, READ_METHODS, FAIL_ON_VIOLATION, MAX_VIOLATIONS) + SOURCE_SET_PARAMS + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(

@@ -3,6 +3,7 @@ package no.f12.codenavigator.gradle
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.CyclesConfig
 import no.f12.codenavigator.navigation.dsm.CyclesFormatter
@@ -45,12 +46,17 @@ abstract class CyclesTask : WorkspaceAnalysisTask() {
     @get:Internal
     var maxCycles: String? = null
 
+    @Option(option = "no-compare", description = "Don't compare with, or overwrite, the previous run's stored result")
+    @get:Internal
+    var noCompare: Boolean? = null
+
     override fun analysisOptionsMap(): Map<String, String?> = buildMap {
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
         dsmDepth?.let { put("dsm-depth", it) }
         rootPackage?.let { put("root-package", it) }
         scope?.let { put("scope", it) }
+        noCompare?.let { put("no-compare", "true") }
         failOnViolation?.let { put("fail-on-violation", it.toString()) }
         maxCycles?.let { put("max-cycles", it) }
     }
@@ -72,6 +78,7 @@ abstract class CyclesTask : WorkspaceAnalysisTask() {
 
         if (output.details.isEmpty()) {
             logger.quiet(OutputWrapper.emptyResult(config.format, "No package cycles detected."))
+            reportComparison("cycles", props, RunMetrics.cycles(output.details), config.format)
             return
         }
 
@@ -82,6 +89,7 @@ abstract class CyclesTask : WorkspaceAnalysisTask() {
         OutputFormat.LLM -> CyclesFormatter.formatLlm(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement, moduleLabels = output.moduleLabels)
     }
 })
+        reportComparison("cycles", props, RunMetrics.cycles(output.details), config.format)
 
         if (config.failOnViolation && output.details.size > config.maxCycles) {
             throw GradleException("cnavCycles found ${output.details.size} cycle(s), exceeding --max-cycles=${config.maxCycles}")

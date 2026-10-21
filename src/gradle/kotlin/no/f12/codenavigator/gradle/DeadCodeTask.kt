@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -58,7 +59,12 @@ abstract class DeadCodeTask : WorkspaceAnalysisTask() {
     @get:Internal
     var includeSuppressed: Boolean = false
 
+    @Option(option = "no-compare", description = "Don't compare with, or overwrite, the previous run's stored result")
+    @get:Internal
+    var noCompare: Boolean? = null
+
     override fun analysisOptionsMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", "true") }
         filter?.let { put("filter", it) }
         exclude?.let { put("exclude", it) }
         if (classesOnly) put("classes-only", "true")
@@ -72,9 +78,8 @@ abstract class DeadCodeTask : WorkspaceAnalysisTask() {
 
     @TaskAction
     fun showDeadCode() {
-        val config = DeadCodeConfig.parse(
-            TaskRegistry.DEAD.enhanceProperties(buildOptionsMap()),
-        )
+        val props = TaskRegistry.DEAD.enhanceProperties(buildOptionsMap())
+        val config = DeadCodeConfig.parse(props)
 
         val workspace = resolveAnalysisWorkspace()
         val classDirectories = workspace.classDirectories(Scope.PROD)
@@ -115,6 +120,7 @@ abstract class DeadCodeTask : WorkspaceAnalysisTask() {
 
         if (dead.isEmpty()) {
             logger.quiet(OutputWrapper.emptyResult(config.format, "No potential dead code found."))
+            reportComparison("dead", props, RunMetrics.dead(dead), config.format)
             return
         }
 
@@ -133,6 +139,7 @@ abstract class DeadCodeTask : WorkspaceAnalysisTask() {
         OutputFormat.LLM -> DeadCodeBaselineDiffFormatter.format(diff)
     }
 })
+            reportComparison("dead", props, RunMetrics.dead(dead), config.format)
             return
         }
 
@@ -143,5 +150,6 @@ abstract class DeadCodeTask : WorkspaceAnalysisTask() {
         OutputFormat.LLM -> DeadCodeFormatter.formatLlm(dead, config.scope)
     }
 })
+        reportComparison("dead", props, RunMetrics.dead(dead), config.format)
     }
 }

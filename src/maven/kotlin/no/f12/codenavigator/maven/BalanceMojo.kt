@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.formatting.DsmOutputFormatter
 import no.f12.codenavigator.navigation.dsm.BalanceConfig
 import no.f12.codenavigator.navigation.dsm.BalanceOrchestrator
@@ -50,10 +51,14 @@ class BalanceMojo : AbstractMojo() {
     @Parameter(property = "no-follow")
     private var noFollow: Boolean = false
 
+    @Parameter(property = "no-compare")
+    private var noCompare: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = BalanceConfig.parse(TaskRegistry.BALANCE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val props = TaskRegistry.BALANCE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val config = BalanceConfig.parse(props)
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }
@@ -69,9 +74,11 @@ class BalanceMojo : AbstractMojo() {
 
         output.skippedFileWarning?.let { log.warn(it) }
         DsmOutputFormatter.format(output, config.format)?.let { println(it) }
+        project.reportComparison("balance", props, RunMetrics.balance(output.result), config.format)
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", it) }
         format?.let { put("format", it) }
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }

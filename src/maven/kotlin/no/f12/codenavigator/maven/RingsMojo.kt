@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.navigation.dsm.HexRingFormatter
@@ -46,6 +47,9 @@ class RingsMojo : AbstractMojo() {
     @Parameter(property = "max-violations")
     private var maxViolations: String? = null
 
+    @Parameter(property = "no-compare")
+    private var noCompare: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -78,6 +82,7 @@ class RingsMojo : AbstractMojo() {
         }
 
         println(OutputWrapper.wrap(output, outputFormat))
+        (analysis as? RingsAnalysis.Hexagonal)?.let { project.reportComparison("rings", props, RunMetrics.rings(it.output), outputFormat) }
 
         if (failOnViolationVal && violationCount > maxViolationsVal) {
             throw MojoFailureException("cnav:rings found $violationCount violation(s), exceeding --max-violations=$maxViolationsVal")
@@ -90,6 +95,7 @@ class RingsMojo : AbstractMojo() {
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", it) }
         format?.let { put("format", it) }
         scope?.let { put("scope", it) }
         planFile?.let { put("plan-file", it) }

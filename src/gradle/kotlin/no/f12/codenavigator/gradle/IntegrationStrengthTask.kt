@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.formatting.DsmOutputFormatter
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.dsm.StrengthConfig
@@ -34,7 +35,12 @@ abstract class IntegrationStrengthTask : WorkspaceAnalysisTask() {
     @get:Internal
     var scope: String? = null
 
+    @Option(option = "no-compare", description = "Don't compare with, or overwrite, the previous run's stored result")
+    @get:Internal
+    var noCompare: Boolean? = null
+
     override fun analysisOptionsMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", "true") }
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
         dsmDepth?.let { put("dsm-depth", it) }
@@ -66,5 +72,6 @@ abstract class IntegrationStrengthTask : WorkspaceAnalysisTask() {
 
         output.skippedFileWarning?.let { logger.warn(it) }
         DsmOutputFormatter.format(output, config.format)?.let { logger.quiet(it) }
+        reportComparison("strength", props, RunMetrics.strength(output.result), config.format)
     }
 }

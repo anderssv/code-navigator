@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -38,10 +39,14 @@ class PackageDepsMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "no-compare")
+    private var noCompare: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = PackageDepsConfig.parse(TaskRegistry.PACKAGE_DEPS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val props = TaskRegistry.PACKAGE_DEPS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val config = PackageDepsConfig.parse(props)
 
         val taggedDirs = project.taggedClassDirectories()
         if (taggedDirs.none { config.scope.matchesSourceSet(it.second) && it.first.exists() }) {
@@ -55,6 +60,7 @@ class PackageDepsMojo : AbstractMojo() {
 
         if (output.emptyMessage != null) {
             println(OutputWrapper.emptyResult(config.format, output.emptyMessage, output.emptyHints))
+            project.reportComparison("package-deps", props, RunMetrics.packageDeps(output.deps, output.packages), config.format)
             return
         }
 
@@ -67,9 +73,11 @@ class PackageDepsMojo : AbstractMojo() {
                 }
             },
         )
+        project.reportComparison("package-deps", props, RunMetrics.packageDeps(output.deps, output.packages), config.format)
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", it) }
         format?.let { put("format", it) }
         packagePattern?.let { put("package", it) }
         projectOnly?.let { put("project-only", it) }

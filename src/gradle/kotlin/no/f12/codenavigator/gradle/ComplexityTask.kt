@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -45,7 +46,12 @@ abstract class ComplexityTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
+    @Option(option = "no-compare", description = "Don't compare with, or overwrite, the previous run's stored result")
+    @get:Internal
+    var noCompare: Boolean? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", "true") }
         pattern?.let { put("pattern", it) }
         projectOnly?.let { put("project-only", it) }
         detail?.let { put("detail", it) }
@@ -56,9 +62,8 @@ abstract class ComplexityTask : CodeNavigatorTask() {
 
     @TaskAction
     fun showComplexity() {
-        val config = ComplexityConfig.parse(
-            TaskRegistry.COMPLEXITY.enhanceProperties(buildOptionsMap()),
-        )
+        val props = TaskRegistry.COMPLEXITY.enhanceProperties(buildOptionsMap())
+        val config = ComplexityConfig.parse(props)
 
         val taggedDirs = project.taggedClassDirectories()
 
@@ -79,6 +84,7 @@ abstract class ComplexityTask : CodeNavigatorTask() {
 
         if (truncated.isEmpty()) {
             logger.quiet(OutputWrapper.emptyResult(config.format, "No matching classes found."))
+            reportComparison("complexity", props, RunMetrics.complexity(filtered), config.format)
             return
         }
 
@@ -89,5 +95,6 @@ abstract class ComplexityTask : CodeNavigatorTask() {
         OutputFormat.LLM -> ComplexityFormatter.formatLlm(truncated)
     }
 })
+        reportComparison("complexity", props, RunMetrics.complexity(filtered), config.format)
     }
 }

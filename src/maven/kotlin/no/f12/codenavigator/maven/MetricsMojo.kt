@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -57,6 +58,9 @@ class MetricsMojo : AbstractMojo() {
     @Parameter(property = "plan-file")
     private var planFile: String? = null
 
+    @Parameter(property = "no-compare")
+    private var noCompare: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -81,9 +85,11 @@ class MetricsMojo : AbstractMojo() {
         OutputFormat.LLM -> MetricsFormatter.formatLlm(metrics)
     }
 })
+        project.reportComparison("metrics", props, RunMetrics.metrics(metrics), config.format)
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", it) }
         format?.let { put("format", it) }
         after?.let { put("after", it) }
         top?.let { put("top", it) }

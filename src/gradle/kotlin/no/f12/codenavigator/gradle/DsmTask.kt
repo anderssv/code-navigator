@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -49,7 +50,12 @@ abstract class DsmTask : WorkspaceAnalysisTask() {
     @get:Internal
     var scope: String? = null
 
+    @Option(option = "no-compare", description = "Don't compare with, or overwrite, the previous run's stored result")
+    @get:Internal
+    var noCompare: Boolean? = null
+
     override fun analysisOptionsMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", "true") }
         packageFilter?.let { put("package-filter", it) }
         includeExternal?.let { put("include-external", it) }
         dsmDepth?.let { put("dsm-depth", it) }
@@ -81,6 +87,7 @@ abstract class DsmTask : WorkspaceAnalysisTask() {
             val packageCount = output.projectClasses.map { it.packageName() }.distinct().size
             val hints = DsmFormatter.noResultsHints(packageCount)
             logger.quiet(OutputWrapper.emptyResult(config.format, "No inter-package dependencies found.", hints))
+            reportComparison("dsm", props, RunMetrics.dsm(matrix), config.format)
             return
         }
 
@@ -91,6 +98,7 @@ abstract class DsmTask : WorkspaceAnalysisTask() {
         OutputFormat.LLM -> if (config.cyclesOnly || config.cycleFilter != null) DsmFormatter.formatCyclesLlm(matrix, config.cycleFilter) else DsmFormatter.formatLlm(matrix, output.moduleLabels)
     }
 })
+        reportComparison("dsm", props, RunMetrics.dsm(matrix), config.format)
 
         if (config.htmlPath != null) {
             val htmlFile = project.file(config.htmlPath)

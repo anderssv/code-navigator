@@ -1,5 +1,6 @@
 package no.f12.codenavigator.gradle
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.ParamDef
@@ -39,7 +40,12 @@ abstract class RingsTask : WorkspaceAnalysisTask() {
     @get:Internal
     var maxViolations: String? = null
 
+    @Option(option = "no-compare", description = "Don't compare with, or overwrite, the previous run's stored result")
+    @get:Internal
+    var noCompare: Boolean? = null
+
     override fun analysisOptionsMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", "true") }
         scope?.let { put("scope", it) }
         mode?.let { put("mode", it) }
         bootstrapConfig?.let { put("bootstrap-config", "true") }
@@ -74,6 +80,7 @@ abstract class RingsTask : WorkspaceAnalysisTask() {
         }
 
         logger.quiet(OutputWrapper.wrap(output, format))
+        (analysis as? RingsAnalysis.Hexagonal)?.let { reportComparison("rings", props, RunMetrics.rings(it.output), format) }
 
         if (failOnViolationVal && violationCount > maxViolationsVal) {
             throw GradleException("cnavRings found $violationCount violation(s), exceeding --max-violations=$maxViolationsVal")

@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -57,6 +58,9 @@ class DeadCodeMojo : AbstractMojo() {
     @Parameter(property = "include-suppressed")
     private var includeSuppressed: String? = null
 
+    @Parameter(property = "no-compare")
+    private var noCompare: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -66,7 +70,8 @@ class DeadCodeMojo : AbstractMojo() {
             return
         }
 
-        val config = DeadCodeConfig.parse(TaskRegistry.DEAD.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val props = TaskRegistry.DEAD.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val config = DeadCodeConfig.parse(props)
 
         val cacheDir = File(project.build.directory, "cnav")
         val result = CallGraphCache.getOrBuild(File(cacheDir, "call-graph.cache"), listOf(classesDir))
@@ -100,6 +105,7 @@ class DeadCodeMojo : AbstractMojo() {
 
         if (dead.isEmpty()) {
             println(OutputWrapper.emptyResult(config.format, "No potential dead code found."))
+            project.reportComparison("dead", props, RunMetrics.dead(dead), config.format)
             return
         }
 
@@ -118,6 +124,7 @@ class DeadCodeMojo : AbstractMojo() {
         OutputFormat.LLM -> DeadCodeBaselineDiffFormatter.format(diff)
     }
 })
+            project.reportComparison("dead", props, RunMetrics.dead(dead), config.format)
             return
         }
 
@@ -128,9 +135,11 @@ class DeadCodeMojo : AbstractMojo() {
         OutputFormat.LLM -> DeadCodeFormatter.formatLlm(dead, config.scope)
     }
 })
+        project.reportComparison("dead", props, RunMetrics.dead(dead), config.format)
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", it) }
         format?.let { put("format", it) }
         filter?.let { put("filter", it) }
         exclude?.let { put("exclude", it) }

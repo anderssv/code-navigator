@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -51,6 +52,9 @@ class CyclesMojo : AbstractMojo() {
     @Parameter(property = "max-cycles")
     private var maxCycles: String? = null
 
+    @Parameter(property = "no-compare")
+    private var noCompare: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -73,6 +77,7 @@ class CyclesMojo : AbstractMojo() {
 
         if (output.details.isEmpty()) {
             println(OutputWrapper.emptyResult(config.format, "No package cycles detected."))
+            project.reportComparison("cycles", props, RunMetrics.cycles(output.details), config.format)
             return
         }
 
@@ -83,6 +88,7 @@ class CyclesMojo : AbstractMojo() {
         OutputFormat.LLM -> CyclesFormatter.formatLlm(output.details, displayPrefix = output.displayPrefix, testInvolvement = output.testInvolvement, moduleLabels = output.moduleLabels)
     }
 })
+        project.reportComparison("cycles", props, RunMetrics.cycles(output.details), config.format)
 
         if (config.failOnViolation && output.details.size > config.maxCycles) {
             throw MojoFailureException("cnav:cycles found ${output.details.size} cycle(s), exceeding --max-cycles=${config.maxCycles}")
@@ -90,6 +96,7 @@ class CyclesMojo : AbstractMojo() {
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", it) }
         format?.let { put("format", it) }
         rootPackage?.let { put("root-package", it) }
         packageFilter?.let { put("package-filter", it) }

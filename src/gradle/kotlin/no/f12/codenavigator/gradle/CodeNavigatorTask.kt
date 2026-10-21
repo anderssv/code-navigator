@@ -1,6 +1,8 @@
 package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.config.CnavConfig
+import no.f12.codenavigator.config.OutputFormat
+import no.f12.codenavigator.history.RunHistory
 import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.PlanStep
 import no.f12.codenavigator.navigation.dsm.PackageDependency
@@ -70,6 +72,17 @@ abstract class CodeNavigatorTask : DefaultTask() {
     protected fun loadPlanSteps(): List<no.f12.codenavigator.navigation.dsm.PlanStep> {
         val path = planFile ?: return emptyList()
         return PlanMutator.parseFile(project.file(path))
+    }
+
+    /**
+     * Prints how this analysis moved since its previous run (stored under build/cnav/history), unless
+     * `--no-compare` was given. Call right after the task's own output so it also shows on runs that
+     * go on to fail the build.
+     */
+    protected fun reportComparison(task: String, props: Map<String, String?>, metrics: Map<String, Double>, format: OutputFormat) {
+        val cacheDir = File(project.layout.buildDirectory.asFile.get(), "cnav")
+        RunHistory.report(cacheDir, task, RunHistory.fingerprint(props), metrics, format, enabled = RunHistory.enabled(props))
+            ?.let { logger.quiet(it) }
     }
 
     /** Resolve single- or multi-module inputs once, before the analysis orchestrator runs. */

@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.OutputWrapper
 import no.f12.codenavigator.registry.TaskRegistry
@@ -54,10 +55,14 @@ class TestCouplingMojo : AbstractMojo() {
     @Parameter(property = "max-violations")
     private var maxViolations: String? = null
 
+    @Parameter(property = "no-compare")
+    private var noCompare: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = TestCouplingTaskConfig.parse(TaskRegistry.TEST_COUPLING.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val props = TaskRegistry.TEST_COUPLING.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val config = TestCouplingTaskConfig.parse(props)
 
         val taggedDirs = project.taggedClassDirectories()
         val classDirectories = taggedDirs.map { it.first }
@@ -91,6 +96,7 @@ class TestCouplingMojo : AbstractMojo() {
                 config.format,
                 TestCouplingGuidance.GUIDANCE,
             ))
+            project.reportComparison("test-coupling", props, RunMetrics.testCoupling(result), config.format)
             return
         }
 
@@ -104,6 +110,7 @@ class TestCouplingMojo : AbstractMojo() {
             config.format,
             guidance,
         ))
+        project.reportComparison("test-coupling", props, RunMetrics.testCoupling(result), config.format)
 
         if (config.failOnViolation && result.actionableViolations.size > config.maxViolations) {
             throw MojoFailureException(
@@ -113,6 +120,7 @@ class TestCouplingMojo : AbstractMojo() {
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", it) }
         format?.let { put("format", it) }
         ports?.let { put("ports", it) }
         detail?.let { put("detail", it) }

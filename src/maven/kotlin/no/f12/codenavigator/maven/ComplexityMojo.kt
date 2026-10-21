@@ -1,5 +1,6 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.history.RunMetrics
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
@@ -48,6 +49,9 @@ class ComplexityMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "no-compare")
+    private var noCompare: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -57,8 +61,9 @@ class ComplexityMojo : AbstractMojo() {
             return
         }
 
+        val props = TaskRegistry.COMPLEXITY.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
         val config = try {
-            ComplexityConfig.parse(TaskRegistry.COMPLEXITY.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            ComplexityConfig.parse(props)
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(e.message)
         }
@@ -79,6 +84,7 @@ class ComplexityMojo : AbstractMojo() {
 
         if (truncated.isEmpty()) {
             println(OutputWrapper.emptyResult(config.format, "No matching classes found."))
+            project.reportComparison("complexity", props, RunMetrics.complexity(filtered), config.format)
             return
         }
 
@@ -89,9 +95,11 @@ class ComplexityMojo : AbstractMojo() {
         OutputFormat.LLM -> ComplexityFormatter.formatLlm(truncated)
     }
 })
+        project.reportComparison("complexity", props, RunMetrics.complexity(filtered), config.format)
     }
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
+        noCompare?.let { put("no-compare", it) }
         pattern?.let { put("pattern", it) }
         projectOnly?.let { put("project-only", it) }
         detail?.let { put("detail", it) }

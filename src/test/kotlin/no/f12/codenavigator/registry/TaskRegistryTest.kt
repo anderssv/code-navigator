@@ -1065,6 +1065,7 @@ class TaskRegistryTest {
             "include-impls" to ParamType.FLAG,
             "ports" to ParamType.STRING,
             "subject" to ParamType.STRING,
+            "no-compare" to ParamType.FLAG,
             "domain" to ParamType.STRING,
             "categories" to ParamType.LIST_STRING,
             "write-methods" to ParamType.LIST_STRING,
