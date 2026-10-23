@@ -36,6 +36,30 @@ class MoveFileRewriterTest {
     }
 
     @Test
+    fun `move file with no Kotlin sources under the roots says so`() {
+        val empty = java.nio.file.Files.createTempDirectory("cnav-empty-src").toFile()
+
+        val result = MoveFileRewriter.move(listOf(empty), "com/example/Foo.kt", "com.example.other", preview = true)
+
+        val error = result.error
+        assertTrue(error != null && error.contains("No Kotlin") && error.contains(empty.path), "got: $error")
+    }
+
+    @Test
+    fun `move file with a path matching no scanned file says which file was not found`() {
+        val result = MoveFileRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            fromFile = "does/not/exist/Foo.kt",
+            toPackage = "com.example.new",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+        )
+
+        val error = result.error
+        assertTrue(error != null && error.contains("does/not/exist/Foo.kt") && error.contains("not found"), "got: $error")
+    }
+
+    @Test
     fun `move file with non-existent path returns no changes`() {
         val result = MoveFileRewriter.move(
             sourceRoots = listOf(testProjectSrc),

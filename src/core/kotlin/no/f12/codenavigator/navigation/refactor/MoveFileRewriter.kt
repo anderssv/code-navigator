@@ -15,10 +15,10 @@ object MoveFileRewriter {
     ): MoveClassResult {
         val ps = parsedSources ?: run {
             val sourceFiles = collectSourceFiles(sourceRoots)
-            if (sourceFiles.isEmpty()) return MoveClassResult(emptyList())
+            if (sourceFiles.isEmpty()) return MoveClassResult(emptyList(), error = SourceScanMessages.noSources(sourceRoots))
             parseKotlinSources(sourceRoots, classpath)
         }
-        if (ps.sources.isEmpty()) return MoveClassResult(emptyList())
+        if (ps.sources.isEmpty()) return MoveClassResult(emptyList(), error = SourceScanMessages.noSources(sourceRoots))
 
         // Find the source file matching the given path
         val normalizedFrom = fromFile.replace("\\", "/")
@@ -28,7 +28,7 @@ object MoveFileRewriter {
             normalizedFilePath == normalizedFrom ||
                 normalizedFilePath.endsWith("/$normalizedFrom") ||
                 normalizedFilePath.endsWith(normalizedFrom)
-        } ?: return MoveClassResult(emptyList())
+        } ?: return MoveClassResult(emptyList(), error = SourceScanMessages.fileNotFound(fromFile, ps.sources.size, sourceRoots))
 
         val filePath = resolveOriginalPath(resolvedFile, ps.sourceRoots)
         val content = resolvedFile.printAll()

@@ -241,6 +241,20 @@ class MoveClassRewriterBatchTest {
     }
 
     @Test
+    fun `batch move with no Kotlin sources reports the problem on every step`() {
+        val empty = java.nio.file.Files.createTempDirectory("cnav-empty-src").toFile()
+
+        val results = MoveClassRewriter.moveBatch(
+            sourceRoots = listOf(empty),
+            moves = listOf(BatchMoveRequest("com.example.A", "com.example.x.A"), BatchMoveRequest("com.example.B", "com.example.x.B")),
+            preview = true,
+        )
+
+        assertEquals(2, results.size)
+        assertTrue(results.all { it.error?.contains("No Kotlin") == true }, "got: ${results.map { it.error }}")
+    }
+
+    @Test
     fun `batch move class not found produces empty result for that step only`() {
         val results = MoveClassRewriter.moveBatch(
             sourceRoots = listOf(testProjectSrc),

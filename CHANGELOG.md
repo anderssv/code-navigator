@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **Maven: the source-based goals (`move-class`, `move-file`, `move-package`, `execute-plan`, `rename-method`, `rename-param`, `rename-property`, `safe-delete`, `size`, `duplicates`, `find-declaration`) did nothing in Kotlin projects, and said "No changes needed."** Reported from a single-module Kotlin project (api-pm-bsu) where every move came back as success while nothing on disk could have changed. Two independent causes, both Maven-only (Gradle was unaffected):
+  - The goals took their source roots from `project.compileSourceRoots`. In a Kotlin Maven project `src/main/kotlin` only ends up in that list while kotlin-maven-plugin runs in the *same* Maven invocation; cnav goals are separate invocations, so the list held just the default `src/main/java`, which doesn't exist. The rewriters then scanned zero files. Source roots now also include the conventional `src/main/kotlin`/`src/test/kotlin` and any `<sourceDirs>` configured on kotlin-maven-plugin (compile vs test-compile executions respected). The same list feeds the stale-class check, which was blind to Kotlin sources for the same reason.
+  - `kotlin-compiler-embeddable`, which the PSI-based rewriters need, was declared `provided` in the plugin's pom, so Maven never put it on the plugin's classpath and any run that did find sources died with `NoClassDefFoundError: org/jetbrains/kotlin/com/intellij/openapi/util/Disposer`. It is now a regular dependency of the plugin. This makes the first download of the plugin larger (the Kotlin compiler jar, ~60 MB).
+
+  Verified against a minimal Kotlin Maven project, invoked the way the report did (separate `mvn` run, plugin not declared in the pom): preview, a real move followed by `mvn compile`, and `move-file` all work, with and without `<sourceDirs>` configured.
+- **Refactoring goals no longer report "No changes needed" when they scanned nothing or didn't find what they were asked to move** (Gradle and Maven). Scanning zero Kotlin files now fails with an error naming every source root it looked under and flagging the ones that don't exist; a class or file that isn't among the scanned sources reports which name wasn't found and how many files were scanned. "No changes needed" is now reserved for the case where the thing was found and is already in place.
+
 ## 0.1.121
 
 ### Added

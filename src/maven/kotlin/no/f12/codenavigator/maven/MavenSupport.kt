@@ -14,8 +14,54 @@ import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.project.MavenProject
 import java.io.File
 
+/**
+ * Maven's own source roots, plus the Kotlin ones. A Kotlin Maven project normally keeps its code in
+ * `src/main/kotlin`, but that directory only ends up in [MavenProject.getCompileSourceRoots] while
+ * kotlin-maven-plugin is executing in the *same* Maven run — in a separate `mvn <goal>` invocation, which
+ * is how every cnav goal is run, the list holds just the default `src/main/java`. Relying on it alone made
+ * the source-based goals (move/rename/safe-delete, size, duplicates, find-declaration) scan nothing and
+ * report "No changes needed". So the conventional Kotlin directories and any `<sourceDirs>` configured on
+ * kotlin-maven-plugin are added.
+ */
+fun MavenProject.mainSourceRoots(): List<File> =
+    distinctExisting(compileSourceRoots.map { File(it as String) } + File(basedir, "src/main/kotlin") + kotlinPluginSourceDirs(test = false))
+
+fun MavenProject.testSourceRoots(): List<File> =
+    distinctExisting(testCompileSourceRoots.map { File(it as String) } + File(basedir, "src/test/kotlin") + kotlinPluginSourceDirs(test = true))
+
+fun MavenProject.allSourceRoots(): List<File> = distinctExisting(mainSourceRoots() + testSourceRoots())
+
+private fun distinctExisting(dirs: List<File>): List<File> =
+    dirs.filter { it.isDirectory }.distinctBy { it.canonicalPath }
+
+private const val KOTLIN_MAVEN_PLUGIN = "org.jetbrains.kotlin:kotlin-maven-plugin"
+
+/** `<sourceDirs><sourceDir>..` from kotlin-maven-plugin's configuration, for its compile or test-compile executions. */
+private fun MavenProject.kotlinPluginSourceDirs(test: Boolean): List<File> = try {
+    val plugin = build.plugins.firstOrNull { (it as org.apache.maven.model.Plugin).key == KOTLIN_MAVEN_PLUGIN } as? org.apache.maven.model.Plugin
+    if (plugin == null) {
+        emptyList()
+    } else {
+        val configurations = buildList {
+            plugin.executions.forEach { execution ->
+                val goals = (execution as org.apache.maven.model.PluginExecution).goals.map { it as String }
+                val isTest = goals.any { it == "test-compile" }
+                val isMain = goals.any { it == "compile" }
+                if ((test && isTest) || (!test && isMain)) add(execution.configuration)
+            }
+            if (!test) add(plugin.configuration)
+        }
+        configurations.flatMap { configuration ->
+            val dom = configuration as? org.codehaus.plexus.util.xml.Xpp3Dom
+            dom?.getChild("sourceDirs")?.children?.mapNotNull { it.value?.trim()?.takeIf(String::isNotEmpty) }.orEmpty()
+        }.map { path -> File(path).let { if (it.isAbsolute) it else File(basedir, path) } }
+    }
+} catch (_: Exception) {
+    emptyList()
+}
+
 fun MavenProject.checkStaleness(log: org.apache.maven.plugin.logging.Log) {
-    val sourceDirs = (compileSourceRoots + testCompileSourceRoots).map { File(it as String) }
+    val sourceDirs = allSourceRoots()
     val classDirs = listOfNotNull(
         File(build.outputDirectory).takeIf { it.exists() },
         File(build.testOutputDirectory).takeIf { it.exists() },

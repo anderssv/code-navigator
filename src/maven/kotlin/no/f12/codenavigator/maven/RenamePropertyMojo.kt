@@ -45,9 +45,7 @@ class RenamePropertyMojo : AbstractMojo() {
             return
         }
 
-        val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
-            .map { root -> File(root as String) }
-            .filter { it.exists() }
+        val sourceRoots = project.allSourceRoots()
 
         val result = RenamePropertyRewriter.rename(
             sourceRoots = sourceRoots,

@@ -61,16 +61,19 @@ object MoveClassRewriter {
     ): MoveClassResult {
         val ps = parsedSources ?: run {
             val sourceFiles = collectSourceFiles(sourceRoots)
-            if (sourceFiles.isEmpty()) return MoveClassResult(emptyList())
+            if (sourceFiles.isEmpty()) return MoveClassResult(emptyList(), error = SourceScanMessages.noSources(sourceRoots))
             parseKotlinSources(sourceRoots, classpath)
         }
-        if (ps.sources.isEmpty()) return MoveClassResult(emptyList())
+        if (ps.sources.isEmpty()) return MoveClassResult(emptyList(), error = SourceScanMessages.noSources(sourceRoots))
 
         val isKtFacade = isKtFacadeName(className)
         val result = if (isKtFacade) {
             moveKtFacade(className, newFqcn, ps, sourceRoots, preview, classpath)
         } else {
             moveClass(className, newFqcn, ps, sourceRoots, preview, allowMultiClass, classpath)
+        }
+        if (result.error == null && result.changes.isEmpty() && result.movedFilePath == null) {
+            return result.copy(error = SourceScanMessages.classNotFound(className, ps.sources.size, sourceRoots))
         }
         return result.withNonKotlinReferenceWarnings(sourceRoots, className)
     }
@@ -99,9 +102,9 @@ object MoveClassRewriter {
         if (moves.isEmpty()) return emptyList()
 
         val sourceFiles = collectSourceFiles(sourceRoots)
-        if (sourceFiles.isEmpty()) return moves.map { MoveClassResult(emptyList()) }
+        if (sourceFiles.isEmpty()) return moves.map { MoveClassResult(emptyList(), error = SourceScanMessages.noSources(sourceRoots)) }
         val ps = parseKotlinSources(sourceRoots, classpath)
-        if (ps.sources.isEmpty()) return moves.map { MoveClassResult(emptyList()) }
+        if (ps.sources.isEmpty()) return moves.map { MoveClassResult(emptyList(), error = SourceScanMessages.noSources(sourceRoots)) }
 
         val results = arrayOfNulls<MoveClassResult>(moves.size)
         val batchable = mutableListOf<BatchableMove>()

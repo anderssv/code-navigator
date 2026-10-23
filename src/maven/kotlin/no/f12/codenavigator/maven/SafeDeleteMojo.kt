@@ -43,9 +43,7 @@ class SafeDeleteMojo : AbstractMojo() {
             return
         }
 
-        val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
-            .map { root -> File(root as String) }
-            .filter { it.exists() }
+        val sourceRoots = project.allSourceRoots()
 
         val classDirectories = listOf(File(project.build.outputDirectory))
             .filter { it.exists() }

@@ -43,10 +43,10 @@ class FindDeclarationMojo : AbstractMojo() {
         }
 
         val sourceRoots = (
-            project.compileSourceRoots.map { File(it as String) to SourceSet.MAIN } +
-                project.testCompileSourceRoots.map { File(it as String) to SourceSet.TEST }
+            project.mainSourceRoots().map { it to SourceSet.MAIN } +
+                project.testSourceRoots().map { it to SourceSet.TEST }
             )
-            .filter { (dir, sourceSet) -> dir.exists() && config.scope.matchesSourceSet(sourceSet) }
+            .filter { (_, sourceSet) -> config.scope.matchesSourceSet(sourceSet) }
             .map { (dir, _) -> dir }
 
         val matches = DeclarationFilter.filter(DeclarationScanner.scan(sourceRoots), config.pattern, config.kind)

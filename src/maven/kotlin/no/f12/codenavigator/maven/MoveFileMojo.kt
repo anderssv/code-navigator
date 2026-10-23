@@ -42,9 +42,7 @@ class MoveFileMojo : AbstractMojo() {
             return
         }
 
-        val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
-            .map { root -> File(root as String) }
-            .filter { it.exists() }
+        val sourceRoots = project.allSourceRoots()
 
         val classpath = listOfNotNull(
             File(project.build.outputDirectory).takeIf { it.exists() }?.toPath(),

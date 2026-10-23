@@ -57,9 +57,7 @@ open class ExecutePlanMojo : AbstractMojo() {
         )
         val resolvedSteps = resolveClassNames(steps, classesRoots)
 
-        val sourceRoots = (project.compileSourceRoots + project.testCompileSourceRoots)
-            .map { root -> File(root as String) }
-            .filter { it.exists() }
+        val sourceRoots = project.allSourceRoots()
 
         val classpath = classesRoots.map { it.toPath() }
 

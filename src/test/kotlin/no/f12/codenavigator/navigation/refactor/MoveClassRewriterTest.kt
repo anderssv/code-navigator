@@ -49,6 +49,41 @@ class MoveClassRewriterTest {
     }
 
     @Test
+    fun `moving when no Kotlin sources are found says so instead of reporting no changes needed`() {
+        val empty = java.nio.file.Files.createTempDirectory("cnav-empty-src").toFile()
+        val missing = File(empty, "does-not-exist")
+
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(empty, missing),
+            className = "com.example.Foo",
+            newFqcn = "com.example.other.Foo",
+            preview = true,
+        )
+
+        assertTrue(result.changes.isEmpty())
+        val error = result.error
+        assertTrue(error != null && error.contains("No Kotlin"), "expected a no-sources error, got: $error")
+        assertTrue(error!!.contains(empty.path) && error.contains(missing.path), "should name the roots it looked in: $error")
+        assertTrue(error.contains("does not exist"), "should say which root is missing: $error")
+    }
+
+    @Test
+    fun `a class that is not among the scanned sources is reported as not found with the number of files scanned`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.NonExistentClass",
+            newFqcn = "com.example.newpkg.NonExistentClass",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+            parsedSources = cachedParsedSources,
+        )
+
+        val error = result.error
+        assertTrue(error != null && error.contains("com.example.NonExistentClass") && error.contains("not found"), "got: $error")
+        assertTrue(Regex("""\d+ Kotlin source file""").containsMatchIn(error!!), "should say how many files were scanned: $error")
+    }
+
+    @Test
     fun `class not found returns no changes`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),

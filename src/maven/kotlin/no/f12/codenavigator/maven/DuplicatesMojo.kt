@@ -36,9 +36,8 @@ class DuplicatesMojo : AbstractMojo() {
     override fun execute() {
         val config = DuplicateConfig.parse(TaskRegistry.DUPLICATES.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
 
-        val taggedSourceRoots = project.compileSourceRoots.map { File(it as String) to SourceSet.MAIN } +
-            project.testCompileSourceRoots.map { File(it as String) to SourceSet.TEST }
-        val existingRoots = taggedSourceRoots.filter { (file, _) -> file.exists() }
+        val existingRoots = project.mainSourceRoots().map { it to SourceSet.MAIN } +
+            project.testSourceRoots().map { it to SourceSet.TEST }
 
         val groups = DuplicateScanner.scan(existingRoots, config.minTokens, config.top, config.scope)
 
