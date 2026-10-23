@@ -57,9 +57,35 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    // Tests tagged "maven" run real mvn against test-project-maven and need network and a few minutes: see mavenTest.
+    useJUnitPlatform { excludeTags("maven") }
     dependsOn(gradle.includedBuild("test-project").task(":compileKotlin"))
     finalizedBy(tasks.jacocoTestReport)
+}
+
+// Installs this build of the Maven plugin into the local Maven repository so mavenTest can run its goals the way a
+// user does, as separate `mvn <goal>` invocations against a project that doesn't declare the plugin.
+val installMavenPlugin by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Installs the Maven plugin (skipping tests) into ~/.m2 for mavenTest"
+    workingDir = projectDir
+    environment("JAVA_HOME", System.getProperty("java.home"))
+    commandLine("./mvnw", "-q", "install", "-DskipTests")
+}
+
+// Runs the real Maven goals against test-project-maven. Separate from `test`: it needs network on first use and
+// takes minutes. Run with `./gradlew mavenTest`.
+val mavenTest by tasks.registering(Test::class) {
+    group = "verification"
+    description = "Runs the Maven goals end to end against test-project-maven (needs network the first time)"
+    dependsOn(installMavenPlugin)
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("maven") }
+    systemProperty("cnav.repoRoot", projectDir.absolutePath)
+    systemProperty("cnav.version", project.version.toString())
+    outputs.upToDateWhen { false }
+    testLogging { showStandardStreams = false; events("passed", "failed", "skipped") }
 }
 
 tasks.jacocoTestReport {

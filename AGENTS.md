@@ -11,6 +11,7 @@ Refactoring operations try to be as deterministic as possible, but sometimes res
 ### Quick Reference
 
 - **Run tests**: `mise exec -- ./gradlew test`
+- **Run the Maven goals end to end**: `mise exec -- ./gradlew mavenTest` — installs the plugin into `~/.m2`, then runs real `mvn` goals against `test-project-maven` (needs network the first time, ~1 min warm). Not part of `test`; run it after touching `src/maven`, the pom, or anything the mojos depend on, and before a release. Unit tests can't see how a mojo derives source roots from a `MavenProject` or whether the plugin's own classpath is complete — both broke every refactoring goal in Kotlin projects while the unit suite was green.
 - **Publish locally**: `mise exec -- ./gradlew publishToMavenLocal`
 - **Version**: `build.gradle.kts` + `pom.xml` (keep in sync, `-SNAPSHOT` for dev)
 - **Plan**: `plan.md` (roadmap), `plan-completed.md` (done)
@@ -213,15 +214,16 @@ Gradle gets this for every task from one central hook (`CodeNavigatorTask.buildO
 
 ## Release Process
 
-1. Update `CHANGELOG.md` with changes since last tag (`git log` / `git diff`)
-2. Remove `-SNAPSHOT` from `build.gradle.kts` and `pom.xml`
-3. Update version in `README.md` installation examples
-4. `git commit -am "Release X.Y.Z"` && `git tag vX.Y.Z`
-5. `mise exec -- ./mvnw clean deploy -Prelease` (signs + publishes to Central — do this FIRST, it's more likely to fail)
-6. `mise exec -- ./gradlew publishPlugins`
-7. Bump to `X.Y.(Z+1)-SNAPSHOT` in `build.gradle.kts` and `pom.xml`
-8. `git commit -am "Bump to X.Y.Z-SNAPSHOT"` && `git push && git push --tags`
-9. `gh release create vX.Y.Z --title "vX.Y.Z" --notes-from-tag` (or pass `--notes` with the CHANGELOG.md section for this version if `--notes-from-tag` doesn't produce a useful body — the tag itself carries no message)
+1. Run `mise exec -- ./gradlew test mavenTest` — both must pass (`mavenTest` is not part of `test`)
+2. Update `CHANGELOG.md` with changes since last tag (`git log` / `git diff`)
+3. Remove `-SNAPSHOT` from `build.gradle.kts` and `pom.xml`
+4. Update version in `README.md` installation examples
+5. `git commit -am "Release X.Y.Z"` && `git tag vX.Y.Z`
+6. `mise exec -- ./mvnw clean deploy -Prelease` (signs + publishes to Central — do this FIRST, it's more likely to fail)
+7. `mise exec -- ./gradlew publishPlugins`
+8. Bump to `X.Y.(Z+1)-SNAPSHOT` in `build.gradle.kts` and `pom.xml` — check `git diff --stat` shows BOTH files changed (a silently non-matching `sed` once left the pom on the released version)
+9. `git commit -am "Bump to X.Y.Z-SNAPSHOT"` && `git push && git push --tags`
+10. `gh release create vX.Y.Z --title "vX.Y.Z" --notes-from-tag` (or pass `--notes` with the CHANGELOG.md section for this version if `--notes-from-tag` doesn't produce a useful body — the tag itself carries no message)
 
 Requires GPG key + Sonatype credentials in `~/.m2/settings.xml` (server id `central`).
 
