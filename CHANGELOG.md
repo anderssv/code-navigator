@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.122
 
 ### Fixed
 - **Maven: the source-based goals (`move-class`, `move-file`, `move-package`, `execute-plan`, `rename-method`, `rename-param`, `rename-property`, `safe-delete`, `size`, `duplicates`, `find-declaration`) did nothing in Kotlin projects, and said "No changes needed."** Reported from a single-module Kotlin project (api-pm-bsu) where every move came back as success while nothing on disk could have changed. Two independent causes, both Maven-only (Gradle was unaffected):

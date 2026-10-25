@@ -6,7 +6,7 @@
 
     <groupId>no.f12</groupId>
     <artifactId>code-navigator-maven-plugin</artifactId>
-    <version>0.1.122-SNAPSHOT</version>
+    <version>0.1.122</version>
     <packaging>maven-plugin</packaging>
 
     <name>Code Navigator Maven Plugin</name>
@@ -159,6 +159,8 @@
                     <excludes>
                         <exclude>**/IntegrationTest.java</exclude>
                     </excludes>
+                    <!-- Needs network and the plugin installed first: run via ./gradlew mavenTest, not in this build -->
+                    <excludedGroups>maven</excludedGroups>
                 </configuration>
             </plugin>
             <plugin>

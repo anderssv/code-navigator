@@ -11,7 +11,7 @@ Refactoring operations try to be as deterministic as possible, but sometimes res
 ### Quick Reference
 
 - **Run tests**: `mise exec -- ./gradlew test`
-- **Run the Maven goals end to end**: `mise exec -- ./gradlew mavenTest` — installs the plugin into `~/.m2`, then runs real `mvn` goals against `test-project-maven` (needs network the first time, ~1 min warm). Not part of `test`; run it after touching `src/maven`, the pom, or anything the mojos depend on, and before a release. Unit tests can't see how a mojo derives source roots from a `MavenProject` or whether the plugin's own classpath is complete — both broke every refactoring goal in Kotlin projects while the unit suite was green.
+- **Run the Maven goals end to end**: `mise exec -- ./gradlew mavenTest` — installs the plugin into `~/.m2`, then runs real `mvn` goals against `test-project-maven` (needs network the first time, ~1 min warm). Not part of `test` (Gradle excludes the JUnit tag `maven`) or of the Maven build (surefire `excludedGroups` in `pom.xml` — `mvnw deploy` runs the whole test tree, so a new tagged test needs that exclusion too); run it after touching `src/maven`, the pom, or anything the mojos depend on, and before a release. Unit tests can't see how a mojo derives source roots from a `MavenProject` or whether the plugin's own classpath is complete — both broke every refactoring goal in Kotlin projects while the unit suite was green.
 - **Publish locally**: `mise exec -- ./gradlew publishToMavenLocal`
 - **Version**: `build.gradle.kts` + `pom.xml` (keep in sync, `-SNAPSHOT` for dev)
 - **Plan**: `plan.md` (roadmap), `plan-completed.md` (done)
@@ -92,6 +92,9 @@ src/
 
 - One `*Mojo.kt` per goal, mirrors the Gradle task structure
 - Each mojo declares `@Parameter`-annotated fields matching its `TaskDef.params` from TaskRegistry
+- **Source roots: use `project.mainSourceRoots()` / `testSourceRoots()` / `allSourceRoots()` (`MavenSupport.kt`), never `project.compileSourceRoots` directly.** In a Kotlin Maven project `src/main/kotlin` only lands in `compileSourceRoots` while kotlin-maven-plugin runs in the *same* Maven invocation. Every cnav goal is its own invocation, so the raw list holds just the default `src/main/java`; source-based goals then scan nothing. The helpers add the conventional Kotlin dirs and any `<sourceDirs>` configured on kotlin-maven-plugin.
+- **Anything the plugin needs at runtime must be a compile-scope dependency in `pom.xml`.** `provided` means "absent from the plugin's classpath" for users, even though it is present when building and testing (that is how `kotlin-compiler-embeddable` shipped broken). Gradle gets the compiler through a separate worker classloader; Maven has no equivalent.
+- **Unit tests can't see either of those.** After touching `src/maven`, the pom, or anything mojos depend on, run `mise exec -- ./gradlew mavenTest`. It runs real `mvn` goals as separate invocations against `test-project-maven`. Keep that fixture realistic: no `<sourceDirectory>` and no plugin declaration in its pom, because either hides the source-root bug. Running by hand: `mvn no.f12:code-navigator-maven-plugin:<version>:<goal> -D...` works without declaring the plugin; use a JDK the project's Kotlin/Lombok versions support (not just the newest installed one).
 
 ## TaskRegistry as Single Source of Truth
 
