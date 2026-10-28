@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **`cnavMoveFile` moved the wrong file, and added imports that were wrong or missing.** Package matching was a substring test, so `package a.b` also matched `a.b.ods`:
+  - A file in a subpackage could be picked as the file to move (when it nests a class with the same short name), and its package line was rewritten (`users.web.ods`). The exact package is now required, the requested file path is used as given, and a move that would touch a different file is an error.
+  - Extensions on nullable/generic receivers (`fun Actor?.displayName`) no longer register the receiver type as a moved declaration, and `private` top-level functions/properties are never imported.
+  - The moved file now gets imports for what it used from its old package (classes, functions, properties), also for Kotlin-facade and multi-class files.
+- Not done: bytecode-based filtering of imports (a property `SourceInfo.label` can still be mistaken for a moved extension `label`), and a compile check after the move.
+
 ## 0.1.122
 
 ### Fixed

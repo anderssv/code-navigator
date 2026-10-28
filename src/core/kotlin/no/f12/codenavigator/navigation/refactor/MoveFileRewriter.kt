@@ -49,13 +49,20 @@ object MoveFileRewriter {
             val ktFacadeName = "${fileName}Kt"
             val oldFqcn = "$oldPackage.$ktFacadeName"
             val newFqcn = "$toPackage.$ktFacadeName"
-            return MoveClassRewriter.move(sourceRoots, oldFqcn, newFqcn, classpath, preview, ps, allowMultiClass = true)
+            return MoveClassRewriter.move(sourceRoots, oldFqcn, newFqcn, classpath, preview, ps, allowMultiClass = true, movedFile = filePath).verifiedMovedFile(filePath)
         }
 
         // Use first declared class as the entry point — the multi-class logic handles the rest
         val primaryClass = declaredClasses.first()
         val oldFqcn = "$oldPackage.$primaryClass"
         val newFqcn = "$toPackage.$primaryClass"
-        return MoveClassRewriter.move(sourceRoots, oldFqcn, newFqcn, classpath, preview, ps, allowMultiClass = true)
+        return MoveClassRewriter.move(sourceRoots, oldFqcn, newFqcn, classpath, preview, ps, allowMultiClass = true, movedFile = filePath).verifiedMovedFile(filePath)
+    }
+
+    /** The move must have moved the file that was asked for; anything else is a bug, so it fails instead of reporting success. */
+    private fun MoveClassResult.verifiedMovedFile(requested: String): MoveClassResult {
+        val moved = movedFilePath ?: return this
+        if (error != null || moved == requested) return this
+        return MoveClassResult(emptyList(), error = "Refusing to move: the move would have changed $moved instead of the requested file $requested. Nothing was written.")
     }
 }

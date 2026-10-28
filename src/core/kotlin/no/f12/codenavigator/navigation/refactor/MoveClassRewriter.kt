@@ -58,6 +58,12 @@ object MoveClassRewriter {
         preview: Boolean = false,
         parsedSources: ParsedSources? = null,
         allowMultiClass: Boolean = false,
+        /**
+         * The exact file to move, when the caller already resolved one (cnavMoveFile does, from its path argument).
+         * Without it the file is found from [className] alone, which is ambiguous whenever two files declare a class
+         * with that short name; with it the path the caller asked for is used as given and never swapped for another.
+         */
+        movedFile: String? = null,
     ): MoveClassResult {
         val ps = parsedSources ?: run {
             val sourceFiles = collectSourceFiles(sourceRoots)
@@ -70,7 +76,7 @@ object MoveClassRewriter {
         val result = if (isKtFacade) {
             moveKtFacade(className, newFqcn, ps, sourceRoots, preview, classpath)
         } else {
-            moveClass(className, newFqcn, ps, sourceRoots, preview, allowMultiClass, classpath)
+            moveClass(className, newFqcn, ps, sourceRoots, preview, allowMultiClass, classpath, movedFile)
         }
         if (result.error == null && result.changes.isEmpty() && result.movedFilePath == null) {
             return result.copy(error = SourceScanMessages.classNotFound(className, ps.sources.size, sourceRoots))
@@ -299,6 +305,7 @@ object MoveClassRewriter {
         preview: Boolean,
         allowMultiClass: Boolean = false,
         classpath: List<Path> = emptyList(),
+        forcedFilePath: String? = null,
     ): MoveClassResult {
         val oldPackage = className.substringBeforeLast(".")
         val simpleClassName = className.substringAfterLast(".")
@@ -306,33 +313,10 @@ object MoveClassRewriter {
         val targetName = newFqcn.substringAfterLast(".")
 
         // Find the file containing the class
-        var foundByContent = false
-        var movedFilePath: String? = null
-        var newFilePath: String? = null
-
-        for (sourceFile in ps.sources) {
-            val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
-            if (isTargetClassFile(filePath, oldPackage, simpleClassName)) {
-                movedFilePath = filePath
-                newFilePath = computeNewFilePath(filePath, oldPackage, simpleClassName, newPackage, targetName, sourceRoots)
-                break
-            }
-        }
-
-        // Fallback: search by content + package when filename doesn't match
-        if (movedFilePath == null) {
-            for (sourceFile in ps.sources) {
-                val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
-                val content = sourceFile.printAll()
-                if (isInPackage(content, oldPackage) && declaresClass(content, simpleClassName)) {
-                    movedFilePath = filePath
-                    val fileName = File(filePath).nameWithoutExtension
-                    newFilePath = computeNewFilePath(filePath, oldPackage, fileName, newPackage, fileName, sourceRoots)
-                    foundByContent = true
-                    break
-                }
-            }
-        }
+        val located = locateMovedFile(ps, sourceRoots, oldPackage, simpleClassName, newPackage, targetName, forcedFilePath)
+        val foundByContent = located?.byContent ?: false
+        var movedFilePath: String? = located?.path
+        var newFilePath: String? = located?.newPath
 
         // Early multi-class detection — stop and list unrequested siblings
         if (!allowMultiClass && movedFilePath != null) {
@@ -377,29 +361,6 @@ object MoveClassRewriter {
                 val allClasses = extractDeclaredClassNames(movedSource)
                 if (allClasses.size > 1) {
                     return moveMultiClassFile(oldPackage, newPackage, movedFilePath, movedSource, allClasses, ps, sourceRoots, preview, newFilePath, classpath)
-                }
-            }
-        }
-
-        for (sourceFile in ps.sources) {
-            val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
-            if (isTargetClassFile(filePath, oldPackage, simpleClassName)) {
-                movedFilePath = filePath
-                newFilePath = computeNewFilePath(filePath, oldPackage, simpleClassName, newPackage, targetName, sourceRoots)
-                break
-            }
-        }
-
-        // Fallback: if filename doesn't match class name, search by content + package
-        if (movedFilePath == null) {
-            for (sourceFile in ps.sources) {
-                val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
-                val content = sourceFile.printAll()
-                if (isInPackage(content, oldPackage) && declaresClass(content, simpleClassName)) {
-                    movedFilePath = filePath
-                    val fileName = File(filePath).nameWithoutExtension
-                    newFilePath = computeNewFilePath(filePath, oldPackage, fileName, newPackage, fileName, sourceRoots)
-                    break
                 }
             }
         }
@@ -625,8 +586,9 @@ object MoveClassRewriter {
             RenameChange(path, ps.sources.first { it.path == path }.content, after)
         }
 
+    /** Rewrites the file's own package line, only when it is exactly [oldPackage] (not a subpackage of it). */
     private fun rewritePackageDecl(content: String, oldPackage: String, newPackage: String): String =
-        content.replace("package $oldPackage", "package $newPackage")
+        Regex("""(?m)^(\s*package\s+)${Regex.escape(oldPackage)}(\s*)$""").replace(content) { m -> m.groupValues[1] + newPackage + m.groupValues[2] }
 
     private val NON_KOTLIN_SOURCE_EXTENSIONS = setOf("java", "groovy", "scala")
 
@@ -667,7 +629,7 @@ object MoveClassRewriter {
                 .filter { file ->
                     val text = file.readText()
                     text.contains("$oldPackage.$simpleName") || // FQN or `import old.pkg.Name`
-                        (text.contains("package $oldPackage") && wordBoundary.containsMatchIn(text)) // same-package unqualified use
+                        (isInPackage(text, oldPackage) && wordBoundary.containsMatchIn(text)) // same-package unqualified use
                 }
                 .map { it.absolutePath }
                 .toList()
@@ -756,9 +718,9 @@ object MoveClassRewriter {
 
         if (movedFilePath != null) {
             val currentContent = changes[movedFilePath]?.after ?: movedFileContent
-            val updatedContent = currentContent.replace(
-                "package $oldPackage",
-                "package $newPackage",
+            val leftBehind = namesDeclaredInPackage(ps, oldPackage, movedFilePath) - movedNames
+            val updatedContent = if (oldPackage == newPackage) currentContent else addMissingImportsForSiblings(
+                rewritePackageDecl(currentContent, oldPackage, newPackage), oldPackage, leftBehind,
             )
             if (updatedContent != currentContent || !changes.containsKey(movedFilePath)) {
                 val originalContent = changes[movedFilePath]?.before ?: movedFileContent
@@ -825,11 +787,63 @@ object MoveClassRewriter {
             "file manually, or move it to a different name/package."
     }
 
-    private fun isInPackage(source: String, packageName: String): Boolean =
-        source.contains("package $packageName")
+    private val PACKAGE_DECLARATION = Regex("""^\s*package\s+([\w.]+)""", RegexOption.MULTILINE)
+
+    /** The package a source file declares, or null for the default package. */
+    internal fun packageOf(source: String): String? = PACKAGE_DECLARATION.find(source)?.groupValues?.get(1)
+
+    /**
+     * True only for the exact package. `source.contains("package a.b")` was true for `package a.b.c` too, which made
+     * every subpackage file look like it was in the package: it could be picked as the file to move, have its package
+     * line rewritten (`a.b.c` -> `new.c`), and be handed imports meant for the old package's own files.
+     */
+    private fun isInPackage(source: String, packageName: String): Boolean = packageOf(source) == packageName
 
     private fun declaresClass(source: String, className: String): Boolean =
         extractDeclaredClassNames(source).contains(className)
+
+    private data class LocatedFile(val path: String, val newPath: String?, val byContent: Boolean)
+
+    /**
+     * Finds the file to move. A [forcedFilePath] is used as given. Otherwise: the file named after the class in the
+     * package's directory, then any file in exactly that package that declares the class at top level — a nested
+     * `Outer.Name` has a different fully qualified name and is not the class being asked for.
+     */
+    private fun locateMovedFile(
+        ps: ParsedSources,
+        sourceRoots: List<File>,
+        oldPackage: String,
+        simpleClassName: String,
+        newPackage: String,
+        targetName: String,
+        forcedFilePath: String?,
+    ): LocatedFile? {
+        if (forcedFilePath != null) {
+            val byContent = !isTargetClassFile(forcedFilePath, oldPackage, simpleClassName)
+            val fileName = File(forcedFilePath).nameWithoutExtension
+            val newPath = if (byContent) {
+                computeNewFilePath(forcedFilePath, oldPackage, fileName, newPackage, fileName, sourceRoots)
+            } else {
+                computeNewFilePath(forcedFilePath, oldPackage, simpleClassName, newPackage, targetName, sourceRoots)
+            }
+            return LocatedFile(forcedFilePath, newPath, byContent)
+        }
+        for (sourceFile in ps.sources) {
+            val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
+            if (isTargetClassFile(filePath, oldPackage, simpleClassName)) {
+                return LocatedFile(filePath, computeNewFilePath(filePath, oldPackage, simpleClassName, newPackage, targetName, sourceRoots), false)
+            }
+        }
+        for (sourceFile in ps.sources) {
+            val filePath = resolveOriginalPath(sourceFile, ps.sourceRoots)
+            val content = sourceFile.printAll()
+            if (isInPackage(content, oldPackage) && extractTopLevelClassNames(content).contains(simpleClassName)) {
+                val fileName = File(filePath).nameWithoutExtension
+                return LocatedFile(filePath, computeNewFilePath(filePath, oldPackage, fileName, newPackage, fileName, sourceRoots), true)
+            }
+        }
+        return null
+    }
 
     private val CLASS_DECLARATION_PATTERN = Regex(
         // Optional same-line annotations, then any order of visibility + class modifiers. Visibility
@@ -842,15 +856,31 @@ object MoveClassRewriter {
     internal fun extractDeclaredClassNames(source: String): List<String> =
         CLASS_DECLARATION_PATTERN.findAll(source).map { it.groupValues[1] }.toList()
 
+    /** Like [extractDeclaredClassNames] but only declarations at the start of a line, i.e. not nested ones. */
+    internal fun extractTopLevelClassNames(source: String): List<String> =
+        TOP_LEVEL_CLASS_DECLARATION_PATTERN.findAll(source).map { it.groupValues[1] }.toList()
+
+    private val TOP_LEVEL_CLASS_DECLARATION_PATTERN = Regex(
+        """^(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:public|private|internal|protected|data|sealed|enum|abstract|open|inner|value|annotation|final|fun)\s+)*(?:class|interface|object)\s+(\w+)""",
+        RegexOption.MULTILINE,
+    )
+
+    // Private declarations are not importable and are skipped by not allowing `private` among the modifiers.
+    // The receiver (`Actor?.`, `List<Foo>.`) is consumed so the captured name is the function itself.
     private val TOP_LEVEL_FUN_PATTERN = Regex(
-        """^(?:internal\s+|private\s+|public\s+)?fun\s+(?:<[^>]+>\s+)?(?:[\w.]+\.)?(\w+)""",
+        """^(?:(?:internal|public|inline|tailrec|suspend|operator|infix|external)\s+)*fun\s+(?:<[^>]+>\s+)?(?:[\w.<>?, ]+\.)?(\w+)\s*\(""",
         RegexOption.MULTILINE,
     )
 
     private val TOP_LEVEL_VAL_PATTERN = Regex(
-        """^(?:internal\s+|private\s+|public\s+|const\s+)*(?:val|var)\s+(\w+)""",
+        """^(?:(?:internal|public|const|lateinit|inline)\s+)*(?:val|var)\s+(?:<[^>]+>\s+)?(?:[\w.<>?, ]+\.)?(\w+)""",
         RegexOption.MULTILINE,
     )
+
+    /** Importable top-level names (classes, non-private functions and properties) declared by the other files in exactly [packageName]. */
+    private fun namesDeclaredInPackage(ps: ParsedSources, packageName: String, excludePath: String): Set<String> =
+        ps.sources.filter { resolveOriginalPath(it, ps.sourceRoots) != excludePath && isInPackage(it.printAll(), packageName) }
+            .flatMapTo(mutableSetOf()) { extractTopLevelClassNames(it.printAll()) + extractTopLevelNames(it.printAll()) }
 
     internal fun extractTopLevelNames(source: String): Set<String> {
         val funs = TOP_LEVEL_FUN_PATTERN.findAll(source).map { it.groupValues[1] }
@@ -869,7 +899,7 @@ object MoveClassRewriter {
             val content = sourceFile.printAll()
             val pkgMatch = Regex("""^package\s+(\S+)""", RegexOption.MULTILINE).find(content)
             if (pkgMatch?.groupValues?.get(1) == packageName) {
-                siblings.addAll(extractDeclaredClassNames(content))
+                siblings.addAll(extractTopLevelClassNames(content))
             }
         }
         siblings.remove(excludeName)
