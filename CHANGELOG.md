@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.123
 
 ### Fixed
 - **`cnavMoveFile` moved the wrong file, and added imports that were wrong or missing.** Package matching was a substring test, so `package a.b` also matched `a.b.ods`:
