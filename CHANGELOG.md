@@ -7,6 +7,10 @@
   - A file in a subpackage could be picked as the file to move (when it nests a class with the same short name), and its package line was rewritten (`users.web.ods`). The exact package is now required, the requested file path is used as given, and a move that would touch a different file is an error.
   - Extensions on nullable/generic receivers (`fun Actor?.displayName`) no longer register the receiver type as a moved declaration, and `private` top-level functions/properties are never imported.
   - The moved file now gets imports for what it used from its old package (classes, functions, properties), also for Kotlin-facade and multi-class files.
+- **`cnavCohesion` penalised splitting a feature into rings.** Adapter subpackages that depend inward on the feature's domain scored as incoherent ("REVIEW"), so the score fell as the architecture improved. Now:
+  - Edges into a parent or child package count as internal, as `cnavMoveSuggest` already did.
+  - Each package also gets a feature cohesion, counting every package under the same feature (first package below the project root) as internal, and each feature with more than one package is scored as a whole (text and LLM output; JSON per-package entries gain `feature`/`featureCohesion`).
+  - A package that is weak alone but cohesive within its feature gets the new verdict `LAYERED` instead of `REVIEW`.
 - Not done: bytecode-based filtering of imports (a property `SourceInfo.label` can still be mistaken for a moved extension `label`), and a compile check after the move.
 
 ## 0.1.122

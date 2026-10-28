@@ -197,4 +197,52 @@ class CohesionScorerTest {
         assertEquals(0, entryB.internalEdges)
         assertEquals(1, entryB.externalEdges)
     }
+
+    // --- a feature split into rings (users, users.model, users.web, users.store) ---------------------
+
+    private fun dep(from: String, to: String, n: Int = 1) = List(n) { i ->
+        PackageDependency(PackageName("app.$from"), PackageName("app.$to"), ClassName("app.$from.C$i"), ClassName("app.$to.T$i"))
+    }
+
+    private val ringedFeature = dep("users", "users.model", 2) +
+        dep("users.store", "users", 3) + dep("users.store", "users.model", 2) + dep("users.store", "users.store", 1) +
+        dep("users.web", "users.model", 2) + dep("users.web", "users.web", 1) + dep("users.web", "orders", 1) +
+        dep("orders", "orders", 2) + dep("orders", "users", 1)
+
+    private fun CohesionResult.entry(pkg: String) = entries.first { it.packageName == PackageName("app.$pkg") }
+
+    @Test
+    fun `edges into a parent or child package count as internal, as in move-suggest`() {
+        val result = CohesionScorer.score(ringedFeature)
+
+        assertEquals(1.0, result.entry("users").cohesion)
+        assertEquals(4, result.entry("users.store").internalEdges)
+        assertEquals(2, result.entry("users.store").externalEdges)
+    }
+
+    @Test
+    fun `feature cohesion counts every package under the same feature as internal`() {
+        val result = CohesionScorer.score(ringedFeature)
+
+        assertEquals(1.0, result.entry("users.store").featureCohesion)
+        assertEquals(0.75, result.entry("users.web").featureCohesion)
+        assertEquals(2.0 / 3, result.entry("orders").featureCohesion)
+    }
+
+    @Test
+    fun `a package that is weak on its own but cohesive within its feature is LAYERED, not REVIEW`() {
+        val result = CohesionScorer.score(ringedFeature)
+
+        assertEquals(CohesionVerdict.LAYERED, result.entry("users.web").verdict)
+        assertEquals(CohesionVerdict.COHESIVE, result.entry("users.store").verdict)
+    }
+
+    @Test
+    fun `the whole feature is scored as one unit`() {
+        val result = CohesionScorer.score(ringedFeature)
+
+        val users = result.features.first { it.feature == PackageName("app.users") }
+        assertEquals(4, users.packageCount)
+        assertEquals(11.0 / 12, users.cohesion)
+    }
 }

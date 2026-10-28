@@ -795,7 +795,7 @@ object TaskRegistry {
 
     val COHESION = TaskDef(
         goal = "cohesion",
-        description = "Score package cohesion: ratio of internal to total class dependencies per package",
+        description = "Score package cohesion: ratio of internal to total class dependencies per package. Edges into a parent or child package count as internal (as in move-suggest). Also scores each package within its feature (the first package below the project root) and each feature as a whole; a package weak alone but cohesive within its feature is LAYERED, not REVIEW",
         params = FORMAT_PARAMS + listOf(PACKAGE_FILTER, TOP, MIN_EDGES) + SOURCE_SET_PARAMS + COMPARE_PARAMS,
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
