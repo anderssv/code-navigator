@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.124
 
 ### Added
 - **`move-tests` for `move-class`/`move-file`:** also moves tests that mirror the moved class's package (`FooTest`, `FooTests`, `FooIT`, `FooSpec` in the same package), for projects whose architecture rules require tests to follow production packages. Without it, the output now names each such test that stays behind and how to move it.
