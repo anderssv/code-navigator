@@ -606,6 +606,21 @@ class MoveClassRewriterTest {
     }
 
     @Test
+    fun `the multi-class error gives a runnable move-file command for the build tool in use`() {
+        val result = MoveClassRewriter.move(
+            sourceRoots = listOf(testProjectSrc),
+            className = "com.example.variants.moveclass.original.EventProcessor",
+            newFqcn = "com.example.variants.moveclass.events.EventProcessor",
+            classpath = listOf(testProjectClasses),
+            preview = true,
+        )
+
+        val maven = no.f12.codenavigator.registry.DocTemplate.render(result.error!!, no.f12.codenavigator.registry.BuildTool.MAVEN)
+        assertTrue(maven.contains("-Dfrom-file=src/main/kotlin/com/example/variants/moveclass/original/Events.kt -Dto-package=com.example.variants.moveclass.events"), maven)
+        assertTrue(maven.contains("move-file") && !maven.contains("cnavMoveFile"), maven)
+    }
+
+    @Test
     fun `moving named class from multi-class file with allowMultiClass moves entire file`() {
         val result = MoveClassRewriter.move(
             sourceRoots = listOf(testProjectSrc),

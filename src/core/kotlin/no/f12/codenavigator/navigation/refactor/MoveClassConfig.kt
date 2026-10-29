@@ -9,6 +9,7 @@ data class MoveClassConfig(
     val to: String,
     val preview: Boolean,
     val format: OutputFormat,
+    val moveTests: Boolean = false,
 ) {
     val fromPackage: String get() = from.substringBeforeLast(".")
     val fromSimpleName: String get() = from.substringAfterLast(".")
@@ -25,6 +26,7 @@ data class MoveClassConfig(
                 to = to,
                 preview = preview,
                 format = ParamDef.parseFormat(properties),
+                moveTests = TaskRegistry.MOVE_TESTS.parseFrom(properties),
             )
         }
     }

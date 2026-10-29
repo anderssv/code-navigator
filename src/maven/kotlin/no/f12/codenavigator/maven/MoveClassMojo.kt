@@ -36,6 +36,9 @@ open class MoveClassMojo : AbstractMojo() {
     @Parameter(property = "from-file")
     protected var fromFile: String? = null
 
+    @Parameter(property = "move-tests")
+    protected var moveTests: String? = null
+
     @Parameter(property = "preview")
     protected var preview: String? = null
 
@@ -66,10 +69,11 @@ open class MoveClassMojo : AbstractMojo() {
             newFqcn = config.to,
             classpath = classpath,
             preview = config.preview,
-        )
+            moveTests = config.moveTests,
+        ).let { r -> r.copy(warnings = r.warnings.map { no.f12.codenavigator.registry.DocTemplate.render(it, BuildTool.MAVEN) }) }
 
         if (result.error != null) {
-            println(OutputWrapper.formatAndWrap(config.format) { result.error })
+            println(OutputWrapper.formatAndWrap(config.format) { no.f12.codenavigator.registry.DocTemplate.render(result.error, no.f12.codenavigator.registry.BuildTool.MAVEN) })
             return
         }
 
@@ -99,9 +103,10 @@ open class MoveClassMojo : AbstractMojo() {
             toPackage = to!!,
             classpath = classpath,
             preview = preview?.toBoolean() ?: false,
-        )
+            moveTests = moveTests?.toBoolean() ?: false,
+        ).let { r -> r.copy(warnings = r.warnings.map { no.f12.codenavigator.registry.DocTemplate.render(it, BuildTool.MAVEN) }) }
         if (result.error != null) {
-            println(OutputWrapper.formatAndWrap(format?.let { OutputFormat.from(it) } ?: OutputFormat.TEXT) { result.error })
+            println(OutputWrapper.formatAndWrap(format?.let { OutputFormat.from(it) } ?: OutputFormat.TEXT) { no.f12.codenavigator.registry.DocTemplate.render(result.error, no.f12.codenavigator.registry.BuildTool.MAVEN) })
             return
         }
         if (result.changes.isEmpty()) {
@@ -133,5 +138,6 @@ open class MoveClassMojo : AbstractMojo() {
         to?.let { put("to", it) }
         fromFile?.let { put("from-file", it) }
         preview?.let { put("preview", it) }
+        moveTests?.let { put("move-tests", it) }
     }
 }

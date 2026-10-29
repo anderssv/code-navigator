@@ -9,6 +9,7 @@ data class MoveFileConfig(
     val toPackage: String,
     val preview: Boolean,
     val format: OutputFormat,
+    val moveTests: Boolean = false,
 ) {
     companion object {
         fun parse(properties: Map<String, String?>): MoveFileConfig {
@@ -20,6 +21,7 @@ data class MoveFileConfig(
                 toPackage = toPackage,
                 preview = preview,
                 format = ParamDef.parseFormat(properties),
+                moveTests = TaskRegistry.MOVE_TESTS.parseFrom(properties),
             )
         }
     }

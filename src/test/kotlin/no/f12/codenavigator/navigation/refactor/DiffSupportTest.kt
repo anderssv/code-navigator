@@ -170,3 +170,27 @@ class DiffSupportTest {
         assertContains(diff, "+++ b/src/web/Caller.kt")
     }
 }
+
+class DiffSupportRepoRelativePathTest {
+    @org.junit.jupiter.api.io.TempDir
+    lateinit var dir: java.io.File
+
+    @Test
+    fun `absolute paths inside a git repository are made relative to its root so git apply accepts the diff`() {
+        java.io.File(dir, "repo/.git").mkdirs()
+        val file = java.io.File(dir, "repo/src/main/kotlin/Foo.kt").absolutePath
+
+        val diff = computeUnifiedDiff(file, "a\n", "b\n")
+
+        kotlin.test.assertContains(diff, "--- a/src/main/kotlin/Foo.kt\n+++ b/src/main/kotlin/Foo.kt")
+    }
+
+    @Test
+    fun `absolute paths outside any git repository stay absolute`() {
+        val file = java.io.File(dir, "plain/Foo.kt").absolutePath
+
+        val diff = computeUnifiedDiff(file, "a\n", "b\n")
+
+        kotlin.test.assertContains(diff, "--- a${file}")
+    }
+}

@@ -14,7 +14,16 @@ data class MoveClassResult(
     val newFilePath: String? = null,
     val warnings: List<String> = emptyList(),
     val error: String? = null,
+    /** Files moved along with the main one (old path -> new path), e.g. tests mirroring the moved class's package. */
+    val alsoMoved: Map<String, String> = emptyMap(),
 ) {
+    /** Every file this operation relocates on disk, old path -> new path. */
+    val movedFiles: Map<String, String>
+        get() = buildMap {
+            if (movedFilePath != null && newFilePath != null && movedFilePath != newFilePath) put(movedFilePath, newFilePath)
+            putAll(alsoMoved)
+        }
+
     fun toJson(): String {
         val movedJson = movedFilePath?.let { ""","movedFilePath":"${jsonEscape(it)}"""" } ?: ""
         val newJson = newFilePath?.let { ""","newFilePath":"${jsonEscape(it)}"""" } ?: ""
@@ -22,7 +31,11 @@ data class MoveClassResult(
             ""","warnings":${warnings.joinToString(",", "[", "]") { "\"${jsonEscape(it)}\"" }}"""
         } else ""
         val errorJson = error?.let { ""","error":"${jsonEscape(it)}"""" } ?: ""
-        return """{"changes":${changesToJson(changes)}$movedJson$newJson$warningsJson$errorJson}"""
+        val alsoJson = if (alsoMoved.isEmpty()) "" else {
+            ""","alsoMovedFrom":${alsoMoved.keys.joinToString(",", "[", "]") { "\"${jsonEscape(it)}\"" }}""" +
+                ""","alsoMovedTo":${alsoMoved.values.joinToString(",", "[", "]") { "\"${jsonEscape(it)}\"" }}"""
+        }
+        return """{"changes":${changesToJson(changes)}$movedJson$newJson$warningsJson$errorJson$alsoJson}"""
     }
 
     companion object {
@@ -43,6 +56,7 @@ data class MoveClassResult(
                 newFilePath = obj["newFilePath"] as? String,
                 warnings = warnings,
                 error = obj["error"] as? String,
+                alsoMoved = ((obj["alsoMovedFrom"] as? List<String>).orEmpty()).zip((obj["alsoMovedTo"] as? List<String>).orEmpty()).toMap(),
             )
         }
     }
@@ -64,6 +78,8 @@ object MoveClassRewriter {
          * with that short name; with it the path the caller asked for is used as given and never swapped for another.
          */
         movedFile: String? = null,
+        /** Also move tests that mirror the class's package (`FooTest`, `FooTests`, `FooIT`, `FooSpec` in the same package). */
+        moveTests: Boolean = false,
     ): MoveClassResult {
         val ps = parsedSources ?: run {
             val sourceFiles = collectSourceFiles(sourceRoots)
@@ -73,15 +89,87 @@ object MoveClassRewriter {
         if (ps.sources.isEmpty()) return MoveClassResult(emptyList(), error = SourceScanMessages.noSources(sourceRoots))
 
         val isKtFacade = isKtFacadeName(className)
+        val oldPackage = className.substringBeforeLast(".")
+        val newPackage = newFqcn.substringBeforeLast(".")
+        val tests = if (isKtFacade || oldPackage == newPackage) emptyList() else
+            mirrorTests(ps, oldPackage, className.substringAfterLast("."), movedFile)
+        val chainTests = moveTests && tests.isNotEmpty()
+        val mainPreview = preview || chainTests
         val result = if (isKtFacade) {
-            moveKtFacade(className, newFqcn, ps, sourceRoots, preview, classpath)
+            moveKtFacade(className, newFqcn, ps, sourceRoots, mainPreview, classpath)
         } else {
-            moveClass(className, newFqcn, ps, sourceRoots, preview, allowMultiClass, classpath, movedFile)
+            moveClass(className, newFqcn, ps, sourceRoots, mainPreview, allowMultiClass, classpath, movedFile)
         }
         if (result.error == null && result.changes.isEmpty() && result.movedFilePath == null) {
             return result.copy(error = SourceScanMessages.classNotFound(className, ps.sources.size, sourceRoots))
         }
-        return result.withNonKotlinReferenceWarnings(sourceRoots, className)
+        val withTests = when {
+            result.error != null || tests.isEmpty() -> result
+            !moveTests -> result.copy(warnings = result.warnings + tests.map { testStaysWarning(it, newPackage) })
+            else -> moveTestsAlong(result, tests, className, newFqcn, ps, sourceRoots)
+        }
+        if (chainTests && !preview && withTests.error == null) applyMoves(withTests)
+        return withTests.withNonKotlinReferenceWarnings(sourceRoots, className)
+    }
+
+    private val TEST_SUFFIXES = listOf("Test", "Tests", "IT", "Spec")
+
+    private fun mirrorTests(ps: ParsedSources, oldPackage: String, simpleName: String, exclude: String?): List<SourceFileContent> {
+        val names = TEST_SUFFIXES.map { "$simpleName$it.kt" }.toSet()
+        return ps.sources.filter { it.path != exclude && File(it.path).name in names && isInPackage(it.content, oldPackage) }
+    }
+
+    private fun testStaysWarning(test: SourceFileContent, newPackage: String): String =
+        "${File(test.path).name} stays in the old package; it only gets an import. To move it to $newPackage as well " +
+            "(e.g. when tests must mirror production packages), add {p:move-tests=true}."
+
+    /**
+     * Moves each mirroring test after the main move, against the sources as the main move left them (in memory),
+     * and merges everything into one result keyed by the files' original paths.
+     */
+    private fun moveTestsAlong(
+        main: MoveClassResult,
+        tests: List<SourceFileContent>,
+        className: String,
+        newFqcn: String,
+        ps: ParsedSources,
+        sourceRoots: List<File>,
+    ): MoveClassResult {
+        val originals = ps.sources.associate { it.path to it.content }
+        val currentPathOf = mutableMapOf<String, String>()
+        main.movedFiles.forEach { (from, to) -> currentPathOf[from] = to }
+        val contents = originals.toMutableMap().apply { main.changes.forEach { put(it.filePath, it.after) } }
+        val alsoMoved = mutableMapOf<String, String>()
+        val warnings = main.warnings.toMutableList()
+        val oldSimple = className.substringAfterLast(".")
+        val newSimple = newFqcn.substringAfterLast(".")
+        val oldPackage = className.substringBeforeLast(".")
+        val newPackage = newFqcn.substringBeforeLast(".")
+
+        for (test in tests) {
+            val testName = File(test.path).nameWithoutExtension
+            val inMemory = ParsedSources(contents.map { (path, content) -> SourceFileContent(currentPathOf[path] ?: path, content) }, ps.sourceRoots)
+            val r = move(
+                sourceRoots, "$oldPackage.$testName", "$newPackage.${newSimple + testName.removePrefix(oldSimple)}",
+                preview = true, parsedSources = inMemory, allowMultiClass = true, movedFile = test.path,
+            )
+            if (r.error != null) return MoveClassResult(emptyList(), main.movedFilePath, main.newFilePath, error = "Moving ${File(test.path).name} along failed, nothing was written: ${r.error}")
+            val originalPathOf = currentPathOf.entries.associate { (k, v) -> v to k }
+            r.changes.forEach { contents[originalPathOf[it.filePath] ?: it.filePath] = it.after }
+            r.movedFiles.forEach { (from, to) -> currentPathOf[from] = to; alsoMoved[from] = to }
+            warnings += r.warnings
+        }
+        val changes = contents.filter { (path, content) -> originals[path] != content || path in currentPathOf }
+            .map { (path, content) -> RenameChange(path, originals.getValue(path), content) }
+        return MoveClassResult(changes, main.movedFilePath, main.newFilePath, warnings, alsoMoved = alsoMoved)
+    }
+
+    private fun applyMoves(result: MoveClassResult) {
+        for (change in result.changes) File(change.filePath).writeText(change.after)
+        for ((from, to) in result.movedFiles) {
+            File(to).parentFile.mkdirs()
+            Files.move(File(from).toPath(), File(to).toPath(), StandardCopyOption.REPLACE_EXISTING)
+        }
     }
 
     /**
@@ -334,7 +422,7 @@ object MoveClassRewriter {
                                 appendLine("  - $sibling")
                             }
                             appendLine()
-                            append("The entire file moves together. Use cnavMoveFile or cnavMoveClass --from-file to move the whole file.")
+                            append("The entire file moves together. Move the whole file: {u:move-file} {p:from-file=${relativeToSourceRoot(movedFilePath, ps.sourceRoots)}} {p:to-package=$newPackage}")
                         },
                     )
                 }
@@ -448,11 +536,12 @@ object MoveClassRewriter {
             return MoveClassResult(emptyList(), movedFilePath, newFilePath, error = it)
         }
 
+        val orderedChanges = ImportOrdering.placeNewImports(changes)
         if (!preview) {
-            applyChanges(changes, movedFilePath, newFilePath)
+            applyChanges(orderedChanges, movedFilePath, newFilePath)
         }
 
-        return MoveClassResult(changes, movedFilePath, newFilePath)
+        return MoveClassResult(orderedChanges, movedFilePath, newFilePath)
     }
 
     private fun moveKtFacade(
@@ -517,11 +606,12 @@ object MoveClassRewriter {
             return MoveClassResult(emptyList(), movedFilePath, newFilePath, error = it)
         }
 
+        val orderedChanges = ImportOrdering.placeNewImports(allChanges)
         if (!preview) {
-            applyChanges(allChanges, movedFilePath, newFilePath)
+            applyChanges(orderedChanges, movedFilePath, newFilePath)
         }
 
-        return MoveClassResult(allChanges, movedFilePath, newFilePath)
+        return MoveClassResult(orderedChanges, movedFilePath, newFilePath)
     }
 
     private fun moveMultiClassFile(
@@ -565,11 +655,12 @@ object MoveClassRewriter {
             return MoveClassResult(emptyList(), movedFilePath, newFilePath, error = it)
         }
 
+        val orderedChanges = ImportOrdering.placeNewImports(allChanges)
         if (!preview) {
-            applyChanges(allChanges, movedFilePath, newFilePath)
+            applyChanges(orderedChanges, movedFilePath, newFilePath)
         }
 
-        return MoveClassResult(allChanges, movedFilePath, newFilePath)
+        return MoveClassResult(orderedChanges, movedFilePath, newFilePath)
     }
 
     /**
@@ -801,6 +892,13 @@ object MoveClassRewriter {
 
     private fun declaresClass(source: String, className: String): Boolean =
         extractDeclaredClassNames(source).contains(className)
+
+    /** The path as the user would type it for from-file: relative to the project (the source root's module dir). */
+    private fun relativeToSourceRoot(path: String, sourceRoots: List<File>): String {
+        val root = sourceRoots.firstOrNull { path.startsWith(it.absolutePath + File.separator) } ?: return path
+        val projectDir = root.absoluteFile.parentFile?.parentFile?.parentFile ?: return path
+        return File(path).relativeTo(projectDir).invariantSeparatorsPath
+    }
 
     private data class LocatedFile(val path: String, val newPath: String?, val byContent: Boolean)
 

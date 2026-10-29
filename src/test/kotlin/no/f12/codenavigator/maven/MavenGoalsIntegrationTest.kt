@@ -140,4 +140,20 @@ class MavenGoalsIntegrationTest {
 
         assertTrue(run.output.contains("UserService.kt"), run.output)
     }
+
+    @Test
+    fun `move-class with move-tests moves the mirroring test too, and without it says the test stays`() {
+        val project = freshProject()
+        val pom = File(project, "pom.xml")
+        compile(pom)
+
+        val hint = mvn(pom, goal("move-class"), *moveAuditService, "-Dpreview")
+        assertTrue(hint.output.contains("AuditServiceTest.kt stays in the old package") && hint.output.contains("-Dmove-tests=true"), hint.output)
+
+        val run = mvn(pom, goal("move-class"), *moveAuditService, "-Dmove-tests")
+
+        assertEquals(0, run.exitCode, run.output)
+        assertFalse(File(project, "src/test/kotlin/com/example/services/AuditServiceTest.kt").exists(), run.output)
+        assertTrue(File(project, "src/test/kotlin/com/example/domain/AuditServiceTest.kt").readText().contains("package com.example.domain"))
+    }
 }

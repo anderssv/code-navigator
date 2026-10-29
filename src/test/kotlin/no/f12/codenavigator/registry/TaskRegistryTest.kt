@@ -1018,6 +1018,7 @@ class TaskRegistryTest {
             "max-fan-in" to ParamType.INT,
             "after" to ParamType.DATE,
             "no-follow" to ParamType.FLAG,
+            "move-tests" to ParamType.FLAG,
             "min-revs" to ParamType.INT,
             "min-tokens" to ParamType.INT,
             "include-test" to ParamType.BOOLEAN,

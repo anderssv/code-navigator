@@ -66,8 +66,18 @@ fun computeUnifiedDiff(
     }.trimEnd()
 }
 
-/** `a/` + path, without doubling the separator when the path is already absolute. */
-private fun diffPath(side: String, path: String): String = "$side/${path.trimStart('/')}"
+/**
+ * `a/` + path. Absolute paths are made relative to the git repository containing them, which is what `git apply`
+ * expects; outside a repository they stay absolute (without doubling the separator).
+ */
+private fun diffPath(side: String, path: String): String = "$side/${repoRelative(path).trimStart('/')}"
+
+private fun repoRelative(path: String): String {
+    val file = java.io.File(path)
+    if (!file.isAbsolute) return path
+    val root = generateSequence(file.parentFile) { it.parentFile }.firstOrNull { java.io.File(it, ".git").exists() } ?: return path
+    return file.relativeTo(root).invariantSeparatorsPath
+}
 
 internal data class UnifiedHunk(val header: String, val lines: List<String>)
 

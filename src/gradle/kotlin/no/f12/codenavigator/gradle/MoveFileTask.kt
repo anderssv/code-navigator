@@ -35,6 +35,10 @@ abstract class MoveFileTask @Inject constructor(
     @get:Internal
     var toPackage: String? = null
 
+    @Option(option = "move-tests", description = "Also move tests that mirror the moved class's package")
+    @get:Internal
+    var moveTests: Boolean = false
+
     @Option(option = "preview", description = "Preview changes without writing to source files")
     @get:Internal
     var preview: Boolean = false
@@ -43,6 +47,7 @@ abstract class MoveFileTask @Inject constructor(
         fromFile?.let { put("from-file", it) }
         toPackage?.let { put("to-package", it) }
         if (preview) put("preview", "true")
+        if (moveTests) put("move-tests", "true")
     }
 
     @TaskAction
@@ -70,6 +75,7 @@ abstract class MoveFileTask @Inject constructor(
             fromFile.set(config.fromFile)
             toPackage.set(config.toPackage)
             preview.set(config.preview)
+            moveTests.set(config.moveTests)
             sourceRoots.set(sourceRootPaths)
             this.classpathDirs.set(classpathDirs)
             resultFile.set(resultFileLocation)
@@ -87,7 +93,7 @@ abstract class MoveFileTask @Inject constructor(
             return
         }
 
-        val result = MoveClassResult.fromJson(resultFileLocation.readText())
+        val result = MoveClassResult.fromJson(resultFileLocation.readText()).let { r -> r.copy(warnings = r.warnings.map { no.f12.codenavigator.registry.DocTemplate.render(it, BuildTool.GRADLE) }) }
 
         if (result.changes.isEmpty()) {
             logger.quiet(OutputWrapper.emptyResult(config.format, "No changes needed.", noResultsHints(config)))

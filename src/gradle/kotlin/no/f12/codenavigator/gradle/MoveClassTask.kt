@@ -41,6 +41,10 @@ abstract class MoveClassTask @Inject constructor(
     @get:Internal
     var fromFile: String? = null
 
+    @Option(option = "move-tests", description = "Also move tests that mirror the moved class's package")
+    @get:Internal
+    var moveTests: Boolean = false
+
     @Option(option = "preview", description = "Preview changes without writing to source files")
     @get:Internal
     var preview: Boolean = false
@@ -50,6 +54,7 @@ abstract class MoveClassTask @Inject constructor(
         to?.let { put("to", it) }
         fromFile?.let { put("from-file", it) }
         if (preview) put("preview", "true")
+        if (moveTests) put("move-tests", "true")
     }
 
     @TaskAction
@@ -83,6 +88,7 @@ abstract class MoveClassTask @Inject constructor(
             from.set(config.from)
             to.set(config.to)
             preview.set(config.preview)
+            moveTests.set(config.moveTests)
             sourceRoots.set(sourceRootPaths)
             this.classpathDirs.set(classpathDirs)
             resultFile.set(resultFileLocation)
@@ -90,10 +96,10 @@ abstract class MoveClassTask @Inject constructor(
 
         workQueue.await()
 
-        val result = MoveClassResult.fromJson(resultFileLocation.readText())
+        val result = MoveClassResult.fromJson(resultFileLocation.readText()).let { r -> r.copy(warnings = r.warnings.map { no.f12.codenavigator.registry.DocTemplate.render(it, BuildTool.GRADLE) }) }
 
         if (result.error != null) {
-            logger.quiet(OutputWrapper.formatAndWrap(config.format) { result.error })
+            logger.quiet(OutputWrapper.formatAndWrap(config.format) { no.f12.codenavigator.registry.DocTemplate.render(result.error, no.f12.codenavigator.registry.BuildTool.GRADLE) })
             return
         }
 
@@ -121,6 +127,7 @@ abstract class MoveClassTask @Inject constructor(
             toPackage = to!!,
             preview = preview,
             format = ParamDef.parseFormat(buildOptionsMap()),
+            moveTests = moveTests,
         )
 
         val resultFileLocation = temporaryDir.resolve("move-result.json")
@@ -133,6 +140,7 @@ abstract class MoveClassTask @Inject constructor(
             fromFile.set(config.fromFile)
             toPackage.set(config.toPackage)
             preview.set(config.preview)
+            moveTests.set(config.moveTests)
             sourceRoots.set(sourceRootPaths)
             this.classpathDirs.set(classpathDirs)
             resultFile.set(resultFileLocation)
@@ -140,10 +148,10 @@ abstract class MoveClassTask @Inject constructor(
 
         workQueue.await()
 
-        val result = MoveClassResult.fromJson(resultFileLocation.readText())
+        val result = MoveClassResult.fromJson(resultFileLocation.readText()).let { r -> r.copy(warnings = r.warnings.map { no.f12.codenavigator.registry.DocTemplate.render(it, BuildTool.GRADLE) }) }
 
         if (result.error != null) {
-            logger.quiet(OutputWrapper.formatAndWrap(config.format) { result.error })
+            logger.quiet(OutputWrapper.formatAndWrap(config.format) { no.f12.codenavigator.registry.DocTemplate.render(result.error, no.f12.codenavigator.registry.BuildTool.GRADLE) })
             return
         }
 

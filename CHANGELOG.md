@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **`move-tests` for `move-class`/`move-file`:** also moves tests that mirror the moved class's package (`FooTest`, `FooTests`, `FooIT`, `FooSpec` in the same package), for projects whose architecture rules require tests to follow production packages. Without it, the output now names each such test that stays behind and how to move it.
+
+### Fixed
+- **Diffs apply with `git apply`.** Paths in `---`/`+++` headers are relative to the git repository root instead of `a/` glued onto an absolute path.
+- **Imports land in sorted order.** An import a move adds or rewrites is placed where ktlint's default layout (or plain lexicographic order) expects it, when the file's imports already follow that order. Files with hand-arranged imports are left as they were.
+- **The multi-class error names the right command.** It now gives a ready-to-run `move-file` command with `from-file`/`to-package` for the build tool in use (`mvn ... -Dfrom-file=...`), instead of the Gradle-only `cnavMoveFile --from-file`.
+
 ## 0.1.123
 
 ### Fixed

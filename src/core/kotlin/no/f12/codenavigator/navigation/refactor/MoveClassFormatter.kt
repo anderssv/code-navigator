@@ -36,17 +36,11 @@ object MoveClassFormatter {
      * file itself, but nothing in the output used to say so — a follow-up `git mv` was attempted on
      * an already-moved file. Rendered as a summary line and as the diff's `---`/`+++` pair.
      */
-    private fun MoveClassResult.renamedPaths(): Map<String, String> {
-        val from = movedFilePath ?: return emptyMap()
-        val to = newFilePath ?: return emptyMap()
-        if (from == to) return emptyMap()
-        return mapOf(from to to)
-    }
+    private fun MoveClassResult.renamedPaths(): Map<String, String> = movedFiles
 
     private fun StringBuilder.appendFileMoveLine(result: MoveClassResult, preview: Boolean) {
-        val (from, to) = result.renamedPaths().entries.singleOrNull()?.toPair() ?: return
         val verb = if (preview) "file moves" else "file moved"
-        appendLine("$verb: $from -> $to")
+        for ((from, to) in result.movedFiles) appendLine("$verb: $from -> $to")
     }
 
     private fun operationDescription(config: MoveClassConfig): String {
@@ -154,6 +148,7 @@ object MoveClassFormatter {
                 appendLine()
             }
             if (!config.preview) { appendLine(COMPILE_RECOMMENDATION) }
+            appendWarnings(result)
         }.trimEnd()
     }
 
@@ -193,6 +188,7 @@ object MoveClassFormatter {
                 appendLine(COMPILE_RECOMMENDATION)
                 append(RefactoringHints.moveClassFollowUp(config.fromFile))
             }
+            appendWarnings(result)
         }.trimEnd()
     }
 }

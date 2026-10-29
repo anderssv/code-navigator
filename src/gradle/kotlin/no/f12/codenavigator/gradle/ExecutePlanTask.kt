@@ -108,7 +108,7 @@ abstract class ExecutePlanTask @Inject constructor(
         }
 
         logger.quiet(OutputWrapper.formatAndWrap(config.format) { format ->
-            ExecutePlanFormatter.format(planResult, format)
+            no.f12.codenavigator.registry.DocTemplate.render(ExecutePlanFormatter.format(planResult, format), no.f12.codenavigator.registry.BuildTool.GRADLE)
         })
     }
 

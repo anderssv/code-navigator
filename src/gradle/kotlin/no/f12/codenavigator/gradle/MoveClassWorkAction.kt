@@ -12,6 +12,7 @@ interface MoveClassWorkParameters : WorkParameters {
     val from: Property<String>
     val to: Property<String>
     val preview: Property<Boolean>
+    val moveTests: Property<Boolean>
     val sourceRoots: ListProperty<String>
     val classpathDirs: ListProperty<String>
     val resultFile: RegularFileProperty
@@ -30,6 +31,7 @@ abstract class MoveClassWorkAction : WorkAction<MoveClassWorkParameters> {
             newFqcn = params.to.get(),
             classpath = classpath,
             preview = params.preview.get(),
+            moveTests = params.moveTests.getOrElse(false),
         )
 
         params.resultFile.get().asFile.writeText(result.toJson())

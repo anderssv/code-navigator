@@ -30,6 +30,9 @@ class MoveFileMojo : AbstractMojo() {
     @Parameter(property = "to-package")
     private var toPackage: String? = null
 
+    @Parameter(property = "move-tests")
+    private var moveTests: String? = null
+
     @Parameter(property = "preview")
     private var preview: String? = null
 
@@ -56,7 +59,8 @@ class MoveFileMojo : AbstractMojo() {
                 toPackage = config.toPackage,
                 classpath = classpath,
                 preview = config.preview,
-            )
+                moveTests = config.moveTests,
+            ).let { r -> r.copy(warnings = r.warnings.map { no.f12.codenavigator.registry.DocTemplate.render(it, BuildTool.MAVEN) }) }
         } catch (e: Exception) {
             println(OutputWrapper.emptyResult(config.format, "move-file failed: ${e.message ?: "unknown error"}", noResultsHints(config)))
             return
@@ -81,6 +85,7 @@ class MoveFileMojo : AbstractMojo() {
         fromFile?.let { put("from-file", it) }
         toPackage?.let { put("to-package", it) }
         preview?.let { put("preview", it) }
+        moveTests?.let { put("move-tests", it) }
     }
 
     private fun noResultsHints(config: MoveFileConfig): List<String> = buildList {

@@ -301,6 +301,7 @@ object TaskRegistry {
     val RENAME_PARAM = ParamDef("param", "<name>", "Current parameter name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_PROPERTY = ParamDef("property", "<name>", "Current property name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_NEW_NAME = ParamDef("new-name", "<name>", "New name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val MOVE_TESTS = ParamDef("move-tests", "true", "Also move tests that mirror the moved class's package (FooTest, FooTests, FooIT, FooSpec in the same package)", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val PREVIEW = ParamDef("preview", "true", "Preview changes without writing to source files", flag = true, defaultValue = null, enhancePattern = false, type = ParamType.FLAG)
     val CHANGE_SIG_PARAMS = ParamDef("params", "<params>", "New parameter list (e.g. \"limit: Int, offset: Int, query: String\")", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val CHANGE_SIG_DEFAULTS = ParamDef("defaults", "<defaults>", "Default values for new params at call sites (e.g. \"query=\\\"\\\"\") comma-separated name=value pairs", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
@@ -953,7 +954,7 @@ object TaskRegistry {
     val MOVE_CLASS_TASK = TaskDef(
         goal = "move-class",
         description = "Move and/or rename a class (or a whole file with from-file), updating all references",
-        params = FORMAT_PARAMS + listOf(MOVE_FROM, MOVE_TO, FROM_FILE, PREVIEW),
+        params = FORMAT_PARAMS + listOf(MOVE_FROM, MOVE_TO, FROM_FILE, MOVE_TESTS, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
         kind = TaskKind.MUTATION,
@@ -986,7 +987,7 @@ object TaskRegistry {
     val MOVE_FILE_TASK = TaskDef(
         goal = "move-file",
         description = "Move a Kotlin source file to a new package, updating all class and top-level declaration references",
-        params = FORMAT_PARAMS + listOf(FROM_FILE, TO_PACKAGE, PREVIEW),
+        params = FORMAT_PARAMS + listOf(FROM_FILE, TO_PACKAGE, MOVE_TESTS, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
         kind = TaskKind.MUTATION,

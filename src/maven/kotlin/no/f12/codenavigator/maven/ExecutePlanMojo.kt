@@ -91,7 +91,7 @@ open class ExecutePlanMojo : AbstractMojo() {
         }
 
         println(OutputWrapper.formatAndWrap(config.format) { format ->
-            ExecutePlanFormatter.format(planResult, format)
+            no.f12.codenavigator.registry.DocTemplate.render(ExecutePlanFormatter.format(planResult, format), no.f12.codenavigator.registry.BuildTool.MAVEN)
         })
     }
 
