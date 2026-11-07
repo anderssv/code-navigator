@@ -367,6 +367,57 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 
 ## Standalone new tasks
 
+### `find-callees --branches` — branch-aware call tree with conditions
+**FUTURE** | **Value: medium** | **Effort: high** | Source: user-feedback
+
+Add a `branches` flag to `find-callees`. It shows each method's callees under the conditions they run in (`if`/`when`/`switch`/`try`/`catch`/`?:`/early `return`/`throw`) and prints the condition text. Starts from the method(s) matched by `pattern`, as today, and goes down to `maxdepth`. The idea is to let an LLM reason about logic and guards ("what has to be true for this call to happen?") instead of reading a flat list of callees.
+
+```
+OrderController.place  (OrderController.kt:18)
+  if (!auth.canPlace(user))           :22
+    → throw ForbiddenException
+  when (order.type)                   :25
+    PRIORITY → PriorityQueue.enqueue
+    else     → StandardQueue.enqueue
+  try → PaymentGateway.charge         :31
+  catch PaymentException → log; rethrow
+```
+
+Approach (hybrid):
+- Edges between methods still come from the bytecode call graph (`CallGraphBuilder`).
+- Branches inside a method come from Kotlin source via the K1 PSI + `BindingContext` already used by `KotlinReferenceResolver`. That gives the condition text exactly as written and resolves calls to the method they really target. The bytecode call sites are matched to PSI calls by line.
+- Java and other JVM languages fall back to bytecode: branch points from `visitJumpInsn`/`TABLESWITCH`/`LOOKUPSWITCH`/try-catch blocks plus line numbers. The condition is rebuilt from the instructions just before the jump (e.g. `INVOKEVIRTUAL isAdmin` + `IFEQ` → `if (!isAdmin())`), and printed as `branch at :42` when it can't be rebuilt. Later this could use a Java parser instead.
+
+Keeping output size down (branch trees grow very fast with depth):
+- Drop branches that contain no project call, `throw` or `return`.
+- Default `maxdepth` 2–3.
+- Expand interface calls into implementations only via `maxImplementors`.
+- Collapse identical subtrees that repeat.
+
+Caveats:
+- Kotlin `when`/`&&`/`||`/string `switch` look messy in bytecode, so the bytecode fallback's conditions are approximate.
+- Lambdas, coroutines and inline functions blur where a branch belongs (see the lambda/inline notes on `find-callers`).
+- This tracks control flow only, not data flow, so it doesn't find injection-type bugs.
+
+### `call-paths` — call paths from entry points to a target, with optional guard check
+**FUTURE** | **Value: medium** | **Effort: medium** | Source: user-feedback
+
+There is no method-to-method path query today: `find-callers` lists every route into a method without filtering by where it starts, and `why-depends` works at package/class level. Add a task with three inputs:
+
+- `from`: entry points, given as a method regex or an annotation (e.g. `@PostMapping`, reusing the annotation/framework-preset matching).
+- `to`: target method regex (e.g. `UserRepository\.delete`, `PaymentGateway\.charge`).
+- `guard` (optional): regex for a check that must appear on the path (e.g. `authorize|requireRole`).
+
+Without `guard`, it lists every call path from an entry point to the target. With `guard`, it lists only the paths that skip the guard. Those are the suspects for missing authorization or validation. The output is short (only the paths that match), which suits a security pass better than dumping full trees.
+
+Implementation: `CallGraph` already has both directions. Search outward from the `from` set and backwards from the target, keep the methods both searches reach, then list the paths through them (capped by length and count). Checking the guard means removing the guard methods from the graph and seeing whether a path still exists. That is cheap and exact for the call graph we have.
+
+Caveats:
+- Guards that live outside the call tree (servlet filters, interceptors, `@PreAuthorize`/`@Secured`) need special handling. Count an annotation on any method in the path as a guard.
+- Interface dispatch over-approximates, so a path can go through an implementation that is never used there. Show which implementation each step went through.
+- Reflection or DI-only wiring can hide an edge, so "no path" isn't proof.
+- Later, combine with `--branches` to show the conditions along each path.
+
 ### `cnavTestHealth` — verify all test methods actually ran
 **PARKED** | **Value: medium** | **Effort: medium** | Source: user-feedback
 
