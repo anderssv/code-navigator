@@ -16,6 +16,8 @@ data class CallPathConfig(
     val projectOnly: Boolean,
     val scope: Scope,
     val format: OutputFormat,
+    /** Show the conditions each step is called under, from Kotlin source. */
+    val branches: Boolean = false,
 ) {
     fun guardRegex(): Regex? = guard?.let { Regex(it, RegexOption.IGNORE_CASE) }
 
@@ -46,6 +48,7 @@ data class CallPathConfig(
                 projectOnly = TaskRegistry.PROJECTONLY.parseFrom(properties),
                 scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
                 format = ParamDef.parseFormat(properties),
+                branches = TaskRegistry.BRANCHES.parseFrom(properties),
             )
         }
 

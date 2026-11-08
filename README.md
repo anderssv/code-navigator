@@ -72,7 +72,7 @@ All tasks support `--format=json` / `-Dformat=json` and `--llm` / `-Dllm=true` f
 | `cnavClass` / `cnav:class-detail` | Show class signature (fields, methods, interfaces) |
 | `cnavContext` / `cnav:context` | Full context for a class: detail, callers, callees, interfaces |
 | `cnavCallers` / `cnav:find-callers` | Call tree: who calls this method? |
-| `cnavCallees` / `cnav:find-callees` | Call tree: what does this method call? |
+| `cnavCallees` / `cnav:find-callees` | Call tree: what does this method call? (`branches=true`: inside the if/when/try it runs in) |
 | `cnavCallPaths` / `cnav:call-paths` | Call paths from entry points to a method; with a guard, only those that skip the check |
 | `cnavInterfaces` / `cnav:find-interfaces` | Find all implementors of an interface |
 | `cnavTypeHierarchy` / `cnav:type-hierarchy` | Show inheritance tree (up and down) |

@@ -102,6 +102,12 @@ class CodeNavigatorPlugin : Plugin<Project> {
                 if (this is FindDeclarationTask) {
                     psiClasspath.from(psiConfig)
                 }
+                if (this is FindCalleesTask) {
+                    psiClasspath.from(psiConfig)
+                }
+                if (this is CallPathsTask) {
+                    psiClasspath.from(psiConfig)
+                }
             }
         }
 

@@ -1,5 +1,7 @@
 package no.f12.codenavigator.maven
 
+import no.f12.codenavigator.navigation.branches.BranchScan
+import no.f12.codenavigator.navigation.branches.BranchScanner
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
 import org.apache.maven.plugin.AbstractMojo
@@ -41,6 +43,9 @@ class FindCalleesMojo : AbstractMojo() {
     @Parameter(property = "max-implementors")
     private var maxImplementors: String? = null
 
+    @Parameter(property = "branches")
+    private var branches: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
 
@@ -51,6 +56,7 @@ class FindCalleesMojo : AbstractMojo() {
             taskDef = TaskRegistry.FIND_CALLEES,
             direction = CallDirection.CALLEES,
             usageHint = "Missing required property. Usage: mvn cnav:find-callees -Dpattern=<regex> -Dmaxdepth=3",
+            branchScan = BranchScan(project.allSourceRoots(), BranchScanner::scan),
         )
     }
 
@@ -63,5 +69,6 @@ class FindCalleesMojo : AbstractMojo() {
         scope?.let { put("scope", it) }
         method?.let { put("method", it) }
         maxImplementors?.let { put("max-implementors", it) }
+        branches?.let { put("branches", it) }
     }
 }

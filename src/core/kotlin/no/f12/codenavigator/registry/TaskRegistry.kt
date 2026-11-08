@@ -330,6 +330,8 @@ object TaskRegistry {
     val PATH_MAXDEPTH = ParamDef("maxdepth", "<N>", "Max calls along a path", flag = false, defaultValue = "8", enhancePattern = false, type = ParamType.INT)
     val PATH_TOP = ParamDef("top", "<N>", "Max entry points listed", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
 
+    val BRANCHES = ParamDef("branches", "true", "Show the branches (if/else, when, try/catch, ?:, loops, return/throw) each call sits in, with their conditions, read from Kotlin source", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN)
+
     val FORMAT_PARAMS = listOf(FORMAT)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
     val PLAN_PARAMS = listOf(PLAN_FILE)
@@ -425,7 +427,7 @@ object TaskRegistry {
     val FIND_CALLEES = TaskDef(
         goal = "find-callees",
         description = "Full call hierarchy: find all methods called by a method, recursively",
-        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE, MAX_IMPLEMENTORS),
+        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE, MAX_IMPLEMENTORS, BRANCHES),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallees",
@@ -434,19 +436,21 @@ object TaskRegistry {
             UsageExample(listOf(CALL_PATTERN to "\".*Controller\\\\.handle.*\"", MAXDEPTH to "5")),
             UsageExample(listOf(CALL_PATTERN to "\"Service\\\\.create\"", MAXDEPTH to "5", PROJECTONLY to "true")),
             UsageExample(listOf(CALL_PATTERN to "\"Repository\\\\.save\"", MAX_IMPLEMENTORS to "10")),
+            UsageExample(listOf(CALL_PATTERN to "\"OrderService\\\\.place\"", MAXDEPTH to "2", BRANCHES to "true")),
         ),
     )
 
     val CALL_PATHS = TaskDef(
         goal = "call-paths",
         description = "Call paths from entry points to a target method; with guard, only the paths that skip the check",
-        params = FORMAT_PARAMS + listOf(PATH_FROM, PATH_FROM_ANNOTATION, PATH_TO, GUARD, GUARD_DEPTH, PATH_MAXDEPTH, PATH_TOP, PROJECTONLY, SCOPE),
+        params = FORMAT_PARAMS + listOf(PATH_FROM, PATH_FROM_ANNOTATION, PATH_TO, GUARD, GUARD_DEPTH, PATH_MAXDEPTH, PATH_TOP, PROJECTONLY, SCOPE, BRANCHES),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         examples = listOf(
             UsageExample(listOf(PATH_FROM to "\"Controller\\\\.\"", PATH_TO to "\"UserRepository\\\\.delete\"")),
             UsageExample(listOf(PATH_FROM_ANNOTATION to "\"PostMapping|DeleteMapping\"", PATH_TO to "\"UserRepository\\\\.delete\"", GUARD to "\"authorize|PreAuthorize\"")),
             UsageExample(listOf(PATH_FROM to "\"Routes\\\\.\"", PATH_TO to "\"PaymentGateway\\\\.charge\"", GUARD to "requireRole", GUARD_DEPTH to "2", SCOPE to "prod")),
+            UsageExample(listOf(PATH_FROM to "\"Controller\\\\.\"", PATH_TO to "\"Repo\\\\.delete\"", BRANCHES to "true")),
         ),
     )
 

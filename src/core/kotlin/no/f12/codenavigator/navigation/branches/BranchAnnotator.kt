@@ -4,6 +4,12 @@ import no.f12.codenavigator.navigation.relations.callgraph.CallPathResult
 import no.f12.codenavigator.navigation.relations.callgraph.CallTreeNode
 import java.io.File
 
+/**
+ * How to read branches for a run: the source roots to look in and the scan to use. Gradle passes a scan that
+ * runs in the PSI worker; Maven calls [BranchScanner] directly.
+ */
+class BranchScan(val sourceRoots: List<File>, val scan: (List<File>) -> List<FunctionBranches>)
+
 object BranchSources {
     /** Kotlin source files under [roots] whose file name is in [names] (the call graph only records file names). */
     fun filesNamed(names: Set<String>, roots: List<File>): List<File> =
@@ -58,6 +64,18 @@ object BranchAnnotator {
             )
         }
         return result.copy(reaching = reaching)
+    }
+
+    /** Scans only the source files the trees need, then annotates. */
+    fun annotateTrees(trees: List<CallTreeNode>, branchScan: BranchScan): List<CallTreeNode> {
+        val files = BranchSources.filesNamed(sourceFileNames(trees), branchScan.sourceRoots)
+        return if (files.isEmpty()) trees else annotateTrees(trees, branchScan.scan(files))
+    }
+
+    /** Scans only the source files the paths need, then annotates. */
+    fun annotatePaths(result: CallPathResult, branchScan: BranchScan): CallPathResult {
+        val files = BranchSources.filesNamed(sourceFileNames(result), branchScan.sourceRoots)
+        return if (files.isEmpty()) result else annotatePaths(result, branchScan.scan(files))
     }
 
     private const val UNKNOWN_SOURCE = "<unknown>"

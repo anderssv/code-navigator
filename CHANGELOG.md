@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- **`branches` for `find-callees` and `call-paths`:** shows the branches each call sits in (`if`/`else`, `when`, `try`/`catch`/`finally`, `?:`, safe calls, loops) with the condition text and the `return`/`throw` exits, read from the Kotlin source. `find-callees` prints each method's callees inside their branches; `call-paths` shows the conditions of each step, e.g. `[when (hard) › false ->]`. Calls are matched to the source by name; Java methods print without branches.
 - **`call-paths`:** lists the call paths from entry points (`from` method regex and/or `from-annotation`) to a target method (`to`), following interface calls into implementors. With `guard`, it lists only the paths that skip the check, for finding endpoints that reach sensitive code without authorization or validation. A method counts as guarded when its name or an annotation on it or its class matches, or when it calls a match within `guard-depth` calls.
 
 ## 0.1.124

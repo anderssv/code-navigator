@@ -158,6 +158,18 @@ class MavenGoalsIntegrationTest {
     }
 
     @Test
+    fun `find-callees with branches shows the early returns read from the Kotlin source`() {
+        val project = freshProject()
+        compile(File(project, "pom.xml"))
+
+        val run = mvn(File(project, "pom.xml"), goal("find-callees"), "-Dpattern=UserService.resetPassword", "-Dmaxdepth=1", "-Dbranches=true", "-Dformat=llm")
+
+        assertEquals(0, run.exitCode, run.output)
+        assertTrue(run.output.contains("if (repository.findById(userId) == null) L"), run.output)
+        assertTrue(run.output.contains("return UserError.NotFound(userId) L"), run.output)
+    }
+
+    @Test
     fun `move-class with move-tests moves the mirroring test too, and without it says the test stays`() {
         val project = freshProject()
         val pom = File(project, "pom.xml")

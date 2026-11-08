@@ -262,4 +262,10 @@ class CallGraphConfigTest {
         assertTrue(!filter(MethodRef(prodClass, "doWork")))
         assertTrue(filter(MethodRef(testClass, "testDoWork")))
     }
+
+    @Test
+    fun `branches is off by default and can be turned on`() {
+        assertEquals(false, CallGraphConfig.parse(mapOf("pattern" to "A.b")).branches)
+        assertEquals(true, CallGraphConfig.parse(mapOf("pattern" to "A.b", "branches" to "true")).branches)
+    }
 }

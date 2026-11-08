@@ -1,5 +1,40 @@
 # Plan — Completed
 
+### ~~`find-callees --branches` — branch-aware call tree with conditions~~ — DONE (v0.1.125)
+~~**FUTURE**~~ **DONE (v0.1.125-SNAPSHOT)** | **Value: medium** | **Effort: high** | Source: user-feedback
+
+Add a `branches` flag to both `find-callees` and `call-paths` (done, see `plan-completed.md`), built on one shared condition extractor. On `find-callees` it shows each method's callees under the conditions they run in (`if`/`when`/`switch`/`try`/`catch`/`?:`/early `return`/`throw`) and prints the condition text. Starts from the method(s) matched by `pattern`, as today, and goes down to `maxdepth`. On `call-paths` each step of a matching path shows the condition it runs under (e.g. `if (order.total > limit)` before `PaymentGateway.charge`). That matters for security: a path that seems to skip the guard may be fine if it only runs under a safe condition, and a guard called in only one branch doesn't protect the other. The idea is to let an LLM reason about logic and guards ("what has to be true for this call to happen?") instead of reading a flat list of callees.
+
+```
+OrderController.place  (OrderController.kt:18)
+  if (!auth.canPlace(user))           :22
+    → throw ForbiddenException
+  when (order.type)                   :25
+    PRIORITY → PriorityQueue.enqueue
+    else     → StandardQueue.enqueue
+  try → PaymentGateway.charge         :31
+  catch PaymentException → log; rethrow
+```
+
+Approach (hybrid):
+- Edges between methods still come from the bytecode call graph (`CallGraphBuilder`).
+- Branches inside a method come from Kotlin source via the K1 PSI + `BindingContext` already used by `KotlinReferenceResolver`. That gives the condition text exactly as written and resolves calls to the method they really target. The bytecode call sites are matched to PSI calls by line.
+- Java and other JVM languages fall back to bytecode: branch points from `visitJumpInsn`/`TABLESWITCH`/`LOOKUPSWITCH`/try-catch blocks plus line numbers. The condition is rebuilt from the instructions just before the jump (e.g. `INVOKEVIRTUAL isAdmin` + `IFEQ` → `if (!isAdmin())`), and printed as `branch at :42` when it can't be rebuilt. Later this could use a Java parser instead.
+
+Keeping output size down (branch trees grow very fast with depth):
+- Drop branches that contain no project call, `throw` or `return`.
+- Default `maxdepth` 2–3.
+- Expand interface calls into implementations only via `maxImplementors`.
+- Collapse identical subtrees that repeat.
+
+Caveats:
+- Kotlin `when`/`&&`/`||`/string `switch` look messy in bytecode, so the bytecode fallback's conditions are approximate.
+- Lambdas, coroutines and inline functions blur where a branch belongs (see the lambda/inline notes on `find-callers`).
+- This tracks control flow only, not data flow, so it doesn't find injection-type bugs.
+
+**Shipped** (Kotlin only; follow-ups in `plan.md`): `branches=true` on `find-callees` and `call-paths`. Separate units, each with its own tests: `BranchScanner` (PSI → compiler-free `FunctionBranches`, tested on source snippets), `BranchPlacer` (bytecode callees into branches by name), `BranchFormatter` (text/LLM/JSON), `BranchCodec` (crosses the Gradle PSI worker boundary), `BranchAnnotator` (call trees and paths). End to end on `test-project` (`com.example.variants.branches`) and in the Maven integration test.
+
+
 ### ~~`call-paths` — call paths from entry points to a target, with optional guard check~~ — DONE (v0.1.125)
 ~~**ACTIVE**~~ **DONE (v0.1.125-SNAPSHOT)** | **Value: medium** | **Effort: medium** | Source: user-feedback
 

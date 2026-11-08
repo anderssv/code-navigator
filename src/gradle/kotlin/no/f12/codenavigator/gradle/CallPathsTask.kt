@@ -8,14 +8,23 @@ import no.f12.codenavigator.navigation.relations.callgraph.CallPathOrchestrator
 import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.TaskRegistry
 import org.gradle.api.GradleException
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
+import org.gradle.workers.WorkerExecutor
+import javax.inject.Inject
 import java.io.File
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class CallPathsTask : CodeNavigatorTask() {
+abstract class CallPathsTask @Inject constructor(
+    private val workerExecutor: WorkerExecutor,
+) : CodeNavigatorTask() {
+
+    @get:Classpath
+    abstract val psiClasspath: ConfigurableFileCollection
 
     @Option(option = "from", description = "Entry-point method regex (Class.method, camelCase-aware)")
     @get:Internal
@@ -53,6 +62,10 @@ abstract class CallPathsTask : CodeNavigatorTask() {
     @get:Internal
     var scope: String? = null
 
+    @Option(option = "branches", description = "Show the conditions each step is called under, read from Kotlin source")
+    @get:Internal
+    var branches: String? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         from?.let { put("from", it) }
         fromAnnotation?.let { put("from-annotation", it) }
@@ -63,6 +76,7 @@ abstract class CallPathsTask : CodeNavigatorTask() {
         top?.let { put("top", it) }
         projectOnly?.let { put("project-only", it) }
         scope?.let { put("scope", it) }
+        branches?.let { put("branches", it) }
     }
 
     @TaskAction
@@ -75,7 +89,7 @@ abstract class CallPathsTask : CodeNavigatorTask() {
         }
 
         val cacheDir = File(project.layout.buildDirectory.asFile.get(), "cnav")
-        val output = CallPathOrchestrator.run(config, project.taggedClassDirectories(), cacheDir)
+        val output = CallPathOrchestrator.run(config, project.taggedClassDirectories(), cacheDir, project.workerBranchScan(workerExecutor, psiClasspath, temporaryDir))
         output.skippedFileWarning?.let { logger.warn(it) }
 
         val report = output.report

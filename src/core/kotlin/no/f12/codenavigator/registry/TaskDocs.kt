@@ -111,8 +111,12 @@ object TaskDocs {
             details = listOf(
                 "Full call hierarchy for a method: the complete tree of callees, recursively.",
                 "Builds a call graph from compiled code, then walks callees transitively up to maxdepth. Interface call sites are expanded to their implementors, capped by max-implementors.",
+                "With {p:branches=true} each method's callees are printed inside the branches they run in (if/else, when, try/catch/finally, ?:, safe calls, loops), with the condition text and the return/throw exits, read from the Kotlin source.",
             ),
-            whenToUse = listOf("What calls does method X make?", "What does class X depend on at runtime?"),
+            whenToUse = listOf("What calls does method X make?", "What does class X depend on at runtime?", "Under which conditions does X call Y? What does X do top to bottom?"),
+            interpretation = listOf(
+                "With branches, calls are matched to the source by name: when two callees share a name (cache.delete and repo.delete) both show at each such call. Callees no source call matched are listed under \"(branch not known)\". Java methods and methods without source print without branches.",
+            ),
             schema = listOf(
                 """[{"method": "com.example.Service.doWork", "sourceFile": "Service.kt",""",
                 """  "children": [{"method": "...", "sourceFile": "...", "children": [...]}]}]""",
@@ -123,6 +127,7 @@ object TaskDocs {
         "call-paths" to TaskDoc(
             details = listOf(
                 "Lists the call paths from entry points to a target method, shortest first. Entry points come from a method regex ({p:from=...}), a method annotation ({p:from-annotation=PostMapping}), or both. Interface calls are followed into every implementor, and the step shows which interface it went through.",
+                "With {p:branches=true} each step shows the conditions under which the step before calls it (e.g. [when (hard) › false ->], or [always]), read from the Kotlin source.",
                 "With {p:guard=...} it lists only the paths that skip the check. A method counts as guarded when its qualified name matches, when it or its class carries a matching annotation, or when it calls a match within {p:guard-depth=1} calls. Entry points whose every path is guarded are listed separately.",
             ),
             whenToUse = listOf(

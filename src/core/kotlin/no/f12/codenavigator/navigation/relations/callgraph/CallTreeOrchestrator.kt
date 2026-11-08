@@ -1,6 +1,8 @@
 package no.f12.codenavigator.navigation.relations.callgraph
 
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
+import no.f12.codenavigator.navigation.branches.BranchAnnotator
+import no.f12.codenavigator.navigation.branches.BranchScan
 import no.f12.codenavigator.navigation.bytecode.InlineMethodDetector
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistryCache
@@ -21,6 +23,7 @@ object CallTreeOrchestrator {
         taggedDirs: List<Pair<File, SourceSet>>,
         cacheDir: File,
         direction: CallDirection,
+        branchScan: BranchScan? = null,
     ): CallTreeOutput {
         val classDirectories = taggedDirs.map { it.first }
 
@@ -65,7 +68,12 @@ object CallTreeOrchestrator {
         )
 
         val classHint = CallTreeFormatter.classMatchHint(config.method, methods)
+        val withBranches = if (config.branches && direction == CallDirection.CALLEES && branchScan != null) {
+            BranchAnnotator.annotateTrees(trees, branchScan)
+        } else {
+            trees
+        }
 
-        return CallTreeOutput(trees, classHint, skippedFileWarning)
+        return CallTreeOutput(withBranches, classHint, skippedFileWarning)
     }
 }

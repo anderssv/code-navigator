@@ -2,13 +2,22 @@ package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.registry.TaskRegistry
 import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.options.Option
 import org.gradle.work.DisableCachingByDefault
+import org.gradle.workers.WorkerExecutor
+import javax.inject.Inject
 
 @DisableCachingByDefault(because = "Produces console output only")
-abstract class FindCalleesTask : CodeNavigatorTask() {
+abstract class FindCalleesTask @Inject constructor(
+    private val workerExecutor: WorkerExecutor,
+) : CodeNavigatorTask() {
+
+    @get:Classpath
+    abstract val psiClasspath: ConfigurableFileCollection
 
     @Option(option = "pattern", description = "Class.method name regex (camelCase-aware: MyService.doWork matches com.example.MyService.doWork)")
     @get:Internal
@@ -38,6 +47,10 @@ abstract class FindCalleesTask : CodeNavigatorTask() {
     @get:Internal
     var maxImplementors: String? = null
 
+    @Option(option = "branches", description = "Show the branches (if/else, when, try/catch, ?:, loops, return/throw) each call sits in, read from Kotlin source")
+    @get:Internal
+    var branches: String? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
         pattern?.let { put("pattern", it) }
         method?.let { put("method", it) }
@@ -46,6 +59,7 @@ abstract class FindCalleesTask : CodeNavigatorTask() {
         filterSynthetic?.let { put("filter-synthetic", it) }
         scope?.let { put("scope", it) }
         maxImplementors?.let { put("max-implementors", it) }
+        branches?.let { put("branches", it) }
     }
 
     @TaskAction
@@ -56,6 +70,7 @@ abstract class FindCalleesTask : CodeNavigatorTask() {
             taskDef = TaskRegistry.FIND_CALLEES,
             direction = CallDirection.CALLEES,
             properties = TaskRegistry.FIND_CALLEES.enhanceProperties(buildOptionsMap()),
+            branchScan = project.workerBranchScan(workerExecutor, psiClasspath, temporaryDir),
         )
     }
 }

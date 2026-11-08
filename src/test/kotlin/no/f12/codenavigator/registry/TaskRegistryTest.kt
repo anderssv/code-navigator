@@ -1115,6 +1115,7 @@ class TaskRegistryTest {
             "from-annotation" to ParamType.STRING,
             "guard" to ParamType.STRING,
             "guard-depth" to ParamType.INT,
+            "branches" to ParamType.BOOLEAN,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }

@@ -2,6 +2,8 @@ package no.f12.codenavigator.maven
 
 import no.f12.codenavigator.config.OutputFormat
 import no.f12.codenavigator.formatting.OutputWrapper
+import no.f12.codenavigator.navigation.branches.BranchScan
+import no.f12.codenavigator.navigation.branches.BranchScanner
 import no.f12.codenavigator.navigation.relations.callgraph.CallPathConfig
 import no.f12.codenavigator.navigation.relations.callgraph.CallPathFormatter
 import no.f12.codenavigator.navigation.relations.callgraph.CallPathOrchestrator
@@ -53,6 +55,9 @@ class CallPathsMojo : AbstractMojo() {
     @Parameter(property = "scope")
     private var scope: String? = null
 
+    @Parameter(property = "branches")
+    private var branches: String? = null
+
     override fun execute() {
         project.checkStaleness(log)
         val taskDef = TaskRegistry.CALL_PATHS
@@ -68,7 +73,7 @@ class CallPathsMojo : AbstractMojo() {
             return
         }
 
-        val output = CallPathOrchestrator.run(config, taggedDirs, File(project.build.directory, "cnav"))
+        val output = CallPathOrchestrator.run(config, taggedDirs, File(project.build.directory, "cnav"), BranchScan(project.allSourceRoots(), BranchScanner::scan))
         output.skippedFileWarning?.let { log.warn(it) }
 
         val report = output.report
@@ -98,5 +103,6 @@ class CallPathsMojo : AbstractMojo() {
         top?.let { put("top", it) }
         projectOnly?.let { put("project-only", it) }
         scope?.let { put("scope", it) }
+        branches?.let { put("branches", it) }
     }
 }

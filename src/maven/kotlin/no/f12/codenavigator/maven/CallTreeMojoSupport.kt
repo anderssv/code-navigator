@@ -3,6 +3,7 @@ package no.f12.codenavigator.maven
 import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.formatting.OutputWrapper
+import no.f12.codenavigator.navigation.branches.BranchScan
 import no.f12.codenavigator.registry.TaskDef
 import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraphConfig
@@ -22,6 +23,7 @@ object CallTreeMojoSupport {
         taskDef: TaskDef,
         direction: CallDirection,
         usageHint: String,
+        branchScan: BranchScan? = null,
     ) {
         taskDef.deprecations(properties).forEach { log.warn(it) }
         val config = try {
@@ -37,7 +39,7 @@ object CallTreeMojoSupport {
         }
 
         val cacheDir = File(project.build.directory, "cnav")
-        val output = CallTreeOrchestrator.run(config, taggedDirs, cacheDir, direction)
+        val output = CallTreeOrchestrator.run(config, taggedDirs, cacheDir, direction, branchScan)
 
         output.skippedFileWarning?.let { log.warn(it) }
 

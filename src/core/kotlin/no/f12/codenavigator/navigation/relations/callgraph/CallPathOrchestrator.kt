@@ -1,6 +1,8 @@
 package no.f12.codenavigator.navigation.relations.callgraph
 
 import no.f12.codenavigator.navigation.annotation.AnnotationExtractor
+import no.f12.codenavigator.navigation.branches.BranchAnnotator
+import no.f12.codenavigator.navigation.branches.BranchScan
 import no.f12.codenavigator.navigation.bytecode.SkippedFileReporter
 import no.f12.codenavigator.navigation.relations.implementors.InterfaceRegistryCache
 import no.f12.codenavigator.navigation.types.Scope
@@ -17,7 +19,7 @@ data class CallPathOutput(
 /** Shared by the Gradle task and the Maven mojo for call-paths, so both run the same pipeline. */
 object CallPathOrchestrator {
 
-    fun run(config: CallPathConfig, taggedDirs: List<Pair<File, SourceSet>>, cacheDir: File): CallPathOutput {
+    fun run(config: CallPathConfig, taggedDirs: List<Pair<File, SourceSet>>, cacheDir: File, branchScan: BranchScan? = null): CallPathOutput {
         val classDirectories = taggedDirs.map { it.first }
         val scan = CallGraphCache.getOrBuildTagged(File(cacheDir, "call-graph.cache"), taggedDirs)
         val skippedFileWarning = SkippedFileReporter.report(scan.skippedFiles, File(cacheDir, "skipped-files.txt"))
@@ -45,7 +47,8 @@ object CallPathOrchestrator {
             annotationsOf = CallPathFinder.annotationLookup(annotations),
             maxEntries = config.top,
         )
-        return CallPathOutput(CallPathReport(result, targets, config.guard, config.maxDepth), null, skippedFileWarning)
+        val withBranches = if (config.branches && branchScan != null) BranchAnnotator.annotatePaths(result, branchScan) else result
+        return CallPathOutput(CallPathReport(withBranches, targets, config.guard, config.maxDepth), null, skippedFileWarning)
     }
 
     private fun buildFilter(graph: CallGraph, config: CallPathConfig): ((MethodRef) -> Boolean)? {

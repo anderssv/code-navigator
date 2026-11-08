@@ -4,6 +4,7 @@ import no.f12.codenavigator.config.OutputFormat
 
 import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.formatting.OutputWrapper
+import no.f12.codenavigator.navigation.branches.BranchScan
 import no.f12.codenavigator.registry.TaskDef
 import no.f12.codenavigator.navigation.relations.callgraph.CallDirection
 import no.f12.codenavigator.navigation.relations.callgraph.CallGraphConfig
@@ -22,6 +23,7 @@ object CallTreeTaskSupport {
         taskDef: TaskDef,
         direction: CallDirection,
         properties: Map<String, String?>,
+        branchScan: BranchScan? = null,
     ) {
         taskDef.deprecations(properties).forEach { logger.warn(it) }
         val config = try {
@@ -32,7 +34,7 @@ object CallTreeTaskSupport {
 
         val taggedDirs = project.taggedClassDirectories()
         val cacheDir = File(project.layout.buildDirectory.asFile.get(), "cnav")
-        val output = CallTreeOrchestrator.run(config, taggedDirs, cacheDir, direction)
+        val output = CallTreeOrchestrator.run(config, taggedDirs, cacheDir, direction, branchScan)
 
         output.skippedFileWarning?.let { logger.warn(it) }
 

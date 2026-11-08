@@ -136,6 +136,25 @@ mvn cnav:find-callees -Dpattern="Controller\.handle.*"
 mvn cnav:find-callees -Dpattern="Service\.create" -Dmaxdepth=5
 ```
 
+With `branches=true`, each method's callees are printed inside the branches they run in, with the condition text and the `return`/`throw` exits, read from the Kotlin source:
+
+```
+./gradlew cnavFindCallees -Ppattern="OrderService\.remove" -Pmaxdepth=1 -Pbranches=true
+
+com.example.OrderService.remove
+  → com.example.Auth.canDelete (Orders.kt:6)
+  if (!auth.canDelete(user))  :11
+    throw ForbiddenException()  :12
+  when (hard)  :14
+    true ->  :15
+      → com.example.Repo.delete (Orders.kt:4)
+    false ->  :16
+      → com.example.Repo.archive (Orders.kt:4)
+  → com.example.Audit.log (Orders.kt:5)
+```
+
+Calls are matched to the source by name, so two callees with the same name (`cache.delete`, `repo.delete`) both show at each such call. Callees that no call in the source matched are listed under `(branch not known)`. Java methods print without branches.
+
 ### call-paths
 
 Lists the call paths from entry points to a target method, shortest first. Entry points come from a method regex (`from`), a method annotation (`from-annotation`), or both. Interface calls are followed into every implementor.
@@ -166,6 +185,8 @@ Guarded on every path (1):
 
 Note: The guard check ignores call order and conditions: a method that calls the guard anywhere counts as guarded.
 ```
+
+With `branches=true`, each step also shows the conditions under which the step before calls it, e.g. `→ com.example.Repo.archive (Orders.kt:4)  [when (hard) › false ->]`. `[always]` means an unconditional call.
 
 An unguarded path is a suspect, not a finding. The guard may run in a filter, an interceptor or a framework annotation the call graph doesn't see; add those annotations to the guard regex. No path is not proof either: reflection, dependency-injection wiring and coroutine bodies can hide calls.
 

@@ -92,4 +92,10 @@ class CallPathConfigTest {
             CallPathConfig.parse(mapOf("from" to "C", "to" to "R", "maxdepth" to "0"))
         }
     }
+
+    @Test
+    fun `branches is off by default and can be turned on`() {
+        assertEquals(false, CallPathConfig.parse(mapOf("from" to "C", "to" to "R")).branches)
+        assertEquals(true, CallPathConfig.parse(mapOf("from" to "C", "to" to "R", "branches" to "true")).branches)
+    }
 }

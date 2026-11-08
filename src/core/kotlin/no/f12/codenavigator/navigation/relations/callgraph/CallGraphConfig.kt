@@ -15,6 +15,8 @@ data class CallGraphConfig(
     val format: OutputFormat,
     /** Only meaningful for CALLEES: max polymorphic implementors expanded per interface call site. */
     val maxImplementors: Int = CallTreeBuilder.DEFAULT_MAX_IMPLEMENTORS,
+    /** Only meaningful for CALLEES: lay out each node's callees in the branches of its Kotlin source. */
+    val branches: Boolean = false,
 ) {
     fun buildFilter(graph: CallGraph, direction: CallDirection = CallDirection.CALLERS): ((MethodRef) -> Boolean)? {
         val filters = buildList {
@@ -46,6 +48,7 @@ data class CallGraphConfig(
                 scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),
                 format = ParamDef.parseFormat(properties),
                 maxImplementors = TaskRegistry.MAX_IMPLEMENTORS.parseFrom(properties),
+                branches = TaskRegistry.BRANCHES.parseFrom(properties),
             )
         }
     }
