@@ -11,6 +11,7 @@ Refactoring operations try to be as deterministic as possible, but sometimes res
 ### Quick Reference
 
 - **Run tests**: `mise exec -- ./gradlew test`
+- **No `mise`?** (e.g. cloud sandboxes) Run `./gradlew` directly; a JDK 21 on the PATH is enough. Run one test class with `./gradlew test --tests '*CallPathFinderTest'`.
 - **Run the Maven goals end to end**: `mise exec -- ./gradlew mavenTest` — installs the plugin into `~/.m2`, then runs real `mvn` goals against `test-project-maven` (needs network the first time, ~1 min warm). Not part of `test` (Gradle excludes the JUnit tag `maven`) or of the Maven build (surefire `excludedGroups` in `pom.xml` — `mvnw deploy` runs the whole test tree, so a new tagged test needs that exclusion too); run it after touching `src/maven`, the pom, or anything the mojos depend on, and before a release. Unit tests can't see how a mojo derives source roots from a `MavenProject` or whether the plugin's own classpath is complete — both broke every refactoring goal in Kotlin projects while the unit suite was green.
 - **Publish locally**: `mise exec -- ./gradlew publishToMavenLocal`
 - **Version**: `build.gradle.kts` + `pom.xml` (keep in sync, `-SNAPSHOT` for dev)
