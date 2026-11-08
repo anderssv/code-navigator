@@ -120,6 +120,34 @@ object TaskDocs {
             related = listOf("find-callers", "context"),
         ),
 
+        "call-paths" to TaskDoc(
+            details = listOf(
+                "Lists the call paths from entry points to a target method, shortest first. Entry points come from a method regex ({p:from=...}), a method annotation ({p:from-annotation=PostMapping}), or both. Interface calls are followed into every implementor, and the step shows which interface it went through.",
+                "With {p:guard=...} it lists only the paths that skip the check. A method counts as guarded when its qualified name matches, when it or its class carries a matching annotation, or when it calls a match within {p:guard-depth=1} calls. Entry points whose every path is guarded are listed separately.",
+            ),
+            whenToUse = listOf(
+                "Can any endpoint reach X without going through the authorization check?",
+                "How does a request get from this controller to that repository method?",
+                "Which entry points end up calling X?",
+            ),
+            interpretation = listOf(
+                "An unguarded path is a suspect, not a finding: read the methods on it. The guard may run in a filter, interceptor or framework annotation that the call graph doesn't see; add those annotations to the guard regex.",
+                "The guard check ignores call order and conditions: a method that calls the guard anywhere, even after the target or in one branch only, counts as guarded.",
+                "No path is not proof: reflection, dependency-injection wiring and coroutine bodies can hide calls.",
+            ),
+            schema = listOf(
+                """{"targets": ["com.example.UserRepository.delete"], "guard": "authorize", "maxDepth": 8, "entryCount": 12,""",
+                """ "entries": [{"entry": "com.example.AdminController.purge", "morePaths": false,""",
+                """   "paths": [[{"method": "...", "sourceFile": "...", "lineNumber": 40, "via": "com.example.UserPort"}]]}],""",
+                """ "guardedEntries": ["..."], "truncated": false, "notes": ["..."]}""",
+            ),
+            caveats = listOf(
+                "Paths step through project methods only by default; the target itself may be a library method. Use {p:project-only=false} to step through library code too.",
+                "At most 3 paths are listed per entry point and {p:top=50} entry points in total; raise {p:maxdepth=8} for longer paths.",
+            ),
+            related = listOf("find-callers", "find-callees", "annotations"),
+        ),
+
         "find-interfaces" to TaskDoc(
             details = listOf(
                 "Finds classes that implement a given interface. Builds an interface-to-implementors map from compiled code. Both main and test source sets are scanned by default, so test fakes are visible.",

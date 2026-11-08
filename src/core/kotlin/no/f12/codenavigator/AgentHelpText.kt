@@ -103,6 +103,7 @@ object AgentHelpText {
         appendLine("- \"Where is field X read or written?\"       → ${u("find-usages", p("owner-class", "com.example.Config"), p("field", "timeout"))}  (${p("field", "x")} alone for a top-level property)")
         appendLine("- \"Who calls method X?\" / call hierarchy    → ${u("find-callers", p("pattern", "Class.method"))}  (${p("maxdepth", "3")} adjustable, through interfaces and inheritance)")
         appendLine("- \"What does X call?\"                       → ${u("find-callees", p("pattern", "Class.method"))}")
+        appendLine("- \"Can an endpoint reach X without a check?\" → ${u("call-paths", p("from-annotation", "PostMapping"), p("to", "Repo.delete"), p("guard", "authorize"))}  (without ${p("guard", "x")}: every path from entry points to X)")
         appendLine("- \"Who implements X?\" / port→adapter map    → ${u("find-interfaces", p("pattern", "X"))}  (${p("scope", "test")} shows only test fakes)")
         appendLine("- \"What does class X look like?\"            → ${u("class-detail", p("pattern", "X"))}; the full picture in one call: ${u("context", p("pattern", "X"))}")
         appendLine("- \"Where exactly is X.m? Which lines?\"      → ${u("find-declaration", p("pattern", "X.m"))}  (PSI-exact range incl. KDoc, no compile needed; read or replace exactly that range)")

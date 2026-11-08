@@ -8,6 +8,10 @@ import no.f12.codenavigator.navigation.types.ClassName
 data class PathStep(
     val method: MethodRef,
     val via: ClassName? = null,
+    /** Source file of the method's class; null for library classes. */
+    val sourceFile: String? = null,
+    /** First line of the method body, when known. */
+    val lineNumber: Int? = null,
 )
 
 /** The paths found from one entry point to the target, shortest first. */
@@ -38,6 +42,8 @@ data class CallPathResult(
  * check ignores call order and conditions: calling the guard anywhere in the method counts.
  */
 object CallPathFinder {
+
+    private const val UNKNOWN_SOURCE = "<unknown>"
 
     fun find(
         graph: CallGraph,
@@ -92,7 +98,7 @@ object CallPathFinder {
         filter: ((MethodRef) -> Boolean)?,
     ): List<MethodRef> {
         require(pattern != null || annotation != null) { "Give an entry-point pattern, an annotation, or both" }
-        val byPattern = pattern?.let { graph.findMethods(it) }
+        val byPattern = pattern?.let { regex -> graph.findMethods(regex).filter(::isEntryCandidate) }
         val byAnnotation = annotation?.let { regex ->
             methodAnnotations.filterValues { names -> names.any { it.matches(regex) } }.keys.sortedBy { it.qualifiedName }
         }
@@ -103,6 +109,14 @@ object CallPathFinder {
         }
         return if (filter == null) selected else selected.filter(filter)
     }
+
+    /**
+     * Constructors, static initializers and field pseudo-methods (<init>, <clinit>, <field:x>) are not entry
+     * points, nor are methods of compiler-made anonymous classes such as a coroutine's `Routes$handle$1`: a
+     * method pattern matches them by accident (regex `.` also matches `$`), and they repeat the real method.
+     */
+    private fun isEntryCandidate(method: MethodRef): Boolean =
+        !method.methodName.startsWith("<") && !method.className.isSynthetic()
 
     /** Annotations on a method plus those on its class. */
     fun annotationLookup(annotations: AggregatedAnnotations): (MethodRef) -> Set<AnnotationName> = { method ->
@@ -146,14 +160,21 @@ object CallPathFinder {
         fun successors(method: MethodRef): List<PathStep> = successorCache.getOrPut(method) {
             val steps = linkedMapOf<MethodRef, PathStep>()
             for (callee in graph.calleesOf(method.className, method.methodName).sortedBy { it.qualifiedName }) {
-                if (allowed(callee)) steps.putIfAbsent(callee, PathStep(callee))
+                if (allowed(callee)) steps.putIfAbsent(callee, step(callee))
                 for (impl in interfaceImplementors[callee.className].orEmpty().sortedBy { it.value }) {
                     val implMethod = MethodRef(impl, callee.methodName)
-                    if (allowed(implMethod)) steps.putIfAbsent(implMethod, PathStep(implMethod, via = callee.className))
+                    if (allowed(implMethod)) steps.putIfAbsent(implMethod, step(implMethod, via = callee.className))
                 }
             }
             steps.values.toList()
         }
+
+        fun step(method: MethodRef, via: ClassName? = null): PathStep = PathStep(
+            method,
+            via,
+            sourceFile = graph.sourceFileOf(method.className).takeIf { it != UNKNOWN_SOURCE },
+            lineNumber = graph.lineNumberOf(method),
+        )
 
         private fun allowed(method: MethodRef): Boolean =
             method in targets || (!isSyntheticRef(method) && (filter?.invoke(method) ?: true))
@@ -197,7 +218,7 @@ object CallPathFinder {
             val found = mutableListOf<List<PathStep>>()
             var more = false
             val onPath = mutableSetOf(entry)
-            val path = mutableListOf(PathStep(entry))
+            val path = mutableListOf(step(entry))
 
             fun walk() {
                 if (more) return

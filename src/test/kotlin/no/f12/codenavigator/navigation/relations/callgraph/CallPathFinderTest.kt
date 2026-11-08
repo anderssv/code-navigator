@@ -57,6 +57,15 @@ class CallPathFinderTest {
     }
 
     @Test
+    fun `steps carry the source file and first line of each method`() {
+        val result = find(listOf(m("direct", "Controller", "delete")), setOf(m("direct", "Repo", "delete")))
+
+        val steps = result.reaching.single().paths.single()
+        assertEquals(listOf("Direct.kt", "Direct.kt", "Direct.kt"), steps.map { it.sourceFile })
+        assertTrue(steps.all { (it.lineNumber ?: 0) > 0 }, "expected line numbers, got ${steps.map { it.lineNumber }}")
+    }
+
+    @Test
     fun `no path when the target is beyond maxdepth`() {
         val result = find(listOf(m("direct", "Controller", "delete")), setOf(m("direct", "Repo", "delete")), maxDepth = 1)
 
@@ -329,8 +338,25 @@ class CallPathFinderTest {
 
         assertEquals(
             setOf(m("annotated", "PublicController", "delete"), m("annotated", "PublicController", "internalDelete")),
-            entries.filter { !it.methodName.startsWith("<") }.toSet(),
+            entries.toSet(),
         )
+    }
+
+    @Test
+    fun `pattern entries skip constructors, static initializers and field reads`() {
+        val entries = select(pattern = "callpaths\\.guarded\\.Controller\\.")
+
+        assertEquals(
+            setOf(m("guarded", "Controller", "delete"), m("guarded", "Controller", "deleteOrPurge")),
+            entries.toSet(),
+        )
+    }
+
+    @Test
+    fun `pattern entries skip methods of compiler-made anonymous classes`() {
+        val entries = select(pattern = "callpaths.suspending.Routes.handle")
+
+        assertEquals(listOf(m("suspending", "Routes", "handle")), entries)
     }
 
     @Test

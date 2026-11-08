@@ -1,5 +1,27 @@
 # Plan — Completed
 
+### ~~`call-paths` — call paths from entry points to a target, with optional guard check~~ — DONE (v0.1.125)
+~~**ACTIVE**~~ **DONE (v0.1.125-SNAPSHOT)** | **Value: medium** | **Effort: medium** | Source: user-feedback
+
+There is no method-to-method path query today: `find-callers` lists every route into a method without filtering by where it starts, and `why-depends` works at package/class level. Add a task with three inputs:
+
+- `from`: entry points, given as a method regex or an annotation (e.g. `@PostMapping`, reusing the annotation/framework-preset matching).
+- `to`: target method regex (e.g. `UserRepository\.delete`, `PaymentGateway\.charge`).
+- `guard` (optional): regex for a check that must appear on the path (e.g. `authorize|requireRole`).
+
+Without `guard`, it lists every call path from an entry point to the target. With `guard`, it lists only the paths that skip the guard. Those are the suspects for missing authorization or validation. The output is short (only the paths that match), which suits a security pass better than dumping full trees.
+
+Implementation: `CallGraph` already has both directions. Search outward from the `from` set and backwards from the target, keep the methods both searches reach, then list the paths through them (capped by length and count). Checking the guard: a method counts as guarded when its name matches `guard`, it or its class carries an annotation matching `guard`, or it calls a matching method within `guard-depth` calls (default 1, a direct call). The usual pattern is `delete() { authorize(); repo.delete() }`, where the guard is a sibling call, not a step on the path. Guarded methods are removed from the graph, and any path that still exists is unguarded.
+
+Caveats:
+- Guards that live outside the call tree (servlet filters, interceptors, `@PreAuthorize`/`@Secured`) need special handling. Count an annotation on any method in the path as a guard.
+- Interface dispatch over-approximates, so a path can go through an implementation that is never used there. Show which implementation each step went through.
+- Reflection or DI-only wiring can hide an edge, so "no path" isn't proof.
+- The guard check doesn't know call order or conditions: a method that calls the guard anywhere counts as guarded, even if the guard runs after the target or in one branch only. `--branches` (above) fixes this by showing the conditions along each path.
+
+**Shipped**: `CallPathFinder` (path search + guard check), `CallPathFormatter` (text/JSON/LLM), `CallPathConfig`, `CallPathOrchestrator` shared by `CallPathsTask` and `CallPathsMojo`. Entry points by `from` regex, `from-annotation`, or both (intersection); constructors and compiler-made anonymous classes are never entry points. Tested on `test-project` fixtures in `com.example.variants.callpaths` (one subpackage per scenario) and by a Maven end-to-end case.
+
+
 ### ~~`cnavPackageDeps --scope` silently ignored — poisoned by the shared call-graph cache~~ — DONE (v0.1.118)
 ~~**ACTIVE**~~ **DONE (v0.1.118-SNAPSHOT)** | **Value: high** | **Effort: low** | Source: field-test(greitt, v0.1.116)
 

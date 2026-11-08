@@ -8,6 +8,11 @@ Items grouped by functional area. Each item has:
 
 ## Bugs
 
+### `why-depends` ignores `format=json` and `format=llm`
+**FUTURE** | **Value: medium** | **Effort: low** | Source: internal
+
+`WhyDependsTask` and `WhyDependsMojo` map TEXT, JSON and LLM all to `WhyDependsFormatter.format`, so `format=json` prints plain text inside the JSON markers and a JSON consumer can't parse it. Add `formatJson`/`formatLlm` to `WhyDependsFormatter` (with tests per format) and call them from both.
+
 ### `cnavConverge` (Gradle) reads only the current module's classes, `cnavRings` reads the workspace
 - **Status**: FUTURE
 - **Source**: internal (found while fixing converge/rings disagreement, 0.1.119)
@@ -370,7 +375,7 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 ### `find-callees --branches` — branch-aware call tree with conditions
 **FUTURE** | **Value: medium** | **Effort: high** | Source: user-feedback
 
-Add a `branches` flag to both `find-callees` and `call-paths` (below), built on one shared condition extractor. On `find-callees` it shows each method's callees under the conditions they run in (`if`/`when`/`switch`/`try`/`catch`/`?:`/early `return`/`throw`) and prints the condition text. Starts from the method(s) matched by `pattern`, as today, and goes down to `maxdepth`. On `call-paths` each step of a matching path shows the condition it runs under (e.g. `if (order.total > limit)` before `PaymentGateway.charge`). That matters for security: a path that seems to skip the guard may be fine if it only runs under a safe condition, and a guard called in only one branch doesn't protect the other. The idea is to let an LLM reason about logic and guards ("what has to be true for this call to happen?") instead of reading a flat list of callees.
+Add a `branches` flag to both `find-callees` and `call-paths` (done, see `plan-completed.md`), built on one shared condition extractor. On `find-callees` it shows each method's callees under the conditions they run in (`if`/`when`/`switch`/`try`/`catch`/`?:`/early `return`/`throw`) and prints the condition text. Starts from the method(s) matched by `pattern`, as today, and goes down to `maxdepth`. On `call-paths` each step of a matching path shows the condition it runs under (e.g. `if (order.total > limit)` before `PaymentGateway.charge`). That matters for security: a path that seems to skip the guard may be fine if it only runs under a safe condition, and a guard called in only one branch doesn't protect the other. The idea is to let an LLM reason about logic and guards ("what has to be true for this call to happen?") instead of reading a flat list of callees.
 
 ```
 OrderController.place  (OrderController.kt:18)
@@ -399,24 +404,10 @@ Caveats:
 - Lambdas, coroutines and inline functions blur where a branch belongs (see the lambda/inline notes on `find-callers`).
 - This tracks control flow only, not data flow, so it doesn't find injection-type bugs.
 
-### `call-paths` — call paths from entry points to a target, with optional guard check
-**ACTIVE** | **Value: medium** | **Effort: medium** | Source: user-feedback
+### Check: does the call graph reach anonymous-class bodies?
+**FUTURE** | **Value: medium** | **Effort: low** (to check) | Source: internal
 
-There is no method-to-method path query today: `find-callers` lists every route into a method without filtering by where it starts, and `why-depends` works at package/class level. Add a task with three inputs:
-
-- `from`: entry points, given as a method regex or an annotation (e.g. `@PostMapping`, reusing the annotation/framework-preset matching).
-- `to`: target method regex (e.g. `UserRepository\.delete`, `PaymentGateway\.charge`).
-- `guard` (optional): regex for a check that must appear on the path (e.g. `authorize|requireRole`).
-
-Without `guard`, it lists every call path from an entry point to the target. With `guard`, it lists only the paths that skip the guard. Those are the suspects for missing authorization or validation. The output is short (only the paths that match), which suits a security pass better than dumping full trees.
-
-Implementation: `CallGraph` already has both directions. Search outward from the `from` set and backwards from the target, keep the methods both searches reach, then list the paths through them (capped by length and count). Checking the guard: a method counts as guarded when its name matches `guard`, it or its class carries an annotation matching `guard`, or it calls a matching method within `guard-depth` calls (default 1, a direct call). The usual pattern is `delete() { authorize(); repo.delete() }`, where the guard is a sibling call, not a step on the path. Guarded methods are removed from the graph, and any path that still exists is unguarded.
-
-Caveats:
-- Guards that live outside the call tree (servlet filters, interceptors, `@PreAuthorize`/`@Secured`) need special handling. Count an annotation on any method in the path as a guard.
-- Interface dispatch over-approximates, so a path can go through an implementation that is never used there. Show which implementation each step went through.
-- Reflection or DI-only wiring can hide an edge, so "no path" isn't proof.
-- The guard check doesn't know call order or conditions: a method that calls the guard anywhere counts as guarded, even if the guard runs after the target or in one branch only. `--branches` (above) fixes this by showing the conditions along each path.
+Unverified, found while building `call-paths`: a `suspend` lambda or `object :` expression compiles to an anonymous class (`Routes$configure$1`). The outer method probably gets an edge to `Routes$configure$1.<init>` only, with no bytecode call to its `invoke`/`invokeSuspend`. If so, `find-callees`, `call-paths` and the rest miss what such a body calls, which would hide most of a Ktor route's calls. Plain lambdas compiled with `invokedynamic` are linked (covered by `CallPathFinderTest`'s lambda case). To check: add a `test-project` fixture with a `suspend` lambda passed to a non-inline function, and see whether `find-callees` from the outer method reaches the body's calls. If not, add an edge from the anonymous class's `<init>` to its `invoke`/`invokeSuspend` in `CallGraphBuilder` or a post-pass.
 
 ### `cnavTestHealth` — verify all test methods actually ran
 **PARKED** | **Value: medium** | **Effort: medium** | Source: user-feedback

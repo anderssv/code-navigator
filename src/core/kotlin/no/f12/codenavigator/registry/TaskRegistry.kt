@@ -157,7 +157,7 @@ data class TaskDef(
         val visibleParams = params.filter { !it.deprecated && it.name != "format" && it.name != "llm" }
         val parts = visibleParams.map { param ->
             val rendered = param.render(tool)
-            if (param.defaultValue == null && !param.flag) rendered else "[$rendered]"
+            if (param.defaultValue == null && !param.flag && !param.optional) rendered else "[$rendered]"
         }
         return "Usage: ${tool.command} ${taskName(tool)}${if (parts.isEmpty()) "" else " ${parts.joinToString(" ")}"}"
     }
@@ -322,6 +322,14 @@ object TaskRegistry {
     val AMBIENT_CATEGORIES = ParamDef("categories", "clock,random,env,io", "Which kinds of ambient input to check for (comma-separated). Default: all four", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.LIST_STRING, optional = true)
     val CONVERGE_MODE = ParamDef("mode", "intersect|risk", "Analysis mode: intersect (default, cross-references cycles/rings/change-coupling for a ranked ACT NOW/LATENT/MISSING ABSTRACTION list) or risk (change-frequency x complexity x coupling ranking)", flag = false, defaultValue = "intersect", enhancePattern = false, type = ParamType.STRING)
 
+    val PATH_FROM = ParamDef("from", "<regex>", "Entry-point method regex (Class.method, camelCase-aware). Combine with from-annotation to keep only methods matching both", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, optional = true)
+    val PATH_FROM_ANNOTATION = ParamDef("from-annotation", "<regex>", "Treat methods carrying a matching annotation as entry points (e.g. PostMapping|DeleteMapping); method-level annotations only", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val PATH_TO = ParamDef("to", "<regex>", "Target method regex (Class.method, camelCase-aware); library methods allowed", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
+    val GUARD = ParamDef("guard", "<regex>", "Report only paths that skip this check: a method counts as guarded when its name or an annotation on it or its class matches, or it calls a match within guard-depth calls", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val GUARD_DEPTH = ParamDef("guard-depth", "<N>", "How many calls deep a method may reach the guard and still count as guarded (1 = calls it directly, 0 = only methods matching the guard themselves)", flag = false, defaultValue = "1", enhancePattern = false, type = ParamType.INT)
+    val PATH_MAXDEPTH = ParamDef("maxdepth", "<N>", "Max calls along a path", flag = false, defaultValue = "8", enhancePattern = false, type = ParamType.INT)
+    val PATH_TOP = ParamDef("top", "<N>", "Max entry points listed", flag = false, defaultValue = "50", enhancePattern = false, type = ParamType.INT)
+
     val FORMAT_PARAMS = listOf(FORMAT)
     val SOURCE_SET_PARAMS = listOf(SCOPE)
     val PLAN_PARAMS = listOf(PLAN_FILE)
@@ -426,6 +434,19 @@ object TaskRegistry {
             UsageExample(listOf(CALL_PATTERN to "\".*Controller\\\\.handle.*\"", MAXDEPTH to "5")),
             UsageExample(listOf(CALL_PATTERN to "\"Service\\\\.create\"", MAXDEPTH to "5", PROJECTONLY to "true")),
             UsageExample(listOf(CALL_PATTERN to "\"Repository\\\\.save\"", MAX_IMPLEMENTORS to "10")),
+        ),
+    )
+
+    val CALL_PATHS = TaskDef(
+        goal = "call-paths",
+        description = "Call paths from entry points to a target method; with guard, only the paths that skip the check",
+        params = FORMAT_PARAMS + listOf(PATH_FROM, PATH_FROM_ANNOTATION, PATH_TO, GUARD, GUARD_DEPTH, PATH_MAXDEPTH, PATH_TOP, PROJECTONLY, SCOPE),
+        requiresCompilation = true,
+        category = TaskCategory.NAVIGATION,
+        examples = listOf(
+            UsageExample(listOf(PATH_FROM to "\"Controller\\\\.\"", PATH_TO to "\"UserRepository\\\\.delete\"")),
+            UsageExample(listOf(PATH_FROM_ANNOTATION to "\"PostMapping|DeleteMapping\"", PATH_TO to "\"UserRepository\\\\.delete\"", GUARD to "\"authorize|PreAuthorize\"")),
+            UsageExample(listOf(PATH_FROM to "\"Routes\\\\.\"", PATH_TO to "\"PaymentGateway\\\\.charge\"", GUARD to "requireRole", GUARD_DEPTH to "2", SCOPE to "prod")),
         ),
     )
 
@@ -1134,6 +1155,7 @@ object TaskRegistry {
         CLASS_DETAIL,
         FIND_CALLERS,
         FIND_CALLEES,
+        CALL_PATHS,
         FIND_INTERFACES,
         TYPE_HIERARCHY,
         PACKAGE_DEPS,

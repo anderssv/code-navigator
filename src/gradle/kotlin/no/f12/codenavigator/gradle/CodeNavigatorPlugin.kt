@@ -113,6 +113,7 @@ class CodeNavigatorPlugin : Plugin<Project> {
             "class-detail" to FindClassDetailTask::class.java,
             "find-callers" to FindCallersTask::class.java,
             "find-callees" to FindCalleesTask::class.java,
+            "call-paths" to CallPathsTask::class.java,
             "find-interfaces" to FindInterfaceImplsTask::class.java,
             "type-hierarchy" to TypeHierarchyTask::class.java,
             "package-deps" to PackageDepsTask::class.java,

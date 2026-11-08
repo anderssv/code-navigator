@@ -136,6 +136,39 @@ mvn cnav:find-callees -Dpattern="Controller\.handle.*"
 mvn cnav:find-callees -Dpattern="Service\.create" -Dmaxdepth=5
 ```
 
+### call-paths
+
+Lists the call paths from entry points to a target method, shortest first. Entry points come from a method regex (`from`), a method annotation (`from-annotation`), or both. Interface calls are followed into every implementor.
+
+With `guard`, it lists only the paths that skip the check. A method counts as guarded when its name matches, when it or its class has a matching annotation, or when it calls a match within `guard-depth` calls (default 1). Entry points whose every path is guarded are listed separately.
+
+```bash
+# Gradle
+./gradlew cnavCallPaths -Pfrom="Controller\." -Pto="UserRepository\.delete"
+./gradlew cnavCallPaths -Pfrom-annotation="PostMapping|DeleteMapping" -Pto="UserRepository\.delete" -Pguard="authorize|PreAuthorize"
+
+# Maven
+mvn cnav:call-paths -Dfrom="Controller\." -Dto="UserRepository\.delete"
+mvn cnav:call-paths -Dfrom-annotation="PostMapping|DeleteMapping" -Dto="UserRepository\.delete" -Dguard="authorize|PreAuthorize"
+```
+
+Example output:
+
+```
+Unguarded call paths to com.example.UserRepository.delete (guard: authorize, 12 entry points searched, maxdepth 8)
+
+com.example.AdminController.purge (AdminController.kt:40)
+  → com.example.UserService.deleteAll (UserService.kt:12)
+  → com.example.UserRepository.delete
+
+Guarded on every path (1):
+  com.example.UserController.delete
+
+Note: The guard check ignores call order and conditions: a method that calls the guard anywhere counts as guarded.
+```
+
+An unguarded path is a suspect, not a finding. The guard may run in a filter, an interceptor or a framework annotation the call graph doesn't see; add those annotations to the guard regex. No path is not proof either: reflection, dependency-injection wiring and coroutine bodies can hide calls.
+
 ### class-detail
 
 Shows a class signature: fields with types, methods with parameter and return types, superclass, and implemented interfaces.

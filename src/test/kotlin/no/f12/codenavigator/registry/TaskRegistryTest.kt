@@ -478,6 +478,23 @@ class TaskDefTest {
     }
 
     @Test
+    fun `usageHint brackets params marked optional even without a default`() {
+        val to = ParamDef("to", "<regex>", "Target", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+        val guard = ParamDef("guard", "<regex>", "Guard", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+        val task = TaskDef(
+            goal = "call-paths",
+            description = "Call paths",
+            params = listOf(to, guard),
+            requiresCompilation = true,
+            category = TaskCategory.NAVIGATION,
+        )
+
+        val hint = task.usageHint(BuildTool.GRADLE)
+
+        assertEquals("Usage: ./gradlew cnavCallPaths --to=<regex> [--guard=<regex>]", hint)
+    }
+
+    @Test
     fun `usageHint excludes format and llm params`() {
         val format = ParamDef("format", "<fmt>", "Output format", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
         val llm = ParamDef("llm", "true", "LLM mode", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN)
@@ -648,10 +665,10 @@ class UsageExampleTest {
 class TaskRegistryTest {
 
     @Test
-    fun `contains all 57 goals`() {
+    fun `contains all 58 goals`() {
         val goals = TaskRegistry.ALL_TASKS.map { it.goal }.toSet()
 
-        assertEquals(57, goals.size)
+        assertEquals(58, goals.size)
         assertTrue(goals.contains("find-class"))
         assertTrue(goals.contains("hotspots"))
         assertTrue(goals.contains("complexity"))
@@ -674,6 +691,7 @@ class TaskRegistryTest {
         assertTrue(goals.contains("rename-property"))
         assertTrue(goals.contains("test-alignment"))
         assertTrue(goals.contains("find-declaration"))
+        assertTrue(goals.contains("call-paths"))
     }
 
     @Test
@@ -684,7 +702,7 @@ class TaskRegistryTest {
             val gradleName = task.taskName(BuildTool.GRADLE)
             assertNotNull(gradleName, "Goal '${task.goal}' should resolve to a Gradle task name")
         }
-        assertEquals(57, registryGoals.size)
+        assertEquals(58, registryGoals.size)
     }
 
     @Test
@@ -1039,7 +1057,8 @@ class TaskRegistryTest {
             "exclude" to ParamType.STRING,
             "classes-only" to ParamType.BOOLEAN,
             "exclude-annotated" to ParamType.LIST_STRING,
-            "scope" to ParamType.STRING,            "detail" to ParamType.BOOLEAN,
+            "scope" to ParamType.STRING,
+            "detail" to ParamType.BOOLEAN,
             "group-by" to ParamType.STRING,
             "min-shared-revs" to ParamType.INT,
             "min-coupling" to ParamType.INT,
@@ -1093,6 +1112,9 @@ class TaskRegistryTest {
             "max-cbo" to ParamType.INT,
             "max-implementors" to ParamType.INT,
             "target" to ParamType.LIST_STRING,
+            "from-annotation" to ParamType.STRING,
+            "guard" to ParamType.STRING,
+            "guard-depth" to ParamType.INT,
         )
 
         val allParams = TaskRegistry.ALL_TASKS.flatMap { it.params }.distinctBy { it.name }

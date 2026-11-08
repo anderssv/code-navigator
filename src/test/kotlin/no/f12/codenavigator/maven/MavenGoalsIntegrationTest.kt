@@ -142,6 +142,22 @@ class MavenGoalsIntegrationTest {
     }
 
     @Test
+    fun `call-paths finds the path from a route to a service method`() {
+        val project = freshProject()
+        compile(File(project, "pom.xml"))
+
+        val run = mvn(
+            File(project, "pom.xml"), goal("call-paths"),
+            "-Dfrom=UserRoute.handleDeactivate", "-Dto=UserService.deactivateUser", "-Dformat=llm",
+        )
+
+        assertEquals(0, run.exitCode, run.output)
+        // Arrows can print as '?' when mvn runs without a UTF-8 locale, so check names only.
+        assertTrue(run.output.contains("entries=1 "), run.output)
+        assertTrue(Regex("""com\.example\.routes\.UserRoute\.handleDeactivate \S+ . com\.example\.services\.UserService\.deactivateUser""").containsMatchIn(run.output), run.output)
+    }
+
+    @Test
     fun `move-class with move-tests moves the mirroring test too, and without it says the test stays`() {
         val project = freshProject()
         val pom = File(project, "pom.xml")
