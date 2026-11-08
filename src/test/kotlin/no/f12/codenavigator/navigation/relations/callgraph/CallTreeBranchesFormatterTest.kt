@@ -107,7 +107,7 @@ class CallTreeBranchesFormatterTest {
             json.contains(""""branches":{"items":[{"call":"p.Auth.canDelete","line":11},{"branch":"if (!ok)","kind":"IF","line":12,"items":[{"exit":"throw Forbidden()","kind":"THROW","line":13}]}"""),
             json,
         )
-        assertTrue(json.contains(""""unplaced":["p.Audit.log"]}"""), json)
+        assertTrue(json.contains(""""unplaced":["p.Audit.log"],"lambdas":[]}"""), json)
         assertTrue(json.contains(""""method":"p.Repo.delete","sourceFile":"Repo.kt","lineNumber":4,"children":[{"method":"p.Db.exec""""), json)
         assertTrue(json.contains(""""branches":{"items":[{"branch":"if (id > 0)""""), json)
     }

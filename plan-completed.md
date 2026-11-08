@@ -1,5 +1,12 @@
 # Plan — Completed
 
+### ~~Call graph didn't reach anonymous-class bodies~~ — DONE (v0.1.125)
+~~**FUTURE**~~ **DONE (v0.1.125-SNAPSHOT)** | **Value: medium** | **Effort: low** | Source: internal
+
+Verified with a `test-project` fixture (`com.example.variants.branches.Suspending.kt`): a suspend lambda (`coroutineScope { repo.delete(id) }`) compiles to `AsyncOrders$removeAll$2`, and the outer method only had an edge to its `<init>`, so `find-callees` and `call-paths` stopped there. Object expressions and old-style lambda classes had the same gap.
+
+**Fix**: `AnonymousBodies.link` (applied when a `CallGraph` is created, so old caches get it too) adds an edge from the method that constructs a compiler-made class to its body: `invokeSuspend` for suspend lambdas, otherwise its declared methods. A suspend function's continuation class (`AsyncOrders$remove$1`), whose `invokeSuspend` calls the function back, is skipped. Also: `filter-synthetic` now hides field reads on compiler-made classes (the continuation's `label`, `result` and captured values showed as callees), and with `branches` lambda bodies are listed under `(lambda body)` with their own conditions mapped to the function they're written in. Tested in `AnonymousBodyLinkTest` and end to end in `SuspendCallsTest`.
+
 ### ~~`find-callees --branches` — branch-aware call tree with conditions~~ — DONE (v0.1.125)
 ~~**FUTURE**~~ **DONE (v0.1.125-SNAPSHOT)** | **Value: medium** | **Effort: high** | Source: user-feedback
 

@@ -24,16 +24,18 @@ data class MethodRef(
 }
 
 class CallGraph(
-    private val callerToCallees: Map<MethodRef, Set<MethodRef>>,
+    callerToCallees: Map<MethodRef, Set<MethodRef>>,
     private val sourceFiles: Map<ClassName, String> = emptyMap(),
     private val lineNumbers: Map<MethodRef, Int> = emptyMap(),
     private val sourceSets: Map<ClassName, SourceSet> = emptyMap(),
     private val declaredMethods: Map<ClassName, Set<String>> = emptyMap(),
     private val testAnnotatedClasses: Set<ClassName> = emptySet(),
 ) {
+    private val callerToCallees: Map<MethodRef, Set<MethodRef>> = AnonymousBodies.link(callerToCallees, declaredMethods)
+
     private val calleeToCallers: Map<MethodRef, Set<MethodRef>> by lazy {
         val inverted = mutableMapOf<MethodRef, MutableSet<MethodRef>>()
-        callerToCallees.forEach { (caller, callees) ->
+        this.callerToCallees.forEach { (caller, callees) ->
             callees.forEach { callee ->
                 inverted.getOrPut(callee) { mutableSetOf() }.add(caller)
             }
@@ -42,7 +44,7 @@ class CallGraph(
     }
 
     private val allMethods: Set<MethodRef> by lazy {
-        callerToCallees.keys + callerToCallees.values.flatten()
+        this.callerToCallees.keys + this.callerToCallees.values.flatten()
     }
 
     fun callersOfClass(className: ClassName): Set<MethodRef> =
@@ -157,6 +159,46 @@ class CallGraph(
 
     fun forEachDeclaredMethod(action: (className: ClassName, methods: Set<String>) -> Unit) {
         declaredMethods.forEach { (className, methods) -> action(className, methods) }
+    }
+}
+
+/**
+ * A lambda or object expression compiled to its own class (`Svc$removeAll$2`) is only constructed by the
+ * method that writes it: no bytecode call reaches its body, which a suspend lambda or an old-style lambda
+ * runs from `invoke`/`invokeSuspend`. Adds an edge from the method that constructs such a class to the class's
+ * body methods, so callees and paths continue into the lambda. Done when the graph is created, so graphs read
+ * from caches written by older versions get it too.
+ *
+ * A suspend function's continuation class (`Svc$remove$1`) has the same shape, but its `invokeSuspend` calls
+ * the function back; that class is skipped.
+ */
+internal object AnonymousBodies {
+
+    private val NOT_BODY = setOf("<init>", "<clinit>", "create")
+    private const val INVOKE_SUSPEND = "invokeSuspend"
+
+    fun link(edges: Map<MethodRef, Set<MethodRef>>, declared: Map<ClassName, Set<String>>): Map<MethodRef, Set<MethodRef>> {
+        if (declared.isEmpty()) return edges
+        var result: MutableMap<MethodRef, Set<MethodRef>>? = null
+        for ((caller, callees) in edges) {
+            val bodies = callees
+                .filter { it.methodName == "<init>" && it.className != caller.className && it.className.isSynthetic() }
+                .flatMap { ctor -> bodyMethods(ctor.className, caller, edges, declared) }
+            if (bodies.isEmpty()) continue
+            if (result == null) result = edges.toMutableMap()
+            result[caller] = callees + bodies
+        }
+        return result ?: edges
+    }
+
+    private fun bodyMethods(cls: ClassName, constructor: MethodRef, edges: Map<MethodRef, Set<MethodRef>>, declared: Map<ClassName, Set<String>>): List<MethodRef> {
+        val methods = declared[cls].orEmpty()
+            .filter { it !in NOT_BODY && !KotlinMethodFilter.isGenerated(it, treatLambdaBodyAsGenerated = false) }
+            .map { MethodRef(cls, it) }
+        val callsBack = methods.any { constructor in edges[it].orEmpty() }
+        if (callsBack) return emptyList()
+        // A suspend lambda's invoke only creates a copy and calls invokeSuspend, where the body is.
+        return methods.filter { it.methodName == INVOKE_SUSPEND }.ifEmpty { methods }
     }
 }
 

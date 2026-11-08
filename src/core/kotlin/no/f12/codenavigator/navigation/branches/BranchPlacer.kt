@@ -12,8 +12,11 @@ data class PlacedCall(val callee: MethodRef, override val line: Int) : PlacedIte
 
 data class PlacedExit(val kind: ExitKind, val text: String, override val line: Int) : PlacedItem
 
-/** A method's callees laid out in its branches. [unplaced] are callees no call in the source matched. */
-data class PlacedBody(val items: List<PlacedItem>, val unplaced: List<MethodRef>)
+/**
+ * A method's callees laid out in its branches. [unplaced] are callees no call in the source matched;
+ * [lambdas] are bodies of lambdas written in the method (compiler-made classes), which have no call site.
+ */
+data class PlacedBody(val items: List<PlacedItem>, val unplaced: List<MethodRef>, val lambdas: List<MethodRef> = emptyList())
 
 /**
  * Puts bytecode callees into the branches of the source function they were compiled from. Matching is by
@@ -28,8 +31,9 @@ object BranchPlacer {
     fun place(function: FunctionBranches, callees: Collection<MethodRef>): PlacedBody {
         val placed = mutableSetOf<MethodRef>()
         val items = placeItems(function.body, callees, placed)
-        val unplaced = callees.filter { it !in placed }.distinct().sortedBy { it.qualifiedName }
-        return PlacedBody(items, unplaced)
+        val (lambdas, unplaced) = callees.filter { it !in placed }.distinct().sortedBy { it.qualifiedName }
+            .partition { it.className.isSynthetic() }
+        return PlacedBody(items, unplaced, lambdas)
     }
 
     private fun placeItems(items: List<BranchItem>, callees: Collection<MethodRef>, placed: MutableSet<MethodRef>): List<PlacedItem> {
@@ -55,8 +59,23 @@ object BranchPlacer {
     fun functionFor(method: MethodRef, firstLine: Int?, functions: List<FunctionBranches>): FunctionBranches? {
         val name = sourceName(method.methodName)
         val candidates = functions.filter { it.className == method.className.value && it.name == name }
+            .ifEmpty { enclosingFunctions(method.className.value, functions) }
         if (firstLine == null) return candidates.firstOrNull()
         return candidates.firstOrNull { firstLine in it.startLine..it.endLine } ?: candidates.firstOrNull()
+    }
+
+    /**
+     * For a method of a compiler-made class (`p.Svc$removeAll$2`, `p.Svc$Inner$run$1$1`): the function whose
+     * body the class was written in (`p.Svc.removeAll`, `p.Svc$Inner.run`). Tries the longest class prefix first.
+     */
+    private fun enclosingFunctions(className: String, functions: List<FunctionBranches>): List<FunctionBranches> {
+        val segments = className.split('$')
+        for (i in segments.size - 2 downTo 0) {
+            val owner = segments.subList(0, i + 1).joinToString("$")
+            val found = functions.filter { it.className == owner && it.name == segments[i + 1] }
+            if (found.isNotEmpty()) return found
+        }
+        return emptyList()
     }
 
     /**

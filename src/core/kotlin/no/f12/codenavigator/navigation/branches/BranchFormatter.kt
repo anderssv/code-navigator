@@ -13,6 +13,7 @@ import no.f12.codenavigator.navigation.relations.callgraph.MethodRef
 object BranchFormatter {
 
     const val UNPLACED_LABEL = "(branch not known)"
+    const val LAMBDA_LABEL = "(lambda body)"
     private const val STEP = "  "
 
     fun renderText(body: PlacedBody, indent: String, renderCall: (MethodRef, String) -> String): String =
@@ -36,9 +37,10 @@ object BranchFormatter {
             }
         }
         items(body.items, indent)
-        if (body.unplaced.isNotEmpty()) {
-            lines += "$indent$UNPLACED_LABEL"
-            body.unplaced.forEach { lines += renderCall(it, indent + STEP) }
+        for ((label, callees) in listOf(UNPLACED_LABEL to body.unplaced, LAMBDA_LABEL to body.lambdas)) {
+            if (callees.isEmpty()) continue
+            lines += "$indent$label"
+            callees.forEach { lines += renderCall(it, indent + STEP) }
         }
         return lines.joinToString("\n")
     }
@@ -46,6 +48,7 @@ object BranchFormatter {
     fun renderJson(body: PlacedBody): String = jsonObject(
         "items" to JsonRaw(itemsJson(body.items)),
         "unplaced" to JsonRaw(jsonStringArray(body.unplaced.map { it.qualifiedName })),
+        "lambdas" to JsonRaw(jsonStringArray(body.lambdas.map { it.qualifiedName })),
     )
 
     private fun itemsJson(items: List<PlacedItem>): String = jsonArray(items) { item ->

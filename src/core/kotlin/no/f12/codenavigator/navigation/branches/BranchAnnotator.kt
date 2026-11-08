@@ -38,11 +38,10 @@ object BranchAnnotator {
         result.reaching.flatMap { it.paths }.flatMap { path -> path.dropLast(1).mapNotNull { it.sourceFile } }.toSet()
 
     fun annotateTrees(trees: List<CallTreeNode>, functions: List<FunctionBranches>): List<CallTreeNode> {
-        val byClass = functions.groupBy { it.className }
         fun annotate(node: CallTreeNode): CallTreeNode {
             val children = node.children.map(::annotate)
             if (children.isEmpty()) return node.copy(children = children)
-            val function = BranchPlacer.functionFor(node.method, node.lineNumber, byClass[node.method.className.value].orEmpty())
+            val function = BranchPlacer.functionFor(node.method, node.lineNumber, functions)
             val branches = function?.let { BranchPlacer.place(it, children.map { child -> child.method }) }
             return node.copy(children = children, branches = branches)
         }
@@ -50,14 +49,13 @@ object BranchAnnotator {
     }
 
     fun annotatePaths(result: CallPathResult, functions: List<FunctionBranches>): CallPathResult {
-        val byClass = functions.groupBy { it.className }
         val reaching = result.reaching.map { entry ->
             entry.copy(
                 paths = entry.paths.map { path ->
                     path.mapIndexed { index, step ->
                         if (index == 0) return@mapIndexed step
                         val caller = path[index - 1]
-                        val function = BranchPlacer.functionFor(caller.method, caller.lineNumber, byClass[caller.method.className.value].orEmpty())
+                        val function = BranchPlacer.functionFor(caller.method, caller.lineNumber, functions)
                         step.copy(conditions = function?.let { BranchPlacer.conditionsFor(it, step.method) })
                     }
                 },

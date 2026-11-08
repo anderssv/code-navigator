@@ -27,6 +27,8 @@ data class CallGraphConfig(
                 // Same for constructors/static initializers (anonymous-object and property-initializer bodies).
                 val inCalleeRole = direction == CallDirection.CALLEES
                 add { ref: MethodRef -> !ref.isGenerated(treatLambdaBodyAsGenerated = inCalleeRole, treatInitializersAsGenerated = inCalleeRole) }
+                // Field reads on compiler-made classes are coroutine/lambda bookkeeping (label, result, captured values).
+                add { ref: MethodRef -> !(ref.methodName.startsWith("<field:") && ref.className.isSynthetic()) }
             }
             if (scope != Scope.ALL) add { ref: MethodRef -> scope.matchesSourceSet(graph.sourceSetOf(ref.className) ?: SourceSet.MAIN) }
         }

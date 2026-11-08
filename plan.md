@@ -382,11 +382,6 @@ Aggregate all per-package metrics into a single view: volatility, coupling stren
 - **Name matching:** calls are matched to bytecode callees by name only, so `cache.delete()` and `repo.delete()` in different branches each show both callees. Matching by line number would separate them when they are on different lines (needs call-site lines in the call graph).
 - **Constructors and `init` blocks:** no branches for `<init>` (class body, property initializers, `init {}`).
 
-### Check: does the call graph reach anonymous-class bodies?
-**FUTURE** | **Value: medium** | **Effort: low** (to check) | Source: internal
-
-Unverified, found while building `call-paths`: a `suspend` lambda or `object :` expression compiles to an anonymous class (`Routes$configure$1`). The outer method probably gets an edge to `Routes$configure$1.<init>` only, with no bytecode call to its `invoke`/`invokeSuspend`. If so, `find-callees`, `call-paths` and the rest miss what such a body calls, which would hide most of a Ktor route's calls. Plain lambdas compiled with `invokedynamic` are linked (covered by `CallPathFinderTest`'s lambda case). To check: add a `test-project` fixture with a `suspend` lambda passed to a non-inline function, and see whether `find-callees` from the outer method reaches the body's calls. If not, add an edge from the anonymous class's `<init>` to its `invoke`/`invokeSuspend` in `CallGraphBuilder` or a post-pass.
-
 ### `cnavTestHealth` — verify all test methods actually ran
 **PARKED** | **Value: medium** | **Effort: medium** | Source: user-feedback
 

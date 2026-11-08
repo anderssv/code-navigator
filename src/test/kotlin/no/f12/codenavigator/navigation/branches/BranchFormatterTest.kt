@@ -46,6 +46,19 @@ class BranchFormatterTest {
     }
 
     @Test
+    fun `lambda bodies get their own label in every format`() {
+        val lambda = MethodRef(ClassName("p.Svc\$f\$1"), "invokeSuspend")
+        val withLambda = PlacedBody(listOf(PlacedCall(delete, 2)), unplaced = emptyList(), lambdas = listOf(lambda))
+
+        assertEquals("→ delete\n(lambda body)\n  → invokeSuspend", BranchFormatter.renderText(withLambda, "", textCall))
+        assertEquals("→ delete\n(lambda body)\n  → invokeSuspend", BranchFormatter.renderLlm(withLambda, "", textCall))
+        assertEquals(
+            """{"items":[{"call":"p.Repo.delete","line":2}],"unplaced":[],"lambdas":["p.Svc${'$'}f${'$'}1.invokeSuspend"]}""",
+            BranchFormatter.renderJson(withLambda),
+        )
+    }
+
+    @Test
     fun `text - multi-line call output keeps the callback's own lines`() {
         val nested: (MethodRef, String) -> String = { callee, indent -> "$indent→ ${callee.methodName}\n$indent  → child" }
 
@@ -83,7 +96,7 @@ class BranchFormatterTest {
             """{"items":[{"call":"p.Audit.log","line":3},""" +
                 """{"branch":"if (!auth.canDelete(user))","kind":"IF","line":4,"items":[{"exit":"throw ForbiddenException()","kind":"THROW","line":5}]},""" +
                 """{"branch":"when (mode)","kind":"WHEN","line":7,"items":[{"branch":"HARD ->","kind":"WHEN_ENTRY","line":8,"items":[{"call":"p.Repo.delete","line":8}]}]}],""" +
-                """"unplaced":["p.Mapper.map"]}""",
+                """"unplaced":["p.Mapper.map"],"lambdas":[]}""",
             BranchFormatter.renderJson(body),
         )
     }

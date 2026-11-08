@@ -268,4 +268,13 @@ class CallGraphConfigTest {
         assertEquals(false, CallGraphConfig.parse(mapOf("pattern" to "A.b")).branches)
         assertEquals(true, CallGraphConfig.parse(mapOf("pattern" to "A.b", "branches" to "true")).branches)
     }
+
+    @Test
+    fun `filterSynthetic hides field reads on compiler-made classes as callees`() {
+        val config = CallGraphConfig.parse(mapOf("pattern" to "A.b", "project-only" to "false"))
+        val filter = config.buildFilter(CallGraph(emptyMap()), CallDirection.CALLEES)!!
+
+        assertEquals(false, filter(MethodRef(ClassName("p.Svc\$remove\$1"), "<field:label>")))
+        assertEquals(true, filter(MethodRef(ClassName("p.Config"), "<field:timeout>")))
+    }
 }

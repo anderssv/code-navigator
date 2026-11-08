@@ -41,6 +41,17 @@ class BranchPlacerTest {
     }
 
     @Test
+    fun `lambda bodies are listed apart from callees with no matching call`() {
+        val lambda = MethodRef(ClassName("p.Svc\$f\$1"), "invokeSuspend")
+        val unknown = ref("Mapper", "map")
+
+        val placed = BranchPlacer.place(fn(call("delete")), listOf(lambda, unknown, delete))
+
+        assertEquals(listOf(unknown), placed.unplaced)
+        assertEquals(listOf(lambda), placed.lambdas)
+    }
+
+    @Test
     fun `a callee with no matching call is reported as unplaced`() {
         val unknown = ref("Mapper", "map")
 
@@ -175,6 +186,15 @@ class BranchPlacerTest {
     fun `lambda bodies and default-argument bridges map to their function`() {
         assertEquals("g", BranchPlacer.functionFor(ref("Svc", "g\$lambda\$0"), firstLine = 18, functions)!!.name)
         assertEquals("g", BranchPlacer.functionFor(ref("Svc", "g\$default"), firstLine = null, functions)!!.name)
+    }
+
+    @Test
+    fun `methods of a lambda or object class map to the function that writes it`() {
+        val nested = listOf(fn(name = "removeAll", start = 3, end = 8), fn(name = "run", cls = "p.Svc\$Inner", start = 10, end = 12))
+
+        assertEquals("removeAll", BranchPlacer.functionFor(MethodRef(ClassName("p.Svc\$removeAll\$2"), "invokeSuspend"), firstLine = 5, nested)!!.name)
+        assertEquals("removeAll", BranchPlacer.functionFor(MethodRef(ClassName("p.Svc\$removeAll\$2\$1"), "invoke"), firstLine = 5, nested)!!.name)
+        assertEquals("run", BranchPlacer.functionFor(MethodRef(ClassName("p.Svc\$Inner\$run\$1"), "invoke"), firstLine = 11, nested)!!.name)
     }
 
     @Test
