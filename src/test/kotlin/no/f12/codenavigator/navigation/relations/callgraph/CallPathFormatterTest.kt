@@ -3,6 +3,7 @@ package no.f12.codenavigator.navigation.relations.callgraph
 import no.f12.codenavigator.navigation.types.ClassName
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /** Formatter on hand-built results: every result shape in every output format. */
 class CallPathFormatterTest {
@@ -274,5 +275,77 @@ class CallPathFormatterTest {
             """.trimIndent(),
             CallPathFormatter.formatLlm(details),
         )
+    }
+
+    // --- Conditions on steps (branches) ---
+
+    private val withConditions = report(
+        reaching = listOf(
+            EntryPaths(
+                ref("Controller", "remove"),
+                listOf(
+                    listOf(
+                        step("Controller", "remove"),
+                        step("Service", "remove").copy(conditions = listOf(listOf("try"))),
+                        step("Repo", "archive").copy(conditions = listOf(listOf("when (hard)", "false ->"), emptyList())),
+                        step("Db", "exec", file = null, line = null).copy(conditions = null),
+                    ),
+                ),
+                morePaths = false,
+            ),
+        ),
+        targets = listOf(ref("Db", "exec")),
+    )
+
+    @Test
+    fun `text - each step shows the conditions it is called under`() {
+        assertEquals(
+            """
+            Call paths to com.example.Db.exec (2 entry points searched, maxdepth 8)
+
+            com.example.Controller.remove (Controller.kt:10)
+              → com.example.Service.remove (Service.kt:10)  [try]
+              → com.example.Repo.archive (Repo.kt:10)  [when (hard) › false -> | always]
+              → com.example.Db.exec
+            """.trimIndent(),
+            CallPathFormatter.formatText(withConditions),
+        )
+    }
+
+    @Test
+    fun `llm - conditions in brackets after each step`() {
+        assertEquals(
+            """
+            call-paths to=com.example.Db.exec entries=2 maxdepth=8
+            com.example.Controller.remove Controller.kt:10 → com.example.Service.remove Service.kt:10 [try] → com.example.Repo.archive Repo.kt:10 [when (hard) › false -> | always] → com.example.Db.exec
+            """.trimIndent(),
+            CallPathFormatter.formatLlm(withConditions),
+        )
+    }
+
+    @Test
+    fun `json - conditions as nested lists, left out when unknown`() {
+        val json = CallPathFormatter.formatJson(withConditions)
+
+        assertTrue(json.contains(""""method":"com.example.Service.remove","sourceFile":"Service.kt","lineNumber":10,"conditions":[["try"]]}"""), json)
+        assertTrue(json.contains(""""method":"com.example.Repo.archive","sourceFile":"Repo.kt","lineNumber":10,"conditions":[["when (hard)","false ->"],[]]}"""), json)
+        assertTrue(json.contains("""{"method":"com.example.Db.exec"}"""), json)
+    }
+
+    @Test
+    fun `interface step shows via before the conditions`() {
+        val text = CallPathFormatter.formatText(
+            report(
+                reaching = listOf(
+                    EntryPaths(
+                        controller,
+                        listOf(listOf(step("Controller", "delete"), step("Adapter", "delete", via = "Port").copy(conditions = listOf(listOf("if (a)"))))),
+                        morePaths = false,
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue(text.contains("  → com.example.Adapter.delete (Adapter.kt:10) via com.example.Port  [if (a)]"), text)
     }
 }

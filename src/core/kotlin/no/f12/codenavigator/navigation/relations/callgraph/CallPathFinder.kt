@@ -12,6 +12,12 @@ data class PathStep(
     val sourceFile: String? = null,
     /** First line of the method body, when known. */
     val lineNumber: Int? = null,
+    /**
+     * With `branches`: the branch labels (outside in) under which the previous step calls this one, one list
+     * per call site; an empty list for an unconditional call. Null for the entry point, or when the previous
+     * step has no Kotlin source.
+     */
+    val conditions: List<List<String>>? = null,
 )
 
 /** The paths found from one entry point to the target, shortest first. */

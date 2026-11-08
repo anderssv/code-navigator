@@ -4,6 +4,7 @@ import no.f12.codenavigator.formatting.JsonRaw
 import no.f12.codenavigator.formatting.jsonArray
 import no.f12.codenavigator.formatting.jsonObject
 import no.f12.codenavigator.formatting.jsonStringArray
+import no.f12.codenavigator.navigation.branches.BranchFormatter
 
 /** What call-paths searched for, plus what it found. */
 data class CallPathReport(
@@ -52,7 +53,7 @@ object CallPathFormatter {
                 append(path.first().let { "${it.method.qualifiedName}${textLocation(it)}" })
                 for (step in path.drop(1)) {
                     appendLine()
-                    append("  → ${step.method.qualifiedName}${textLocation(step)}${step.via?.let { " via $it" } ?: ""}")
+                    append("  → ${step.method.qualifiedName}${textLocation(step)}${step.via?.let { " via $it" } ?: ""}${conditionTag(step, "  ")}")
                 }
                 if (entry.morePaths && index == entry.paths.lastIndex) {
                     appendLine()
@@ -119,7 +120,7 @@ object CallPathFormatter {
             for (path in entry.paths) {
                 appendLine()
                 append(marker + path.joinToString(" → ") { step ->
-                    step.method.qualifiedName + llmLocation(step) + (step.via?.let { " [via $it]" } ?: "")
+                    step.method.qualifiedName + llmLocation(step) + (step.via?.let { " [via $it]" } ?: "") + conditionTag(step, " ")
                 })
             }
             if (entry.morePaths) {
@@ -152,7 +153,12 @@ object CallPathFormatter {
         "sourceFile" to step.sourceFile,
         "lineNumber" to step.lineNumber,
         "via" to step.via?.toString(),
+        "conditions" to BranchFormatter.conditionsJson(step.conditions)?.let { JsonRaw(it) },
     )
+
+    /** `[if (a) › try]` after a step, when its conditions are known. */
+    private fun conditionTag(step: PathStep, separator: String): String =
+        BranchFormatter.conditionText(step.conditions)?.let { "$separator[$it]" } ?: ""
 
     private fun location(step: PathStep): String? =
         step.sourceFile?.let { file -> file + (step.lineNumber?.let { ":$it" } ?: "") }

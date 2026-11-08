@@ -3,6 +3,8 @@ package no.f12.codenavigator.navigation.relations.callgraph
 import no.f12.codenavigator.formatting.JsonRaw
 import no.f12.codenavigator.formatting.jsonArray
 import no.f12.codenavigator.formatting.jsonObject
+import no.f12.codenavigator.navigation.branches.BranchFormatter
+import no.f12.codenavigator.navigation.branches.PlacedBody
 import no.f12.codenavigator.navigation.types.ClassName
 
 enum class CallDirection(
@@ -38,7 +40,8 @@ object CallTreeFormatter {
                 val hint = inlineFunctionWarning(tree, direction) ?: frameworkEntryPointHint(tree, direction)
                 if (hint != null) append(" — $hint")
             } else {
-                renderChildren(tree.children, direction, depth = 1)
+                val branches = tree.branches
+                if (branches != null) appendLine(branchedBody(tree, branches, direction, "  ", llm = false)) else renderChildren(tree.children, direction, depth = 1)
                 inlineFunctionWarning(tree, direction)?.let { appendLine(); append("  $it") }
             }
         }
@@ -68,7 +71,10 @@ object CallTreeFormatter {
             val sourceSetTag = node.sourceSet?.let { " [${it.label}]" } ?: ""
             val collapsedTag = collapsedImplementorsTag(node)
             appendLine("$indent${direction.arrow} ${node.method.qualifiedName} ($sourceFile$lineRef)${formatAnnotationTags(node.annotations)}$sourceSetTag$collapsedTag")
-            if (node.children.isNotEmpty()) {
+            val branches = node.branches
+            if (branches != null && node.children.isNotEmpty()) {
+                appendLine(branchedBody(node, branches, direction, "$indent  ", llm = false))
+            } else if (node.children.isNotEmpty()) {
                 renderChildren(node.children, direction, depth + 1)
             }
         }
@@ -140,6 +146,7 @@ object CallTreeFormatter {
             "sourceSet" to node.sourceSet?.label,
             "annotations" to if (node.annotations.isNotEmpty()) JsonRaw(renderAnnotationTagsJson(node.annotations)) else null,
             "children" to JsonRaw(children),
+            "branches" to node.branches?.let { JsonRaw(BranchFormatter.renderJson(it)) },
             "frameworkEntryPointHint" to hint,
             "collapsedImplementorCount" to if (node.collapsedImplementorCount > 0) node.collapsedImplementorCount else null,
             "inline" to if (node.isInline) true else null,
@@ -167,7 +174,13 @@ object CallTreeFormatter {
             val lineRef = tree.lineNumber?.let { ":$it" } ?: ""
             append("${tree.method.qualifiedName} ${tree.sourceFile ?: "<unknown>"}$lineRef${formatAnnotationTagsLlm(tree.annotations)}")
             if (tree.children.isNotEmpty()) {
-                renderChildrenLlm(tree.children, direction, 1)
+                val branches = tree.branches
+                if (branches != null) {
+                    appendLine()
+                    append(branchedBody(tree, branches, direction, "  ", llm = true))
+                } else {
+                    renderChildrenLlm(tree.children, direction, 1)
+                }
                 inlineFunctionWarning(tree, direction)?.let { appendLine(); append("  $it") }
             } else {
                 appendLine()
@@ -186,7 +199,11 @@ object CallTreeFormatter {
             val collapsedTag = collapsedImplementorsTag(node)
             appendLine()
             append("$indent${direction.arrow} ${node.method.qualifiedName} ${node.sourceFile ?: "<unknown>"}$lineRef${formatAnnotationTagsLlm(node.annotations)}$sourceSetTag$collapsedTag")
-            if (node.children.isNotEmpty()) {
+            val branches = node.branches
+            if (branches != null && node.children.isNotEmpty()) {
+                appendLine()
+                append(branchedBody(node, branches, direction, "$indent  ", llm = true))
+            } else if (node.children.isNotEmpty()) {
                 renderChildrenLlm(node.children, direction, depth + 1)
             }
         }
@@ -203,4 +220,46 @@ object CallTreeFormatter {
             val suffix = if (tag.framework != null) " [${tag.framework}]" else ""
             "@${tag.name.simpleName()}$params$suffix"
         }}]"
+
+    /**
+     * A node's children printed inside its branches. Each child is printed with its own subtree the first
+     * time it appears; a child called from several branches is marked "(see above)" after that.
+     */
+    private fun branchedBody(node: CallTreeNode, branches: PlacedBody, direction: CallDirection, indent: String, llm: Boolean): String {
+        val byMethod = node.children.associateBy { it.method }
+        val shown = mutableSetOf<MethodRef>()
+        val renderCall = { callee: MethodRef, callIndent: String ->
+            val child = byMethod[callee]
+            if (child == null) {
+                "$callIndent${direction.arrow} ${callee.qualifiedName}"
+            } else {
+                val first = shown.add(callee)
+                val line = callIndent + nodeLine(child, direction, llm) + if (first) "" else " (see above)"
+                if (!first || child.children.isEmpty()) line else line + "\n" + nodeBody(child, direction, "$callIndent  ", llm)
+            }
+        }
+        return if (llm) BranchFormatter.renderLlm(branches, indent, renderCall) else BranchFormatter.renderText(branches, indent, renderCall)
+    }
+
+    private fun nodeBody(node: CallTreeNode, direction: CallDirection, indent: String, llm: Boolean): String {
+        node.branches?.let { return branchedBody(node, it, direction, indent, llm) }
+        val depth = indent.length / 2
+        return if (llm) {
+            buildString { renderChildrenLlm(node.children, direction, depth) }.removePrefix("\n")
+        } else {
+            buildString { renderChildren(node.children, direction, depth) }.trimEnd('\n')
+        }
+    }
+
+    private fun nodeLine(node: CallTreeNode, direction: CallDirection, llm: Boolean): String {
+        val lineRef = node.lineNumber?.let { ":$it" } ?: ""
+        val sourceSetTag = node.sourceSet?.let { " [${it.label}]" } ?: ""
+        val collapsedTag = collapsedImplementorsTag(node)
+        val file = node.sourceFile ?: "<unknown>"
+        return if (llm) {
+            "${direction.arrow} ${node.method.qualifiedName} $file$lineRef${formatAnnotationTagsLlm(node.annotations)}$sourceSetTag$collapsedTag"
+        } else {
+            "${direction.arrow} ${node.method.qualifiedName} ($file$lineRef)${formatAnnotationTags(node.annotations)}$sourceSetTag$collapsedTag"
+        }
+    }
 }

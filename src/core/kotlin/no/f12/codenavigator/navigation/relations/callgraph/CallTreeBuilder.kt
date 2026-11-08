@@ -1,5 +1,6 @@
 package no.f12.codenavigator.navigation.relations.callgraph
 
+import no.f12.codenavigator.navigation.branches.PlacedBody
 import no.f12.codenavigator.navigation.types.AnnotationName
 import no.f12.codenavigator.navigation.types.ClassName
 import no.f12.codenavigator.navigation.types.SourceSet
@@ -33,6 +34,8 @@ data class CallTreeNode(
      * string so every output format (including JSON) can expose it.
      */
     val isInline: Boolean = false,
+    /** CALLEES only, with `branches`: this node's children laid out in the branches of its source. Null without source. */
+    val branches: PlacedBody? = null,
 )
 
 object CallTreeBuilder {
