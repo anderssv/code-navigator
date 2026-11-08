@@ -116,12 +116,17 @@ object TaskDocs {
             whenToUse = listOf("What calls does method X make?", "What does class X depend on at runtime?", "Under which conditions does X call Y? What does X do top to bottom?"),
             interpretation = listOf(
                 "With branches, calls are matched to the source by name: when two callees share a name (cache.delete and repo.delete) both show at each such call. Callees no source call matched are listed under \"(branch not known)\". Java methods and methods without source print without branches.",
+                "With branches, a lambda written in the method (a suspend lambda such as coroutineScope { … }, or an object expression) is listed under \"(lambda body)\"; its calls are laid out in the branches of the function it is written in.",
+                "In if (a() && b()) the call b() only runs when a() is true; it is shown before the branch as if it always ran.",
             ),
             schema = listOf(
                 """[{"method": "com.example.Service.doWork", "sourceFile": "Service.kt",""",
-                """  "children": [{"method": "...", "sourceFile": "...", "children": [...]}]}]""",
+                """  "children": [{"method": "...", "sourceFile": "...", "children": [...]}],""",
+                """  "branches": {"items": [{"call": "...", "line": 11}, {"branch": "if (!ok)", "kind": "IF", "line": 12,""",
+                """    "items": [{"exit": "throw Forbidden()", "kind": "THROW", "line": 13}]}], "unplaced": [], "lambdas": []}}]""",
+                """("branches" only with branches=true, on nodes whose Kotlin source was found; kinds: IF ELSE WHEN WHEN_ENTRY TRY CATCH FINALLY ELVIS SAFE_CALL LOOP)""",
             ),
-            related = listOf("find-callers", "context"),
+            related = listOf("find-callers", "call-paths", "context"),
         ),
 
         "call-paths" to TaskDoc(
@@ -138,13 +143,15 @@ object TaskDocs {
             interpretation = listOf(
                 "An unguarded path is a suspect, not a finding: read the methods on it. The guard may run in a filter, interceptor or framework annotation that the call graph doesn't see; add those annotations to the guard regex.",
                 "The guard check ignores call order and conditions: a method that calls the guard anywhere, even after the target or in one branch only, counts as guarded.",
-                "No path is not proof: reflection, dependency-injection wiring and coroutine bodies can hide calls.",
+                "With {p:branches=true}, read the conditions of an unguarded path before calling it a hole: a step under [if (user.isAdmin)] or a catch may already be safe. [always] means the step runs whenever the step before does.",
+                "No path is not proof: reflection and dependency-injection wiring can hide calls.",
             ),
             schema = listOf(
                 """{"targets": ["com.example.UserRepository.delete"], "guard": "authorize", "maxDepth": 8, "entryCount": 12,""",
                 """ "entries": [{"entry": "com.example.AdminController.purge", "morePaths": false,""",
-                """   "paths": [[{"method": "...", "sourceFile": "...", "lineNumber": 40, "via": "com.example.UserPort"}]]}],""",
+                """   "paths": [[{"method": "...", "sourceFile": "...", "lineNumber": 40, "via": "com.example.UserPort", "conditions": [["try", "if (force)"]]}]]}],""",
                 """ "guardedEntries": ["..."], "truncated": false, "notes": ["..."]}""",
+                """("conditions" only with branches=true: one list of branch labels per call site, [] when unconditional, left out when unknown)""",
             ),
             caveats = listOf(
                 "Paths step through project methods only by default; the target itself may be a library method. Use {p:project-only=false} to step through library code too.",

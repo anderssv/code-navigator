@@ -65,7 +65,8 @@ src/
 - **`bytecode/`**: `BytecodeReader.kt` (`ScanResult<T>`), `KotlinMethodFilter.kt`, `LambdaCollapser.kt`, `SkippedFileReporter.kt`, `ProjectClassScanner.kt`, `RootPackageDetector.kt`, `SourceSetResolver.kt`, `AnnotationParameterCollector.kt`
 - **`cache/`**: `FileCache.kt`, `CacheFreshness.kt`
 - **`annotation/`**: `AnnotationExtractor`, `AnnotationQueryBuilder`, `AnnotationQueryConfig`, `AnnotationQueryFormatter`
-- **`relations/callgraph/`**: `CallGraphBuilder` (ASM → `CallGraph`), `CallGraphCache`, `CallGraphConfig`, `CallTreeBuilder` (→ `CallTreeNode`), `CallTreeFormatter`, `FindUsagesConfig`, `UsageFormatter`, `UsageScanner`
+- **`relations/callgraph/`**: `CallGraphBuilder` (ASM → `CallGraph`; `AnonymousBodies` links a lambda/object class's construction to its body), `CallGraphCache`, `CallGraphConfig`, `CallTreeBuilder` (→ `CallTreeNode`), `CallTreeFormatter`, `CallPathFinder`/`CallPathFormatter`/`CallPathConfig`/`CallPathOrchestrator` (call-paths), `FindUsagesConfig`, `UsageFormatter`, `UsageScanner`
+- **`branches/`** (`branches=true` on find-callees and call-paths): `BranchScanner` (Kotlin PSI → compiler-free `FunctionBranches`; needs the PSI worker in Gradle), `BranchCodec` (crosses the worker boundary), `BranchPlacer` (bytecode callees into branches), `BranchFormatter`, `BranchAnnotator` (call trees and paths)
 - **`relations/hierarchy/`**: `TypeHierarchyBuilder`, `TypeHierarchyConfig`, `TypeHierarchyFormatter`
 - **`relations/implementors/`**: `FindInterfaceImplsConfig`, `InterfaceFormatter`, `InterfaceRegistry`, `InterfaceRegistryCache`
 - **`classinfo/`**: `ClassDetailExtractor`, `ClassDetailFormatter`, `ClassDetailScanner`, `ClassFilter`, `ClassIndexCache`, `ClassInfoExtractor`, `ClassScanner`, `FindClassConfig`, `FindClassDetailConfig`, `ListClassesConfig`

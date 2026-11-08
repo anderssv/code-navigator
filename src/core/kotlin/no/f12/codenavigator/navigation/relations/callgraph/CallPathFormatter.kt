@@ -21,7 +21,7 @@ object CallPathFormatter {
     private const val MAX_TARGETS_IN_HEADER = 3
 
     const val GUARD_NOTE = "The guard check ignores call order and conditions: a method that calls the guard anywhere counts as guarded."
-    const val NO_PATH_NOTE = "No path is not proof: reflection, dependency-injection wiring and coroutine bodies can hide calls from the call graph."
+    const val NO_PATH_NOTE = "No path is not proof: reflection and dependency-injection wiring can hide calls from the call graph."
     const val TRUNCATED_NOTE = "More entry points reach the target than are listed; raise top to see them."
 
     /** Notes shared by every output format, so JSON consumers get the same caveats as readers of text. */

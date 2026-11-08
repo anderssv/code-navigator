@@ -188,7 +188,7 @@ Note: The guard check ignores call order and conditions: a method that calls the
 
 With `branches=true`, each step also shows the conditions under which the step before calls it, e.g. `→ com.example.Repo.archive (Orders.kt:4)  [when (hard) › false ->]`. `[always]` means an unconditional call.
 
-An unguarded path is a suspect, not a finding. The guard may run in a filter, an interceptor or a framework annotation the call graph doesn't see; add those annotations to the guard regex. No path is not proof either: reflection, dependency-injection wiring and coroutine bodies can hide calls.
+An unguarded path is a suspect, not a finding. The guard may run in a filter, an interceptor or a framework annotation the call graph doesn't see; add those annotations to the guard regex. No path is not proof either: reflection and dependency-injection wiring can hide calls.
 
 ### class-detail
 

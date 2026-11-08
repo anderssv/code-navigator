@@ -164,7 +164,7 @@ class CallPathFormatterTest {
 
     // --- No path at all ---
 
-    private val noPathNote = "No path is not proof: reflection, dependency-injection wiring and coroutine bodies can hide calls from the call graph."
+    private val noPathNote = "No path is not proof: reflection and dependency-injection wiring can hide calls from the call graph."
 
     @Test
     fun `text - no path without a guard`() {

@@ -156,7 +156,7 @@ internal object HelpRender {
         appendLine("All patterns are Java regex, case-insensitive and substring-matched: 'Owner' matches 'org.example.owner.Owner',")
         appendLine("and 'owner\\.Owner' matches the qualified name.")
         appendLine("CamelCase shorthand: at camelCase boundaries '.*' is inserted, so OwnCont matches OwnerController.")
-        appendLine("Applied to: ${enhanced.joinToString(", ")}. Other regex params (method, field, filter, exclude, ${tool.taskName("find-string-constant")}'s pattern) are matched as written.")
+        appendLine("Applied to: ${enhanced.joinToString(", ")}. Other regex params (method, field, filter, exclude, guard, from-annotation, ${tool.taskName("find-string-constant")}'s pattern) are matched as written.")
     }.trimEnd()
 
     fun feedback(): String = buildString {
