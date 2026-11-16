@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+- **Bytecode tasks no longer answer from stale classes.** A run on class files older than the sources warned "STALE BUILD", then answered anyway, and the answer could be confidently wrong (callers missing, the wrong file). An agent reading the result easily missed the warning.
+  - Gradle: tasks that read bytecode now compile first (`classes`, or `testClasses` for tasks that need tests, in every module they analyse). This undoes the earlier "drop forced compilation" decision; an up-to-date compile costs little.
+  - When compiling is turned off with `-Pcnav.compile=false` (e.g. while the code doesn't compile mid-refactoring), stale classes fail the task with a non-zero exit. `-Pcnav.allowStale=true` analyses the last successful build anyway, and the warning is then printed even with `-q`.
+  - When the build compiled first, the mtime comparison is no longer reported: the compiler's up-to-date check is authoritative, and the comparison only gave false alarms (e.g. a checkout touching sources the compiler rightly skipped). Maven goals already compiled first (`@Execute`) and now follow the same rule.
+
+## Unreleased
+
 ### Added
 - **`branches` for `find-callees` and `call-paths`:** shows the branches each call sits in (`if`/`else`, `when`, `try`/`catch`/`finally`, `?:`, safe calls, loops) with the condition text and the `return`/`throw` exits, read from the Kotlin source. `find-callees` prints each method's callees inside their branches; `call-paths` shows the conditions of each step, e.g. `[when (hard) › false ->]`. Calls are matched to the source by name; Java methods print without branches.
 - **`call-paths`:** lists the call paths from entry points (`from` method regex and/or `from-annotation`) to a target method (`to`), following interface calls into implementors. With `guard`, it lists only the paths that skip the check, for finding endpoints that reach sensitive code without authorization or validation. A method counts as guarded when its name or an annotation on it or its class matches, or when it calls a match within `guard-depth` calls.

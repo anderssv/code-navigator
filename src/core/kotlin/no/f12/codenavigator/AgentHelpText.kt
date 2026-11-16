@@ -94,7 +94,7 @@ object AgentHelpText {
         appendLine("- ALWAYS pass ${p("format", "llm")}. It is compact and wraps results in ---CNAV_BEGIN--- / ---CNAV_END--- markers that separate them")
         appendLine("  from build-tool noise. Everything between the markers is the result; ignore the rest. ${p("format", "json")} gives structured output.")
         appendLine("- NEVER pipe cnav output through head, tail or grep. It is short and specific; truncating it causes retries. If it is unexpectedly long, write it to a file.")
-        appendLine("- Bytecode tasks need compiled classes. If cnav warns about stale class files, rebuild. If compilation is broken mid-refactoring, cnav still works against the last successful build.")
+        appendLine("- Bytecode tasks compile first, and refuse to answer from class files older than the sources. A stale build is an error, not a warning: the error says how to analyse the last successful build when compilation is broken mid-refactoring.")
         appendLine("- Empty results come with hints ({\"results\":[],\"hints\":[...]}); read the hints before changing the query.")
         appendLine()
         appendLine("## Which task")

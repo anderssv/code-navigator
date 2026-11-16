@@ -65,3 +65,30 @@ object ClassFileStaleness {
         return java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss").format(local)
     }
 }
+
+sealed interface StalenessDecision {
+    data object Proceed : StalenessDecision
+    data class Warn(val message: String) : StalenessDecision
+    data class Fail(val message: String) : StalenessDecision
+}
+
+/**
+ * Stale classes used to be a warning, and the task still answered. The answer could be confidently wrong (callers
+ * missing, the wrong file), and an agent reading the result easily misses a warning, so stale now fails unless
+ * explicitly allowed. When the build compiled first, the compiler's up-to-date check is authoritative: an mtime
+ * comparison then only produces false alarms (a checkout touching sources the compiler rightly skipped).
+ */
+object StalenessPolicy {
+    fun decide(result: StalenessResult, compiledFirst: Boolean, allowStale: Boolean): StalenessDecision = when (result) {
+        is StalenessResult.Fresh -> StalenessDecision.Proceed
+        is StalenessResult.NoClassFiles -> StalenessDecision.Fail(result.error)
+        is StalenessResult.Stale -> when {
+            compiledFirst -> StalenessDecision.Proceed
+            allowStale -> StalenessDecision.Warn(result.warning)
+            else -> StalenessDecision.Fail(
+                "${result.warning}\nRefusing to answer from stale classes. Compile first (drop -Pcnav.compile=false), or pass " +
+                    "-Pcnav.allowStale=true to analyse the last successful build anyway, e.g. while the code doesn't compile.",
+            )
+        }
+    }
+}

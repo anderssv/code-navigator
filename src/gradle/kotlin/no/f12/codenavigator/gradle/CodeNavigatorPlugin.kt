@@ -1,7 +1,8 @@
 package no.f12.codenavigator.gradle
 
 import no.f12.codenavigator.registry.ClassFileStaleness
-import no.f12.codenavigator.registry.StalenessResult
+import no.f12.codenavigator.registry.StalenessDecision
+import no.f12.codenavigator.registry.StalenessPolicy
 import no.f12.codenavigator.registry.TaskDef
 import no.f12.codenavigator.registry.TaskRegistry
 import org.gradle.api.DefaultTask
@@ -66,10 +67,20 @@ class CodeNavigatorPlugin : Plugin<Project> {
                 description = taskDef.description
                 group = "code-navigator"
                 if (taskDef.requiresCompilation || taskDef.requiresTestCompilation) {
+                    val compileFirst = project.findProperty("cnav.compile")?.toString() != "false"
+                    val allowStale = project.findProperty("cnav.allowStale")?.toString() == "true"
+                    if (compileFirst) {
+                        val compileTask = if (taskDef.requiresTestCompilation) "testClasses" else "classes"
+                        dependsOn(project.provider {
+                            MultiModuleResolver.classify(project)
+                                .filterValues { it != ModuleRelationship.HIERARCHY }
+                                .keys.mapNotNull { it.tasks.findByName(compileTask) }
+                        })
+                    }
                     doFirst {
                         val workspace = AnalysisWorkspaceResolver.resolve(project)
                         val stalenessScope = if (taskDef.requiresTestCompilation) no.f12.codenavigator.navigation.types.Scope.ALL else no.f12.codenavigator.navigation.types.Scope.PROD
-                        checkStaleness(workspace.sourceDirectories(stalenessScope), workspace.classDirectories(stalenessScope))
+                        checkStaleness(workspace.sourceDirectories(stalenessScope), workspace.classDirectories(stalenessScope), compileFirst, allowStale)
                     }
                 }
                 if (this is RenameParamTask) {
@@ -174,10 +185,15 @@ class CodeNavigatorPlugin : Plugin<Project> {
     }
 }
 
-private fun DefaultTask.checkStaleness(sourceDirectories: List<java.io.File>, classDirectories: List<java.io.File>) {
-    when (val result = ClassFileStaleness.check(sourceDirectories, classDirectories)) {
-        is StalenessResult.Fresh -> {}
-        is StalenessResult.Stale -> logger.warn("⚠ ${result.warning}")
-        is StalenessResult.NoClassFiles -> throw org.gradle.api.GradleException(result.error)
+private fun DefaultTask.checkStaleness(
+    sourceDirectories: List<java.io.File>,
+    classDirectories: List<java.io.File>,
+    compiledFirst: Boolean,
+    allowStale: Boolean,
+) {
+    when (val decision = StalenessPolicy.decide(ClassFileStaleness.check(sourceDirectories, classDirectories), compiledFirst, allowStale)) {
+        is StalenessDecision.Proceed -> {}
+        is StalenessDecision.Warn -> logger.quiet("⚠ ${decision.message}")
+        is StalenessDecision.Fail -> throw org.gradle.api.GradleException(decision.message)
     }
 }

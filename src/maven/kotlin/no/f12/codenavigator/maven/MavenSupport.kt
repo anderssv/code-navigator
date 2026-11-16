@@ -9,7 +9,8 @@ import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.PlanStep
 import no.f12.codenavigator.navigation.types.SourceSet
 import no.f12.codenavigator.registry.ClassFileStaleness
-import no.f12.codenavigator.registry.StalenessResult
+import no.f12.codenavigator.registry.StalenessDecision
+import no.f12.codenavigator.registry.StalenessPolicy
 import org.apache.maven.plugin.MojoFailureException
 import org.apache.maven.project.MavenProject
 import java.io.File
@@ -66,10 +67,11 @@ fun MavenProject.checkStaleness(log: org.apache.maven.plugin.logging.Log) {
         File(build.outputDirectory).takeIf { it.exists() },
         File(build.testOutputDirectory).takeIf { it.exists() },
     )
-    when (val result = ClassFileStaleness.check(sourceDirs, classDirs)) {
-        is StalenessResult.Fresh -> {}
-        is StalenessResult.Stale -> log.warn("⚠ ${result.warning}")
-        is StalenessResult.NoClassFiles -> throw MojoFailureException(result.error)
+    // Every goal that calls this has @Execute(phase = COMPILE / TEST_COMPILE), so Maven compiled just before.
+    when (val decision = StalenessPolicy.decide(ClassFileStaleness.check(sourceDirs, classDirs), compiledFirst = true, allowStale = false)) {
+        is StalenessDecision.Proceed -> {}
+        is StalenessDecision.Warn -> log.warn("⚠ ${decision.message}")
+        is StalenessDecision.Fail -> throw MojoFailureException(decision.message)
     }
 }
 

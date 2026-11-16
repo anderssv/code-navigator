@@ -130,3 +130,31 @@ class ClassFileStalenessTest {
         assertIs<StalenessResult.Stale>(result)
     }
 }
+
+class StalenessPolicyTest {
+
+    private val stale = StalenessResult.Stale("STALE BUILD: x")
+
+    @Test
+    fun `stale classes fail the task so an agent cannot read a confident wrong answer`() {
+        val decision = StalenessPolicy.decide(stale, compiledFirst = false, allowStale = false)
+
+        assertTrue(decision is StalenessDecision.Fail, "$decision")
+        assertTrue((decision as StalenessDecision.Fail).message.contains("allowStale"), decision.message)
+    }
+
+    @Test
+    fun `allowStale turns the failure back into a warning`() {
+        assertTrue(StalenessPolicy.decide(stale, compiledFirst = false, allowStale = true) is StalenessDecision.Warn)
+    }
+
+    @Test
+    fun `when the build compiled first the mtime comparison is not trusted over the compiler`() {
+        assertTrue(StalenessPolicy.decide(stale, compiledFirst = true, allowStale = false) is StalenessDecision.Proceed)
+    }
+
+    @Test
+    fun `no class files always fails`() {
+        assertTrue(StalenessPolicy.decide(StalenessResult.NoClassFiles("none"), compiledFirst = true, allowStale = true) is StalenessDecision.Fail)
+    }
+}
