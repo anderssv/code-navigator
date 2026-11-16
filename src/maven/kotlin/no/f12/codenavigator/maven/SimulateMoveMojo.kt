@@ -20,7 +20,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "simulate-move")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class SimulateMoveMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -53,7 +53,7 @@ class SimulateMoveMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = SimulateMoveConfig.parse(TaskRegistry.SIMULATE_MOVE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = SimulateMoveConfig.parse(TaskRegistry.SIMULATE_MOVE.enhanceProperties(project.applyConfigDefaults(TaskRegistry.SIMULATE_MOVE, buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

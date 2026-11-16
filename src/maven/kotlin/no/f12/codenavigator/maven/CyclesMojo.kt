@@ -18,7 +18,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "cycles")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class CyclesMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -64,7 +64,7 @@ class CyclesMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.CYCLE_DETECTION.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.CYCLE_DETECTION.enhanceProperties(project.applyConfigDefaults(TaskRegistry.CYCLE_DETECTION, buildPropertyMap()))
         val config = CyclesConfig.parse(props)
         config.deprecations().forEach { log.warn(it) }
 

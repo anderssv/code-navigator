@@ -56,7 +56,7 @@ open class MoveClassMojo : AbstractMojo() {
         }
 
         val config = try {
-            MoveClassConfig.parse(TaskRegistry.MOVE_CLASS_TASK.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            MoveClassConfig.parse(TaskRegistry.MOVE_CLASS_TASK.enhanceProperties(project.applyConfigDefaults(TaskRegistry.MOVE_CLASS_TASK, buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             println(OutputWrapper.emptyResult(OutputFormat.LLM, "move-class failed: ${e.message}",
                 TaskRegistry.MOVE_CLASS_TASK.renderExamples(BuildTool.MAVEN)))

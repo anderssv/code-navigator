@@ -18,7 +18,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "annotations")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class AnnotationsMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -47,7 +47,7 @@ class AnnotationsMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            AnnotationQueryConfig.parse(TaskRegistry.ANNOTATIONS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            AnnotationQueryConfig.parse(TaskRegistry.ANNOTATIONS.enhanceProperties(project.applyConfigDefaults(TaskRegistry.ANNOTATIONS, buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "Missing required property. Usage: mvn cnav:annotations -Dpattern=<regex> [-Dmethods=true]",

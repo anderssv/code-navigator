@@ -19,7 +19,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "why-depends")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class WhyDependsMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)

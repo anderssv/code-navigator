@@ -12,7 +12,7 @@ import org.apache.maven.plugins.annotations.Parameter
 import org.apache.maven.project.MavenProject
 
 @Mojo(name = "find-callees")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class FindCalleesMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -27,6 +27,9 @@ class FindCalleesMojo : AbstractMojo() {
 
     @Parameter(property = "maxdepth")
     private var maxdepth: String? = null
+
+    @Parameter(property = "depth")
+    private var depth: String? = null
 
     @Parameter(property = "project-only")
     private var projectOnly: String? = null
@@ -64,6 +67,7 @@ class FindCalleesMojo : AbstractMojo() {
         format?.let { put("format", it) }
         pattern?.let { put("pattern", it) }
         maxdepth?.let { put("maxdepth", it) }
+        depth?.let { put("depth", it) }
         projectOnly?.let { put("project-only", it) }
         filterSynthetic?.let { put("filter-synthetic", it) }
         scope?.let { put("scope", it) }

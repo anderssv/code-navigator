@@ -23,7 +23,7 @@ import java.io.File
 import no.f12.codenavigator.navigation.classinfo.ClassInfoFormatter
 
 @Mojo(name = "list-classes", requiresDependencyResolution = ResolutionScope.RUNTIME)
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class ListClassesMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -45,7 +45,7 @@ class ListClassesMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = ListClassesConfig.parse(TaskRegistry.LIST_CLASSES.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = ListClassesConfig.parse(TaskRegistry.LIST_CLASSES.enhanceProperties(project.applyConfigDefaults(TaskRegistry.LIST_CLASSES, buildPropertyMap())))
 
         val classes = if (config.jar != null) {
             val jarFile = project.resolveJar(config.jar!!)

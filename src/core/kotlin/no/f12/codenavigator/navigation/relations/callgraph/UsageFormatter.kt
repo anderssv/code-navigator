@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation.relations.callgraph
 
+import no.f12.codenavigator.navigation.types.SourceSet
+
 import no.f12.codenavigator.formatting.JsonRaw
 import no.f12.codenavigator.formatting.jsonArray
 import no.f12.codenavigator.formatting.jsonObject
@@ -46,6 +48,14 @@ object UsageFormatter {
                 "sourceSet" to u.sourceSet?.label,
             )
         }
+
+    /** One line an agent can read before deciding whether to read every usage. */
+    fun summaryLine(usages: List<UsageSite>): String {
+        val files = usages.map { Triple(it.callerClass.packageName(), it.sourceFile, it.sourceSet) }.distinct()
+        val test = files.count { it.third == SourceSet.TEST }
+        fun plural(n: Int, word: String) = "$n $word" + if (n == 1) "" else "s"
+        return "${plural(usages.size, "reference")} in ${plural(files.size, "file")} (prod ${files.size - test}, test $test)"
+    }
 
     fun formatLlm(usages: List<UsageSite>): String =
         usages.sortedWith(compareBy({ it.callerClass }, { it.callerMethod }))

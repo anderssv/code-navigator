@@ -14,7 +14,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "cohesion")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class CohesionMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -48,7 +48,7 @@ class CohesionMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.COHESION.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.COHESION.enhanceProperties(project.applyConfigDefaults(TaskRegistry.COHESION, buildPropertyMap()))
         val config = CohesionConfig.parse(props)
 
         val taggedDirs = project.taggedClassDirectories()

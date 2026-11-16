@@ -17,7 +17,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "ambient")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class AmbientMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -51,7 +51,7 @@ class AmbientMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = AmbientTaskConfig.parse(
-            TaskRegistry.AMBIENT.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())),
+            TaskRegistry.AMBIENT.enhanceProperties(project.applyConfigDefaults(TaskRegistry.AMBIENT, buildPropertyMap())),
         )
 
         val taggedDirs = project.taggedClassDirectories()

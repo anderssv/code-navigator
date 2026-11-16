@@ -18,7 +18,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "find-string-constant")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class StringConstantMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -38,7 +38,7 @@ class StringConstantMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = StringConstantConfig.parse(
-            TaskRegistry.FIND_STRING_CONSTANT.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())),
+            TaskRegistry.FIND_STRING_CONSTANT.enhanceProperties(project.applyConfigDefaults(TaskRegistry.FIND_STRING_CONSTANT, buildPropertyMap())),
         )
 
         val taggedDirs = project.taggedClassDirectories()

@@ -35,7 +35,7 @@ class PackageVolatilityMojo : AbstractMojo() {
     private var noFollow: Boolean = false
 
     override fun execute() {
-        val config = VolatilityConfig.parse(TaskRegistry.VOLATILITY.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = VolatilityConfig.parse(TaskRegistry.VOLATILITY.enhanceProperties(project.applyConfigDefaults(TaskRegistry.VOLATILITY, buildPropertyMap())))
 
         val result = VolatilityOrchestrator.run(config, project.basedir)
 

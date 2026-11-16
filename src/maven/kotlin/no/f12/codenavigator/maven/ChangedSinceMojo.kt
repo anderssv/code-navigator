@@ -22,7 +22,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "changed-since")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class ChangedSinceMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -44,7 +44,7 @@ class ChangedSinceMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = ChangedSinceConfig.parse(TaskRegistry.CHANGED_SINCE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = ChangedSinceConfig.parse(TaskRegistry.CHANGED_SINCE.enhanceProperties(project.applyConfigDefaults(TaskRegistry.CHANGED_SINCE, buildPropertyMap())))
 
         if (config.ref == null) {
             log.error("Required parameter 'ref' not set. Usage: -Dref=<git-ref> (branch, tag, or commit SHA)")

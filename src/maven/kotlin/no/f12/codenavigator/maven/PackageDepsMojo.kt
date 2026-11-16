@@ -17,7 +17,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "package-deps")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class PackageDepsMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -51,7 +51,7 @@ class PackageDepsMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.PACKAGE_DEPS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.PACKAGE_DEPS.enhanceProperties(project.applyConfigDefaults(TaskRegistry.PACKAGE_DEPS, buildPropertyMap()))
         val config = PackageDepsConfig.parse(props)
 
         val taggedDirs = project.taggedClassDirectories()

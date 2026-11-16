@@ -23,9 +23,9 @@ data class ChangeSignatureConfig(
     }
 
     companion object {
-        fun parse(properties: Map<String, String?>): ChangeSignatureConfig {
-            val className = TaskRegistry.RENAME_CLASS.parseRequiredFrom(properties)
-            val methodName = TaskRegistry.RENAME_METHOD.parseRequiredFrom(properties)
+        fun parse(properties: Map<String, String?>, sourceRoots: List<java.io.File> = emptyList()): ChangeSignatureConfig {
+            val className = TargetClassResolver.resolve(sourceRoots, TargetPattern.className(properties))
+            val methodName = TargetPattern.requiredMethodName(properties)
             val params = TaskRegistry.CHANGE_SIG_PARAMS.parseRequiredFrom(properties)
             val defaults = TaskRegistry.CHANGE_SIG_DEFAULTS.parseFrom(properties)
             val preview: Boolean = TaskRegistry.PREVIEW.parseFrom(properties)

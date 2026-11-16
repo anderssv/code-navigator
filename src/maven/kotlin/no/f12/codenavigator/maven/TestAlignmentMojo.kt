@@ -39,7 +39,7 @@ class TestAlignmentMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = TestAlignmentTaskConfig.parse(
-            TaskRegistry.TEST_ALIGNMENT.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())),
+            TaskRegistry.TEST_ALIGNMENT.enhanceProperties(project.applyConfigDefaults(TaskRegistry.TEST_ALIGNMENT, buildPropertyMap())),
         )
 
         val cacheDir = File(project.build.directory, "cnav")

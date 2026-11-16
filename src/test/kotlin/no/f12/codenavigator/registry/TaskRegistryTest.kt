@@ -1028,6 +1028,9 @@ class TaskRegistryTest {
             "pattern" to ParamType.STRING,
             "method" to ParamType.STRING,
             "maxdepth" to ParamType.INT,
+            "depth" to ParamType.INT,
+            "file" to ParamType.STRING,
+            "line" to ParamType.STRING,
             "project-only" to ParamType.BOOLEAN,
             "filter-synthetic" to ParamType.BOOLEAN,
             "top" to ParamType.INT,
@@ -1208,5 +1211,20 @@ class TaskRegistryTest {
 
         assertEquals(1, tasksWithAliases.size, "Only move-class should have aliases")
         assertEquals("move-class", tasksWithAliases.first().goal)
+    }
+}
+
+class MisplacedParamTest {
+    @Test
+    fun `an option of another cnav task is reported with the task's valid options`() {
+        val warning = TaskRegistry.FIND_CALLERS.misplacedParamWarning(setOf("target-class", "maven.repo.local", "pattern"), BuildTool.MAVEN)!!
+
+        kotlin.test.assertTrue(warning.contains("-Dtarget-class") && warning.contains("cnav:find-callers"), warning)
+        kotlin.test.assertTrue(warning.contains("-Dpattern") && !warning.contains("maven.repo.local"), warning)
+    }
+
+    @Test
+    fun `nothing to report when every cnav option belongs to the task`() {
+        kotlin.test.assertNull(TaskRegistry.FIND_CALLERS.misplacedParamWarning(setOf("pattern", "user.home"), BuildTool.MAVEN))
     }
 }

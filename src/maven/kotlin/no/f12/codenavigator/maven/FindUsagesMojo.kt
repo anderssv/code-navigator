@@ -18,7 +18,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "find-usages")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class FindUsagesMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -39,6 +39,12 @@ class FindUsagesMojo : AbstractMojo() {
 
     @Parameter(property = "type")
     private var type: String? = null
+
+    @Parameter(property = "file")
+    private var file: String? = null
+
+    @Parameter(property = "line")
+    private var line: String? = null
 
     @Parameter(property = "outside-package")
     private var outsidePackage: String? = null
@@ -62,7 +68,11 @@ class FindUsagesMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            FindUsagesConfig.parse(TaskRegistry.FIND_USAGES.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            FindUsagesConfig.parse(TaskRegistry.FIND_USAGES.enhanceProperties(project.applyConfigDefaults(TaskRegistry.FIND_USAGES,
+                no.f12.codenavigator.navigation.relations.callgraph.SourcePositionResolver.toUsageProperties(
+                    project.taggedClassDirectories().map { it.first }, buildPropertyMap(),
+                ),
+            )))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "${e.message}\n" +
@@ -103,7 +113,7 @@ class FindUsagesMojo : AbstractMojo() {
                     config.raw -> UsageFormatter.formatJson(output.usages)
                     else -> UsageFormatter.formatSmartUsagesJson(smartResult, output.collapsed)
                 }
-                OutputFormat.LLM -> when {
+                OutputFormat.LLM -> UsageFormatter.summaryLine(output.usages) + "\n" + when {
                     config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummaryLlm(output.usages)
                     config.raw -> UsageFormatter.formatLlm(output.usages)
                     else -> UsageFormatter.formatSmartUsagesLlm(smartResult, output.collapsed)
@@ -117,6 +127,8 @@ class FindUsagesMojo : AbstractMojo() {
         ownerClass?.let { put("owner-class", it) }
         method?.let { put("method", it) }
         field?.let { put("field", it) }
+        file?.let { put("file", it) }
+        line?.let { put("line", it) }
         type?.let { put("type", it) }
         outsidePackage?.let { put("outside-package", it) }
         scope?.let { put("scope", it) }

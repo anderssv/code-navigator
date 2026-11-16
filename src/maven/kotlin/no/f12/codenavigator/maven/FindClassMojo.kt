@@ -24,7 +24,7 @@ import java.io.File
 import no.f12.codenavigator.navigation.classinfo.ClassInfoFormatter
 
 @Mojo(name = "find-class", requiresDependencyResolution = ResolutionScope.RUNTIME)
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class FindClassMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -47,7 +47,7 @@ class FindClassMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            FindClassConfig.parse(TaskRegistry.FIND_CLASS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            FindClassConfig.parse(TaskRegistry.FIND_CLASS.enhanceProperties(project.applyConfigDefaults(TaskRegistry.FIND_CLASS, buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "Missing required property 'pattern'. Usage: mvn cnav:find-class -Dpattern=<regex>",

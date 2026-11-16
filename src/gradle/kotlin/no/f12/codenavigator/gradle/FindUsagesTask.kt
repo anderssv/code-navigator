@@ -60,7 +60,17 @@ abstract class FindUsagesTask : CodeNavigatorTask() {
     @get:Internal
     var includeImpls: Boolean = false
 
+    @Option(option = "file", description = "Source file of the declaration (with line): find usages from a position, e.g. from a diff or stack trace, without the class name")
+    @get:Internal
+    var file: String? = null
+
+    @Option(option = "line", description = "Line in file: the method or class declared or running there")
+    @get:Internal
+    var line: String? = null
+
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        file?.let { put("file", it) }
+        line?.let { put("line", it) }
         ownerClass?.let { put("owner-class", it) }
         method?.let { put("method", it) }
         field?.let { put("field", it) }
@@ -77,14 +87,19 @@ abstract class FindUsagesTask : CodeNavigatorTask() {
     fun findUsages() {
         val config = try {
             FindUsagesConfig.parse(
-                TaskRegistry.FIND_USAGES.enhanceProperties(buildOptionsMap()),
+                TaskRegistry.FIND_USAGES.enhanceProperties(
+                    no.f12.codenavigator.navigation.relations.callgraph.SourcePositionResolver.toUsageProperties(
+                        project.taggedClassDirectories().map { it.first }, buildOptionsMap(),
+                    ),
+                ),
             )
         } catch (e: IllegalArgumentException) {
             val taskName = TaskRegistry.FIND_USAGES.taskName(BuildTool.GRADLE)
             throw GradleException(
                 "${e.message}\n" +
                     "Usage: ./gradlew $taskName --owner-class=<class> [--method=<name>] [--field=<name>]\n" +
-                    "       ./gradlew $taskName --type=<class>",
+                    "       ./gradlew $taskName --type=<class>\n" +
+                    "       ./gradlew $taskName --file=<path/to/File.kt> --line=<N>",
             )
         }
 
@@ -116,7 +131,7 @@ abstract class FindUsagesTask : CodeNavigatorTask() {
                     config.raw -> UsageFormatter.formatJson(output.usages)
                     else -> UsageFormatter.formatSmartUsagesJson(smartResult, output.collapsed)
                 }
-                OutputFormat.LLM -> when {
+                OutputFormat.LLM -> UsageFormatter.summaryLine(output.usages) + "\n" + when {
                     config.groupBy == GroupBy.FILE -> UsageFormatter.formatSummaryLlm(output.usages)
                     config.raw -> UsageFormatter.formatLlm(output.usages)
                     else -> UsageFormatter.formatSmartUsagesLlm(smartResult, output.collapsed)

@@ -36,6 +36,8 @@ data class CallTreeNode(
     val isInline: Boolean = false,
     /** CALLEES only, with `branches`: this node's children laid out in the branches of its source. Null without source. */
     val branches: PlacedBody? = null,
+    /** The depth limit stopped the walk here although this method has further callers/callees. */
+    val cutAtDepth: Boolean = false,
 )
 
 object CallTreeBuilder {
@@ -99,6 +101,8 @@ object CallTreeBuilder {
         val visitedCheck = method !in visited
         var children: List<CallTreeNode> = emptyList()
         var collapsedByChild: Map<MethodRef, Int> = emptyMap()
+        val cutAtDepth = !depthCheck && visitedCheck &&
+            direction.resolve(graph, method.className, method.methodName).any { filter == null || filter(it) }
         if (depthCheck && visitedCheck) {
             visited.add(method)
             val direct = direction.resolve(graph, method.className, method.methodName)
@@ -134,6 +138,7 @@ object CallTreeBuilder {
             annotations,
             graph.sourceSetOf(method.className),
             isInline = isInlineMethod(method, inlineMethods),
+            cutAtDepth = cutAtDepth,
         )
     }
 

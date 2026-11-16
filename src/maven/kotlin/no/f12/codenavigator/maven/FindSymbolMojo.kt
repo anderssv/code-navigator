@@ -24,7 +24,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "find-symbol", requiresDependencyResolution = ResolutionScope.RUNTIME)
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class FindSymbolMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -50,7 +50,7 @@ class FindSymbolMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            FindSymbolConfig.parse(TaskRegistry.FIND_SYMBOL.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            FindSymbolConfig.parse(TaskRegistry.FIND_SYMBOL.enhanceProperties(project.applyConfigDefaults(TaskRegistry.FIND_SYMBOL, buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(e.message)
         }

@@ -16,7 +16,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "move-suggest")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class MoveSuggestMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -44,7 +44,7 @@ class MoveSuggestMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = MoveSuggestConfig.parse(TaskRegistry.MOVE_SUGGEST.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = MoveSuggestConfig.parse(TaskRegistry.MOVE_SUGGEST.enhanceProperties(project.applyConfigDefaults(TaskRegistry.MOVE_SUGGEST, buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

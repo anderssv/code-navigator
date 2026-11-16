@@ -35,7 +35,7 @@ class FindDeclarationMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            FindDeclarationConfig.parse(TaskRegistry.FIND_DECLARATION.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            FindDeclarationConfig.parse(TaskRegistry.FIND_DECLARATION.enhanceProperties(project.applyConfigDefaults(TaskRegistry.FIND_DECLARATION, buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             println(OutputWrapper.emptyResult(OutputFormat.LLM, "find-declaration failed: ${e.message}",
                 TaskRegistry.FIND_DECLARATION.renderExamples(BuildTool.MAVEN)))

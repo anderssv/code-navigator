@@ -23,7 +23,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "class-detail", requiresDependencyResolution = ResolutionScope.RUNTIME)
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class ClassDetailMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -46,7 +46,7 @@ class ClassDetailMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            FindClassDetailConfig.parse(TaskRegistry.CLASS_DETAIL.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            FindClassDetailConfig.parse(TaskRegistry.CLASS_DETAIL.enhanceProperties(project.applyConfigDefaults(TaskRegistry.CLASS_DETAIL, buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "Missing required property 'pattern'. Usage: mvn cnav:class-detail -Dpattern=<regex>",

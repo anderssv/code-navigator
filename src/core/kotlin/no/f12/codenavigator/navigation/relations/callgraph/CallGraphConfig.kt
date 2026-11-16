@@ -44,7 +44,7 @@ data class CallGraphConfig(
             return CallGraphConfig(
                 method = pattern
                     ?: throw IllegalArgumentException("Missing required property '${TaskRegistry.CALL_PATTERN.name}'"),
-                maxDepth = TaskRegistry.MAXDEPTH.parseFrom(properties),
+                maxDepth = TaskRegistry.DEPTH.parseFrom(properties).takeIf { it > 0 } ?: TaskRegistry.MAXDEPTH.parseFrom(properties),
                 projectOnly = TaskRegistry.PROJECTONLY.parseFrom(properties),
                 filterSynthetic = TaskRegistry.FILTER_SYNTHETIC.parseFrom(properties),
                 scope = Scope.parse(TaskRegistry.SCOPE.parseFrom(properties)),

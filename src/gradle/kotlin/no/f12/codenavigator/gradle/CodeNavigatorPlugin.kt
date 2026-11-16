@@ -70,11 +70,12 @@ class CodeNavigatorPlugin : Plugin<Project> {
                     val compileFirst = project.findProperty("cnav.compile")?.toString() != "false"
                     val allowStale = project.findProperty("cnav.allowStale")?.toString() == "true"
                     if (compileFirst) {
-                        val compileTask = if (taskDef.requiresTestCompilation) "testClasses" else "classes"
+                        // Test classes too: most bytecode tasks read them when present (scope=all), and
+                        // compiling only main left test callers silently missing from the answer.
                         dependsOn(project.provider {
                             MultiModuleResolver.classify(project)
                                 .filterValues { it != ModuleRelationship.HIERARCHY }
-                                .keys.mapNotNull { it.tasks.findByName(compileTask) }
+                                .keys.mapNotNull { it.tasks.findByName("testClasses") ?: it.tasks.findByName("classes") }
                         })
                     }
                     doFirst {

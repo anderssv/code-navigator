@@ -93,6 +93,8 @@ object AgentHelpText {
         appendLine("  and Kotlin `inline` functions (inlining leaves no call edge; ${t("find-callers")} warns when this applies).")
         appendLine("- ALWAYS pass ${p("format", "llm")}. It is compact and wraps results in ---CNAV_BEGIN--- / ---CNAV_END--- markers that separate them")
         appendLine("  from build-tool noise. Everything between the markers is the result; ignore the rest. ${p("format", "json")} gives structured output.")
+        appendLine("- Run with -q (e.g. ${tool.command} -q ...). It drops the build tool's own lines (daemon start, problems report, BUILD SUCCESSFUL) and keeps cnav's output and errors.")
+        appendLine("- Results start with a summary line (e.g. '70 references in 17 files (prod 9, test 8)'); read it first and decide whether the rest is needed.")
         appendLine("- NEVER pipe cnav output through head, tail or grep. It is short and specific; truncating it causes retries. If it is unexpectedly long, write it to a file.")
         appendLine("- Bytecode tasks compile first, and refuse to answer from class files older than the sources. A stale build is an error, not a warning: the error says how to analyse the last successful build when compilation is broken mid-refactoring.")
         appendLine("- Empty results come with hints ({\"results\":[],\"hints\":[...]}); read the hints before changing the query.")

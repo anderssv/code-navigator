@@ -19,7 +19,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "find-interfaces")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class FindInterfaceImplsMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -42,7 +42,7 @@ class FindInterfaceImplsMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            FindInterfaceImplsConfig.parse(TaskRegistry.FIND_INTERFACES.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            FindInterfaceImplsConfig.parse(TaskRegistry.FIND_INTERFACES.enhanceProperties(project.applyConfigDefaults(TaskRegistry.FIND_INTERFACES, buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(e.message)
         }

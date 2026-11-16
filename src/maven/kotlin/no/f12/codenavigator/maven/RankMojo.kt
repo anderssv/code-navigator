@@ -18,7 +18,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "rank")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class RankMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -49,7 +49,7 @@ class RankMojo : AbstractMojo() {
             return
         }
 
-        val config = RankConfig.parse(TaskRegistry.RANK.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = RankConfig.parse(TaskRegistry.RANK.enhanceProperties(project.applyConfigDefaults(TaskRegistry.RANK, buildPropertyMap())))
 
         val result = CallGraphCache.getOrBuildTagged(File(project.build.directory, "cnav/call-graph.cache"), taggedDirs)
         val reportFile = File(project.build.directory, "cnav/skipped-files.txt")

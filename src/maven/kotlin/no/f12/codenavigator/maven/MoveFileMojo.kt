@@ -38,7 +38,7 @@ class MoveFileMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            MoveFileConfig.parse(TaskRegistry.MOVE_FILE_TASK.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            MoveFileConfig.parse(TaskRegistry.MOVE_FILE_TASK.enhanceProperties(project.applyConfigDefaults(TaskRegistry.MOVE_FILE_TASK, buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             println(OutputWrapper.emptyResult(OutputFormat.LLM, "move-file failed: ${e.message}",
                 TaskRegistry.MOVE_FILE_TASK.renderExamples(BuildTool.MAVEN)))

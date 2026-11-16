@@ -12,7 +12,7 @@ import org.apache.maven.plugin.AbstractMojo
 import java.io.File
 
 @Mojo(name = "suggest-structure")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class SuggestStructureMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -40,7 +40,7 @@ class SuggestStructureMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = SuggestStructureConfig.parse(TaskRegistry.SUGGEST_STRUCTURE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = SuggestStructureConfig.parse(TaskRegistry.SUGGEST_STRUCTURE.enhanceProperties(project.applyConfigDefaults(TaskRegistry.SUGGEST_STRUCTURE, buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

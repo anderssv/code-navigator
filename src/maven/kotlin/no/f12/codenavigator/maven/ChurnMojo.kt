@@ -33,7 +33,7 @@ class ChurnMojo : AbstractMojo() {
     private var noFollow: Boolean = false
 
     override fun execute() {
-        val config = ChurnConfig.parse(TaskRegistry.CHURN.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = ChurnConfig.parse(TaskRegistry.CHURN.enhanceProperties(project.applyConfigDefaults(TaskRegistry.CHURN, buildPropertyMap())))
 
         val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
         val churn = ChurnBuilder.build(commits, config.top)

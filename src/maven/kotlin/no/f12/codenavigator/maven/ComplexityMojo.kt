@@ -21,7 +21,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "complexity")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class ComplexityMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -67,7 +67,7 @@ class ComplexityMojo : AbstractMojo() {
             return
         }
 
-        val props = TaskRegistry.COMPLEXITY.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.COMPLEXITY.enhanceProperties(project.applyConfigDefaults(TaskRegistry.COMPLEXITY, buildPropertyMap()))
         val config = try {
             ComplexityConfig.parse(props)
         } catch (e: IllegalArgumentException) {

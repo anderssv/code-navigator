@@ -8,6 +8,7 @@ import no.f12.codenavigator.config.CnavConfig
 import no.f12.codenavigator.navigation.dsm.PlanMutator
 import no.f12.codenavigator.navigation.dsm.PlanStep
 import no.f12.codenavigator.navigation.types.SourceSet
+import no.f12.codenavigator.registry.BuildTool
 import no.f12.codenavigator.registry.ClassFileStaleness
 import no.f12.codenavigator.registry.StalenessDecision
 import no.f12.codenavigator.registry.StalenessPolicy
@@ -95,6 +96,12 @@ fun loadPlanSteps(planFile: String?): List<PlanStep> =
 /** Merges cnav-config.json's `defaults` section under [properties] — explicit mojo properties always win. See [CnavConfig]. */
 fun MavenProject.applyConfigDefaults(properties: Map<String, String?>): Map<String, String?> =
     CnavConfig.applyDefaults(properties, basedir)
+
+/** Also warns about -D options that belong to another cnav goal: Maven would otherwise drop them without a word. */
+fun MavenProject.applyConfigDefaults(task: no.f12.codenavigator.registry.TaskDef, properties: Map<String, String?>): Map<String, String?> {
+    task.misplacedParamWarning(System.getProperties().stringPropertyNames(), BuildTool.MAVEN)?.let { println("⚠ $it") }
+    return applyConfigDefaults(properties)
+}
 
 /**
  * Prints how this analysis moved since an earlier run (stored under `<project>/.cnav/history`) and/or its trend,

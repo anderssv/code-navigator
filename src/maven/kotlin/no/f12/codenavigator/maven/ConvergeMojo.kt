@@ -18,7 +18,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "converge")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class ConvergeMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -60,7 +60,7 @@ class ConvergeMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = ConvergeConfig.parse(TaskRegistry.CONVERGE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = ConvergeConfig.parse(TaskRegistry.CONVERGE.enhanceProperties(project.applyConfigDefaults(TaskRegistry.CONVERGE, buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val classDirectories = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }.map { it.first }

@@ -23,7 +23,7 @@ class CompileBeforeAnalysisTest {
     fun `bytecode tasks compile first by default`() {
         val p = project()
 
-        assertTrue("classes" in p.dependencyNames("cnavFindCallers"), "${p.dependencyNames("cnavFindCallers")}")
+        assertTrue("testClasses" in p.dependencyNames("cnavFindCallers"), "test callers are part of the answer: ${p.dependencyNames("cnavFindCallers")}")
         assertTrue("testClasses" in p.dependencyNames("cnavDead"), "${p.dependencyNames("cnavDead")}")
     }
 
@@ -31,11 +31,11 @@ class CompileBeforeAnalysisTest {
     fun `cnav_compile=false skips compilation, for code that does not compile mid-refactoring`() {
         val p = project("cnav.compile" to "false")
 
-        assertFalse("classes" in p.dependencyNames("cnavFindCallers"))
+        assertFalse("testClasses" in p.dependencyNames("cnavFindCallers"))
     }
 
     @Test
     fun `source-only tasks do not compile`() {
-        assertFalse("classes" in project().dependencyNames("cnavSize"))
+        assertFalse("testClasses" in project().dependencyNames("cnavSize"))
     }
 }

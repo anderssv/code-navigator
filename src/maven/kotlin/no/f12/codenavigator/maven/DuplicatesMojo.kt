@@ -34,7 +34,7 @@ class DuplicatesMojo : AbstractMojo() {
     private var scope: String? = null
 
     override fun execute() {
-        val config = DuplicateConfig.parse(TaskRegistry.DUPLICATES.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = DuplicateConfig.parse(TaskRegistry.DUPLICATES.enhanceProperties(project.applyConfigDefaults(TaskRegistry.DUPLICATES, buildPropertyMap())))
 
         val existingRoots = project.mainSourceRoots().map { it to SourceSet.MAIN } +
             project.testSourceRoots().map { it to SourceSet.TEST }

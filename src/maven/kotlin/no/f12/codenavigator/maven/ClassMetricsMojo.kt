@@ -15,7 +15,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "class-metrics")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class ClassMetricsMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -42,7 +42,7 @@ class ClassMetricsMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = ClassMetricsConfig.parse(TaskRegistry.CLASS_METRICS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = ClassMetricsConfig.parse(TaskRegistry.CLASS_METRICS.enhanceProperties(project.applyConfigDefaults(TaskRegistry.CLASS_METRICS, buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val classDirectories = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }.map { it.first }

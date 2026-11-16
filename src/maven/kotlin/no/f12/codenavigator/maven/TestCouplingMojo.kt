@@ -67,7 +67,7 @@ class TestCouplingMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.TEST_COUPLING.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.TEST_COUPLING.enhanceProperties(project.applyConfigDefaults(TaskRegistry.TEST_COUPLING, buildPropertyMap()))
         val config = TestCouplingTaskConfig.parse(props)
 
         val taggedDirs = project.taggedClassDirectories()

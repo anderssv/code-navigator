@@ -18,7 +18,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "dsm")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class DsmMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -67,7 +67,7 @@ class DsmMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.DSM.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.DSM.enhanceProperties(project.applyConfigDefaults(TaskRegistry.DSM, buildPropertyMap()))
         val config = DsmConfig.parse(props)
         config.deprecations().forEach { log.warn(it) }
 

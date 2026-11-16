@@ -18,7 +18,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "metrics")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class MetricsMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -70,7 +70,7 @@ class MetricsMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.METRICS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.METRICS.enhanceProperties(project.applyConfigDefaults(TaskRegistry.METRICS, buildPropertyMap()))
         val config = MetricsConfig.parse(props)
         config.deprecations().forEach { log.warn(it) }
 

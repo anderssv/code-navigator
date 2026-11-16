@@ -76,7 +76,7 @@ class DeadCodeMojo : AbstractMojo() {
             return
         }
 
-        val props = TaskRegistry.DEAD.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.DEAD.enhanceProperties(project.applyConfigDefaults(TaskRegistry.DEAD, buildPropertyMap()))
         val config = DeadCodeConfig.parse(props)
 
         val cacheDir = File(project.build.directory, "cnav")

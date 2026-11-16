@@ -48,7 +48,7 @@ object CallTreeTaskSupport {
                 when (format) {
                     OutputFormat.TEXT, OutputFormat.DIFF -> CallTreeFormatter.renderTrees(output.trees, direction) + (output.classHint?.let { "\n\n$it" } ?: "")
                     OutputFormat.JSON -> CallTreeFormatter.formatJson(output.trees, direction)
-                    OutputFormat.LLM -> CallTreeFormatter.formatLlm(output.trees, direction) + (output.classHint?.let { "\n\n$it" } ?: "")
+                    OutputFormat.LLM -> CallTreeFormatter.formatLlmWithSummary(output.trees, direction) + (output.classHint?.let { "\n\n$it" } ?: "")
                 }
             },
         )

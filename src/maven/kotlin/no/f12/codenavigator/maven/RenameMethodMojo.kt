@@ -24,6 +24,9 @@ class RenameMethodMojo : AbstractMojo() {
     private var format: String? = null
 
 
+    @Parameter(property = "pattern")
+    private var pattern: String? = null
+
     @Parameter(property = "target-class")
     private var targetClass: String? = null
 
@@ -38,7 +41,7 @@ class RenameMethodMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            RenameMethodConfig.parse(TaskRegistry.RENAME_METHOD_TASK.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            RenameMethodConfig.parse(TaskRegistry.RENAME_METHOD_TASK.enhanceProperties(project.applyConfigDefaults(TaskRegistry.RENAME_METHOD_TASK, buildPropertyMap())), project.allSourceRoots())
         } catch (e: IllegalArgumentException) {
             println(OutputWrapper.emptyResult(OutputFormat.LLM, "rename-method failed: ${e.message}",
                 TaskRegistry.RENAME_METHOD_TASK.renderExamples(BuildTool.MAVEN)))
@@ -78,6 +81,7 @@ class RenameMethodMojo : AbstractMojo() {
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
+        pattern?.let { put("pattern", it) }
         targetClass?.let { put("target-class", it) }
         method?.let { put("method", it) }
         newName?.let { put("new-name", it) }

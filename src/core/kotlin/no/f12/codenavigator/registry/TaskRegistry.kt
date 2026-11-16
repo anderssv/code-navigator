@@ -194,6 +194,19 @@ data class TaskDef(
         }
     }
 
+    /**
+     * Maven silently ignores a -D the goal doesn't declare, so a misremembered option (target-class on find-callers)
+     * just vanishes. [given] is every property name passed; only names that are options of some other cnav task count.
+     */
+    fun misplacedParamWarning(given: Set<String>, tool: BuildTool): String? {
+        val own = params.map { it.name }.toSet()
+        val allCnav = TaskRegistry.ALL_TASKS.flatMap { it.params }.map { it.name }.toSet()
+        val misplaced = given.filter { it in allCnav && it !in own }.sorted()
+        if (misplaced.isEmpty()) return null
+        val valid = params.filterNot { it.deprecated }.joinToString(" ") { tool.paramFlag(it.name) }
+        return "Ignored ${misplaced.joinToString(", ") { tool.paramFlag(it) }}: not an option of ${tool.taskName(goal)}. Its options: $valid"
+    }
+
     fun enhanceProperties(properties: Map<String, String?>): Map<String, String?> {
         val knownNames = params.map { it.name }.toSet()
         val unknown = properties.keys - knownNames
@@ -222,6 +235,7 @@ object TaskRegistry {
     val CALL_PATTERN = ParamDef("pattern", "<regex>", "Class.method name regex (camelCase-aware: MyService.doWork matches com.example.MyService.doWork)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING)
     val LEGACY_METHOD = ParamDef("method", "<regex>", "Deprecated: use pattern instead", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, deprecated = true, deprecatedMessage = "'method' is deprecated for find-callers/find-callees. Use 'pattern' instead (Gradle: pattern=MyClass.myMethod, Maven: -Dpattern=MyClass.myMethod).")
     val METHOD = ParamDef("method", "<regex>", "Method name regex", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
+    val DEPTH = ParamDef("depth", "<N>", "Same as maxdepth: how many levels of callers/callees to follow", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.INT, optional = true)
     val MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth", flag = false, defaultValue = "3", enhancePattern = false, type = ParamType.INT)
     val MAX_IMPLEMENTORS = ParamDef("max-implementors", "<N>", "Max polymorphic implementors to expand per interface call site before collapsing the rest into a '+N more' note", flag = false, defaultValue = "5", enhancePattern = false, type = ParamType.INT)
     val PROJECTONLY = ParamDef("project-only", "false", "Hide JDK/stdlib/library classes (default: on)", flag = false, defaultValue = "true", enhancePattern = false, type = ParamType.BOOLEAN)
@@ -263,6 +277,8 @@ object TaskRegistry {
     val DSM_HTML = ParamDef("dsm-html", "<path>", "Write interactive HTML matrix to file", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val CYCLES = ParamDef("cycles", "true", "Show only cyclic dependencies with class-level edges", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.BOOLEAN, optional = true)
     val CYCLE = ParamDef("cycle", "<pkgA>,<pkgB>", "Show only the cycle between two specific packages", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val POSITION_FILE = ParamDef("file", "<path>", "Source file of the declaration (with line): find usages from a position, e.g. from a diff or stack trace, without the class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
+    val POSITION_LINE = ParamDef("line", "<N>", "Line in file: the method or class declared or running there", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val OWNER_CLASS = ParamDef("owner-class", "<class>", "Class name or pattern — matches method call and field owners (camelCase-aware: MyService matches com.example.MyService)", flag = false, defaultValue = null, enhancePattern = true, type = ParamType.STRING, optional = true)
     val DECLARATION_KIND = ParamDef("kind", "all|class|function|property|typealias", "Restrict to a declaration kind: all (default), class (incl. interface/object/enum/annotation), function (incl. constructors), property, typealias", flag = false, defaultValue = "all", enhancePattern = false, type = ParamType.STRING)
     val FIELD = ParamDef("field", "<name>", "Field/property name — also finds getter/setter calls. Alone (no owner-class), searches every project class, incl. Kotlin top-level <File>Kt facades", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -296,6 +312,7 @@ object TaskRegistry {
     val METHODS = ParamDef("methods", "true", "Deprecated: class, method, and field annotations are all searched by default now", flag = false, defaultValue = "false", enhancePattern = false, type = ParamType.BOOLEAN, deprecated = true, deprecatedMessage = "'methods' is deprecated. All targets (class, method, field) are searched by default now. Use 'target=class,method,field' to filter to specific targets.")
     val TARGET = ParamDef("target", "class,method,field", "Annotation targets to search (default: all)", flag = false, defaultValue = "class,method,field", enhancePattern = false, type = ParamType.LIST_STRING)
     val CONTEXT_MAXDEPTH = ParamDef("maxdepth", "<N>", "Max call tree depth (default: 2)", flag = false, defaultValue = "2", enhancePattern = false, type = ParamType.INT)
+    val TARGET_PATTERN = ParamDef("pattern", "<Class.method>", "Class.method, as for find-callers (simple class names are resolved from the sources). Alternative to target-class + method", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING, optional = true)
     val RENAME_CLASS = ParamDef("target-class", "<fqcn>", "Fully qualified class name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_METHOD = ParamDef("method", "<name>", "Method name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
     val RENAME_PARAM = ParamDef("param", "<name>", "Current parameter name", flag = false, defaultValue = null, enhancePattern = false, type = ParamType.STRING)
@@ -413,7 +430,7 @@ object TaskRegistry {
     val FIND_CALLERS = TaskDef(
         goal = "find-callers",
         description = "Full call hierarchy: find all callers of a method, recursively",
-        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE),
+        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, DEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallers",
@@ -427,7 +444,7 @@ object TaskRegistry {
     val FIND_CALLEES = TaskDef(
         goal = "find-callees",
         description = "Full call hierarchy: find all methods called by a method, recursively",
-        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE, MAX_IMPLEMENTORS, BRANCHES),
+        params = FORMAT_PARAMS + listOf(CALL_PATTERN, LEGACY_METHOD, MAXDEPTH, DEPTH, PROJECTONLY, FILTER_SYNTHETIC, SCOPE, MAX_IMPLEMENTORS, BRANCHES),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavCallees",
@@ -553,7 +570,7 @@ object TaskRegistry {
     val FIND_USAGES = TaskDef(
         goal = "find-usages",
         description = "Find project references to types, methods, and fields/properties",
-        params = FORMAT_PARAMS + listOf(OWNER_CLASS, METHOD, FIELD, TYPE, OUTSIDE_PACKAGE, FILTER_SYNTHETIC, SCOPE, GROUP_BY, RAW, INCLUDE_IMPLS),
+        params = FORMAT_PARAMS + listOf(OWNER_CLASS, METHOD, FIELD, TYPE, POSITION_FILE, POSITION_LINE, OUTSIDE_PACKAGE, FILTER_SYNTHETIC, SCOPE, GROUP_BY, RAW, INCLUDE_IMPLS),
         requiresCompilation = true,
         category = TaskCategory.NAVIGATION,
         legacyGradleTaskName = "cnavUsages",
@@ -949,7 +966,7 @@ object TaskRegistry {
     val RENAME_PARAM_TASK = TaskDef(
         goal = "rename-param",
         description = "Rename a method parameter and update all named-argument call sites",
-        params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, RENAME_PARAM, RENAME_NEW_NAME, PREVIEW),
+        params = FORMAT_PARAMS + listOf(TARGET_PATTERN, RENAME_CLASS, RENAME_METHOD, RENAME_PARAM, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
         kind = TaskKind.MUTATION,
@@ -964,13 +981,14 @@ object TaskRegistry {
     val RENAME_METHOD_TASK = TaskDef(
         goal = "rename-method",
         description = "Rename a method and update all call sites (including interface implementations)",
-        params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, RENAME_NEW_NAME, PREVIEW),
+        params = FORMAT_PARAMS + listOf(TARGET_PATTERN, RENAME_CLASS, RENAME_METHOD, RENAME_NEW_NAME, PREVIEW),
         requiresCompilation = false,
         category = TaskCategory.SOURCE,
         kind = TaskKind.MUTATION,
         intent = "Rename a method",
         intentDetail = "updates all call sites incl. interface impls",
         examples = listOf(
+            UsageExample(listOf(TARGET_PATTERN to "UserService.findUsers", RENAME_NEW_NAME to "findAll", PREVIEW to null)),
             UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", RENAME_NEW_NAME to "searchUsers")),
             UsageExample(listOf(RENAME_CLASS to "com.example.UserService", RENAME_METHOD to "findUsers", RENAME_NEW_NAME to "searchUsers", PREVIEW to null)),
         ),
@@ -1042,7 +1060,7 @@ object TaskRegistry {
     val CHANGE_SIGNATURE_TASK = TaskDef(
         goal = "change-signature",
         description = "Change method signature: add, remove, or reorder parameters. Rewrites declaration and all call sites.",
-        params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, CHANGE_SIG_PARAMS, CHANGE_SIG_DEFAULTS, PREVIEW),
+        params = FORMAT_PARAMS + listOf(TARGET_PATTERN, RENAME_CLASS, RENAME_METHOD, CHANGE_SIG_PARAMS, CHANGE_SIG_DEFAULTS, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
         kind = TaskKind.MUTATION,
@@ -1057,7 +1075,7 @@ object TaskRegistry {
     val SAFE_DELETE_TASK = TaskDef(
         goal = "safe-delete",
         description = "Delete a class or method only if it has no usages (verified via bytecode analysis)",
-        params = FORMAT_PARAMS + listOf(RENAME_CLASS, RENAME_METHOD, PREVIEW),
+        params = FORMAT_PARAMS + listOf(TARGET_PATTERN, RENAME_CLASS, RENAME_METHOD, PREVIEW),
         requiresCompilation = true,
         category = TaskCategory.SOURCE,
         kind = TaskKind.MUTATION,

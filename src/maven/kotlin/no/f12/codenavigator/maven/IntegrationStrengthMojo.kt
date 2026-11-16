@@ -15,7 +15,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "strength", requiresDependencyResolution = ResolutionScope.RUNTIME)
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class IntegrationStrengthMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -52,7 +52,7 @@ class IntegrationStrengthMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.STRENGTH.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.STRENGTH.enhanceProperties(project.applyConfigDefaults(TaskRegistry.STRENGTH, buildPropertyMap()))
         val config = StrengthConfig.parse(props)
 
         val taggedDirs = project.taggedClassDirectories()

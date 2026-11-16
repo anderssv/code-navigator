@@ -11,9 +11,9 @@ data class SafeDeleteConfig(
     val format: OutputFormat,
 ) {
     companion object {
-        fun parse(properties: Map<String, String?>): SafeDeleteConfig {
-            val className = TaskRegistry.RENAME_CLASS.parseRequiredFrom(properties)
-            val methodName = TaskRegistry.RENAME_METHOD.parseFrom(properties)
+        fun parse(properties: Map<String, String?>, sourceRoots: List<java.io.File> = emptyList()): SafeDeleteConfig {
+            val className = TargetClassResolver.resolve(sourceRoots, TargetPattern.className(properties))
+            val methodName = TargetPattern.methodName(properties)
             val preview: Boolean = TaskRegistry.PREVIEW.parseFrom(properties)
             val format = ParamDef.parseFormat(properties)
             return SafeDeleteConfig(className, methodName, preview, format)

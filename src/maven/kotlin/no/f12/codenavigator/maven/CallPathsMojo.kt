@@ -19,7 +19,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "call-paths")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class CallPathsMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)

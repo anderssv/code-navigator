@@ -20,7 +20,7 @@ import java.io.File
 import java.nio.file.Path
 
 @Mojo(name = "type-hierarchy", requiresDependencyResolution = ResolutionScope.RUNTIME)
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class TypeHierarchyMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -43,7 +43,7 @@ class TypeHierarchyMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            TypeHierarchyConfig.parse(TaskRegistry.TYPE_HIERARCHY.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            TypeHierarchyConfig.parse(TaskRegistry.TYPE_HIERARCHY.enhanceProperties(project.applyConfigDefaults(TaskRegistry.TYPE_HIERARCHY, buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(e.message)
         }

@@ -16,7 +16,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "report")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class ReportMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -53,7 +53,7 @@ class ReportMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.REPORT.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.REPORT.enhanceProperties(project.applyConfigDefaults(TaskRegistry.REPORT, buildPropertyMap()))
         val config = ReportConfig.parse(props)
         val afterDate = TaskRegistry.AFTER.parseFrom(props)
         val followRenames = props["no-follow"] != "true"

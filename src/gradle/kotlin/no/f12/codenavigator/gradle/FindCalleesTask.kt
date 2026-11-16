@@ -27,6 +27,10 @@ abstract class FindCalleesTask @Inject constructor(
     @get:Internal
     var method: String? = null
 
+    @Option(option = "depth", description = "Same as maxdepth: how many levels of callers/callees to follow")
+    @get:Internal
+    var depth: String? = null
+
     @Option(option = "maxdepth", description = "Max call tree depth")
     @get:Internal
     var maxdepth: String? = null
@@ -55,6 +59,7 @@ abstract class FindCalleesTask @Inject constructor(
         pattern?.let { put("pattern", it) }
         method?.let { put("method", it) }
         maxdepth?.let { put("maxdepth", it) }
+        depth?.let { put("depth", it) }
         projectOnly?.let { put("project-only", it) }
         filterSynthetic?.let { put("filter-synthetic", it) }
         scope?.let { put("scope", it) }

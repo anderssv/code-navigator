@@ -36,7 +36,7 @@ class HotspotsMojo : AbstractMojo() {
     private var noFollow: Boolean = false
 
     override fun execute() {
-        val config = HotspotConfig.parse(TaskRegistry.HOTSPOTS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = HotspotConfig.parse(TaskRegistry.HOTSPOTS.enhanceProperties(project.applyConfigDefaults(TaskRegistry.HOTSPOTS, buildPropertyMap())))
 
         val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
         val hotspots = HotspotBuilder.build(commits, config.minRevs, config.top, projectDir = project.basedir)

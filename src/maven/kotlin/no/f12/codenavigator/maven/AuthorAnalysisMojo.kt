@@ -36,7 +36,7 @@ class AuthorAnalysisMojo : AbstractMojo() {
     private var noFollow: Boolean = false
 
     override fun execute() {
-        val config = AuthorAnalysisConfig.parse(TaskRegistry.AUTHORS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = AuthorAnalysisConfig.parse(TaskRegistry.AUTHORS.enhanceProperties(project.applyConfigDefaults(TaskRegistry.AUTHORS, buildPropertyMap())))
 
         val commits = GitLogRunner.run(project.basedir, config.after, followRenames = config.followRenames)
         val modules = AuthorAnalysisBuilder.build(commits, config.minRevs, config.top)

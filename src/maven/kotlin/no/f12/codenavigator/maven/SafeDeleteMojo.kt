@@ -25,6 +25,9 @@ class SafeDeleteMojo : AbstractMojo() {
     private var format: String? = null
 
 
+    @Parameter(property = "pattern")
+    private var pattern: String? = null
+
     @Parameter(property = "target-class")
     private var targetClass: String? = null
 
@@ -36,7 +39,7 @@ class SafeDeleteMojo : AbstractMojo() {
 
     override fun execute() {
         val config = try {
-            SafeDeleteConfig.parse(TaskRegistry.SAFE_DELETE_TASK.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            SafeDeleteConfig.parse(TaskRegistry.SAFE_DELETE_TASK.enhanceProperties(project.applyConfigDefaults(TaskRegistry.SAFE_DELETE_TASK, buildPropertyMap())), project.allSourceRoots())
         } catch (e: IllegalArgumentException) {
             println(OutputWrapper.emptyResult(OutputFormat.LLM, "safe-delete failed: ${e.message}",
                 TaskRegistry.SAFE_DELETE_TASK.renderExamples(BuildTool.MAVEN)))
@@ -78,6 +81,7 @@ class SafeDeleteMojo : AbstractMojo() {
 
     private fun buildPropertyMap(): Map<String, String?> = buildMap {
         format?.let { put("format", it) }
+        pattern?.let { put("pattern", it) }
         targetClass?.let { put("target-class", it) }
         method?.let { put("method", it) }
         preview?.let { put("preview", it) }

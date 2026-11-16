@@ -184,4 +184,30 @@ class MavenGoalsIntegrationTest {
         assertFalse(File(project, "src/test/kotlin/com/example/services/AuditServiceTest.kt").exists(), run.output)
         assertTrue(File(project, "src/test/kotlin/com/example/domain/AuditServiceTest.kt").readText().contains("package com.example.domain"))
     }
+
+    @Test
+    fun `find-usages from a file and line, with a summary line first`() {
+        val project = freshProject()
+        val pom = File(project, "pom.xml")
+        compile(pom)
+
+        val run = mvn(pom, goal("find-usages"), "-Dfile=src/main/kotlin/com/example/services/AuditService.kt", "-Dline=9", "-Dformat=llm")
+
+        assertEquals(0, run.exitCode, run.output)
+        assertTrue(Regex("""\d+ references? in 2 files \(prod 1, test 1\)""").containsMatchIn(run.output), run.output)
+        assertTrue(run.output.contains("UserRoute") && run.output.contains("AuditServiceTest"), run.output)
+    }
+
+    @Test
+    fun `an option of another goal is reported instead of silently ignored, and pattern works on rename-method`() {
+        val project = freshProject()
+        val pom = File(project, "pom.xml")
+        compile(pom)
+
+        val run = mvn(pom, goal("rename-method"), "-Dpattern=AuditService.auditUser", "-Dnew-name=audit", "-Dpreview", "-Dmaxdepth=2")
+
+        assertEquals(0, run.exitCode, run.output)
+        assertTrue(run.output.contains("Ignored -Dmaxdepth") && run.output.contains("-Dpattern"), run.output)
+        assertTrue(run.output.contains("rename com.example.services.AuditService.auditUser -> audit"), run.output)
+    }
 }

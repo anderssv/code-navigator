@@ -2,9 +2,17 @@
 
 ## Unreleased
 
+### Added
+- **`pattern=Class.method` on `rename-method`, `rename-param`, `change-signature` and `safe-delete`**, the same form `find-callers` takes, as an alternative to `target-class` + `method`. A simple class name (`Person.actionsOn`) is resolved from the sources; an ambiguous one is an error listing the candidates. For `safe-delete`, a pattern whose last part is capitalised names a class.
+- **`find-usages` from a source position:** `file=<path> line=<N>` finds usages of the method (or class) declared or running at that line, e.g. straight from a diff or a stack trace, without the fully qualified name. Resolved from the line numbers in the class files.
+- **Summary line first in `format=llm`** for `find-usages` (`70 references in 17 files (prod 9, test 8)`) and `find-callers`/`find-callees` (`4 callers (2 direct) in 2 files (prod 1, test 1), 3 levels deep`), so an agent can decide whether to read the rest. The call-tree summary also says when the depth limit cut branches off.
+- **`depth` as another name for `maxdepth`** on `find-callers`/`find-callees`. The call hierarchy was already multi-level (default 3); the summary now says when raising it would show more.
+- **Maven: an option of another cnav goal is reported** (`Ignored -Dmaxdepth: not an option of cnav:rename-method. Its options: ...`) instead of silently dropped. Gradle already rejects unknown options and points to `help --task`.
+- Agent help recommends running with `-q`, which drops Gradle's and Maven's own lines (daemon start, problems report, BUILD SUCCESSFUL) and keeps cnav's output.
+
 ### Changed
 - **Bytecode tasks no longer answer from stale classes.** A run on class files older than the sources warned "STALE BUILD", then answered anyway, and the answer could be confidently wrong (callers missing, the wrong file). An agent reading the result easily missed the warning.
-  - Gradle: tasks that read bytecode now compile first (`classes`, or `testClasses` for tasks that need tests, in every module they analyse). This undoes the earlier "drop forced compilation" decision; an up-to-date compile costs little.
+  - Gradle: tasks that read bytecode now compile first, test classes included (`testClasses`, in every module they analyse): most tasks read test classes when present, and compiling only main left test callers silently missing. Maven goals that read test classes now run `test-compile` instead of `compile` for the same reason. This undoes the earlier "drop forced compilation" decision; an up-to-date compile costs little.
   - When compiling is turned off with `-Pcnav.compile=false` (e.g. while the code doesn't compile mid-refactoring), stale classes fail the task with a non-zero exit. `-Pcnav.allowStale=true` analyses the last successful build anyway, and the warning is then printed even with `-q`.
   - When the build compiled first, the mtime comparison is no longer reported: the compiler's up-to-date check is authoritative, and the comparison only gave false alarms (e.g. a checkout touching sources the compiler rightly skipped). Maven goals already compiled first (`@Execute`) and now follow the same rule.
 

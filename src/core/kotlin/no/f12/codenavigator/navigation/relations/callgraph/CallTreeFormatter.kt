@@ -1,5 +1,7 @@
 package no.f12.codenavigator.navigation.relations.callgraph
 
+import no.f12.codenavigator.navigation.types.SourceSet
+
 import no.f12.codenavigator.formatting.JsonRaw
 import no.f12.codenavigator.formatting.jsonArray
 import no.f12.codenavigator.formatting.jsonObject
@@ -167,6 +169,34 @@ object CallTreeFormatter {
                 "parameters" to params,
             )
         }
+
+    /**
+     * One line an agent can read before deciding whether to read the tree: how many, where, prod vs test,
+     * and whether the depth limit hid anything.
+     */
+    fun summaryLine(trees: List<CallTreeNode>, direction: CallDirection): String {
+        val noun = if (direction == CallDirection.CALLERS) "caller" else "callee"
+        val nodes = mutableListOf<Pair<CallTreeNode, Int>>()
+        fun walk(node: CallTreeNode, depth: Int) {
+            node.children.forEach { nodes += it to depth; walk(it, depth + 1) }
+        }
+        trees.forEach { walk(it, 1) }
+        val distinct = nodes.distinctBy { it.first.method }
+        val direct = trees.flatMap { it.children }.distinctBy { it.method }.size
+        val files = distinct.mapNotNull { (n, _) -> n.sourceFile?.let { it to n.sourceSet } }.distinct()
+        val prod = files.count { it.second != SourceSet.TEST }
+        val test = files.size - prod
+        val levels = nodes.maxOfOrNull { it.second } ?: 0
+        val cut = nodes.count { it.first.cutAtDepth } + trees.count { it.cutAtDepth }
+        fun plural(n: Int, word: String) = "$n $word" + if (n == 1) "" else "s"
+        return buildString {
+            append("${plural(distinct.size, noun)} ($direct direct) in ${plural(files.size, "file")} (prod $prod, test $test), ${plural(levels, "level")} deep")
+            if (cut > 0) append("; ${plural(cut, "branch").replace("branchs", "branches")} cut at the depth limit, raise maxdepth to see further")
+        }
+    }
+
+    fun formatLlmWithSummary(trees: List<CallTreeNode>, direction: CallDirection): String =
+        summaryLine(trees, direction) + "\n" + formatLlm(trees, direction)
 
     fun formatLlm(trees: List<CallTreeNode>, direction: CallDirection): String = buildString {
         trees.forEachIndexed { index, tree ->

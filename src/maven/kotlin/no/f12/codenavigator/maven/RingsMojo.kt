@@ -20,7 +20,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "rings")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class RingsMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -59,7 +59,7 @@ class RingsMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.RINGS.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.RINGS.enhanceProperties(project.applyConfigDefaults(TaskRegistry.RINGS, buildPropertyMap()))
         val outputFormat = ParamDef.parseFormat(props)
         val scopeFilter = Scope.parse(props["scope"])
         require(props["mode"] == null) {

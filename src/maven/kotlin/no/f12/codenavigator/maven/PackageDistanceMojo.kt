@@ -13,7 +13,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "distance")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class PackageDistanceMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -41,7 +41,7 @@ class PackageDistanceMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = PackageDistanceConfig.parse(TaskRegistry.DISTANCE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = PackageDistanceConfig.parse(TaskRegistry.DISTANCE.enhanceProperties(project.applyConfigDefaults(TaskRegistry.DISTANCE, buildPropertyMap())))
 
         val taggedDirs = project.taggedClassDirectories()
         val filteredDirs = taggedDirs.filter { config.scope.matchesSourceSet(it.second) }

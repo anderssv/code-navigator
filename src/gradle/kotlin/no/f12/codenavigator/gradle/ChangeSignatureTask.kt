@@ -27,6 +27,10 @@ abstract class ChangeSignatureTask @Inject constructor(
     @get:Classpath
     abstract val psiClasspath: ConfigurableFileCollection
 
+    @Option(option = "pattern", description = "Class.method, as for find-callers (simple class names are resolved from the sources). Alternative to target-class + method")
+    @get:Internal
+    var pattern: String? = null
+
     @Option(option = "target-class", description = "Fully qualified class name")
     @get:Internal
     var targetClass: String? = null
@@ -48,6 +52,7 @@ abstract class ChangeSignatureTask @Inject constructor(
     var preview: Boolean = false
 
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        pattern?.let { put("pattern", it) }
         targetClass?.let { put("target-class", it) }
         method?.let { put("method", it) }
         params?.let { put("params", it) }
@@ -59,7 +64,7 @@ abstract class ChangeSignatureTask @Inject constructor(
     fun changeSignature() {
         val config = try {
             ChangeSignatureConfig.parse(
-                TaskRegistry.CHANGE_SIGNATURE_TASK.enhanceProperties(buildOptionsMap()),
+                TaskRegistry.CHANGE_SIGNATURE_TASK.enhanceProperties(buildOptionsMap()), project.sourceDirectories(),
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(

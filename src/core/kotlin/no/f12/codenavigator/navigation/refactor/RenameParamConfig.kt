@@ -13,11 +13,11 @@ data class RenameParamConfig(
     val format: OutputFormat,
 ) {
     companion object {
-        fun parse(properties: Map<String, String?>): RenameParamConfig {
+        fun parse(properties: Map<String, String?>, sourceRoots: List<java.io.File> = emptyList()): RenameParamConfig {
             val preview: Boolean = TaskRegistry.PREVIEW.parseFrom(properties)
             return RenameParamConfig(
-                className = TaskRegistry.RENAME_CLASS.parseRequiredFrom(properties),
-                methodName = TaskRegistry.RENAME_METHOD.parseRequiredFrom(properties),
+                className = TargetClassResolver.resolve(sourceRoots, TargetPattern.className(properties)),
+                methodName = TargetPattern.requiredMethodName(properties),
                 paramName = TaskRegistry.RENAME_PARAM.parseRequiredFrom(properties),
                 newName = TaskRegistry.RENAME_NEW_NAME.parseRequiredFrom(properties),
                 preview = preview,

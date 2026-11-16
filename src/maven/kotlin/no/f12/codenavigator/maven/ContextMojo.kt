@@ -17,7 +17,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "context")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class ContextMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -46,7 +46,7 @@ class ContextMojo : AbstractMojo() {
         project.checkStaleness(log)
 
         val config = try {
-            ContextConfig.parse(TaskRegistry.CONTEXT.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+            ContextConfig.parse(TaskRegistry.CONTEXT.enhanceProperties(project.applyConfigDefaults(TaskRegistry.CONTEXT, buildPropertyMap())))
         } catch (e: IllegalArgumentException) {
             throw MojoFailureException(
                 "Missing required property 'pattern'. Usage: mvn cnav:context -Dpattern=<regex>",

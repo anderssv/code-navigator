@@ -27,6 +27,10 @@ abstract class SafeDeleteTask @Inject constructor(
     @get:Classpath
     abstract val psiClasspath: ConfigurableFileCollection
 
+    @Option(option = "pattern", description = "Class.method, as for find-callers (simple class names are resolved from the sources). Alternative to target-class + method")
+    @get:Internal
+    var pattern: String? = null
+
     @Option(option = "target-class", description = "Fully qualified class name")
     @get:Internal
     var targetClass: String? = null
@@ -40,6 +44,7 @@ abstract class SafeDeleteTask @Inject constructor(
     var preview: Boolean = false
 
     override fun taskOptionsMap(): Map<String, String?> = buildMap {
+        pattern?.let { put("pattern", it) }
         targetClass?.let { put("target-class", it) }
         method?.let { put("method", it) }
         if (preview) put("preview", "true")
@@ -49,7 +54,7 @@ abstract class SafeDeleteTask @Inject constructor(
     fun safeDelete() {
         val config = try {
             SafeDeleteConfig.parse(
-                TaskRegistry.SAFE_DELETE_TASK.enhanceProperties(buildOptionsMap()),
+                TaskRegistry.SAFE_DELETE_TASK.enhanceProperties(buildOptionsMap()), project.sourceDirectories(),
             )
         } catch (e: IllegalArgumentException) {
             throw GradleException(

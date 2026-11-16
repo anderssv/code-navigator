@@ -15,7 +15,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "type-affinity")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class TypeAffinityMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -36,7 +36,7 @@ class TypeAffinityMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val config = TypeAffinityConfig.parse(TaskRegistry.TYPE_AFFINITY.enhanceProperties(project.applyConfigDefaults(buildPropertyMap())))
+        val config = TypeAffinityConfig.parse(TaskRegistry.TYPE_AFFINITY.enhanceProperties(project.applyConfigDefaults(TaskRegistry.TYPE_AFFINITY, buildPropertyMap())))
         val scopeVal = Scope.parse(buildPropertyMap()["scope"])
 
         val taggedDirs = project.taggedClassDirectories()

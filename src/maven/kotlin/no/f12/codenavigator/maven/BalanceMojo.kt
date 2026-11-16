@@ -14,7 +14,7 @@ import org.apache.maven.project.MavenProject
 import java.io.File
 
 @Mojo(name = "balance")
-@Execute(phase = LifecyclePhase.COMPILE)
+@Execute(phase = LifecyclePhase.TEST_COMPILE)
 class BalanceMojo : AbstractMojo() {
 
     @Parameter(defaultValue = "\${project}", readonly = true, required = true)
@@ -63,7 +63,7 @@ class BalanceMojo : AbstractMojo() {
     override fun execute() {
         project.checkStaleness(log)
 
-        val props = TaskRegistry.BALANCE.enhanceProperties(project.applyConfigDefaults(buildPropertyMap()))
+        val props = TaskRegistry.BALANCE.enhanceProperties(project.applyConfigDefaults(TaskRegistry.BALANCE, buildPropertyMap()))
         val config = BalanceConfig.parse(props)
 
         val taggedDirs = project.taggedClassDirectories()
