@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.125
 
 ### Added
 - **`pattern=Class.method` on `rename-method`, `rename-param`, `change-signature` and `safe-delete`**, the same form `find-callers` takes, as an alternative to `target-class` + `method`. A simple class name (`Person.actionsOn`) is resolved from the sources; an ambiguous one is an error listing the candidates. For `safe-delete`, a pattern whose last part is capitalised names a class.
